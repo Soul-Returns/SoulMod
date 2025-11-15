@@ -7,7 +7,7 @@ import io.github.notenoughupdates.moulconfig.annotations.ConfigOption
 class RenderCategory {
     @Expose
     @JvmField
-    @ConfigOption(name = "Testbool", desc = "testbool ig")
+    @ConfigOption(name = "Hide Held Tooltip", desc = "Hides the annoying tooltip above the hotbar when swapping items")
     @ConfigEditorBoolean
-    var test: Boolean = true;
+    var hideHeldItemTooltip: Boolean = true;
 }

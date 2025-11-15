@@ -1,5 +1,6 @@
 package com.soulreturns.mixin.render;
 
+import com.soulreturns.Soul;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.hud.InGameHud;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,6 +16,8 @@ public class InGameHudMixin {
             cancellable = true
     )
     public void renderHeldItemTooltip(DrawContext context, CallbackInfo ci) {
-        ci.cancel();
+        if (Soul.configManager.getConfig().getInstance().RenderCategory.hideHeldItemTooltip) {
+            ci.cancel();
+        }
     }
 }

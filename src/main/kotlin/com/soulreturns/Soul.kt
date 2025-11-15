@@ -4,14 +4,13 @@ import com.soulreturns.command.SoulCommand
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.config.MainConfig
 import io.github.notenoughupdates.moulconfig.managed.ManagedConfig
+import io.github.notenoughupdates.moulconfig.processor.MoulConfigProcessor
 import net.fabricmc.api.ClientModInitializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.File
 
 object Soul : ClientModInitializer {
     private val logger = LoggerFactory.getLogger("soul")
-    lateinit var config: ManagedConfig<MainConfig>
     lateinit var configManager: ConfigManager
 
 

@@ -43,7 +43,7 @@ dependencies {
 tasks.shadowJar {
     // Make sure to relocate MoulConfig to avoid version clashes with other mods
     configurations = listOf(shadowModImpl)
-    relocate("io.github.notenoughupdates.moulconfig", "my.mod.deps.moulconfig")
+    relocate("io.github.notenoughupdates.moulconfig", "com.soulreturns.deps.moulconfig")
 }
 
 tasks.processResources {

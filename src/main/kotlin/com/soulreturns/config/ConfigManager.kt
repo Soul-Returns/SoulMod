@@ -1,17 +1,24 @@
 package com.soulreturns.config
 
-import com.soulreturns.Soul
-import com.soulreturns.Soul.config
 import io.github.notenoughupdates.moulconfig.managed.ManagedConfig
 import java.io.File
 
 class ConfigManager {
+    var config: ManagedConfig<MainConfig>
+
     init {
-        val configFile = File("config/test/config.json")
+        val configFile = File("config/soul/config.json")
+        configFile.parentFile.mkdirs()
 
-        config = ManagedConfig.create(configFile, MainConfig::class.java)
+        config = ManagedConfig.create(
+            configFile,
+            MainConfig::class.java
+        ) { }
 
-        // Ensure the parent directory exists
-        configFile.parentFile?.mkdirs()
+        config.reloadFromFile()
+    }
+
+    fun save() {
+        config.saveToFile()
     }
 }
