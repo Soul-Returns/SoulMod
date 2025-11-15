@@ -1,5 +1,6 @@
 package com.soulreturns.config
 
+import com.soulreturns.Soul
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
@@ -19,6 +20,8 @@ object ConfigGuiCloser {
                         false
                     )
                     manager?.save()
+                    Soul.loadFeatures()
+//                    MinecraftClient.getInstance().worldRenderer.reload()
                 } finally {
                     watched = null
                     manager = null

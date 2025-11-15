@@ -2,9 +2,7 @@ package com.soulreturns
 
 import com.soulreturns.command.SoulCommand
 import com.soulreturns.config.ConfigManager
-import com.soulreturns.config.MainConfig
-import io.github.notenoughupdates.moulconfig.managed.ManagedConfig
-import io.github.notenoughupdates.moulconfig.processor.MoulConfigProcessor
+import com.soulreturns.features.ReplaceLava
 import net.fabricmc.api.ClientModInitializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -24,7 +22,11 @@ object Soul : ClientModInitializer {
         configManager = ConfigManager()
 
         SoulCommand.register()
-	}
+    }
+
+    fun loadFeatures() {
+        ReplaceLava.replaceLava()
+    }
 
     fun getLogger(): Logger? {
         return this.logger
