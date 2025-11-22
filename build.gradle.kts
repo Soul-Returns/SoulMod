@@ -38,6 +38,7 @@ dependencies {
 
     // MoulConfig
     "shadowModImpl"("org.notenoughupdates.moulconfig:modern-1.21.7:4.2.0-beta")
+    include("org.notenoughupdates.moulconfig:modern-1.21.7:4.2.0-beta")
 }
 
 tasks.shadowJar {
