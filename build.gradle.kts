@@ -1,3 +1,5 @@
+import org.gradle.language.jvm.tasks.ProcessResources
+
 plugins {
 	id("fabric-loom") version "1.13-SNAPSHOT"
     `maven-publish`
@@ -47,12 +49,19 @@ tasks.shadowJar {
     relocate("io.github.notenoughupdates.moulconfig", "com.soulreturns.deps.moulconfig")
 }
 
-tasks.processResources {
-	inputs.property("version", project.version)
+tasks.named<ProcessResources>("processResources") {
+    // Capture values at configuration time (OK for config cache)
+    val modVersion = project.version.toString()
+    val modGroup = project.group.toString()
 
-	filesMatching("fabric.mod.json") {
-		expand(mapOf("version" to project.version))
-	}
+    filesMatching("fabric.mod.json") {
+        expand(
+            mapOf(
+                "version" to modVersion,
+                "group" to modGroup
+            )
+        )
+    }
 }
 
 tasks.withType(JavaCompile::class).configureEach {
