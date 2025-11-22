@@ -4,6 +4,7 @@ import com.soulreturns.command.SoulCommand
 import com.soulreturns.command.TestDoubleHookCommand
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.features.DoubleHookResponse
+import com.soulreturns.util.MessageHandler
 import net.fabricmc.api.ClientModInitializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -21,6 +22,9 @@ object Soul : ClientModInitializer {
 
         // Access config to trigger initialization
         configManager = ConfigManager()
+
+        // Register message handler before features so they can use it
+        MessageHandler.register()
 
         registerCommands()
         registerFeatures()
