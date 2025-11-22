@@ -3,6 +3,7 @@ package com.soulreturns
 import com.soulreturns.command.SoulCommand
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.features.ReplaceLava
+import com.soulreturns.features.DoubleHookResponse
 import net.fabricmc.api.ClientModInitializer
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -22,6 +23,7 @@ object Soul : ClientModInitializer {
         configManager = ConfigManager()
 
         SoulCommand.register()
+        DoubleHookResponse.register()
     }
 
     fun loadFeatures() {
