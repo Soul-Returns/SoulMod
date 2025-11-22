@@ -10,16 +10,4 @@ class RenderCategory {
     @ConfigOption(name = "Hide Held Tooltip", desc = "Hides the annoying tooltip above the hotbar when swapping items")
     @ConfigEditorBoolean
     var hideHeldItemTooltip: Boolean = true;
-
-    @Expose
-    @JvmField
-    @ConfigOption(name = "Fuck Diorite", desc = "Replace Diorite with Glass")
-    @ConfigEditorBoolean
-    var fuckDiorite: Boolean = false;
-
-    @Expose
-    @JvmField
-    @ConfigOption(name = "Replace Lava", desc = "Replace Lava with Water")
-    @ConfigEditorBoolean
-    var replaceLava: Boolean = false;
 }

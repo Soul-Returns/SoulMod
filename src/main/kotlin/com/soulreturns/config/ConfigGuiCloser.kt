@@ -2,9 +2,7 @@ package com.soulreturns.config
 
 import com.soulreturns.Soul
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.minecraft.client.MinecraftClient
 import net.minecraft.client.gui.screen.Screen
-import net.minecraft.text.Text
 
 object ConfigGuiCloser {
     private var watched: Screen? = null
@@ -15,13 +13,8 @@ object ConfigGuiCloser {
             val target = watched ?: return@register
             if (client.currentScreen !== target) {
                 try {
-                    MinecraftClient.getInstance().player?.sendMessage(
-                        Text.of("Closed config GUI, saving config..."),
-                        false
-                    )
                     manager?.save()
-                    Soul.loadFeatures()
-//                    MinecraftClient.getInstance().worldRenderer.reload()
+                    Soul.reloadFeatures()
                 } finally {
                     watched = null
                     manager = null
