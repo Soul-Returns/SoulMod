@@ -1,9 +1,9 @@
 package com.soulreturns
 
 import com.soulreturns.command.SoulCommand
-import com.soulreturns.commands.TestAlertCommand
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.features.DoubleHookResponse
+import com.soulreturns.features.mining.dwarvenMines.DonExpresso
 import com.soulreturns.util.MessageHandler
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.loader.api.FabricLoader
@@ -38,12 +38,11 @@ object Soul : ClientModInitializer {
 
     fun registerCommands() {
         SoulCommand.register()
-        TestAlertCommand.register()
     }
 
     fun registerFeatures() {
         DoubleHookResponse.register()
-        com.soulreturns.features.mining.dwarvenMines.DonExpresso.register()
+        DonExpresso.register()
     }
 
     fun reloadFeatures() {

@@ -3,6 +3,8 @@ package com.soulreturns.command
 import com.mojang.brigadier.context.CommandContext
 import com.soulreturns.Soul
 import com.soulreturns.commands.subcommands.TestMessageSubcommand
+import com.soulreturns.commands.subcommands.TestAlertSubcommand
+import com.soulreturns.commands.subcommands.ClearAlertsSubcommand
 import com.soulreturns.config.ConfigGuiCloser
 import io.github.notenoughupdates.moulconfig.common.IMinecraft
 import io.github.notenoughupdates.moulconfig.common.text.StructuredText
@@ -21,6 +23,8 @@ object SoulCommand {
                         execute(context)
                     }
                     .then(TestMessageSubcommand.register())
+                    .then(TestAlertSubcommand.register())
+                    .then(ClearAlertsSubcommand.register())
             )
         }
 

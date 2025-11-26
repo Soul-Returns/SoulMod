@@ -1,105 +1,40 @@
 package com.soulreturns.commands.subcommands
 
-import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.soulreturns.util.MessageHandler
-import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.MinecraftClient
 import net.minecraft.text.Text
 
-object TestMessageSubcommand {
+object TestMessageSubcommand : SoulSubcommand {
 
-    fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
-        return ClientCommandManager.literal("testmessage")
-            .then(
-                ClientCommandManager.literal("server")
-                    .then(
-                        ClientCommandManager.argument("message", StringArgumentType.greedyString())
-                            .executes { context ->
-                                val message = StringArgumentType.getString(context, "message")
-                                sendTestMessage(MessageType.SERVER, message, false)
-                                1
-                            }
-                    )
-            )
-            .then(
-                ClientCommandManager.literal("serverColor")
-                    .then(
-                        ClientCommandManager.argument("message", StringArgumentType.greedyString())
-                            .executes { context ->
-                                val message = StringArgumentType.getString(context, "message")
-                                sendTestMessage(MessageType.SERVER, message, true)
-                                1
-                            }
-                    )
-            )
-            .then(
-                ClientCommandManager.literal("party")
-                    .then(
-                        ClientCommandManager.argument("message", StringArgumentType.greedyString())
-                            .executes { context ->
-                                val message = StringArgumentType.getString(context, "message")
-                                sendTestMessage(MessageType.PARTY, message, false)
-                                1
-                            }
-                    )
-            )
-            .then(
-                ClientCommandManager.literal("partyColor")
-                    .then(
-                        ClientCommandManager.argument("message", StringArgumentType.greedyString())
-                            .executes { context ->
-                                val message = StringArgumentType.getString(context, "message")
-                                sendTestMessage(MessageType.PARTY, message, true)
-                                1
-                            }
-                    )
-            )
-            .then(
-                ClientCommandManager.literal("public")
-                    .then(
-                        ClientCommandManager.argument("message", StringArgumentType.greedyString())
-                            .executes { context ->
-                                val message = StringArgumentType.getString(context, "message")
-                                sendTestMessage(MessageType.PUBLIC, message, false)
-                                1
-                            }
-                    )
-            )
-            .then(
-                ClientCommandManager.literal("publicColor")
-                    .then(
-                        ClientCommandManager.argument("message", StringArgumentType.greedyString())
-                            .executes { context ->
-                                val message = StringArgumentType.getString(context, "message")
-                                sendTestMessage(MessageType.PUBLIC, message, true)
-                                1
-                            }
-                    )
-            )
-            .then(
-                ClientCommandManager.literal("guild")
-                    .then(
-                        ClientCommandManager.argument("message", StringArgumentType.greedyString())
-                            .executes { context ->
-                                val message = StringArgumentType.getString(context, "message")
-                                sendTestMessage(MessageType.GUILD, message, false)
-                                1
-                            }
-                    )
-            )
-            .then(
-                ClientCommandManager.literal("guildColor")
-                    .then(
-                        ClientCommandManager.argument("message", StringArgumentType.greedyString())
-                            .executes { context ->
-                                val message = StringArgumentType.getString(context, "message")
-                                sendTestMessage(MessageType.GUILD, message, true)
-                                1
-                            }
-                    )
-            )
+    override fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
+        return literal("testmessage") {
+            then(literal("server").stringArg("message") { _, msg ->
+                sendTestMessage(MessageType.SERVER, msg, false)
+            })
+            then(literal("serverColor").stringArg("message") { _, msg ->
+                sendTestMessage(MessageType.SERVER, msg, true)
+            })
+            then(literal("party").stringArg("message") { _, msg ->
+                sendTestMessage(MessageType.PARTY, msg, false)
+            })
+            then(literal("partyColor").stringArg("message") { _, msg ->
+                sendTestMessage(MessageType.PARTY, msg, true)
+            })
+            then(literal("public").stringArg("message") { _, msg ->
+                sendTestMessage(MessageType.PUBLIC, msg, false)
+            })
+            then(literal("publicColor").stringArg("message") { _, msg ->
+                sendTestMessage(MessageType.PUBLIC, msg, true)
+            })
+            then(literal("guild").stringArg("message") { _, msg ->
+                sendTestMessage(MessageType.GUILD, msg, false)
+            })
+            then(literal("guildColor").stringArg("message") { _, msg ->
+                sendTestMessage(MessageType.GUILD, msg, true)
+            })
+        }
     }
 
     private enum class MessageType {
