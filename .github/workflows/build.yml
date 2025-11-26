@@ -1,14 +1,29 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
-
-name: build
-on: [pull_request, push]
+name: Gradle CI
+on:
+  push:
+    branches:
+      - '**'
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
+      - 'changelogs/**'
+  pull_request:
+    branches:
+      - '**'
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.editorconfig'
+      - 'changelogs/**'
+      - 'src/*/resources/lang/*'
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
+
     steps:
       - name: checkout repository
         uses: actions/checkout@v4
@@ -18,13 +33,50 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: 'microsoft'
+          distribution: 'temurin'
+          cache: 'gradle'
+      - name: cache loom
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/fabric-loom
+            ~/.gradle/loom-cache
+            .gradle/loom-cache
+          key: ${{ runner.os }}-loom-${{ hashFiles('**/gradle.properties', '**/build.gradle.kts', '**/settings.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-loom-
+      - name: setup gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
+      - name: cleanup old caches
+        run: |
+          gh extension install actions/gh-actions-cache
+          
+          echo "Fetching list of cache keys"
+          cacheKeysForPR=$(gh actions-cache list -R $REPO -B $BRANCH --key "${{ runner.os }}-loom-" | cut -f 1)
+          
+          ## Setting this to not fail the workflow while deleting cache keys. 
+          set +e
+          echo "Deleting caches..."
+          for cacheKey in $cacheKeysForPR
+          do
+              if [ "$cacheKey" != "${{ runner.os }}-loom-${{ hashFiles('**/gradle.properties', '**/build.gradle.kts', '**/settings.gradle.kts') }}" ]; then
+                  gh actions-cache delete $cacheKey -R $REPO -B $BRANCH --confirm
+              fi
+          done
+          echo "Done"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref }}
+        continue-on-error: true
       - name: build
-        run: ./gradlew build
+        run: ./gradlew build --parallel --build-cache
       - name: capture build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Artifacts
-          path: build/libs/
+          path: versions/**/build/libs/*.jar
