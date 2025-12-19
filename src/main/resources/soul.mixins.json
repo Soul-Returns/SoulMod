@@ -7,7 +7,8 @@
   "client": [
     "ClientPlayNetworkHandlerMixin",
     "render.InGameHudMixin",
-    "render.SneakHeightMixin"
+    "render.SneakHeightMixin",
+    "render.HandledScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

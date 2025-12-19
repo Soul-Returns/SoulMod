@@ -3,6 +3,8 @@ package com.soulreturns
 import com.soulreturns.command.SoulCommand
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.features.DoubleHookResponse
+import com.soulreturns.features.itemhighlight.HighlightManager
+import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
 import com.soulreturns.util.MessageHandler
 import net.fabricmc.api.ClientModInitializer
@@ -32,6 +34,12 @@ object Soul : ClientModInitializer {
         // Register message handler before features so they can use it
         MessageHandler.register()
 
+        // Load highlight groups from JSON files
+        HighlightManager.loadGroups()
+
+        // Register tooltip handler
+        TooltipHandler.register()
+
         registerCommands()
         registerFeatures()
     }
@@ -47,6 +55,7 @@ object Soul : ClientModInitializer {
 
     fun reloadFeatures() {
         // reload features like world rendering here (this is beeing called whenever the config gui is closed)
+        HighlightManager.loadGroups()
     }
 
     fun getLogger(): Logger? {

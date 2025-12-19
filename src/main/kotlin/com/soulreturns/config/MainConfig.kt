@@ -32,6 +32,6 @@ class MainConfig : Config() {
 
     @JvmField
     @Expose
-    @Category(name = "Mining", desc = "Mining features")
+    @Category(name = "Fixes", desc = "Fixes")
     var fixesCategory = FixesCategory()
 }
