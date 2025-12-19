@@ -5,6 +5,7 @@
   "mixins": [
   ],
   "client": [
+    "ClientPlayNetworkHandlerMixin",
     "render.InGameHudMixin",
     "render.SneakHeightMixin"
   ],

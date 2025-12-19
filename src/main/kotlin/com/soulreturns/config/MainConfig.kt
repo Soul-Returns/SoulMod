@@ -4,6 +4,7 @@ import com.google.gson.annotations.Expose
 import com.soulreturns.Soul
 import com.soulreturns.config.categories.RenderCategory
 import com.soulreturns.config.categories.FishingCategory
+import com.soulreturns.config.categories.FixesCategory
 import com.soulreturns.config.categories.MiningCategory
 import io.github.notenoughupdates.moulconfig.Config
 import io.github.notenoughupdates.moulconfig.annotations.Category
@@ -28,4 +29,9 @@ class MainConfig : Config() {
     @Expose
     @Category(name = "Mining", desc = "Mining features")
     var miningCategory = MiningCategory()
+
+    @JvmField
+    @Expose
+    @Category(name = "Mining", desc = "Mining features")
+    var fixesCategory = FixesCategory()
 }
