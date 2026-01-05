@@ -3,6 +3,7 @@ package com.soulreturns.config.lib.ui.widgets
 import com.soulreturns.config.lib.model.OptionData
 import com.soulreturns.config.lib.model.OptionType
 import com.soulreturns.config.lib.ui.RenderHelper
+import com.soulreturns.util.DebugLogger
 import net.minecraft.client.gui.DrawContext
 
 /**
@@ -73,7 +74,9 @@ class ColorPickerWidget(
             
             val currentIndex = presets.indexOf(current)
             val nextIndex = (currentIndex + 1) % presets.size
-            setValue(configInstance, presets[nextIndex])
+            val newColor = presets[nextIndex]
+            DebugLogger.logWidgetInteraction("Color picker '${option.name}': ${String.format("#%08X", current)} -> ${String.format("#%08X", newColor)}")
+            setValue(configInstance, newColor)
             return true
         }
         return false

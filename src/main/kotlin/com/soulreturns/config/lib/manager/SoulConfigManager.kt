@@ -3,6 +3,7 @@ package com.soulreturns.config.lib.manager
 import com.google.gson.GsonBuilder
 import com.soulreturns.config.lib.model.ConfigStructure
 import com.soulreturns.config.lib.parser.ConfigParser
+import com.soulreturns.util.DebugLogger
 import java.io.File
 import java.io.FileReader
 import java.io.FileWriter
@@ -29,14 +30,25 @@ class SoulConfigManager<T : Any>(
         // Load or create config instance
         instance = if (configFile.exists()) {
             try {
+                DebugLogger.logConfigChange("Loading config from ${configFile.path}")
                 FileReader(configFile).use { reader ->
-                    gson.fromJson(reader, configClass) ?: factory()
+                    val loaded = gson.fromJson(reader, configClass)
+                    if (loaded == null) {
+                        println("[Soul Config] WARNING: Loaded config was null, using defaults")
+                        factory()
+                    } else {
+                        println("[Soul Config] Successfully loaded config from ${configFile.path}")
+                        loaded
+                    }
                 }
             } catch (e: Exception) {
-                println("Failed to load config from ${configFile.path}, creating new: ${e.message}")
+                println("[Soul Config] ERROR: Failed to load config from ${configFile.path}: ${e.message}")
+                e.printStackTrace()
                 factory()
             }
         } else {
+            DebugLogger.logConfigChange("Creating new config file at ${configFile.path}")
+            println("[Soul Config] Config file does not exist, creating new at ${configFile.path}")
             factory()
         }
         
@@ -54,9 +66,11 @@ class SoulConfigManager<T : Any>(
      */
     fun save() {
         try {
+            DebugLogger.logConfigChange("Saving config to ${configFile.path}")
             FileWriter(configFile).use { writer ->
                 gson.toJson(instance, writer)
             }
+            DebugLogger.logConfigChange("Config saved successfully")
         } catch (e: Exception) {
             println("Failed to save config to ${configFile.path}: ${e.message}")
         }
@@ -68,9 +82,11 @@ class SoulConfigManager<T : Any>(
     fun reload() {
         if (configFile.exists()) {
             try {
+                DebugLogger.logConfigChange("Reloading config from ${configFile.path}")
                 FileReader(configFile).use { reader ->
                     instance = gson.fromJson(reader, configClass) ?: factory()
                 }
+                DebugLogger.logConfigChange("Config reloaded successfully")
             } catch (e: Exception) {
                 println("Failed to reload config from ${configFile.path}: ${e.message}")
             }

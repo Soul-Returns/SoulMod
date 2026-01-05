@@ -3,6 +3,7 @@ package com.soulreturns.config.lib.ui.widgets
 import com.soulreturns.config.lib.model.OptionData
 import com.soulreturns.config.lib.model.OptionType
 import com.soulreturns.config.lib.ui.RenderHelper
+import com.soulreturns.util.DebugLogger
 import net.minecraft.client.gui.DrawContext
 import kotlin.math.roundToInt
 
@@ -105,6 +106,8 @@ class SliderWidget(
             else -> newValue
         }
         
+        val oldValue = getValue(configInstance)
+        DebugLogger.logWidgetInteraction("Slider '${option.name}': $oldValue -> $finalValue")
         setValue(configInstance, finalValue)
     }
 }

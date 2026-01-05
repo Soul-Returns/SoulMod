@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import com.soulreturns.config.config
+import com.soulreturns.util.DebugLogger
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import java.nio.file.Files
@@ -72,6 +73,7 @@ object HighlightManager {
             loadGroupFromFile(file, isCustom = true)
         }
 
+        DebugLogger.logFeatureEvent("Loaded ${highlightGroups.size} highlight groups with ${itemToColorMap.size} total items")
         println("[Soul] Loaded ${highlightGroups.size} highlight groups with ${itemToColorMap.size} total items")
     }
 
@@ -82,6 +84,7 @@ object HighlightManager {
 
             if (group != null && group.items.isNotEmpty()) {
                 highlightGroups.add(group)
+                DebugLogger.logFeatureEvent("Loaded ${if (isCustom) "custom" else "builtin"} highlight group: ${group.name} with ${group.items.size} items")
 
                 // Parse color and map each item to it
                 val color = parseColor(group.color)

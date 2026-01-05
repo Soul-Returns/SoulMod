@@ -2,6 +2,7 @@ package com.soulreturns.config.lib.ui.widgets
 
 import com.soulreturns.config.lib.model.OptionData
 import com.soulreturns.config.lib.ui.RenderHelper
+import com.soulreturns.util.DebugLogger
 import net.minecraft.client.gui.DrawContext
 
 /**
@@ -62,7 +63,9 @@ class ToggleWidget(
     override fun mouseClicked(mouseX: Int, mouseY: Int, button: Int, configInstance: Any): Boolean {
         if (button == 0 && isHovered) {
             val currentValue = getValue(configInstance) as? Boolean ?: false
-            setValue(configInstance, !currentValue)
+            val newValue = !currentValue
+            DebugLogger.logWidgetInteraction("Toggle '${option.name}': $currentValue -> $newValue")
+            setValue(configInstance, newValue)
             return true
         }
         return false

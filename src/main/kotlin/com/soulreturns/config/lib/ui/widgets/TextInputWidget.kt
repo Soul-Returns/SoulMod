@@ -3,6 +3,7 @@ package com.soulreturns.config.lib.ui.widgets
 import com.soulreturns.config.lib.model.OptionData
 import com.soulreturns.config.lib.model.OptionType
 import com.soulreturns.config.lib.ui.RenderHelper
+import com.soulreturns.util.DebugLogger
 import net.minecraft.client.gui.DrawContext
 import org.lwjgl.glfw.GLFW
 
@@ -92,6 +93,7 @@ class TextInputWidget(
             val value = (getValue(configInstance) as? String) ?: ""
             if (value.length < textInputType.maxLength) {
                 val newValue = value.substring(0, cursorPos) + chr + value.substring(cursorPos)
+                DebugLogger.logWidgetInteraction("Text input '${option.name}': '$value' -> '$newValue'")
                 setValue(configInstance, newValue)
                 cursorPos++
                 return true
