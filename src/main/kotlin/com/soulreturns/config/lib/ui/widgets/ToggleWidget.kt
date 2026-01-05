@@ -56,12 +56,6 @@ class ToggleWidget(
         val knobColor = 0xFFFFFFFF.toInt()
         
         RenderHelper.drawRoundedRect(context, knobX, knobY, knobSize, knobSize, (knobSize / 2).toFloat(), knobColor)
-        
-        // Draw description if hovered
-        if (isHovered && option.description.isNotEmpty()) {
-            val descY = y + height + 2
-            context.drawText(textRenderer, option.description, x, descY, theme.textSecondary, false)
-        }
     }
     
     override fun mouseClicked(mouseX: Int, mouseY: Int, button: Int, configInstance: Any): Boolean {

@@ -41,15 +41,15 @@ object DarkTheme : Theme {
     override val widgetBorder = 0xFF000000.toInt()
     override val widgetHighlight = 0xFF4C9AFF.toInt()
     
-    // Option card colors (not used in dark theme)
-    override val optionCardBackground = 0xFF1A1A1A.toInt()
-    override val optionCardBorder = 0xFF000000.toInt()
+    // Option card colors - subtle separators
+    override val optionCardBackground = 0xFF222222.toInt()
+    override val optionCardBorder = 0xFF2A2A2A.toInt()
     override val optionCardShadow = 0x00000000
     
     // Style properties
     override val categoryCornerRadius = 6f
     override val widgetCornerRadius = 12f
-    override val cardCornerRadius = 0f
-    override val useBorders = false
-    override val useCardStyle = false
+    override val cardCornerRadius = 4f
+    override val useBorders = true
+    override val useCardStyle = true
 }

@@ -18,9 +18,9 @@ import com.soulreturns.config.lib.ui.themes.ThemeManager
  */
 class ModConfigScreen<T : Any>(
     private val configManager: SoulConfigManager<T>,
-    private val title: String,
+    private val screenTitle: String,
     private val version: String
-) : Screen(Text.literal(title)) {
+) : Screen(Text.literal(screenTitle)) {
     
     private val sidebarWidth = 240
     private val contentPadding = 24
@@ -139,7 +139,54 @@ class ModConfigScreen<T : Any>(
         // Render title bar
         renderTitleBar(context)
         
+        // Render tooltips last (on top of everything)
+        renderTooltips(context, mouseX, mouseY)
+        
         super.render(context, mouseX, mouseY, delta)
+    }
+    
+    private fun renderTooltips(context: DrawContext, mouseX: Int, mouseY: Int) {
+        // Find hovered widget and show its description as tooltip
+        val category = configManager.structure.categories.getOrNull(selectedCategoryIndex) ?: return
+        val contentY = guiY + 70
+        
+        for (widget in widgets) {
+            val displayX = widget.x + guiX
+            val displayY = widget.y - contentScroll.toInt() + contentY
+            
+            // Check if widget is hovered
+            if (mouseX >= displayX && mouseX <= displayX + widget.width &&
+                mouseY >= displayY && mouseY <= displayY + widget.height &&
+                widget.option.description.isNotEmpty()) {
+                
+                // Calculate tooltip position near cursor
+                val tooltipX = mouseX + 12
+                val tooltipY = mouseY + 12
+                
+                // Measure tooltip size
+                val lines = widget.option.description.split("\n")
+                val maxWidth = lines.maxOfOrNull { textRenderer.getWidth(it) } ?: 0
+                val tooltipWidth = maxWidth + 16
+                val tooltipHeight = lines.size * (textRenderer.fontHeight + 2) + 12
+                
+                // Adjust if tooltip goes off screen
+                val finalX = if (tooltipX + tooltipWidth > width) tooltipX - tooltipWidth - 24 else tooltipX
+                val finalY = if (tooltipY + tooltipHeight > height) tooltipY - tooltipHeight - 24 else tooltipY
+                
+                // Draw tooltip background
+                RenderHelper.drawRoundedRect(context, finalX, finalY, tooltipWidth, tooltipHeight, 4f, 0xE0202020.toInt())
+                RenderHelper.drawRoundedRect(context, finalX - 1, finalY - 1, tooltipWidth + 2, tooltipHeight + 2, 4f, theme.categoryBorder)
+                
+                // Draw tooltip text
+                var textY = finalY + 6
+                for (line in lines) {
+                    context.drawText(textRenderer, line, finalX + 8, textY, theme.textSecondary, false)
+                    textY += textRenderer.fontHeight + 2
+                }
+                
+                break // Only show one tooltip
+            }
+        }
     }
     
     private fun renderTitleBar(context: DrawContext) {
@@ -150,7 +197,7 @@ class ModConfigScreen<T : Any>(
         RenderHelper.drawRoundedRect(context, titleBarX, titleBarY, titleBarWidth, 50, 12f, theme.titleBarBackground)
         
         // Title text
-        val titleText = "$title v$version"
+        val titleText = "$screenTitle v$version"
         val titleX = titleBarX + 20
         val titleY = titleBarY + 15
         context.drawText(textRenderer, titleText, titleX, titleY, theme.textPrimary, false)
