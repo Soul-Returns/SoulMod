@@ -36,6 +36,11 @@ data class ModConfigLayout(
      * Extra padding between the top of the sidebar content area and the first category button.
      */
     val sidebarCategoryTopPadding: Int = 10,
+    /**
+     * Vertical padding between the top of the content area and the first option widget.
+     * Chosen so that the gap above the first card roughly matches the gap between cards.
+     */
+    val contentListTopPadding: Int = 10,
 )
 
 class ModConfigScreen<T : Any>(
@@ -109,7 +114,11 @@ class ModConfigScreen<T : Any>(
         val category = configManager.structure.categories.getOrNull(selectedCategoryIndex) ?: return
         val categoryInstance = getCategoryInstance(category)
         
-        var currentY = contentPadding
+        // Start a bit below the top of the content area so the first card
+        // has a similar gap to the gaps between cards.
+        var currentY = layout.contentListTopPadding
+        // Align widget X with the content area (contentX + contentPadding)
+        val widgetBaseX = sidebarWidth + layout.outerMargin + contentPadding
         
         // If a subcategory is selected, show its options
         if (selectedSubcategoryIndex >= 0) {
@@ -119,7 +128,7 @@ class ModConfigScreen<T : Any>(
             for (option in subcategory.options) {
                 val widget = WidgetFactory.createWidget(
                     option,
-                    sidebarWidth + contentPadding,
+                    widgetBaseX,
                     currentY
                 )
                 widgets.add(widget)
@@ -130,7 +139,7 @@ class ModConfigScreen<T : Any>(
             for (option in category.options) {
                 val widget = WidgetFactory.createWidget(
                     option,
-                    sidebarWidth + contentPadding,
+                    widgetBaseX,
                     currentY
                 )
                 widgets.add(widget)
@@ -355,22 +364,33 @@ class ModConfigScreen<T : Any>(
             
             // Show hint if no options at category level and subcategories exist
             if (widgets.isEmpty() && selectedSubcategoryIndex < 0 && category.subcategories.isNotEmpty()) {
-                val hintText = "← Select a subcategory to view options"
+                val hintText = "608 Select a subcategory to view options"
                 val hintX = contentX + contentPadding
                 val hintY = contentY + contentPadding
                 context.drawText(textRenderer, hintText, hintX, hintY, theme.textSecondary, false)
             }
             
+            // All non-divider widgets should share the same visible X and width so that
+            // toggles, sliders, etc. line up perfectly regardless of dividers or position
+            val widgetDisplayX = guiX + sidebarWidth + layout.outerMargin + contentPadding
+            val widgetDisplayWidth = contentWidth - contentPadding * 2
+            
             for (widget in widgets) {
-                // Calculate display position based on scroll without modifying widget.y
-                val displayX = widget.x + guiX
+                val isDivider = widget.option.type is com.soulreturns.config.lib.model.OptionType.Divider
+                
+                // Calculate display position based on scroll without modifying the logical Y
+                val displayX = if (isDivider) widget.x + guiX else widgetDisplayX
                 val displayY = widget.y - contentScroll.toInt() + contentY
                 val originalX = widget.x
                 val originalY = widget.y
+                val originalWidth = widget.width
                 
-                // Temporarily set position for rendering
+                // Temporarily set position (and width for non-dividers) for rendering
                 widget.x = displayX
                 widget.y = displayY
+                if (!isDivider) {
+                    widget.width = widgetDisplayWidth
+                }
                 widget.updateHover(mouseX, mouseY)
                 
                 // Get the correct instance (subcategory or category)
@@ -382,10 +402,9 @@ class ModConfigScreen<T : Any>(
                 }
                 
                 // Render card background if theme uses card style (but not for dividers)
-                val isDivider = widget.option.type is com.soulreturns.config.lib.model.OptionType.Divider
                 if (theme.useCardStyle && !isDivider) {
                     val cardPaddingH = 16 // Horizontal padding
-                    val cardPaddingV = 8   // Vertical padding (reduced)
+                    val cardPaddingV = 6   // Vertical padding
                     val cardX = displayX - cardPaddingH
                     val cardY = displayY - cardPaddingV / 2
                     val cardWidth = contentWidth - contentPadding * 2 + cardPaddingH * 2
@@ -407,9 +426,10 @@ class ModConfigScreen<T : Any>(
                 
                 widget.render(context, mouseX, mouseY, delta, instance, theme)
                 
-                // Restore original position
+                // Restore original geometry
                 widget.x = originalX
                 widget.y = originalY
+                widget.width = originalWidth
             }
         }
         
