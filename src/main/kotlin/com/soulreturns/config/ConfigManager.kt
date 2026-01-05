@@ -1,24 +1,21 @@
 package com.soulreturns.config
 
-import io.github.notenoughupdates.moulconfig.managed.ManagedConfig
+import com.soulreturns.config.lib.manager.SoulConfigManager
 import java.io.File
 
 class ConfigManager {
-    var config: ManagedConfig<MainConfig>
+    var config: SoulConfigManager<MainConfig>
 
     init {
         val configFile = File("config/soul/config.json")
-        configFile.parentFile.mkdirs()
 
-        config = ManagedConfig.create(
+        config = SoulConfigManager(
             configFile,
             MainConfig::class.java
-        ) { }
-
-        config.reloadFromFile()
+        ) { MainConfig() }
     }
 
     fun save() {
-        config.saveToFile()
+        config.save()
     }
 }

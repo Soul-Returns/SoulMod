@@ -1,13 +1,11 @@
 package com.soulreturns.config.categories.mining
 
-import com.google.gson.annotations.Expose
-import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorBoolean
-import io.github.notenoughupdates.moulconfig.annotations.ConfigOption
+import com.soulreturns.config.lib.annotations.ConfigOption
+import com.soulreturns.config.lib.annotations.Toggle
 
 class DwarvenMinesSubCategory {
-    @Expose
     @JvmField
-    @ConfigOption(name = "Don Expresso", desc = "Show an alert when Don Expresso is about to leave (currently only works when completed early)")
-    @ConfigEditorBoolean
+    @ConfigOption(name = "Don Expresso", description = "Show an alert when Don Expresso is about to leave (currently only works when completed early)")
+    @Toggle
     var donExpressoAlert: Boolean = true
 }

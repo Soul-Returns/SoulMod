@@ -1,13 +1,11 @@
 package com.soulreturns.config.categories
 
-import com.google.gson.annotations.Expose
-import io.github.notenoughupdates.moulconfig.annotations.ConfigEditorBoolean
-import io.github.notenoughupdates.moulconfig.annotations.ConfigOption
+import com.soulreturns.config.lib.annotations.ConfigOption
+import com.soulreturns.config.lib.annotations.Toggle
 
 class FixesCategory {
-    @Expose
     @JvmField
-    @ConfigOption(name = "Double Sneak", desc = "Fix the vanilla double sneak lag bug")
-    @ConfigEditorBoolean
+    @ConfigOption(name = "Double Sneak", description = "Fix the vanilla double sneak lag bug")
+    @Toggle
     var fixDoubleSneak: Boolean = false
 }

@@ -28,11 +28,6 @@ repositories {
     mavenCentral()
     maven("https://jitpack.io")
     maven ("https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1")
-    maven("https://maven.notenoughupdates.org/releases/")
-}
-
-val shadowModImpl by configurations.creating {
-    configurations.modImplementation.get().extendsFrom(this)
 }
 
 dependencies {
@@ -58,17 +53,7 @@ dependencies {
 
 	modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("fabric_kotlin_version")}")
 
-    // MoulConfig
-    "shadowModImpl"("org.notenoughupdates.moulconfig:${project.property("moulconfig_version")}")
-    include("org.notenoughupdates.moulconfig:${project.property("moulconfig_version")}")
-
     modRuntimeOnly("me.djtheredstoner:${project.property("deps.devauth")}")
-}
-
-tasks.shadowJar {
-    // Make sure to relocate MoulConfig to avoid version clashes with other mods
-    configurations = listOf(shadowModImpl)
-    relocate("io.github.notenoughupdates.moulconfig", "com.soulreturns.deps.moulconfig")
 }
 
 loom {
