@@ -364,7 +364,7 @@ class ModConfigScreen<T : Any>(
             
             // Show hint if no options at category level and subcategories exist
             if (widgets.isEmpty() && selectedSubcategoryIndex < 0 && category.subcategories.isNotEmpty()) {
-                val hintText = "608 Select a subcategory to view options"
+                val hintText = "\uD83E\uDC1C Select a subcategory to view options"
                 val hintX = contentX + contentPadding
                 val hintY = contentY + contentPadding
                 context.drawText(textRenderer, hintText, hintX, hintY, theme.textSecondary, false)
@@ -489,25 +489,39 @@ class ModConfigScreen<T : Any>(
             }
             
             val contentY = guiY + layout.contentTopOffset
+            // Match the same visible X/width we use during rendering so hitboxes
+            // line up with the drawn cards and toggles.
+            val contentX = guiX + sidebarWidth + layout.outerMargin
+            val contentWidth = guiWidth - sidebarWidth - layout.outerMargin * 2
+            val widgetDisplayX = contentX + contentPadding
+            val widgetDisplayWidth = contentWidth - contentPadding * 2
+            
             for (widget in widgets) {
+                val isDivider = widget.option.type is com.soulreturns.config.lib.model.OptionType.Divider
+                
                 // Calculate display position with scroll offset
-                val displayX = widget.x + guiX
+                val displayX = if (isDivider) widget.x + guiX else widgetDisplayX
                 val displayY = widget.y - contentScroll.toInt() + contentY
                 val originalX = widget.x
                 val originalY = widget.y
+                val originalWidth = widget.width
                 
-                // Temporarily set display position for click detection
+                // Temporarily set display geometry for click detection
                 widget.x = displayX
                 widget.y = displayY
+                if (!isDivider) {
+                    widget.width = widgetDisplayWidth
+                }
                 
                 // Update hover state with current position
                 widget.updateHover(mouseXInt, mouseYInt)
                 
                 val clicked = widget.mouseClicked(mouseXInt, mouseYInt, button, instance)
                 
-                // Restore original position
+                // Restore original geometry
                 widget.x = originalX
                 widget.y = originalY
+                widget.width = originalWidth
                 
                 if (clicked) {
                     return true

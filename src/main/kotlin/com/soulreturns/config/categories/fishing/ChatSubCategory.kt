@@ -8,10 +8,10 @@ class ChatSubCategory {
     @JvmField
     @ConfigOption(name = "Double Hook Toggle", description = "Enable double hook message")
     @Toggle
-    var doubleHookMessageToggle: Boolean = true
+    var doubleHookMessageToggle: Boolean = false
 
     @JvmField
     @ConfigOption(name = "Double Hook Message", description = "Message to send when 'Double Hook!' is detected in chat")
     @TextInput(placeholder = "Enter message", maxLength = 256)
-    var doubleHookMessageText: String = "[Soul] Woot Woot!"
+    var doubleHookMessageText: String = "Woot Woot!"
 }

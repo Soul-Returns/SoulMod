@@ -7,5 +7,5 @@ class DwarvenMinesSubCategory {
     @JvmField
     @ConfigOption(name = "Don Expresso", description = "Show an alert when Don Expresso is about to leave (currently only works when completed early)")
     @Toggle
-    var donExpressoAlert: Boolean = true
+    var donExpressoAlert: Boolean = false
 }
