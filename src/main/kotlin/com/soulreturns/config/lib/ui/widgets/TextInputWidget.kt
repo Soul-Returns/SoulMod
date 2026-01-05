@@ -34,11 +34,11 @@ class TextInputWidget(
         val bgColor = if (isFocused) theme.widgetHover else theme.widgetBackground
         val borderColor = if (isFocused) theme.widgetActive else theme.categoryBorder
         
-        RenderHelper.drawRoundedRect(context, x, inputY, width, inputHeight, theme.widgetCornerRadius, bgColor)
+        RenderHelper.drawRect(context, x, inputY, width, inputHeight, bgColor)
         
         // Draw border
-        RenderHelper.drawRoundedRect(context, x - 1, inputY - 1, width + 2, inputHeight + 2, theme.widgetCornerRadius, borderColor)
-        RenderHelper.drawRoundedRect(context, x, inputY, width, inputHeight, theme.widgetCornerRadius, bgColor)
+        RenderHelper.drawRect(context, x - 1, inputY - 1, width + 2, inputHeight + 2, borderColor)
+        RenderHelper.drawRect(context, x, inputY, width, inputHeight, bgColor)
         
         // Draw text
         val textX = x + 8

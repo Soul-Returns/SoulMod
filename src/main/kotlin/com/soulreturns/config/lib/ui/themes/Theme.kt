@@ -47,9 +47,6 @@ interface Theme {
     val optionCardShadow: Int
     
     // Style properties
-    val categoryCornerRadius: Float
-    val widgetCornerRadius: Float
-    val cardCornerRadius: Float
     val useBorders: Boolean
     val useCardStyle: Boolean
 }

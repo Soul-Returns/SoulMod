@@ -38,13 +38,13 @@ class SliderWidget(
         // Draw slider track
         val sliderY = y + 20
         val trackColor = if (isHovered || isDragging) theme.widgetHover else theme.widgetBackground
-        RenderHelper.drawRoundedRect(context, x, sliderY, width, sliderHeight, theme.widgetCornerRadius, trackColor)
+        RenderHelper.drawRect(context, x, sliderY, width, sliderHeight, trackColor)
         
         // Draw filled portion
         val filledWidth = (width * percentage).toInt()
         if (filledWidth > 0) {
             val fillColor = theme.widgetActive
-            RenderHelper.drawRoundedRect(context, x, sliderY, filledWidth, sliderHeight, theme.widgetCornerRadius, fillColor)
+            RenderHelper.drawRect(context, x, sliderY, filledWidth, sliderHeight, fillColor)
         }
         
         // Draw handle
@@ -53,7 +53,7 @@ class SliderWidget(
         val handleY = sliderY - 2
         val handleColor = if (isDragging) theme.widgetHover else theme.widgetBackground
         
-        RenderHelper.drawRoundedRect(context, handleX, handleY, handleSize, handleSize, handleSize / 2f, handleColor)
+        RenderHelper.drawRect(context, handleX, handleY, handleSize, handleSize, handleColor)
     }
     
     override fun mouseClicked(mouseX: Int, mouseY: Int, button: Int, configInstance: Any): Boolean {

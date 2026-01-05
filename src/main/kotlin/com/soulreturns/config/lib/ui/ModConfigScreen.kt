@@ -174,8 +174,8 @@ class ModConfigScreen<T : Any>(
                 val finalY = if (tooltipY + tooltipHeight > height) tooltipY - tooltipHeight - 24 else tooltipY
                 
                 // Draw tooltip background
-                RenderHelper.drawRoundedRect(context, finalX, finalY, tooltipWidth, tooltipHeight, 4f, 0xE0202020.toInt())
-                RenderHelper.drawRoundedRect(context, finalX - 1, finalY - 1, tooltipWidth + 2, tooltipHeight + 2, 4f, theme.categoryBorder)
+                RenderHelper.drawRect(context, finalX, finalY, tooltipWidth, tooltipHeight, 0xE0202020.toInt())
+                RenderHelper.drawRect(context, finalX - 1, finalY - 1, tooltipWidth + 2, tooltipHeight + 2, theme.categoryBorder)
                 
                 // Draw tooltip text
                 var textY = finalY + 6
@@ -194,7 +194,8 @@ class ModConfigScreen<T : Any>(
         val titleBarX = guiX + 10
         val titleBarY = guiY + 10
         val titleBarWidth = guiWidth - 20
-        RenderHelper.drawRoundedRect(context, titleBarX, titleBarY, titleBarWidth, 50, 12f, theme.titleBarBackground)
+        val titleBarHeight = 50
+        RenderHelper.drawRect(context, titleBarX, titleBarY, titleBarWidth, titleBarHeight, theme.titleBarBackground)
         
         // Title text
         val titleText = "$screenTitle v$version"
@@ -213,7 +214,7 @@ class ModConfigScreen<T : Any>(
         )
         
         val closeButtonColor = if (isCloseHovered) theme.closeButtonHover else theme.closeButtonNormal
-        RenderHelper.drawRoundedRect(context, closeButtonX, closeButtonY, closeButtonSize, closeButtonSize, 8f, closeButtonColor)
+        RenderHelper.drawRect(context, closeButtonX, closeButtonY, closeButtonSize, closeButtonSize, closeButtonColor)
         
         // X icon
         val xSize = 12
@@ -229,7 +230,7 @@ class ModConfigScreen<T : Any>(
         val sidebarH = guiHeight
         context.fill(sidebarX, sidebarY, sidebarX + sidebarWidth, sidebarY + sidebarH, theme.sidebarBackground)
         
-        // Enable scissor for sidebar (but leave some padding for rounded corners)
+        // Enable scissor for sidebar
         context.enableScissor(sidebarX, sidebarY + 70, sidebarX + sidebarWidth, sidebarY + sidebarH - 10)
         
         // Categories
@@ -260,13 +261,13 @@ class ModConfigScreen<T : Any>(
                 else -> theme.categoryBackground
             }
             
-            // Always draw rounded rect, optionally with border
+            // Draw rect, optionally with border
             if (theme.useBorders && bgColor != theme.sidebarBackground) {
                 // Draw border first
-                RenderHelper.drawRoundedRect(context, sidebarX + 9, categoryY - 1, sidebarWidth - 18, categoryHeight + 2, theme.categoryCornerRadius, theme.categoryBorder)
+                RenderHelper.drawRect(context, sidebarX + 9, categoryY - 1, sidebarWidth - 18, categoryHeight + 2, theme.categoryBorder)
             }
             // Draw button on top
-            RenderHelper.drawRoundedRect(context, sidebarX + 10, categoryY, sidebarWidth - 20, categoryHeight, theme.categoryCornerRadius, bgColor)
+            RenderHelper.drawRect(context, sidebarX + 10, categoryY, sidebarWidth - 20, categoryHeight, bgColor)
             
             // Category text
             context.drawText(textRenderer, category.name, sidebarX + 20, categoryY + 13, theme.textPrimary, false)
@@ -290,13 +291,13 @@ class ModConfigScreen<T : Any>(
                             else -> theme.subcategoryBackground
                         }
                         
-                        // Always draw rounded rect, optionally with border
+                        // Draw rect, optionally with border
                         if (theme.useBorders && subBgColor != theme.sidebarBackground) {
                             // Draw border first
-                            RenderHelper.drawRoundedRect(context, sidebarX + 19, subY - 1, sidebarWidth - 28, subHeight + 2, theme.categoryCornerRadius, theme.categoryBorder)
+                            RenderHelper.drawRect(context, sidebarX + 19, subY - 1, sidebarWidth - 28, subHeight + 2, theme.categoryBorder)
                         }
                         // Draw button on top
-                        RenderHelper.drawRoundedRect(context, sidebarX + 20, subY, sidebarWidth - 30, subHeight, theme.categoryCornerRadius, subBgColor)
+                        RenderHelper.drawRect(context, sidebarX + 20, subY, sidebarWidth - 30, subHeight, subBgColor)
                         context.drawText(textRenderer, subcategory.name, sidebarX + 30, subY + 10, theme.textPrimary, false)
                     }
                     
@@ -315,7 +316,7 @@ class ModConfigScreen<T : Any>(
         val contentWidth = guiWidth - sidebarWidth - 20
         val contentHeight = guiHeight - 80
         
-        RenderHelper.drawRoundedRect(context, contentX, contentY, contentWidth, contentHeight, 12f, theme.contentBackground)
+        RenderHelper.drawRect(context, contentX, contentY, contentWidth, contentHeight, theme.contentBackground)
         
         // Enable scissor for scrolling
         context.enableScissor(contentX, contentY, contentX + contentWidth, contentY + contentHeight)
@@ -366,15 +367,15 @@ class ModConfigScreen<T : Any>(
                     // Draw subtle shadow
                     val shadowOffset = 1
                     val shadowColor = 0x06000000
-                    RenderHelper.drawRoundedRect(context, cardX + shadowOffset, cardY + shadowOffset, 
-                        cardWidth, cardHeight, theme.cardCornerRadius, shadowColor)
+                    RenderHelper.drawRect(context, cardX + shadowOffset, cardY + shadowOffset, 
+                        cardWidth, cardHeight, shadowColor)
                     
                     if (theme.useBorders) {
                         // Draw border first
-                        RenderHelper.drawRoundedRect(context, cardX - 1, cardY - 1, cardWidth + 2, cardHeight + 2, theme.cardCornerRadius, theme.optionCardBorder)
+                        RenderHelper.drawRect(context, cardX - 1, cardY - 1, cardWidth + 2, cardHeight + 2, theme.optionCardBorder)
                     }
                     // Draw card on top
-                    RenderHelper.drawRoundedRect(context, cardX, cardY, cardWidth, cardHeight, theme.cardCornerRadius, theme.optionCardBackground)
+                    RenderHelper.drawRect(context, cardX, cardY, cardWidth, cardHeight, theme.optionCardBackground)
                 }
                 
                 widget.render(context, mouseX, mouseY, delta, instance, theme)

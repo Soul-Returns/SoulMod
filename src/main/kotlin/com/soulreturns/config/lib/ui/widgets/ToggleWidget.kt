@@ -46,7 +46,7 @@ class ToggleWidget(
             bgColor
         }
         
-        RenderHelper.drawRoundedRect(context, toggleX, toggleY, toggleWidth, toggleHeight, (toggleHeight / 2).toFloat(), bgColorFinal)
+        RenderHelper.drawRect(context, toggleX, toggleY, toggleWidth, toggleHeight, bgColorFinal)
         
         // Draw toggle knob (circle)
         val knobSize = toggleHeight - 6
@@ -55,7 +55,7 @@ class ToggleWidget(
         val knobY = toggleY + 3
         val knobColor = 0xFFFFFFFF.toInt()
         
-        RenderHelper.drawRoundedRect(context, knobX, knobY, knobSize, knobSize, (knobSize / 2).toFloat(), knobColor)
+        RenderHelper.drawRect(context, knobX, knobY, knobSize, knobSize, knobColor)
     }
     
     override fun mouseClicked(mouseX: Int, mouseY: Int, button: Int, configInstance: Any): Boolean {

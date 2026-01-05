@@ -36,7 +36,7 @@ class DropdownWidget(
                                 mouseY >= dropdownY && mouseY <= dropdownY + dropdownHeight
         
         val bgColor = if (isDropdownHovered) theme.widgetHover else theme.widgetBackground
-        RenderHelper.drawRoundedRect(context, dropdownX, dropdownY, 200, dropdownHeight, theme.widgetCornerRadius, bgColor)
+        RenderHelper.drawRect(context, dropdownX, dropdownY, 200, dropdownHeight, bgColor)
         
         // Draw current value
         context.drawText(textRenderer, currentValue, dropdownX + 8, dropdownY + 8, theme.textPrimary, false)
@@ -53,7 +53,7 @@ class DropdownWidget(
             val menuHeight = values.size * itemHeight
             
             // Menu background
-            RenderHelper.drawRoundedRect(context, dropdownX, menuY, 200, menuHeight, theme.widgetCornerRadius, theme.sidebarBackground)
+            RenderHelper.drawRect(context, dropdownX, menuY, 200, menuHeight, theme.sidebarBackground)
             
             // Menu items
             for ((index, value) in values.withIndex()) {

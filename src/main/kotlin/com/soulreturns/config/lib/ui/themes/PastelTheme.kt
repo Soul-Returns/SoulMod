@@ -46,10 +46,7 @@ object PastelTheme : Theme {
     override val optionCardBorder = 0xFFEBE0D6.toInt()
     override val optionCardShadow = 0x08000000
     
-    // Style properties - smooth and modern
-    override val categoryCornerRadius = 8f
-    override val widgetCornerRadius = 10f
-    override val cardCornerRadius = 12f
+    // Style properties
     override val useBorders = true
     override val useCardStyle = true
 }

@@ -41,12 +41,12 @@ class ColorPickerWidget(
         }
         
         // Draw color preview
-        RenderHelper.drawRoundedRect(context, previewX, previewY, previewSize, previewSize, theme.widgetCornerRadius, value)
+        RenderHelper.drawRect(context, previewX, previewY, previewSize, previewSize, value)
         
         // Draw border
         val borderColor = if (isHovered) theme.widgetHover else theme.categoryBorder
-        RenderHelper.drawRoundedRect(context, previewX - 1, previewY - 1, previewSize + 2, previewSize + 2, theme.widgetCornerRadius, borderColor)
-        RenderHelper.drawRoundedRect(context, previewX, previewY, previewSize, previewSize, theme.widgetCornerRadius, value)
+        RenderHelper.drawRect(context, previewX - 1, previewY - 1, previewSize + 2, previewSize + 2, borderColor)
+        RenderHelper.drawRect(context, previewX, previewY, previewSize, previewSize, value)
         
         // Draw hex value
         val hex = String.format("#%08X", value)

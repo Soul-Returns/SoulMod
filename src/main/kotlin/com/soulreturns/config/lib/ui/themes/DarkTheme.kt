@@ -47,9 +47,6 @@ object DarkTheme : Theme {
     override val optionCardShadow = 0x00000000
     
     // Style properties
-    override val categoryCornerRadius = 6f
-    override val widgetCornerRadius = 12f
-    override val cardCornerRadius = 4f
     override val useBorders = true
     override val useCardStyle = true
 }

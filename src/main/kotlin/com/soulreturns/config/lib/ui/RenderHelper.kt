@@ -4,7 +4,7 @@ import net.minecraft.client.gui.DrawContext
 import kotlin.math.*
 
 /**
- * Helper class for modern UI rendering with rounded corners, gradients, and animations
+ * Helper class for modern UI rendering with gradients and animations
  */
 object RenderHelper {
     
@@ -36,19 +36,16 @@ object RenderHelper {
     }
     
     /**
-     * Draws a filled rectangle with optional rounded corners (no anti-aliasing for performance)
+     * Draws a filled rectangle
      */
-    fun drawRoundedRect(
+    fun drawRect(
         context: DrawContext,
         x: Int,
         y: Int,
         width: Int,
         height: Int,
-        radius: Float,
         color: Int
     ) {
-        // Simple rectangle - no rounded corners for performance
-        // Anti-aliasing was causing severe FPS drops
         context.fill(x, y, x + width, y + height, color)
     }
     
@@ -110,29 +107,6 @@ object RenderHelper {
         return (alpha shl 24) or (red shl 16) or (green shl 8) or blue
     }
     
-    /**
-     * Draws a rectangle with a border and rounded corners
-     */
-    fun drawRectWithBorder(
-        context: DrawContext,
-        x: Int,
-        y: Int,
-        width: Int,
-        height: Int,
-        radius: Float,
-        fillColor: Int,
-        borderColor: Int,
-        borderWidth: Int = 1
-    ) {
-        // Draw border (larger rounded rect)
-        if (borderWidth > 0) {
-            drawRoundedRect(context, x - borderWidth, y - borderWidth, 
-                width + borderWidth * 2, height + borderWidth * 2, radius, borderColor)
-        }
-        
-        // Draw fill on top
-        drawRoundedRect(context, x, y, width, height, radius, fillColor)
-    }
     
     /**
      * Check if mouse is within bounds

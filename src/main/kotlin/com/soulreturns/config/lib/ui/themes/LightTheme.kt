@@ -47,9 +47,6 @@ object LightTheme : Theme {
     override val optionCardShadow = 0x08000000
     
     // Style properties
-    override val categoryCornerRadius = 6f
-    override val widgetCornerRadius = 6f
-    override val cardCornerRadius = 8f
     override val useBorders = true
     override val useCardStyle = true
 }
