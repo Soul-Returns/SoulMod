@@ -8,7 +8,8 @@ import com.soulreturns.config.config
 object ThemeManager {
     private val themes = mapOf(
         "Dark" to DarkTheme,
-        "Light" to LightTheme
+        "Light" to LightTheme,
+        "Pastel" to PastelTheme
     )
     
     val availableThemes: Array<String> = themes.keys.toTypedArray()

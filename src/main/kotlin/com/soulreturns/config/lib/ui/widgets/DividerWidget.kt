@@ -13,28 +13,19 @@ class DividerWidget(
     x: Int,
     y: Int,
     private val dividerType: OptionType.Divider
-) : ConfigWidget(option, x, y, 400, if (dividerType.label.isNotEmpty()) 30 else 15) {
+) : ConfigWidget(option, x, y, 400, if (dividerType.label.isNotEmpty()) 32 else 12) {
     
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float, configInstance: Any, theme: Theme) {
         val textRenderer = net.minecraft.client.MinecraftClient.getInstance().textRenderer
         
         if (dividerType.label.isNotEmpty()) {
-            // Draw label if present
-            val labelWidth = textRenderer.getWidth(dividerType.label)
+            // Draw label
             val labelX = x
-            val labelY = y + 5
+            val labelY = y + (height - textRenderer.fontHeight) / 2
             
             context.drawText(textRenderer, dividerType.label, labelX, labelY, theme.textSecondary, false)
-            
-            // Draw line after label
-            val lineStartX = labelX + labelWidth + 10
-            val lineY = y + height / 2
-            val lineEndX = x + width
-            val lineHeight = 1
-            
-            context.fill(lineStartX, lineY, lineEndX, lineY + lineHeight, theme.categoryBorder)
         } else {
-            // Draw full-width line
+            // Draw full-width line for unlabeled divider
             val lineY = y + height / 2
             val lineHeight = 1
             

@@ -22,10 +22,10 @@ class ModConfigScreen<T : Any>(
     private val version: String
 ) : Screen(Text.literal(title)) {
     
-    private val sidebarWidth = 220
-    private val contentPadding = 20
-    private val categorySpacing = 8
-    private val widgetSpacing = 15
+    private val sidebarWidth = 240
+    private val contentPadding = 24
+    private val categorySpacing = 6
+    private val widgetSpacing = 6
     
     // GUI dimensions (80% of screen, centered)
     private var guiX = 0
@@ -38,7 +38,14 @@ class ModConfigScreen<T : Any>(
     
     private var sidebarScroll = 0.0
     private var contentScroll = 0.0
+    private var targetSidebarScroll = 0.0
+    private var targetContentScroll = 0.0
     private val scrollSpeed = 20.0
+    private val scrollSmoothing = 0.3f // Smooth scroll lerp factor
+    
+    // Animation state
+    private var hoverAnimations = mutableMapOf<String, Float>()
+    private var selectionAnimProgress = 0f
     
     private val widgets = mutableListOf<ConfigWidget>()
     
@@ -106,6 +113,13 @@ class ModConfigScreen<T : Any>(
     }
     
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+        // Smooth scroll interpolation
+        sidebarScroll = RenderHelper.lerp(sidebarScroll.toFloat(), targetSidebarScroll.toFloat(), scrollSmoothing).toDouble()
+        contentScroll = RenderHelper.lerp(contentScroll.toFloat(), targetContentScroll.toFloat(), scrollSmoothing).toDouble()
+        
+        // Update selection animation
+        selectionAnimProgress = (selectionAnimProgress + delta * 8f).coerceAtMost(1f)
+        
         // Apply blur effect if supported
         if (client != null && client!!.world != null) {
             context.fillGradient(0, 0, width, height, theme.overlayColor, theme.overlayColor)
@@ -292,13 +306,21 @@ class ModConfigScreen<T : Any>(
                     categoryInstance
                 }
                 
-                // Render card background if theme uses card style
-                if (theme.useCardStyle) {
-                    val cardPadding = 12
-                    val cardX = displayX - cardPadding
-                    val cardY = displayY - cardPadding / 2
-                    val cardWidth = contentWidth - contentPadding * 2 + cardPadding * 2
-                    val cardHeight = widget.height + cardPadding
+                // Render card background if theme uses card style (but not for dividers)
+                val isDivider = widget.option.type is com.soulreturns.config.lib.model.OptionType.Divider
+                if (theme.useCardStyle && !isDivider) {
+                    val cardPaddingH = 16 // Horizontal padding
+                    val cardPaddingV = 8   // Vertical padding (reduced)
+                    val cardX = displayX - cardPaddingH
+                    val cardY = displayY - cardPaddingV / 2
+                    val cardWidth = contentWidth - contentPadding * 2 + cardPaddingH * 2
+                    val cardHeight = widget.height + cardPaddingV
+                    
+                    // Draw subtle shadow
+                    val shadowOffset = 1
+                    val shadowColor = 0x06000000
+                    RenderHelper.drawRoundedRect(context, cardX + shadowOffset, cardY + shadowOffset, 
+                        cardWidth, cardHeight, theme.cardCornerRadius, shadowColor)
                     
                     if (theme.useBorders) {
                         // Draw border first
@@ -421,8 +443,9 @@ class ModConfigScreen<T : Any>(
                 DebugLogger.logWidgetInteraction("Selected category: ${category.name}")
                 selectedCategoryIndex = index
                 selectedSubcategoryIndex = -1
+                selectionAnimProgress = 0f // Reset animation
                 rebuildWidgets()
-                contentScroll = 0.0
+                targetContentScroll = 0.0
                 return
             }
             
@@ -438,8 +461,9 @@ class ModConfigScreen<T : Any>(
                         mouseY >= subY && mouseY <= subY + subHeight) {
                         DebugLogger.logWidgetInteraction("Selected subcategory: ${subcategory.name}")
                         selectedSubcategoryIndex = subIndex
+                        selectionAnimProgress = 0f // Reset animation
                         rebuildWidgets()
-                        contentScroll = 0.0
+                        targetContentScroll = 0.0
                         return
                     }
                     
@@ -459,9 +483,9 @@ class ModConfigScreen<T : Any>(
         }
         
         if (mouseXInt >= guiX && mouseXInt < guiX + sidebarWidth) {
-            sidebarScroll = (sidebarScroll - verticalAmount * scrollSpeed).coerceAtLeast(0.0)
+            targetSidebarScroll = (targetSidebarScroll - verticalAmount * scrollSpeed).coerceAtLeast(0.0)
         } else {
-            contentScroll = (contentScroll - verticalAmount * scrollSpeed).coerceAtLeast(0.0)
+            targetContentScroll = (targetContentScroll - verticalAmount * scrollSpeed).coerceAtLeast(0.0)
         }
         
         return true

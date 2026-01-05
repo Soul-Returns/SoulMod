@@ -36,7 +36,7 @@ object RenderHelper {
     }
     
     /**
-     * Draws a filled rectangle with rounded corners (anti-aliased)
+     * Draws a filled rectangle with optional rounded corners (no anti-aliasing for performance)
      */
     fun drawRoundedRect(
         context: DrawContext,
@@ -47,92 +47,11 @@ object RenderHelper {
         radius: Float,
         color: Int
     ) {
-        if (radius <= 0) {
-            context.fill(x, y, x + width, y + height, color)
-            return
-        }
-        
-        val r = radius.coerceAtMost(width / 2f).coerceAtMost(height / 2f)
-        
-        if (r < 1f) {
-            context.fill(x, y, x + width, y + height, color)
-            return
-        }
-        
-        // Fill main rectangular areas (no rounding needed)
-        val ri = r.toInt()
-        context.fill(x + ri, y, x + width - ri, y + height, color) // Center vertical strip
-        context.fill(x, y + ri, x + ri, y + height - ri, color) // Left edge
-        context.fill(x + width - ri, y + ri, x + width, y + height - ri, color) // Right edge
-        
-        // Draw anti-aliased corners
-        drawSmoothCorner(context, x + ri, y + ri, ri, color, 2) // Top-left
-        drawSmoothCorner(context, x + width - ri - 1, y + ri, ri, color, 1) // Top-right
-        drawSmoothCorner(context, x + ri, y + height - ri - 1, ri, color, 3) // Bottom-left
-        drawSmoothCorner(context, x + width - ri - 1, y + height - ri - 1, ri, color, 0) // Bottom-right
+        // Simple rectangle - no rounded corners for performance
+        // Anti-aliasing was causing severe FPS drops
+        context.fill(x, y, x + width, y + height, color)
     }
     
-    /**
-     * Draws a smooth anti-aliased quarter circle for rounded corners
-     * quadrant: 0=bottom-right, 1=top-right, 2=top-left, 3=bottom-left
-     */
-    private fun drawSmoothCorner(
-        context: DrawContext,
-        cx: Int,
-        cy: Int,
-        radius: Int,
-        color: Int,
-        quadrant: Int
-    ) {
-        val baseAlpha = (color shr 24 and 0xFF)
-        val baseRGB = color and 0xFFFFFF
-        
-        // Expand range for better anti-aliasing (2 pixels for smoother edge)
-        val range = radius + 2
-        
-        for (dy in -range..range) {
-            for (dx in -range..range) {
-                // Check if in correct quadrant
-                val inQuadrant = when (quadrant) {
-                    0 -> dx >= 0 && dy >= 0 // bottom-right
-                    1 -> dx >= 0 && dy <= 0 // top-right  
-                    2 -> dx <= 0 && dy <= 0 // top-left
-                    3 -> dx <= 0 && dy >= 0 // bottom-left
-                    else -> false
-                }
-                
-                if (!inQuadrant) continue
-                
-                // Calculate distance from center (sub-pixel accuracy)
-                val dist = sqrt((dx * dx + dy * dy).toFloat())
-                
-                // Multi-sample anti-aliasing for even smoother edges
-                var coverage = 0f
-                val samples = 4 // 4x MSAA
-                val sampleOffset = 0.25f
-                
-                for (sy in 0 until 2) {
-                    for (sx in 0 until 2) {
-                        val sampleDist = sqrt(
-                            ((dx + sx * sampleOffset - 0.25f) * (dx + sx * sampleOffset - 0.25f) +
-                            (dy + sy * sampleOffset - 0.25f) * (dy + sy * sampleOffset - 0.25f))
-                        )
-                        if (sampleDist <= radius.toFloat()) {
-                            coverage += 1f / samples
-                        }
-                    }
-                }
-                
-                // Apply coverage to alpha
-                val alpha = (baseAlpha * coverage).toInt().coerceIn(0, 255)
-                
-                if (alpha > 0) {
-                    val pixelColor = (alpha shl 24) or baseRGB
-                    context.fill(cx + dx, cy + dy, cx + dx + 1, cy + dy + 1, pixelColor)
-                }
-            }
-        }
-    }
     
     /**
      * Draws a filled rectangle with a vertical gradient (simplified)

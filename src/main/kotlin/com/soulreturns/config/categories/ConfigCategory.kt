@@ -9,6 +9,6 @@ class ConfigCategory {
         name = "Theme",
         description = "Select the visual theme for the config GUI"
     )
-    @Dropdown(values = ["Dark", "Light"])
+    @Dropdown(values = ["Dark", "Light", "Pastel"])
     var theme: String = "Dark"
 }
