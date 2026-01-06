@@ -1,13 +1,12 @@
 package com.soulreturns.config
 
 import com.soulreturns.Soul
-import com.soulreturns.config.ConfigInstance.Companion.getInstance
-import io.github.notenoughupdates.moulconfig.managed.ManagedConfig
+import com.soulreturns.config.lib.manager.SoulConfigManager
 
 class ConfigInstance {
     companion object {
         @JvmStatic
-        fun get(): ManagedConfig<MainConfig> {
+        fun get(): SoulConfigManager<MainConfig> {
             return Soul.configManager.config
         }
 
@@ -23,4 +22,4 @@ typealias Config = MainConfig
 
 // Top-level property for easy access
 val config: MainConfig
-    get() = getInstance()
+    get() = ConfigInstance.getInstance()

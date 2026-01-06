@@ -1,37 +1,42 @@
 package com.soulreturns.config
 
-import com.google.gson.annotations.Expose
-import com.soulreturns.Soul
 import com.soulreturns.config.categories.RenderCategory
 import com.soulreturns.config.categories.FishingCategory
 import com.soulreturns.config.categories.FixesCategory
 import com.soulreturns.config.categories.MiningCategory
-import io.github.notenoughupdates.moulconfig.Config
-import io.github.notenoughupdates.moulconfig.annotations.Category
-import io.github.notenoughupdates.moulconfig.common.text.StructuredText
+import com.soulreturns.config.categories.DebugCategory
+import com.soulreturns.config.lib.annotations.ConfigCategory
 
-class MainConfig : Config() {
-    override fun getTitle(): StructuredText {
-        return StructuredText.of("Soul Mod - v${Soul.version}").green()
-    }
+const val CURRENT_CONFIG_VERSION: Int = 1
 
+class MainConfig {
+    /**
+     * Version of the config.json layout. This allows future code to detect
+     * outdated configs and run migrations when fields / structure change.
+     */
     @JvmField
-    @Expose
-    @Category(name = "Render", desc = "Render features")
+    var configVersion: Int = CURRENT_CONFIG_VERSION
+    @JvmField
+    @ConfigCategory(name = "Render", description = "Render features")
     var renderCategory = RenderCategory()
 
     @JvmField
-    @Expose
-    @Category(name = "Fishing", desc = "Fishing features")
+    @ConfigCategory(name = "Fishing", description = "Fishing features")
     var fishingCategory = FishingCategory()
 
     @JvmField
-    @Expose
-    @Category(name = "Mining", desc = "Mining features")
+    @ConfigCategory(name = "Mining", description = "Mining features")
     var miningCategory = MiningCategory()
 
     @JvmField
-    @Expose
-    @Category(name = "Fixes", desc = "Fixes")
+    @ConfigCategory(name = "Fixes", description = "Fixes")
     var fixesCategory = FixesCategory()
+
+    @JvmField
+    @ConfigCategory(name = "Config", description = "Configuration settings")
+    var configCategory = com.soulreturns.config.categories.ConfigCategory()
+
+    @JvmField
+    @ConfigCategory(name = "Debug", description = "Debug settings")
+    var debugCategory = DebugCategory()
 }

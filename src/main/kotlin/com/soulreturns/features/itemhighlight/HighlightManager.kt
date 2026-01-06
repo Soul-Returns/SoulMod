@@ -3,7 +3,9 @@ package com.soulreturns.features.itemhighlight
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
+import com.soulreturns.Soul
 import com.soulreturns.config.config
+import com.soulreturns.util.DebugLogger
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import java.nio.file.Files
@@ -72,7 +74,8 @@ object HighlightManager {
             loadGroupFromFile(file, isCustom = true)
         }
 
-        println("[Soul] Loaded ${highlightGroups.size} highlight groups with ${itemToColorMap.size} total items")
+        DebugLogger.logFeatureEvent("Loaded ${highlightGroups.size} highlight groups with ${itemToColorMap.size} total items")
+        Soul.getLogger()?.info("Loaded ${highlightGroups.size} highlight groups with ${itemToColorMap.size} total items")
     }
 
     private fun loadGroupFromFile(file: File, isCustom: Boolean) {
@@ -82,6 +85,7 @@ object HighlightManager {
 
             if (group != null && group.items.isNotEmpty()) {
                 highlightGroups.add(group)
+                DebugLogger.logFeatureEvent("Loaded ${if (isCustom) "custom" else "builtin"} highlight group: ${group.name} with ${group.items.size} items")
 
                 // Parse color and map each item to it
                 val color = parseColor(group.color)
@@ -93,7 +97,7 @@ object HighlightManager {
                 }
             }
         } catch (e: Exception) {
-            println("[Soul] Failed to load highlight group from ${file.name}: ${e.message}")
+            Soul.getLogger()?.warn("Failed to load highlight group from ${file.name}: ${e.message}")
         }
     }
 
@@ -208,9 +212,9 @@ object HighlightManager {
         try {
             File(builtinDir, "pest_equipment.json").writeText(gson.toJson(pestGroup))
             File(builtinDir, "farming_equipment.json").writeText(gson.toJson(farmingGroup))
-            println("[Soul] Created/updated builtin highlight files")
+            Soul.getLogger()?.info("Created/updated builtin highlight files")
         } catch (e: Exception) {
-            println("[Soul] Failed to create builtin files: ${e.message}")
+            Soul.getLogger()?.info("Failed to create builtin files: ${e.message}")
         }
     }
 
@@ -227,9 +231,9 @@ object HighlightManager {
 
         try {
             File(customDir, "combat.json").writeText(gson.toJson(combatGroup))
-            println("[Soul] Created example custom highlight files")
+            Soul.getLogger()?.info("Created example custom highlight files")
         } catch (e: Exception) {
-            println("[Soul] Failed to create example custom files: ${e.message}")
+            Soul.getLogger()?.info("Failed to create example custom files: ${e.message}")
         }
     }
 }

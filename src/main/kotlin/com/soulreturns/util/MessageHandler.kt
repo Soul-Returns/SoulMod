@@ -85,6 +85,7 @@ object MessageHandler {
 
             // Determine message type and notify appropriate handlers
             if (MessageDetector.isPlayerMessage(trimmed)) {
+                DebugLogger.logMessageHandler("Player message: $trimmed")
                 playerMessageHandlers.forEach { handler ->
                     try {
                         handler(trimmed)
@@ -93,6 +94,7 @@ object MessageHandler {
                     }
                 }
             } else {
+                DebugLogger.logMessageHandler("Server message: $trimmed")
                 serverMessageHandlers.forEach { handler ->
                     try {
                         handler(trimmed)

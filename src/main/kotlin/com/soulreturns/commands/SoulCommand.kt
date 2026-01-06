@@ -5,9 +5,7 @@ import com.soulreturns.Soul
 import com.soulreturns.commands.subcommands.TestMessageSubcommand
 import com.soulreturns.commands.subcommands.TestAlertSubcommand
 import com.soulreturns.commands.subcommands.ClearAlertsSubcommand
-import com.soulreturns.config.ConfigGuiCloser
-import io.github.notenoughupdates.moulconfig.common.IMinecraft
-import io.github.notenoughupdates.moulconfig.common.text.StructuredText
+import com.soulreturns.config.lib.ui.ModConfigScreen
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
@@ -33,7 +31,7 @@ object SoulCommand {
                 ClientCommandManager.literal("test")
                     .executes { context ->
                         val test = Soul.configManager.config.instance.renderCategory.hideHeldItemTooltip
-                        IMinecraft.getInstance().sendChatMessage(StructuredText.of("Setting: $test"))
+                        context.source.player.sendMessage(Text.literal("Setting: $test"), false)
                         0
                     }
             )
@@ -41,17 +39,13 @@ object SoulCommand {
     }
 
     private fun execute(context: CommandContext<FabricClientCommandSource>): Int {
-        context.source.player.sendMessage(Text.literal("Opening Soul config..."), false)
-
         MinecraftClient.getInstance().send {
-            val editor = Soul.configManager.config.getEditor()
-            editor.setWide(false)
-
-            // Open the MoulConfig GUI
-            Soul.configManager.config.openConfigGui()
-
-            // Tack the current screen and auto-save when it closes
-            ConfigGuiCloser.watch(Soul.configManager, MinecraftClient.getInstance().currentScreen)
+            val screen = ModConfigScreen(
+                Soul.configManager.config,
+                "Soul Mod",
+                Soul.version
+            )
+            MinecraftClient.getInstance().setScreen(screen)
         }
 
         return 1 // Success

@@ -1,12 +1,10 @@
 package com.soulreturns.config.categories
 
-import com.google.gson.annotations.Expose
 import com.soulreturns.config.categories.mining.DwarvenMinesSubCategory
-import io.github.notenoughupdates.moulconfig.annotations.Category
+import com.soulreturns.config.lib.annotations.ConfigSubcategory
 
 class MiningCategory {
-    @Expose
     @JvmField
-    @Category(name = "Dwarven Mines", desc = "Dwarven Mines related features")
+    @ConfigSubcategory(name = "Dwarven Mines", description = "Dwarven Mines related features")
     var dwarvenMinesSubCategory = DwarvenMinesSubCategory()
 }

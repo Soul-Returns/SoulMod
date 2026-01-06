@@ -13,7 +13,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 object Soul : ClientModInitializer {
-    private val logger = LoggerFactory.getLogger("soul")
+    private val logger = LoggerFactory.getLogger("SoulMod")
     lateinit var configManager: ConfigManager
 
     val version: String by lazy {

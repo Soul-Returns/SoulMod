@@ -1,24 +1,26 @@
 package com.soulreturns.config
 
-import io.github.notenoughupdates.moulconfig.managed.ManagedConfig
+import com.soulreturns.config.lib.manager.SoulConfigManager
 import java.io.File
 
 class ConfigManager {
-    var config: ManagedConfig<MainConfig>
+    var config: SoulConfigManager<MainConfig>
 
     init {
         val configFile = File("config/soul/config.json")
-        configFile.parentFile.mkdirs()
 
-        config = ManagedConfig.create(
+        // Run migrations (if any) on the raw JSON file before the typed
+        // config instance is created. This lets us upgrade legacy layouts
+        // that did not have a configVersion field.
+        ConfigMigration.migrateIfNeeded(configFile)
+
+        config = SoulConfigManager(
             configFile,
             MainConfig::class.java
-        ) { }
-
-        config.reloadFromFile()
+        ) { MainConfig() }
     }
 
     fun save() {
-        config.saveToFile()
+        config.save()
     }
 }
