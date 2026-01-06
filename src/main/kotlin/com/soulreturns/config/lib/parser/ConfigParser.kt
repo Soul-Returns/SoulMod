@@ -85,6 +85,11 @@ object ConfigParser {
                 val slider = field.getAnnotation(Slider::class.java)
                 OptionType.Slider(slider.min, slider.max, slider.step)
             }
+
+            field.isAnnotationPresent(SliderNumberInput::class.java) -> {
+                val combo = field.getAnnotation(SliderNumberInput::class.java)
+                OptionType.SliderNumberInput(combo.min, combo.max, combo.step, combo.decimals)
+            }
             
             field.isAnnotationPresent(TextInput::class.java) -> {
                 val textInput = field.getAnnotation(TextInput::class.java)

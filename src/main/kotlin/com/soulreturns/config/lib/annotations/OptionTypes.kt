@@ -40,6 +40,22 @@ annotation class NumberInput(
 )
 
 /**
+ * Combined slider + numeric input field.
+ *
+ * Renders a slider for quick adjustment and a numeric field for precise
+ * values. Supports both integer and floating-point values depending on the
+ * bound field type (Int/Long vs Float/Double).
+ */
+@Target(AnnotationTarget.FIELD)
+@Retention(AnnotationRetention.RUNTIME)
+annotation class SliderNumberInput(
+    val min: Double = 0.0,
+    val max: Double = 100.0,
+    val step: Double = 1.0,
+    val decimals: Int = 0
+)
+
+/**
  * Color picker
  */
 @Target(AnnotationTarget.FIELD)

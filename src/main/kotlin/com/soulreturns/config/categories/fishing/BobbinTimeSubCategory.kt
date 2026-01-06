@@ -1,7 +1,7 @@
 package com.soulreturns.config.categories.fishing
 
 import com.soulreturns.config.lib.annotations.ConfigOption
-import com.soulreturns.config.lib.annotations.Slider
+import com.soulreturns.config.lib.annotations.SliderNumberInput
 import com.soulreturns.config.lib.annotations.Toggle
 
 class BobbinTimeSubCategory {
@@ -26,6 +26,6 @@ class BobbinTimeSubCategory {
         name = "Required Bobbers for Alert",
         description = "Minimum fishing bobbers within 30 blocks to trigger the alert (1-5)."
     )
-    @Slider(min = 1.0, max = 5.0, step = 1.0)
+    @SliderNumberInput(min = 1.0, max = 5.0, step = 1.0, decimals = 0)
     var alertBobberCount: Int = 5
 }

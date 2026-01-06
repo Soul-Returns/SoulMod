@@ -12,12 +12,10 @@ object WidgetFactory {
         return when (option.type) {
             is OptionType.Toggle -> ToggleWidget(option, x, y)
             is OptionType.Slider -> SliderWidget(option, x, y, option.type)
+            is OptionType.SliderNumberInput -> SliderNumberInputWidget(option, x, y, option.type)
             is OptionType.TextInput -> TextInputWidget(option, x, y, option.type)
             is OptionType.ColorPicker -> ColorPickerWidget(option, x, y, option.type)
-            is OptionType.NumberInput -> TextInputWidget(
-                option, x, y,
-                OptionType.TextInput("0", 64)
-            ) // Simplified for now
+            is OptionType.NumberInput -> NumberInputWidget(option, x, y, option.type)
             is OptionType.Dropdown -> DropdownWidget(option, x, y, option.type.values)
             is OptionType.Button -> ToggleWidget(option, x, y) // Simplified for now
             is OptionType.Divider -> DividerWidget(option, x, y, option.type)
