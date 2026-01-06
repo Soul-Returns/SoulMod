@@ -5,6 +5,7 @@ import com.soulreturns.config.lib.model.CategoryData
 import com.soulreturns.config.lib.model.SubcategoryData
 import com.soulreturns.config.lib.ui.minigames.SnakeGame
 import com.soulreturns.config.lib.ui.minigames.SnakeGame.Direction
+import com.soulreturns.config.lib.ui.minigames.TetrisGame
 import com.soulreturns.config.lib.ui.widgets.ConfigWidget
 import com.soulreturns.config.lib.ui.widgets.WidgetFactory
 import com.soulreturns.util.DebugLogger
@@ -57,9 +58,12 @@ class ModConfigScreen<T : Any>(
 ) : Screen(Text.literal(screenTitle)) {
 
     private enum class ViewMode { CONFIG, MINIGAMES }
+    private enum class Minigame { SNAKE, TETRIS }
 
     private var viewMode: ViewMode = ViewMode.CONFIG
+    private var activeMinigame: Minigame = Minigame.SNAKE
     private val snakeGame = SnakeGame()
+    private val tetrisGame = TetrisGame()
     
     private val sidebarWidth get() = layout.sidebarWidth
     private val contentPadding get() = layout.contentPadding
@@ -178,7 +182,8 @@ class ModConfigScreen<T : Any>(
             renderSidebar(context, mouseX, mouseY, delta)
             renderContent(context, mouseX, mouseY, delta)
         } else {
-            // Render minigames content instead of config widgets
+            // Render minigames sidebar and content instead of config widgets
+            renderMinigameSidebar(context, mouseX, mouseY)
             renderMinigames(context, mouseX, mouseY, delta)
         }
         
@@ -482,6 +487,45 @@ class ModConfigScreen<T : Any>(
         
         context.disableScissor()
     }
+    
+    private fun renderMinigameSidebar(context: DrawContext, mouseX: Int, mouseY: Int) {
+        val sidebarX = guiX
+        val sidebarY = guiY + layout.contentTopOffset
+        val sidebarH = guiHeight - layout.contentTopOffset - layout.bottomMargin
+
+        // Sidebar background
+        context.fill(sidebarX, sidebarY, sidebarX + sidebarWidth, sidebarY + sidebarH, theme.sidebarBackground)
+
+        val buttonHeight = 40
+        val buttonSpacing = categorySpacing
+        var currentY = sidebarY + layout.sidebarCategoryTopPadding
+
+        fun drawButton(label: String, minigame: Minigame) {
+            val x = sidebarX + 10
+            val y = currentY
+            val w = sidebarWidth - 20
+            val h = buttonHeight
+
+            val isHovered = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h
+            val isSelected = activeMinigame == minigame
+            val bgColor = when {
+                isSelected -> theme.categorySelected
+                isHovered -> theme.categoryHover
+                else -> theme.categoryBackground
+            }
+
+            if (theme.useBorders && bgColor != theme.sidebarBackground) {
+                RenderHelper.drawRect(context, x - 1, y - 1, w + 2, h + 2, theme.categoryBorder)
+            }
+            RenderHelper.drawRect(context, x, y, w, h, bgColor)
+            context.drawText(textRenderer, label, x + 10, y + 13, theme.textPrimary, false)
+
+            currentY += h + buttonSpacing
+        }
+
+        drawButton("Snake", Minigame.SNAKE)
+        drawButton("Tetris", Minigame.TETRIS)
+    }
 
     private fun renderMinigames(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
         val contentX = guiX + sidebarWidth + layout.outerMargin
@@ -492,6 +536,19 @@ class ModConfigScreen<T : Any>(
         // Background for minigames area
         RenderHelper.drawRect(context, contentX, contentY, contentWidth, contentHeight, theme.contentBackground)
 
+        when (activeMinigame) {
+            Minigame.SNAKE -> renderSnakeGame(context, contentX, contentY, contentWidth, contentHeight)
+            Minigame.TETRIS -> renderTetrisGame(context, contentX, contentY, contentWidth, contentHeight)
+        }
+    }
+
+    private fun renderSnakeGame(
+        context: DrawContext,
+        contentX: Int,
+        contentY: Int,
+        contentWidth: Int,
+        contentHeight: Int,
+    ) {
         val now = System.currentTimeMillis()
         snakeGame.update(now)
 
@@ -541,6 +598,116 @@ class ModConfigScreen<T : Any>(
         context.drawText(textRenderer, infoText, hudX, hudY + textRenderer.fontHeight + 4, theme.textSecondary, false)
     }
 
+    private fun renderTetrisGame(
+        context: DrawContext,
+        contentX: Int,
+        contentY: Int,
+        contentWidth: Int,
+        contentHeight: Int,
+    ) {
+        val now = System.currentTimeMillis()
+        tetrisGame.update(now)
+
+        val cols = tetrisGame.columns
+        val rows = tetrisGame.rows
+        if (cols <= 0 || rows <= 0) return
+
+        val cellSize = (minOf(contentWidth * 2 / (cols * 3), contentHeight / rows)).coerceAtLeast(4)
+        if (cellSize <= 0) return
+
+        val boardWidth = cols * cellSize
+        val boardHeight = rows * cellSize
+        val boardX = contentX + contentPadding
+        val boardY = contentY + contentPadding
+
+        // Board background card
+        if (theme.useCardStyle) {
+            RenderHelper.drawRect(context, boardX - 4, boardY - 4, boardWidth + 8, boardHeight + 8, theme.optionCardBackground)
+        }
+
+        val snapshot = tetrisGame.getBoardSnapshot()
+        for (y in 0 until rows) {
+            for (x in 0 until cols) {
+                val id = snapshot[y][x]
+                if (id != 0) {
+                    val cellX = boardX + x * cellSize
+                    val cellY = boardY + y * cellSize
+                    val color = when (id) {
+                        1 -> 0xFF00FFFF.toInt() // I - cyan
+                        2 -> 0xFFFFFF00.toInt() // O - yellow
+                        3 -> 0xFFAA00FF.toInt() // T - purple
+                        4 -> 0xFF00FF00.toInt() // S - green
+                        5 -> 0xFFFF0000.toInt() // Z - red
+                        6 -> 0xFF0000FF.toInt() // J - blue
+                        7 -> 0xFFFFA500.toInt() // L - orange
+                        else -> theme.widgetBackground
+                    }
+                    RenderHelper.drawRect(context, cellX, cellY, cellSize - 1, cellSize - 1, color)
+                }
+            }
+        }
+
+        // Active piece
+        for (cell in tetrisGame.getActiveCells()) {
+            val cellX = boardX + cell.x * cellSize
+            val cellY = boardY + cell.y * cellSize
+            RenderHelper.drawRect(context, cellX, cellY, cellSize - 1, cellSize - 1, theme.widgetActive)
+        }
+
+        // HUD (score, level, next piece)
+        val hudX = boardX + boardWidth + contentPadding
+        val hudY = boardY
+        val lineH = textRenderer.fontHeight + 4
+        val scoreText = "Score: ${tetrisGame.score}"
+        val levelText = "Level: ${tetrisGame.level}"
+        val linesText = "Lines: ${tetrisGame.linesCleared}"
+        val statusText = if (tetrisGame.isGameOver) "Game Over (R to restart)" else "Arrow/WASD move, Space hard drop, R restart"
+        context.drawText(textRenderer, scoreText, hudX, hudY, theme.textPrimary, false)
+        context.drawText(textRenderer, levelText, hudX, hudY + lineH, theme.textPrimary, false)
+        context.drawText(textRenderer, linesText, hudX, hudY + lineH * 2, theme.textPrimary, false)
+        context.drawText(textRenderer, statusText, hudX, hudY + lineH * 4, theme.textSecondary, false)
+
+        // Next piece preview
+        val previewLabelY = hudY + lineH * 6
+        context.drawText(textRenderer, "Next:", hudX, previewLabelY, theme.textPrimary, false)
+
+        val previewCellSize = (cellSize * 3 / 4).coerceAtLeast(4)
+        val previewBoxSize = previewCellSize * 4
+        val previewX = hudX
+        val previewY = previewLabelY + lineH
+
+        // Preview background box
+        RenderHelper.drawRect(context, previewX - 2, previewY - 2, previewBoxSize + 4, previewBoxSize + 4, theme.optionCardBackground)
+
+        val nextCells = tetrisGame.getNextPieceCells()
+        if (nextCells.isNotEmpty()) {
+            val minX = nextCells.minOf { it.x }
+            val maxX = nextCells.maxOf { it.x }
+            val minY = nextCells.minOf { it.y }
+            val maxY = nextCells.maxOf { it.y }
+            val spanX = maxX - minX + 1
+            val spanY = maxY - minY + 1
+            val offsetCellsX = ((4 - spanX) / 2).coerceAtLeast(0)
+            val offsetCellsY = ((4 - spanY) / 2).coerceAtLeast(0)
+
+            val color = when (tetrisGame.getNextPiece()) {
+                TetrisGame.Tetromino.I -> 0xFF00FFFF.toInt()
+                TetrisGame.Tetromino.O -> 0xFFFFFF00.toInt()
+                TetrisGame.Tetromino.T -> 0xFFAA00FF.toInt()
+                TetrisGame.Tetromino.S -> 0xFF00FF00.toInt()
+                TetrisGame.Tetromino.Z -> 0xFFFF0000.toInt()
+                TetrisGame.Tetromino.J -> 0xFF0000FF.toInt()
+                TetrisGame.Tetromino.L -> 0xFFFFA500.toInt()
+            }
+
+            for (cell in nextCells) {
+                val px = previewX + (cell.x - minX + offsetCellsX) * previewCellSize
+                val py = previewY + (cell.y - minY + offsetCellsY) * previewCellSize
+                RenderHelper.drawRect(context, px, py, previewCellSize - 1, previewCellSize - 1, color)
+            }
+        }
+    }
+
         //? if >=1.21.10 {
     override fun mouseClicked(click: net.minecraft.client.gui.Click, doubled: Boolean): Boolean {
         val mouseXInt = click.x.toInt()
@@ -579,7 +746,9 @@ class ModConfigScreen<T : Any>(
         if (RenderHelper.isMouseOver(mouseXInt, mouseYInt, minigamesButtonX, minigamesButtonY, minigamesButtonSize, minigamesButtonSize)) {
             if (viewMode == ViewMode.CONFIG) {
                 viewMode = ViewMode.MINIGAMES
+                activeMinigame = Minigame.SNAKE
                 snakeGame.reset()
+                tetrisGame.reset()
             } else {
                 viewMode = ViewMode.CONFIG
                 rebuildWidgets()
@@ -596,9 +765,41 @@ class ModConfigScreen<T : Any>(
         }
         
         if (viewMode == ViewMode.MINIGAMES) {
-            // For now, clicks inside the minigame area are ignored; title bar buttons handle mode
-            // switching and closing.
-            return true
+            // Handle clicks on Snake/Tetris buttons in the minigame sidebar.
+            val sidebarX = guiX
+            val sidebarY = guiY + layout.contentTopOffset
+            val buttonHeight = 40
+            val buttonSpacing = categorySpacing
+            var currentY = sidebarY + layout.sidebarCategoryTopPadding
+
+            fun hitButton(): Minigame? {
+                val x = sidebarX + 10
+                val w = sidebarWidth - 20
+                val h = buttonHeight
+
+                val snakeY = currentY
+                val tetrisY = currentY + h + buttonSpacing
+
+                if (mouseXInt >= x && mouseXInt <= x + w) {
+                    if (mouseYInt >= snakeY && mouseYInt <= snakeY + h) return Minigame.SNAKE
+                    if (mouseYInt >= tetrisY && mouseYInt <= tetrisY + h) return Minigame.TETRIS
+                }
+                return null
+            }
+
+            when (hitButton()) {
+                Minigame.SNAKE -> {
+                    activeMinigame = Minigame.SNAKE
+                    snakeGame.reset()
+                    return true
+                }
+                Minigame.TETRIS -> {
+                    activeMinigame = Minigame.TETRIS
+                    tetrisGame.reset()
+                    return true
+                }
+                null -> return true // ignore other clicks while in minigames mode
+            }
         }
         
         // Check sidebar clicks
@@ -908,7 +1109,7 @@ class ModConfigScreen<T : Any>(
         }
 
         if (viewMode == ViewMode.MINIGAMES) {
-            // Ignore scroll input in minigames mode for now.
+            // Ignore scroll input in minigames mode.
             return false
         }
         
@@ -933,12 +1134,27 @@ class ModConfigScreen<T : Any>(
         }
 
         if (viewMode == ViewMode.MINIGAMES) {
-            when (keyCode) {
-                GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_UP -> snakeGame.changeDirection(Direction.UP)
-                GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_DOWN -> snakeGame.changeDirection(Direction.DOWN)
-                GLFW.GLFW_KEY_A, GLFW.GLFW_KEY_LEFT -> snakeGame.changeDirection(Direction.LEFT)
-                GLFW.GLFW_KEY_D, GLFW.GLFW_KEY_RIGHT -> snakeGame.changeDirection(Direction.RIGHT)
-                GLFW.GLFW_KEY_R -> snakeGame.reset()
+            when (activeMinigame) {
+                Minigame.SNAKE -> {
+                    when (keyCode) {
+                        GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_UP -> snakeGame.changeDirection(Direction.UP)
+                        GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_DOWN -> snakeGame.changeDirection(Direction.DOWN)
+                        GLFW.GLFW_KEY_A, GLFW.GLFW_KEY_LEFT -> snakeGame.changeDirection(Direction.LEFT)
+                        GLFW.GLFW_KEY_D, GLFW.GLFW_KEY_RIGHT -> snakeGame.changeDirection(Direction.RIGHT)
+                        GLFW.GLFW_KEY_R -> snakeGame.reset()
+                    }
+                }
+                Minigame.TETRIS -> {
+                    when (keyCode) {
+                        GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_A -> tetrisGame.moveLeft()
+                        GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_D -> tetrisGame.moveRight()
+                        GLFW.GLFW_KEY_DOWN, GLFW.GLFW_KEY_S -> tetrisGame.softDrop()
+                        GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_W -> tetrisGame.rotateCW()
+                        GLFW.GLFW_KEY_Q -> tetrisGame.rotateCCW()
+                        GLFW.GLFW_KEY_SPACE -> tetrisGame.hardDrop()
+                        GLFW.GLFW_KEY_R -> tetrisGame.reset()
+                    }
+                }
             }
             return true
         }
