@@ -251,6 +251,17 @@ class ModConfigScreen<T : Any>(
         }
     }
     
+    private fun hasEnabledMinigames(): Boolean {
+        return try {
+            val cfg = config.minigamesCategory
+            cfg.enableSnake || cfg.enableTetris || cfg.enableMandelbrot || cfg.enableDoom
+        } catch (_: Throwable) {
+            // If config is not ready, assume minigames are available so the
+            // button still appears rather than crashing the GUI.
+            true
+        }
+    }
+
     private fun renderTitleBar(context: DrawContext) {
         // Title bar background
         val titleBarX = guiX + layout.outerMargin
@@ -274,6 +285,8 @@ class ModConfigScreen<T : Any>(
         val minigamesButtonX = closeButtonX - minigamesButtonSize - 6
         val minigamesButtonY = closeButtonY
 
+        val showMinigamesButton = hasEnabledMinigames()
+
         val mouseX = client?.mouse?.x?.toInt() ?: 0
         val mouseY = client?.mouse?.y?.toInt() ?: 0
 
@@ -282,22 +295,28 @@ class ModConfigScreen<T : Any>(
             mouseY,
             closeButtonX, closeButtonY, closeButtonSize, closeButtonSize
         )
-        val isMinigamesHovered = RenderHelper.isMouseOver(
-            mouseX,
-            mouseY,
-            minigamesButtonX, minigamesButtonY, minigamesButtonSize, minigamesButtonSize
-        )
+        val isMinigamesHovered = if (showMinigamesButton) {
+            RenderHelper.isMouseOver(
+                mouseX,
+                mouseY,
+                minigamesButtonX, minigamesButtonY, minigamesButtonSize, minigamesButtonSize
+            )
+        } else {
+            false
+        }
         
         val closeButtonColor = if (isCloseHovered) theme.closeButtonHover else theme.closeButtonNormal
         RenderHelper.drawRect(context, closeButtonX, closeButtonY, closeButtonSize, closeButtonSize, closeButtonColor)
 
-        // Minigames button uses widget colors and highlights when active
-        val baseGamesColor = when {
-            viewMode == ViewMode.MINIGAMES -> theme.widgetActive
-            isMinigamesHovered -> theme.widgetHover
-            else -> theme.widgetBackground
+        if (showMinigamesButton) {
+            // Minigames button uses widget colors and highlights when active
+            val baseGamesColor = when {
+                viewMode == ViewMode.MINIGAMES -> theme.widgetActive
+                isMinigamesHovered -> theme.widgetHover
+                else -> theme.widgetBackground
+            }
+            RenderHelper.drawRect(context, minigamesButtonX, minigamesButtonY, minigamesButtonSize, minigamesButtonSize, baseGamesColor)
         }
-        RenderHelper.drawRect(context, minigamesButtonX, minigamesButtonY, minigamesButtonSize, minigamesButtonSize, baseGamesColor)
         
         // X icon
         val xSize = 5
@@ -306,10 +325,12 @@ class ModConfigScreen<T : Any>(
         context.drawText(textRenderer, "✕", xX, xY, theme.textPrimary, false)
 
         // Minigames icon (simple controller glyph)
-        val gSize = 5
-        val gX = minigamesButtonX + (minigamesButtonSize - gSize) / 2
-        val gY = minigamesButtonY + (minigamesButtonSize - gSize) / 2
-        context.drawText(textRenderer, "🎮", gX, gY, theme.textPrimary, false)
+        if (showMinigamesButton) {
+            val gSize = 5
+            val gX = minigamesButtonX + (minigamesButtonSize - gSize) / 2
+            val gY = minigamesButtonY + (minigamesButtonSize - gSize) / 2
+            context.drawText(textRenderer, "🎮", gX, gY, theme.textPrimary, false)
+        }
     }
     
     private fun renderSidebar(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
@@ -523,8 +544,10 @@ class ModConfigScreen<T : Any>(
         val minigamesButtonX = closeButtonX - minigamesButtonSize - 6
         val minigamesButtonY = closeButtonY
 
+        val showMinigamesButton = hasEnabledMinigames()
+
         // Minigames button click toggles view mode
-        if (RenderHelper.isMouseOver(mouseXInt, mouseYInt, minigamesButtonX, minigamesButtonY, minigamesButtonSize, minigamesButtonSize)) {
+        if (showMinigamesButton && RenderHelper.isMouseOver(mouseXInt, mouseYInt, minigamesButtonX, minigamesButtonY, minigamesButtonSize, minigamesButtonSize)) {
             if (viewMode == ViewMode.CONFIG) {
                 viewMode = ViewMode.MINIGAMES
                 minigameManager.enterMinigames()
@@ -626,7 +649,10 @@ class ModConfigScreen<T : Any>(
         }
 
         if (viewMode == ViewMode.MINIGAMES) {
-            // No draggable widgets in minigames mode.
+            // Forward drags to active minigame (used by Mandelbrot for panning).
+            if (minigameManager.handleMouseDragged(mouseXInt, mouseYInt, offsetX, offsetY)) {
+                return true
+            }
             return super.mouseDragged(click, offsetX, offsetY)
         }
 
@@ -857,8 +883,8 @@ class ModConfigScreen<T : Any>(
         }
 
         if (viewMode == ViewMode.MINIGAMES) {
-            // Ignore scroll input in minigames mode.
-            return false
+            // Forward scroll to active minigame (used by Mandelbrot for zoom).
+            return minigameManager.handleMouseScrolled(mouseXInt, mouseYInt, verticalAmount)
         }
         
         if (mouseXInt >= guiX && mouseXInt < guiX + sidebarWidth) {

@@ -4,6 +4,7 @@ import com.soulreturns.config.categories.RenderCategory
 import com.soulreturns.config.categories.FishingCategory
 import com.soulreturns.config.categories.FixesCategory
 import com.soulreturns.config.categories.MiningCategory
+import com.soulreturns.config.categories.MinigamesCategory
 import com.soulreturns.config.categories.DebugCategory
 import com.soulreturns.config.lib.annotations.ConfigCategory
 
@@ -35,6 +36,10 @@ class MainConfig {
     @JvmField
     @ConfigCategory(name = "Config", description = "Configuration settings")
     var configCategory = com.soulreturns.config.categories.ConfigCategory()
+
+    @JvmField
+    @ConfigCategory(name = "Minigames", description = "Config GUI minigames")
+    var minigamesCategory = MinigamesCategory()
 
     @JvmField
     @ConfigCategory(name = "Debug", description = "Debug settings")
