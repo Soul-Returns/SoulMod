@@ -871,13 +871,53 @@ class ModConfigScreen<T : Any>(
         
         return true
     }
-    
+
+    private fun getCategoryInstance(category: CategoryData): Any {
+        category.field.isAccessible = true
+        return category.field.get(configManager.instance)
+    }
+
+    private fun getSubcategoryInstance(categoryInstance: Any, subcategory: SubcategoryData): Any {
+        subcategory.field.isAccessible = true
+        return subcategory.field.get(categoryInstance)
+    }
+
     //? if >=1.21.10 {
     override fun keyPressed(input: net.minecraft.client.input.KeyInput): Boolean {
         val keyCode = input.key()
+        if (handleKeyPressed(keyCode)) return true
+        return super.keyPressed(input)
+    }
+
+    override fun keyReleased(input: net.minecraft.client.input.KeyInput): Boolean {
+        val keyCode = input.key()
+        if (handleKeyReleased(keyCode)) return true
+        return super.keyReleased(input)
+    }
+
+    override fun charTyped(input: net.minecraft.client.input.CharInput): Boolean {
+        val chr = input.codepoint().toChar()
+        if (handleCharTyped(chr)) return true
+        return super.charTyped(input)
+    }
     //?} else {
     /*override fun keyPressed(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
-    *///?}
+        if (handleKeyPressed(keyCode)) return true
+        return super.keyPressed(keyCode, scanCode, modifiers)
+    }
+
+    override fun keyReleased(keyCode: Int, scanCode: Int, modifiers: Int): Boolean {
+        if (handleKeyReleased(keyCode)) return true
+        return super.keyReleased(keyCode, scanCode, modifiers)
+    }
+
+    override fun charTyped(chr: Char, modifiers: Int): Boolean {
+        if (handleCharTyped(chr)) return true
+        return super.charTyped(chr, modifiers)
+    }*/
+    //?}
+
+    private fun handleKeyPressed(keyCode: Int): Boolean {
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             close()
             return true
@@ -888,7 +928,7 @@ class ModConfigScreen<T : Any>(
             minigameManager.handleKeyPressed(keyCode)
             return true
         }
-        
+
         // Pass to focused widget
         val category = configManager.structure.categories.getOrNull(selectedCategoryIndex)
         if (category != null) {
@@ -899,40 +939,27 @@ class ModConfigScreen<T : Any>(
             } else {
                 categoryInstance
             }
-            
+
             for (widget in widgets) {
                 if (widget.isFocused && widget.keyPressed(keyCode, 0, 0, instance)) {
                     return true
                 }
             }
         }
-        
-        //? if >=1.21.10 {
-        return super.keyPressed(input)
-        //?} else {
-        /*return super.keyPressed(keyCode, 0, 0)
-        *///?}
-    }
-    
-    //? if >=1.21.10 {
-    override fun keyReleased(input: net.minecraft.client.input.KeyInput): Boolean {
-        val keyCode = input.key()
 
+        return false
+    }
+
+    private fun handleKeyReleased(keyCode: Int): Boolean {
         if (viewMode == ViewMode.MINIGAMES) {
             // Delegate key-up events to the active minigame (used by DOOM).
             minigameManager.handleKeyReleased(keyCode)
             return true
         }
-
-        return super.keyReleased(input)
+        return false
     }
 
-    //? if >=1.21.10 {
-    override fun charTyped(input: net.minecraft.client.input.CharInput): Boolean {
-        val chr = input.codepoint().toChar()
-    //?} else {
-    /*override fun charTyped(chr: Char, modifiers: Int): Boolean {
-    *///?}
+    private fun handleCharTyped(chr: Char): Boolean {
         if (viewMode == ViewMode.MINIGAMES) {
             // Minigames view does not use text input.
             return false
@@ -947,34 +974,20 @@ class ModConfigScreen<T : Any>(
             } else {
                 categoryInstance
             }
-            
+
             for (widget in widgets) {
                 if (widget.isFocused && widget.charTyped(chr, 0, instance)) {
                     return true
                 }
             }
         }
-        
-        //? if >=1.21.10 {
-        return super.charTyped(input)
-        //?} else {
-        /*return super.charTyped(chr, 0)
-        *///?}
+
+        return false
     }
-    
+
     override fun close() {
         DebugLogger.logConfigChange("Config GUI closed, saving config")
         configManager.save()
         super.close()
-    }
-    
-    private fun getCategoryInstance(category: CategoryData): Any {
-        category.field.isAccessible = true
-        return category.field.get(configManager.instance)
-    }
-    
-    private fun getSubcategoryInstance(categoryInstance: Any, subcategory: SubcategoryData): Any {
-        subcategory.field.isAccessible = true
-        return subcategory.field.get(categoryInstance)
     }
 }
