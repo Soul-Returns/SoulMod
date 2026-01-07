@@ -2,6 +2,7 @@ package com.soulreturns
 
 import com.soulreturns.command.SoulCommand
 import com.soulreturns.config.ConfigManager
+import com.soulreturns.config.DynamicLabelProviders
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.LegionCounter
 import com.soulreturns.features.BobbinTimeCounter
@@ -36,6 +37,9 @@ object Soul : ClientModInitializer {
 
         // Access config to trigger initialization
         configManager = ConfigManager()
+
+        // Register dynamic label providers used by the config GUI.
+        DynamicLabelProviders.registerAll()
 
         // Register message handler before features so they can use it
         MessageHandler.register()

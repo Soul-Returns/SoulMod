@@ -2,6 +2,7 @@ package com.soulreturns.features
 
 import com.soulreturns.config.categories.fishing.BobbinTimeSubCategory
 import com.soulreturns.config.config
+import com.soulreturns.features.party.PartyManager
 import com.soulreturns.gui.lib.GuiLayoutApi
 import com.soulreturns.util.RenderUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -89,7 +90,20 @@ object BobbinTimeCounter {
             }
         }
 
-        val threshold = fishingConfig.alertBobberCount.coerceAtLeast(1)
+        // Determine effective threshold: either the static slider value, or
+        // (party size - 1) capped at 5 when sync-with-party is enabled.
+        val staticThreshold = fishingConfig.alertBobberCount.coerceIn(1, 5)
+        val partySize = PartyManager.getPartySize()
+        val partyThreshold = if (partySize > 0) {
+            (partySize - 1).coerceIn(1, 5)
+        } else {
+            null
+        }
+        val threshold = if (fishingConfig.syncBobbinAlertWithParty && partyThreshold != null) {
+            partyThreshold
+        } else {
+            staticThreshold
+        }
 
         // Fire alert once when we reach the desired bobber count; reset once
         // we drop below so it can trigger again on future cycles.

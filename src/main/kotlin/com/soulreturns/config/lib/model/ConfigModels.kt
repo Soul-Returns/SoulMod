@@ -37,7 +37,9 @@ data class OptionData(
     val name: String,
     val description: String,
     val field: Field,
-    val type: OptionType
+    val type: OptionType,
+    /** Optional key for dynamic label formatting; empty when not used. */
+    val dynamicNameKey: String = "",
 )
 
 /**

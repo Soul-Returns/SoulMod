@@ -32,6 +32,15 @@ class BobbinTimeSubCategory {
 
     @JvmField
     @ConfigOption(
+        name = "Sync with party",
+        description = "If enabled, use total party size minus one as the alert threshold (capped at 5).",
+        dynamicNameKey = "bobbin_sync_party",
+    )
+    @Toggle
+    var syncBobbinAlertWithParty: Boolean = false
+
+    @JvmField
+    @ConfigOption(
         name = "Alert Item Name Filter",
         description = "Only send Bobbin Time alerts when you have an inventory item whose name contains this text (case-insensitive). Leave empty to always alert."
     )

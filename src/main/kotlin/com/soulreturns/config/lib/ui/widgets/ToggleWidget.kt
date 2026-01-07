@@ -1,6 +1,7 @@
 package com.soulreturns.config.lib.ui.widgets
 
 import com.soulreturns.config.lib.model.OptionData
+import com.soulreturns.config.lib.ui.DynamicOptionLabelRegistry
 import com.soulreturns.config.lib.ui.RenderHelper
 import com.soulreturns.config.lib.ui.themes.Theme
 import com.soulreturns.util.DebugLogger
@@ -26,11 +27,13 @@ class ToggleWidget(
         animationProgress += (targetProgress - animationProgress) * delta * 10f
         animationProgress = animationProgress.coerceIn(0f, 1f)
         
-        // Draw option name
+        // Draw option name (supports dynamic labels via DynamicOptionLabelRegistry
+        // when ConfigOption.dynamicNameKey is set).
         val textRenderer = net.minecraft.client.MinecraftClient.getInstance().textRenderer
         val textHeight = textRenderer.fontHeight
         val textY = y + (height - textHeight) / 2
-        context.drawText(textRenderer, option.name, x, textY, theme.textPrimary, false)
+        val label = DynamicOptionLabelRegistry.format(option)
+        context.drawText(textRenderer, label, x, textY, theme.textPrimary, false)
         
         // Draw toggle background (aligned with text center)
         val toggleX = x + width - toggleWidth

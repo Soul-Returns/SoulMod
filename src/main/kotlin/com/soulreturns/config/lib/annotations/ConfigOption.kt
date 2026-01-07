@@ -8,5 +8,11 @@ package com.soulreturns.config.lib.annotations
 @Retention(AnnotationRetention.RUNTIME)
 annotation class ConfigOption(
     val name: String,
-    val description: String = ""
+    val description: String = "",
+    /**
+     * Optional key for dynamically formatting the option name at render time.
+     * When non-empty, the UI can look up a formatter by this key and replace
+     * tokens (e.g. to show live values in the label).
+     */
+    val dynamicNameKey: String = "",
 )

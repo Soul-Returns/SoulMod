@@ -128,7 +128,8 @@ object ConfigParser {
             name = configOption.name,
             description = configOption.description,
             field = field,
-            type = optionType
+            type = optionType,
+            dynamicNameKey = configOption.dynamicNameKey,
         )
     }
 }
