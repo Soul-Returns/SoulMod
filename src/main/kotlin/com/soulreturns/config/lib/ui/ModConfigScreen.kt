@@ -6,6 +6,7 @@ import com.soulreturns.config.lib.model.SubcategoryData
 import com.soulreturns.config.lib.ui.minigames.SnakeGame
 import com.soulreturns.config.lib.ui.minigames.SnakeGame.Direction
 import com.soulreturns.config.lib.ui.minigames.TetrisGame
+import com.soulreturns.config.lib.ui.minigames.DoomGame
 import com.soulreturns.config.lib.ui.widgets.ConfigWidget
 import com.soulreturns.config.lib.ui.widgets.WidgetFactory
 import com.soulreturns.util.DebugLogger
@@ -58,12 +59,22 @@ class ModConfigScreen<T : Any>(
 ) : Screen(Text.literal(screenTitle)) {
 
     private enum class ViewMode { CONFIG, MINIGAMES }
-    private enum class Minigame { SNAKE, TETRIS }
+    private enum class Minigame { SNAKE, TETRIS, DOOM }
 
     private var viewMode: ViewMode = ViewMode.CONFIG
     private var activeMinigame: Minigame = Minigame.SNAKE
     private val snakeGame = SnakeGame()
     private val tetrisGame = TetrisGame()
+    private val doomGame = DoomGame()
+
+    // Continuous input state for the DOOM minigame so holding W while
+    // turning left/right keeps you moving forward.
+    private var doomMoveForward = false
+    private var doomMoveBackward = false
+    private var doomStrafeLeft = false
+    private var doomStrafeRight = false
+    private var doomTurnLeft = false
+    private var doomTurnRight = false
     
     private val sidebarWidth get() = layout.sidebarWidth
     private val contentPadding get() = layout.contentPadding
@@ -525,6 +536,7 @@ class ModConfigScreen<T : Any>(
 
         drawButton("Snake", Minigame.SNAKE)
         drawButton("Tetris", Minigame.TETRIS)
+        drawButton("DOOM", Minigame.DOOM)
     }
 
     private fun renderMinigames(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
@@ -539,7 +551,176 @@ class ModConfigScreen<T : Any>(
         when (activeMinigame) {
             Minigame.SNAKE -> renderSnakeGame(context, contentX, contentY, contentWidth, contentHeight)
             Minigame.TETRIS -> renderTetrisGame(context, contentX, contentY, contentWidth, contentHeight)
+            Minigame.DOOM -> renderDoomGame(context, contentX, contentY, contentWidth, contentHeight)
         }
+    }
+
+    private fun renderDoomGame(
+        context: DrawContext,
+        contentX: Int,
+        contentY: Int,
+        contentWidth: Int,
+        contentHeight: Int,
+    ) {
+        val now = System.currentTimeMillis()
+        doomGame.updateWithInput(
+            now,
+            moveForward = doomMoveForward,
+            moveBackward = doomMoveBackward,
+            strafeLeft = doomStrafeLeft,
+            strafeRight = doomStrafeRight,
+            turnLeft = doomTurnLeft,
+            turnRight = doomTurnRight,
+        )
+
+        if (contentWidth <= 0 || contentHeight <= 0) return
+
+        // Choose a modest internal resolution; each column will be multiple pixels wide.
+        val maxColumns = 160
+        val columns = minOf(maxColumns, maxOf(40, contentWidth / 2))
+        val samples = doomGame.computeColumns(columns, now)
+        if (samples.isEmpty()) return
+
+        val columnPixelWidth = (contentWidth.toFloat() / columns.toFloat()).coerceAtLeast(1f)
+
+        for (i in 0 until columns) {
+            val sample = samples[i]
+
+            val xStart = contentX + (i * columnPixelWidth).toInt()
+            val xEnd = contentX + ((i + 1) * columnPixelWidth).toInt()
+            val widthPx = maxOf(1, xEnd - xStart)
+
+            val topY = contentY
+            val bottomY = contentY + contentHeight
+
+            val wallTopPx = (topY + sample.wallTopNorm * contentHeight).toInt().coerceIn(topY, bottomY)
+            val wallBottomPx = (topY + sample.wallBottomNorm * contentHeight).toInt().coerceIn(topY, bottomY)
+
+            // Ceiling segment
+            if (wallTopPx > topY) {
+                RenderHelper.drawRect(context, xStart, topY, widthPx, wallTopPx - topY, sample.ceilingColor)
+            }
+
+            // Wall / enemy segment
+            if (wallBottomPx > wallTopPx) {
+                RenderHelper.drawRect(context, xStart, wallTopPx, widthPx, wallBottomPx - wallTopPx, sample.wallColor)
+            }
+
+            // Floor segment
+            if (bottomY > wallBottomPx) {
+                RenderHelper.drawRect(context, xStart, wallBottomPx, widthPx, bottomY - wallBottomPx, sample.floorColor)
+            }
+        }
+
+        // Simple crosshair at the center of the viewport for "gun" mode.
+        val centerX = contentX + contentWidth / 2
+        val centerY = contentY + contentHeight / 2
+        val crossSize = 8
+        val crossColor = theme.textPrimary
+        // Vertical line
+        RenderHelper.drawRect(
+            context,
+            centerX - 1,
+            centerY - crossSize,
+            2,
+            crossSize * 2 + 1,
+            crossColor,
+        )
+        // Horizontal line
+        RenderHelper.drawRect(
+            context,
+            centerX - crossSize,
+            centerY - 1,
+            crossSize * 2 + 1,
+            2,
+            crossColor,
+        )
+
+        // Doom-style centered pistol at the bottom of the screen. Higher
+        // "resolution" here just means we use more, smaller segments to fake
+        // detail while still being pure rectangles.
+        val gunWidth = (contentWidth / 5).coerceAtLeast(60)
+        val gunHeight = (contentHeight / 3.5).toInt().coerceAtLeast(40)
+        val gunX = contentX + (contentWidth - gunWidth) / 2
+        // Anchor the gun near the very bottom so it stays out of the center.
+        val gunY = contentY + contentHeight - gunHeight
+        val muzzleFlashActive = doomGame.isMuzzleFlashActive(now)
+
+        val gunMetalBase = if (muzzleFlashActive) theme.widgetActive else theme.widgetBackground
+        val gunMetalHighlight = if (muzzleFlashActive) 0xFFFFEE88.toInt() else theme.optionCardBackground
+        val gunShadowColor = 0x80000000.toInt()
+
+        // --- Pistol body (no hand, just the weapon) --------------------------
+        val bodyWidth = (gunWidth * 0.32f).toInt().coerceAtLeast(18)
+        val bodyHeight = gunHeight
+        val bodyX = gunX + (gunWidth - bodyWidth) / 2
+        // Pull the pistol up just slightly so most of it stays near the
+        // bottom of the screen.
+        val bodyY = gunY - gunHeight / 16
+
+        // Main metal body.
+        RenderHelper.drawRect(context, bodyX, bodyY, bodyWidth, bodyHeight, gunMetalBase)
+
+        // Slide on top of the pistol (slightly inset for a sharper look).
+        val slideHeight = (bodyHeight * 0.30f).toInt().coerceAtLeast(6)
+        RenderHelper.drawRect(context, bodyX + 2, bodyY + 2, bodyWidth - 4, slideHeight, gunMetalHighlight)
+
+        // Mid strip under the slide.
+        val midStripHeight = (bodyHeight * 0.16f).toInt().coerceAtLeast(4)
+        RenderHelper.drawRect(
+            context,
+            bodyX + 3,
+            bodyY + 2 + slideHeight,
+            bodyWidth - 6,
+            midStripHeight,
+            gunMetalBase,
+        )
+
+        // Lower grip area with a subtle gradient using two bands.
+        val gripHeight = (bodyHeight * 0.38f).toInt().coerceAtLeast(10)
+        val gripY = bodyY + bodyHeight - gripHeight
+        val gripTopHeight = (gripHeight * 0.55f).toInt().coerceAtLeast(6)
+        RenderHelper.drawRect(context, bodyX + 2, gripY, bodyWidth - 4, gripTopHeight, gunMetalBase)
+        RenderHelper.drawRect(
+            context,
+            bodyX + 2,
+            gripY + gripTopHeight,
+            bodyWidth - 4,
+            gripHeight - gripTopHeight,
+            gunShadowColor,
+        )
+
+        // --- Barrel / muzzle --------------------------------------------------
+        val barrelWidth = (bodyWidth * 0.55f).toInt().coerceAtLeast(12)
+        val barrelHeight = (bodyHeight * 0.22f).toInt().coerceAtLeast(8)
+        val barrelX = bodyX + (bodyWidth - barrelWidth) / 2
+        val barrelY = bodyY - barrelHeight / 2
+        RenderHelper.drawRect(context, barrelX, barrelY, barrelWidth, barrelHeight, gunMetalBase)
+        RenderHelper.drawRect(
+            context,
+            barrelX + 2,
+            barrelY + 2,
+            barrelWidth - 4,
+            barrelHeight / 2,
+            gunMetalHighlight,
+        )
+
+        // Front sight as a tiny block on top of the barrel.
+        val sightWidth = (barrelWidth * 0.25f).toInt().coerceAtLeast(4)
+        val sightHeight = (barrelHeight * 0.35f).toInt().coerceAtLeast(3)
+        val sightX = barrelX + (barrelWidth - sightWidth) / 2
+        val sightY = barrelY - sightHeight
+        RenderHelper.drawRect(context, sightX, sightY, sightWidth, sightHeight, gunMetalHighlight)
+
+        // HUD text (title, enemies remaining and controls) in the top-left of the content area.
+        val hudX = contentX + contentPadding
+        val hudY = contentY + contentPadding
+        val remaining = doomGame.getRemainingEnemies()
+        context.drawText(textRenderer, "DOOM (prototype)", hudX, hudY, theme.textPrimary, false)
+        val enemiesText = "Enemies left: $remaining"
+        context.drawText(textRenderer, enemiesText, hudX, hudY + textRenderer.fontHeight + 4, theme.textSecondary, false)
+        val controls = "WASD/arrow keys move, Q/E or Left/Right arrows turn, Space shoot, R reset"
+        context.drawText(textRenderer, controls, hudX, hudY + (textRenderer.fontHeight + 4) * 2, theme.textSecondary, false)
     }
 
     private fun renderSnakeGame(
@@ -749,6 +930,13 @@ class ModConfigScreen<T : Any>(
                 activeMinigame = Minigame.SNAKE
                 snakeGame.reset()
                 tetrisGame.reset()
+                doomGame.reset()
+                doomMoveForward = false
+                doomMoveBackward = false
+                doomStrafeLeft = false
+                doomStrafeRight = false
+                doomTurnLeft = false
+                doomTurnRight = false
             } else {
                 viewMode = ViewMode.CONFIG
                 rebuildWidgets()
@@ -765,24 +953,26 @@ class ModConfigScreen<T : Any>(
         }
         
         if (viewMode == ViewMode.MINIGAMES) {
-            // Handle clicks on Snake/Tetris buttons in the minigame sidebar.
+            // Handle clicks on minigame buttons in the minigame sidebar.
             val sidebarX = guiX
             val sidebarY = guiY + layout.contentTopOffset
             val buttonHeight = 40
             val buttonSpacing = categorySpacing
-            var currentY = sidebarY + layout.sidebarCategoryTopPadding
+            val firstButtonY = sidebarY + layout.sidebarCategoryTopPadding
 
             fun hitButton(): Minigame? {
                 val x = sidebarX + 10
                 val w = sidebarWidth - 20
                 val h = buttonHeight
 
-                val snakeY = currentY
-                val tetrisY = currentY + h + buttonSpacing
+                val snakeY = firstButtonY
+                val tetrisY = snakeY + h + buttonSpacing
+                val doomY = tetrisY + h + buttonSpacing
 
                 if (mouseXInt >= x && mouseXInt <= x + w) {
                     if (mouseYInt >= snakeY && mouseYInt <= snakeY + h) return Minigame.SNAKE
                     if (mouseYInt >= tetrisY && mouseYInt <= tetrisY + h) return Minigame.TETRIS
+                    if (mouseYInt >= doomY && mouseYInt <= doomY + h) return Minigame.DOOM
                 }
                 return null
             }
@@ -796,6 +986,17 @@ class ModConfigScreen<T : Any>(
                 Minigame.TETRIS -> {
                     activeMinigame = Minigame.TETRIS
                     tetrisGame.reset()
+                    return true
+                }
+                Minigame.DOOM -> {
+                    activeMinigame = Minigame.DOOM
+                    doomGame.reset()
+                    doomMoveForward = false
+                    doomMoveBackward = false
+                    doomStrafeLeft = false
+                    doomStrafeRight = false
+                    doomTurnLeft = false
+                    doomTurnRight = false
                     return true
                 }
                 null -> return true // ignore other clicks while in minigames mode
@@ -1155,6 +1356,27 @@ class ModConfigScreen<T : Any>(
                         GLFW.GLFW_KEY_R -> tetrisGame.reset()
                     }
                 }
+                Minigame.DOOM -> {
+                    val now = System.currentTimeMillis()
+                    when (keyCode) {
+                        GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_UP -> doomMoveForward = true
+                        GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_DOWN -> doomMoveBackward = true
+                        GLFW.GLFW_KEY_A -> doomStrafeLeft = true
+                        GLFW.GLFW_KEY_D -> doomStrafeRight = true
+                        GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_Q -> doomTurnLeft = true
+                        GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_E -> doomTurnRight = true
+                        GLFW.GLFW_KEY_SPACE -> doomGame.applyAction(com.soulreturns.config.lib.ui.minigames.DoomGame.Action.FIRE, now)
+                        GLFW.GLFW_KEY_R -> {
+                            doomGame.applyAction(com.soulreturns.config.lib.ui.minigames.DoomGame.Action.RESET, now)
+                            doomMoveForward = false
+                            doomMoveBackward = false
+                            doomStrafeLeft = false
+                            doomStrafeRight = false
+                            doomTurnLeft = false
+                            doomTurnRight = false
+                        }
+                    }
+                }
             }
             return true
         }
@@ -1184,6 +1406,25 @@ class ModConfigScreen<T : Any>(
         *///?}
     }
     
+    //? if >=1.21.10 {
+    override fun keyReleased(input: net.minecraft.client.input.KeyInput): Boolean {
+        val keyCode = input.key()
+
+        if (viewMode == ViewMode.MINIGAMES && activeMinigame == Minigame.DOOM) {
+            when (keyCode) {
+                GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_UP -> doomMoveForward = false
+                GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_DOWN -> doomMoveBackward = false
+                GLFW.GLFW_KEY_A -> doomStrafeLeft = false
+                GLFW.GLFW_KEY_D -> doomStrafeRight = false
+                GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_Q -> doomTurnLeft = false
+                GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_E -> doomTurnRight = false
+            }
+            return true
+        }
+
+        return super.keyReleased(input)
+    }
+
     //? if >=1.21.10 {
     override fun charTyped(input: net.minecraft.client.input.CharInput): Boolean {
         val chr = input.codepoint().toChar()
