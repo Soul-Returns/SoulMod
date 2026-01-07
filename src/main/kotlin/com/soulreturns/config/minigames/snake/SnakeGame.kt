@@ -1,13 +1,17 @@
-package com.soulreturns.config.lib.ui.minigames
+package com.soulreturns.config.minigames.snake
 
+import com.soulreturns.config.lib.ui.RenderHelper
+import com.soulreturns.config.lib.ui.themes.Theme
+import net.minecraft.client.font.TextRenderer
+import net.minecraft.client.gui.DrawContext
+import org.lwjgl.glfw.GLFW
 import kotlin.random.Random
 
 /**
- * Simple Snake game model used by the config GUI's Minigames tab.
+ * Simple Snake game model and rendering used by the config GUI's Minigames tab.
  *
- * This class is intentionally UI-agnostic: it tracks grid state,
- * movement, food, and scoring, while the screen decides how to
- * render the grid inside a rectangle.
+ * This class keeps the core grid/logic separate from the config screen itself
+ * so the lib code doesn't need to know about minigame details.
  */
 data class GridPos(val x: Int, val y: Int)
 
@@ -145,5 +149,83 @@ class SnakeGame(
 
         // Fallback: place food on the head if random placement fails.
         food = body.last()
+    }
+
+    // ---------- Rendering & input ----------
+
+    fun render(
+        context: DrawContext,
+        contentX: Int,
+        contentY: Int,
+        contentWidth: Int,
+        contentHeight: Int,
+        theme: Theme,
+        contentPadding: Int,
+        textRenderer: TextRenderer,
+    ) {
+        val now = System.currentTimeMillis()
+        update(now)
+
+        val cols = columns
+        val rows = rows
+        if (cols <= 0 || rows <= 0) return
+
+        val cellSize = (minOf(contentWidth / cols, contentHeight / rows)).coerceAtLeast(4)
+        if (cellSize <= 0) return
+
+        val boardWidth = cols * cellSize
+        val boardHeight = rows * cellSize
+        val boardX = contentX + (contentWidth - boardWidth) / 2
+        val boardY = contentY + (contentHeight - boardHeight) / 2
+
+        // Board background card
+        if (theme.useCardStyle) {
+            RenderHelper.drawRect(context, boardX - 4, boardY - 4, boardWidth + 8, boardHeight + 8, theme.optionCardBackground)
+        }
+
+        // Draw grid contents
+        val head = segments.lastOrNull()
+        for (segment in segments) {
+            val segX = boardX + segment.x * cellSize
+            val segY = boardY + segment.y * cellSize
+            val isHead = head != null && segment == head
+            val color = if (isHead) theme.widgetActive else theme.widgetBackground
+            RenderHelper.drawRect(context, segX, segY, cellSize - 1, cellSize - 1, color)
+        }
+
+        val foodPos = food
+        val foodX = boardX + foodPos.x * cellSize
+        val foodY = boardY + foodPos.y * cellSize
+        val foodColor = 0xFFFF5555.toInt()
+        RenderHelper.drawRect(context, foodX, foodY, cellSize - 1, cellSize - 1, foodColor)
+
+        // HUD text (score and instructions)
+        val hudX = contentX + contentPadding
+        val hudY = contentY + contentPadding
+        val scoreText = "Score: $score"
+        val infoText = if (isAlive) {
+            "Use WASD or arrow keys to move. Press R to restart."
+        } else {
+            "Game over! Press R to play again."
+        }
+        context.drawText(textRenderer, scoreText, hudX, hudY, theme.textPrimary, false)
+        context.drawText(textRenderer, infoText, hudX, hudY + textRenderer.fontHeight + 4, theme.textSecondary, false)
+    }
+
+    fun handleKeyPressed(keyCode: Int): Boolean {
+        when (keyCode) {
+            GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_UP -> changeDirection(Direction.UP)
+            GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_DOWN -> changeDirection(Direction.DOWN)
+            GLFW.GLFW_KEY_A, GLFW.GLFW_KEY_LEFT -> changeDirection(Direction.LEFT)
+            GLFW.GLFW_KEY_D, GLFW.GLFW_KEY_RIGHT -> changeDirection(Direction.RIGHT)
+            GLFW.GLFW_KEY_R -> reset()
+            else -> return false
+        }
+        return true
+    }
+
+    fun handleKeyReleased(@Suppress("UNUSED_PARAMETER") keyCode: Int): Boolean {
+        // No key-up behaviour for Snake at the moment.
+        return false
     }
 }

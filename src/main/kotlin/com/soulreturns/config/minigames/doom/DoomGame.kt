@@ -1,15 +1,20 @@
-package com.soulreturns.config.lib.ui.minigames
+package com.soulreturns.config.minigames.doom
 
+import com.soulreturns.config.lib.ui.RenderHelper
+import com.soulreturns.config.lib.ui.themes.Theme
+import net.minecraft.client.font.TextRenderer
+import net.minecraft.client.gui.DrawContext
+import org.lwjgl.glfw.GLFW
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Minimal DOOM-style raycasting "engine" used by the config GUI Minigames tab.
+ * Minimal DOOM-style raycasting "engine" plus very simple gun HUD,
+ * used by the config GUI Minigames tab.
  *
- * Now with a slightly larger map, simple enemies, and a very lightweight
- * "gun" mode where firing a shot along the center of the view will hit the
- * first enemy in that direction.
+ * Kept self-contained so the core config lib doesn't need any DOOM-specific
+ * behaviour.
  */
 class DoomGame {
     enum class Action {
@@ -103,6 +108,14 @@ class DoomGame {
     // Reusable column buffer to avoid per-frame allocations.
     private var columnBuffer: Array<ColumnSample> = emptyArray()
 
+    // Continuous input state for held keys.
+    private var moveForwardHeld = false
+    private var moveBackwardHeld = false
+    private var strafeLeftHeld = false
+    private var strafeRightHeld = false
+    private var turnLeftHeld = false
+    private var turnRightHeld = false
+
     init {
         reset(System.currentTimeMillis())
     }
@@ -113,7 +126,17 @@ class DoomGame {
         angle = 0.0
         lastUpdateTime = nowMillis
         fireFlashUntil = 0L
+        resetInputState()
         initEnemies()
+    }
+
+    private fun resetInputState() {
+        moveForwardHeld = false
+        moveBackwardHeld = false
+        strafeLeftHeld = false
+        strafeRightHeld = false
+        turnLeftHeld = false
+        turnRightHeld = false
     }
 
     private fun initEnemies() {
@@ -169,25 +192,15 @@ class DoomGame {
     }
 
     /**
-     * Variant of [update] that also applies continuous movement/turning input
-     * based on the current key state. This lets you hold W to move forward
-     * while turning left/right at the same time.
+     * Update using the held-key state maintained by this instance.
      */
-    fun updateWithInput(
-        nowMillis: Long,
-        moveForward: Boolean,
-        moveBackward: Boolean,
-        strafeLeft: Boolean,
-        strafeRight: Boolean,
-        turnLeft: Boolean,
-        turnRight: Boolean,
-    ) {
+    private fun updateWithHeldInput(nowMillis: Long) {
         val dt = computeDeltaSeconds(nowMillis)
         if (dt <= 0.0) return
 
-        val forward = (if (moveForward) 1.0 else 0.0) + (if (moveBackward) -1.0 else 0.0)
-        val strafe = (if (strafeRight) 1.0 else 0.0) + (if (strafeLeft) -1.0 else 0.0)
-        val turn = (if (turnRight) 1.0 else 0.0) + (if (turnLeft) -1.0 else 0.0)
+        val forward = (if (moveForwardHeld) 1.0 else 0.0) + (if (moveBackwardHeld) -1.0 else 0.0)
+        val strafe = (if (strafeRightHeld) 1.0 else 0.0) + (if (strafeLeftHeld) -1.0 else 0.0)
+        val turn = (if (turnRightHeld) 1.0 else 0.0) + (if (turnLeftHeld) -1.0 else 0.0)
 
         if (forward != 0.0 || strafe != 0.0) {
             move(forward, strafe, dt)
@@ -299,6 +312,200 @@ class DoomGame {
         }
 
         return columnBuffer
+    }
+
+    // --- Rendering & input integration ----------------------------------------
+
+    fun render(
+        context: DrawContext,
+        contentX: Int,
+        contentY: Int,
+        contentWidth: Int,
+        contentHeight: Int,
+        theme: Theme,
+        contentPadding: Int,
+        textRenderer: TextRenderer,
+    ) {
+        val now = System.currentTimeMillis()
+        updateWithHeldInput(now)
+
+        if (contentWidth <= 0 || contentHeight <= 0) return
+
+        // Choose a modest internal resolution; each column will be multiple pixels wide.
+        val maxColumns = 160
+        val columns = minOf(maxColumns, maxOf(40, contentWidth / 2))
+        val samples = computeColumns(columns, now)
+        if (samples.isEmpty()) return
+
+        val columnPixelWidth = (contentWidth.toFloat() / columns.toFloat()).coerceAtLeast(1f)
+
+        for (i in 0 until columns) {
+            val sample = samples[i]
+
+            val xStart = contentX + (i * columnPixelWidth).toInt()
+            val xEnd = contentX + ((i + 1) * columnPixelWidth).toInt()
+            val widthPx = maxOf(1, xEnd - xStart)
+
+            val topY = contentY
+            val bottomY = contentY + contentHeight
+
+            val wallTopPx = (topY + sample.wallTopNorm * contentHeight).toInt().coerceIn(topY, bottomY)
+            val wallBottomPx = (topY + sample.wallBottomNorm * contentHeight).toInt().coerceIn(topY, bottomY)
+
+            // Ceiling segment
+            if (wallTopPx > topY) {
+                RenderHelper.drawRect(context, xStart, topY, widthPx, wallTopPx - topY, sample.ceilingColor)
+            }
+
+            // Wall / enemy segment
+            if (wallBottomPx > wallTopPx) {
+                RenderHelper.drawRect(context, xStart, wallTopPx, widthPx, wallBottomPx - wallTopPx, sample.wallColor)
+            }
+
+            // Floor segment
+            if (bottomY > wallBottomPx) {
+                RenderHelper.drawRect(context, xStart, wallBottomPx, widthPx, bottomY - wallBottomPx, sample.floorColor)
+            }
+        }
+
+        // Simple crosshair at the center of the viewport for "gun" mode.
+        val centerX = contentX + contentWidth / 2
+        val centerY = contentY + contentHeight / 2
+        val crossSize = 8
+        val crossColor = theme.textPrimary
+        // Vertical line
+        RenderHelper.drawRect(
+            context,
+            centerX - 1,
+            centerY - crossSize,
+            2,
+            crossSize * 2 + 1,
+            crossColor,
+        )
+        // Horizontal line
+        RenderHelper.drawRect(
+            context,
+            centerX - crossSize,
+            centerY - 1,
+            crossSize * 2 + 1,
+            2,
+            crossColor,
+        )
+
+        // Doom-style centered pistol at the bottom of the screen.
+        val gunWidth = (contentWidth / 5).coerceAtLeast(60)
+        val gunHeight = (contentHeight / 3.5).toInt().coerceAtLeast(40)
+        val gunX = contentX + (contentWidth - gunWidth) / 2
+        // Anchor the gun near the very bottom so it stays out of the center.
+        val gunY = contentY + contentHeight - gunHeight
+        val muzzleFlashActive = isMuzzleFlashActive(now)
+
+        val gunMetalBase = if (muzzleFlashActive) theme.widgetActive else theme.widgetBackground
+        val gunMetalHighlight = if (muzzleFlashActive) 0xFFFFEE88.toInt() else theme.optionCardBackground
+        val gunShadowColor = 0x80000000.toInt()
+
+        // --- Pistol body (no hand, just the weapon) --------------------------
+        val bodyWidth = (gunWidth * 0.32f).toInt().coerceAtLeast(18)
+        val bodyHeight = gunHeight
+        val bodyX = gunX + (gunWidth - bodyWidth) / 2
+        // Pull the pistol up just slightly so most of it stays near the
+        // bottom of the screen.
+        val bodyY = gunY - gunHeight / 16
+
+        // Main metal body.
+        RenderHelper.drawRect(context, bodyX, bodyY, bodyWidth, bodyHeight, gunMetalBase)
+
+        // Slide on top of the pistol (slightly inset for a sharper look).
+        val slideHeight = (bodyHeight * 0.30f).toInt().coerceAtLeast(6)
+        RenderHelper.drawRect(context, bodyX + 2, bodyY + 2, bodyWidth - 4, slideHeight, gunMetalHighlight)
+
+        // Mid strip under the slide.
+        val midStripHeight = (bodyHeight * 0.16f).toInt().coerceAtLeast(4)
+        RenderHelper.drawRect(
+            context,
+            bodyX + 3,
+            bodyY + 2 + slideHeight,
+            bodyWidth - 6,
+            midStripHeight,
+            gunMetalBase,
+        )
+
+        // Lower grip area with a subtle gradient using two bands.
+        val gripHeight = (bodyHeight * 0.38f).toInt().coerceAtLeast(10)
+        val gripY = bodyY + bodyHeight - gripHeight
+        val gripTopHeight = (gripHeight * 0.55f).toInt().coerceAtLeast(6)
+        RenderHelper.drawRect(context, bodyX + 2, gripY, bodyWidth - 4, gripTopHeight, gunMetalBase)
+        RenderHelper.drawRect(
+            context,
+            bodyX + 2,
+            gripY + gripTopHeight,
+            bodyWidth - 4,
+            gripHeight - gripTopHeight,
+            gunShadowColor,
+        )
+
+        // --- Barrel / muzzle --------------------------------------------------
+        val barrelWidth = (bodyWidth * 0.55f).toInt().coerceAtLeast(12)
+        val barrelHeight = (bodyHeight * 0.22f).toInt().coerceAtLeast(8)
+        val barrelX = bodyX + (bodyWidth - barrelWidth) / 2
+        val barrelY = bodyY - barrelHeight / 2
+        RenderHelper.drawRect(context, barrelX, barrelY, barrelWidth, barrelHeight, gunMetalBase)
+        RenderHelper.drawRect(
+            context,
+            barrelX + 2,
+            barrelY + 2,
+            barrelWidth - 4,
+            barrelHeight / 2,
+            gunMetalHighlight,
+        )
+
+        // Front sight as a tiny block on top of the barrel.
+        val sightWidth = (barrelWidth * 0.25f).toInt().coerceAtLeast(4)
+        val sightHeight = (barrelHeight * 0.35f).toInt().coerceAtLeast(3)
+        val sightX = barrelX + (barrelWidth - sightWidth) / 2
+        val sightY = barrelY - sightHeight
+        RenderHelper.drawRect(context, sightX, sightY, sightWidth, sightHeight, gunMetalHighlight)
+
+        // HUD text (title, enemies remaining and controls) in the top-left of the content area.
+        val hudX = contentX + contentPadding
+        val hudY = contentY + contentPadding
+        val remaining = getRemainingEnemies()
+        context.drawText(textRenderer, "DOOM (prototype)", hudX, hudY, theme.textPrimary, false)
+        val enemiesText = "Enemies left: $remaining"
+        context.drawText(textRenderer, enemiesText, hudX, hudY + textRenderer.fontHeight + 4, theme.textSecondary, false)
+        val controls = "WASD/arrow keys move, Q/E or Left/Right arrows turn, Space shoot, R reset"
+        context.drawText(textRenderer, controls, hudX, hudY + (textRenderer.fontHeight + 4) * 2, theme.textSecondary, false)
+    }
+
+    fun handleKeyPressed(keyCode: Int, nowMillis: Long = System.currentTimeMillis()): Boolean {
+        when (keyCode) {
+            GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_UP -> moveForwardHeld = true
+            GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_DOWN -> moveBackwardHeld = true
+            GLFW.GLFW_KEY_A -> strafeLeftHeld = true
+            GLFW.GLFW_KEY_D -> strafeRightHeld = true
+            GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_Q -> turnLeftHeld = true
+            GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_E -> turnRightHeld = true
+            GLFW.GLFW_KEY_SPACE -> applyAction(Action.FIRE, nowMillis)
+            GLFW.GLFW_KEY_R -> {
+                applyAction(Action.RESET, nowMillis)
+                resetInputState()
+            }
+            else -> return false
+        }
+        return true
+    }
+
+    fun handleKeyReleased(keyCode: Int): Boolean {
+        when (keyCode) {
+            GLFW.GLFW_KEY_W, GLFW.GLFW_KEY_UP -> moveForwardHeld = false
+            GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_DOWN -> moveBackwardHeld = false
+            GLFW.GLFW_KEY_A -> strafeLeftHeld = false
+            GLFW.GLFW_KEY_D -> strafeRightHeld = false
+            GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_Q -> turnLeftHeld = false
+            GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_E -> turnRightHeld = false
+            else -> return false
+        }
+        return true
     }
 
     // --- Internal helpers -----------------------------------------------------

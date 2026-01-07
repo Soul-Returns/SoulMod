@@ -1,12 +1,16 @@
-package com.soulreturns.config.lib.ui.minigames
+package com.soulreturns.config.minigames.tetris
 
+import com.soulreturns.config.lib.ui.RenderHelper
+import com.soulreturns.config.lib.ui.themes.Theme
+import net.minecraft.client.font.TextRenderer
+import net.minecraft.client.gui.DrawContext
+import org.lwjgl.glfw.GLFW
 import kotlin.random.Random
 
 /**
- * Tetris game model used by the config GUI's Minigames tab.
+ * Tetris game model and rendering used by the config GUI's Minigames tab.
  *
- * This class is UI-agnostic and exposes simple grid-based state
- * that the screen can render however it likes.
+ * Kept separate from the config lib so minigame logic can evolve independently.
  */
 class TetrisGame(
     val columns: Int = 10,
@@ -299,5 +303,139 @@ class TetrisGame(
                 else -> listOf(0 to -1, 0 to 0, 0 to 1, -1 to 1)
             }
         }
+    }
+
+    // ---------- Rendering & input ----------
+
+    fun render(
+        context: DrawContext,
+        contentX: Int,
+        contentY: Int,
+        contentWidth: Int,
+        contentHeight: Int,
+        theme: Theme,
+        contentPadding: Int,
+        textRenderer: TextRenderer,
+    ) {
+        val now = System.currentTimeMillis()
+        update(now)
+
+        val cols = columns
+        val rows = rows
+        if (cols <= 0 || rows <= 0) return
+
+        val cellSize = (minOf(contentWidth * 2 / (cols * 3), contentHeight / rows)).coerceAtLeast(4)
+        if (cellSize <= 0) return
+
+        val boardWidth = cols * cellSize
+        val boardHeight = rows * cellSize
+        val boardX = contentX + contentPadding
+        val boardY = contentY + contentPadding
+
+        // Board background card
+        if (theme.useCardStyle) {
+            RenderHelper.drawRect(context, boardX - 4, boardY - 4, boardWidth + 8, boardHeight + 8, theme.optionCardBackground)
+        }
+
+        val snapshot = getBoardSnapshot()
+        for (y in 0 until rows) {
+            for (x in 0 until cols) {
+                val id = snapshot[y][x]
+                if (id != 0) {
+                    val cellX = boardX + x * cellSize
+                    val cellY = boardY + y * cellSize
+                    val color = when (id) {
+                        1 -> 0xFF00FFFF.toInt() // I - cyan
+                        2 -> 0xFFFFFF00.toInt() // O - yellow
+                        3 -> 0xFFAA00FF.toInt() // T - purple
+                        4 -> 0xFF00FF00.toInt() // S - green
+                        5 -> 0xFFFF0000.toInt() // Z - red
+                        6 -> 0xFF0000FF.toInt() // J - blue
+                        7 -> 0xFFFFA500.toInt() // L - orange
+                        else -> theme.widgetBackground
+                    }
+                    RenderHelper.drawRect(context, cellX, cellY, cellSize - 1, cellSize - 1, color)
+                }
+            }
+        }
+
+        // Active piece
+        for (cell in getActiveCells()) {
+            val cellX = boardX + cell.x * cellSize
+            val cellY = boardY + cell.y * cellSize
+            RenderHelper.drawRect(context, cellX, cellY, cellSize - 1, cellSize - 1, theme.widgetActive)
+        }
+
+        // HUD (score, level, next piece)
+        val hudX = boardX + boardWidth + contentPadding
+        val hudY = boardY
+        val lineH = textRenderer.fontHeight + 4
+        val scoreText = "Score: $score"
+        val levelText = "Level: $level"
+        val linesText = "Lines: $linesCleared"
+        val statusText = if (isGameOver) "Game Over (R to restart)" else "Arrow/WASD move, Space hard drop, R restart"
+        context.drawText(textRenderer, scoreText, hudX, hudY, theme.textPrimary, false)
+        context.drawText(textRenderer, levelText, hudX, hudY + lineH, theme.textPrimary, false)
+        context.drawText(textRenderer, linesText, hudX, hudY + lineH * 2, theme.textPrimary, false)
+        context.drawText(textRenderer, statusText, hudX, hudY + lineH * 4, theme.textSecondary, false)
+
+        // Next piece preview
+        val previewLabelY = hudY + lineH * 6
+        context.drawText(textRenderer, "Next:", hudX, previewLabelY, theme.textPrimary, false)
+
+        val previewCellSize = (cellSize * 3 / 4).coerceAtLeast(4)
+        val previewBoxSize = previewCellSize * 4
+        val previewX = hudX
+        val previewY = previewLabelY + lineH
+
+        // Preview background box
+        RenderHelper.drawRect(context, previewX - 2, previewY - 2, previewBoxSize + 4, previewBoxSize + 4, theme.optionCardBackground)
+
+        val nextCells = getNextPieceCells()
+        if (nextCells.isNotEmpty()) {
+            val minX = nextCells.minOf { it.x }
+            val maxX = nextCells.maxOf { it.x }
+            val minY = nextCells.minOf { it.y }
+            val maxY = nextCells.maxOf { it.y }
+            val spanX = maxX - minX + 1
+            val spanY = maxY - minY + 1
+            val offsetCellsX = ((4 - spanX) / 2).coerceAtLeast(0)
+            val offsetCellsY = ((4 - spanY) / 2).coerceAtLeast(0)
+
+            val color = when (getNextPiece()) {
+                Tetromino.I -> 0xFF00FFFF.toInt()
+                Tetromino.O -> 0xFFFFFF00.toInt()
+                Tetromino.T -> 0xFFAA00FF.toInt()
+                Tetromino.S -> 0xFF00FF00.toInt()
+                Tetromino.Z -> 0xFFFF0000.toInt()
+                Tetromino.J -> 0xFF0000FF.toInt()
+                Tetromino.L -> 0xFFFFA500.toInt()
+            }
+
+            for (cell in nextCells) {
+                val px = previewX + (cell.x - minX + offsetCellsX) * previewCellSize
+                val py = previewY + (cell.y - minY + offsetCellsY) * previewCellSize
+                RenderHelper.drawRect(context, px, py, previewCellSize - 1, previewCellSize - 1, color)
+            }
+        }
+    }
+
+    fun handleKeyPressed(keyCode: Int): Boolean {
+        when (keyCode) {
+            GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_A -> moveLeft()
+            GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_D -> moveRight()
+            GLFW.GLFW_KEY_DOWN, GLFW.GLFW_KEY_S -> softDrop()
+            GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_W -> rotateCW()
+            GLFW.GLFW_KEY_Q -> rotateCCW()
+            GLFW.GLFW_KEY_SPACE -> hardDrop()
+            GLFW.GLFW_KEY_R -> reset()
+            else -> return false
+        }
+        return true
+    }
+
+    fun handleKeyReleased(@Suppress("UNUSED_PARAMETER") keyCode: Int): Boolean {
+        // No key-up behaviour for Tetris at the moment.
+        return false
     }
 }
