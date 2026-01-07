@@ -25,7 +25,15 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         val height: Int,
     )
 
+    private data class ButtonBounds(
+        val x: Int,
+        val y: Int,
+        val width: Int,
+        val height: Int,
+    )
+
     private var elementBounds: List<ElementBounds> = emptyList()
+    private var resetButtonBounds: ButtonBounds? = null
 
     /**
      * Lightweight context used for drag updates, where we only
@@ -63,11 +71,10 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
     }
 
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
-        // Match ModConfigScreen behaviour: draw the in-game background behind
-        // our editor UI, then a semi-transparent blue overlay similar to the
-        // reference screenshot.
+        // Draw the in-game background behind our editor UI so the world remains
+        // visible with Minecraft's standard slight blur, but without the
+        // previous semi-transparent blue overlay.
         renderInGameBackground(context)
-        context.fill(0, 0, width, height, 0x80000080.toInt())
 
         val client = MinecraftClient.getInstance()
         val layout = GuiLayoutManager.getLayout()
@@ -138,6 +145,10 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         // Render HUD content on top of the edit boxes.
         GuiRenderer.renderHud(layout, guiCtx)
 
+        // Draw a simple "Reset" button in the top-right corner to restore the
+        // layout to its default positions and scales.
+        drawResetButton(context, mouseX, mouseY)
+
         // Small label showing which element is selected.
         editState.selectedElementId?.let { selectedId ->
             guiCtx.drawText("Selected: $selectedId", 4, 4, 0xFFFFFF00.toInt(), shadow = true)
@@ -151,6 +162,13 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         val client = MinecraftClient.getInstance()
         val mouseXInt = click.x.toInt()
         val mouseYInt = click.y.toInt()
+
+        // First, check if the reset button was clicked; if so, clear the layout
+        // back to defaults and skip element selection/dragging.
+        if (isOverResetButton(mouseXInt, mouseYInt)) {
+            resetLayoutToDefaults()
+            return true
+        }
 
         // Treat any mouse button as a selection trigger in edit mode. This
         // avoids having to depend on the exact Click.button() enum string.
@@ -226,6 +244,45 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         // Persist layout changes when leaving edit mode
         GuiLayoutManager.save()
         super.close()
+    }
+
+    private fun drawResetButton(context: DrawContext, mouseX: Int, mouseY: Int) {
+        val textRenderer = MinecraftClient.getInstance().textRenderer
+        val padding = 6
+        val buttonHeight = 18
+        val label = "Reset HUD"
+        val labelWidth = textRenderer.getWidth(label)
+        val buttonWidth = labelWidth + padding * 2
+        val x = width - buttonWidth - padding
+        val y = padding
+
+        val hovered = mouseX >= x && mouseX <= x + buttonWidth && mouseY >= y && mouseY <= y + buttonHeight
+        val backgroundColor = if (hovered) 0x80000000.toInt() else 0x60000000.toInt()
+        val borderColor = if (hovered) 0xFFFFFFFF.toInt() else 0x80FFFFFF.toInt()
+
+        // Store bounds for click handling
+        resetButtonBounds = ButtonBounds(x, y, buttonWidth, buttonHeight)
+
+        // Border
+        context.fill(x - 1, y - 1, x + buttonWidth + 1, y + buttonHeight + 1, borderColor)
+        // Background
+        context.fill(x, y, x + buttonWidth, y + buttonHeight, backgroundColor)
+
+        val textX = x + padding
+        val textY = y + (buttonHeight - textRenderer.fontHeight) / 2
+        context.drawText(textRenderer, label, textX, textY, 0xFFFFFFFF.toInt(), false)
+    }
+
+    private fun isOverResetButton(mouseX: Int, mouseY: Int): Boolean {
+        val b = resetButtonBounds ?: return false
+        return mouseX >= b.x && mouseX <= b.x + b.width && mouseY >= b.y && mouseY <= b.y + b.height
+    }
+
+    private fun resetLayoutToDefaults() {
+        // Clear any current selection/dragging state and reset layout.
+        editState = EditState()
+        elementBounds = emptyList()
+        GuiLayoutManager.resetToDefaults()
     }
 
     private fun findHitElement(mouseX: Int, mouseY: Int): String? {

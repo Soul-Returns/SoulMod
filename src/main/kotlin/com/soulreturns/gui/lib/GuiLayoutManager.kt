@@ -141,6 +141,37 @@ object GuiLayoutManager {
     }
 
     /**
+     * Reset the layout back to its default state.
+     *
+     * This clears the in-memory layout and deletes the persisted layout file.
+     * On subsequent ticks, feature modules that use GuiLayoutApi will reseed
+     * their default elements with their original anchor/scale values.
+     */
+    @Synchronized
+    fun resetToDefaults() {
+        // Clear in-memory layout so the next feature tick recreates elements
+        // using their default layout parameters.
+        currentLayout = GuiLayout()
+
+        // Delete the persisted layout file so future runs also start from
+        // defaults. Ignore failures silently; they'll be logged via save().
+        val file = layoutFile
+        if (file != null && file.exists()) {
+            try {
+                if (!file.delete()) {
+                    DebugLogger.logGuiLayout("Failed to delete GUI layout file at ${file.absolutePath} during reset; will be overwritten on next save")
+                } else {
+                    DebugLogger.logGuiLayout("Deleted GUI layout file at ${file.absolutePath}; layout will be reseeded from defaults")
+                }
+            } catch (e: Exception) {
+                DebugLogger.logGuiLayout(
+                    "Exception while deleting GUI layout file at ${file.absolutePath}: ${e::class.java.name}: ${e.message}"
+                )
+            }
+        }
+    }
+
+    /**
      * Load layout from the configured file if it exists; otherwise, persist the
      * current in-memory layout as the initial default.
      */
