@@ -1,6 +1,7 @@
 package com.soulreturns.config.categories
 
 import com.soulreturns.config.categories.render.HighlightSubCategory
+import com.soulreturns.config.categories.render.OverlaysSubCategory
 import com.soulreturns.config.lib.annotations.ConfigSubcategory
 import com.soulreturns.config.lib.annotations.ConfigOption
 import com.soulreturns.config.lib.annotations.Toggle
@@ -10,6 +11,10 @@ class RenderCategory {
     @JvmField
     @ConfigSubcategory(name = "Highlights", description = "Item highlights")
     var highlightSubCategory = HighlightSubCategory()
+
+    @JvmField
+    @ConfigSubcategory(name = "Overlays", description = "Overlays")
+    var overlaysSubCategory = OverlaysSubCategory()
 
     @JvmField
     @ConfigOption(name = "Tooltips")
@@ -25,7 +30,7 @@ class RenderCategory {
     @ConfigOption(name = "Show Skyblock ID in Tooltip", description = "Shows the Skyblock item ID in the item tooltip")
     @Toggle
     var showSkyblockIdInTooltip: Boolean = false
-    
+
     @JvmField
     @ConfigOption(name = "Player Rendering")
     @Divider(label = "Player Rendering")
