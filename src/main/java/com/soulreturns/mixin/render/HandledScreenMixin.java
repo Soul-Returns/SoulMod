@@ -18,16 +18,26 @@ import static com.soulreturns.config.ConfigInstanceKt.getConfig;
 public class HandledScreenMixin {
 
     /**
-     * Inject after each slot is drawn to add highlighting
+     * Inject after each slot is drawn to add highlighting.
      *
-     * Target: HandledScreen.drawSlot(DrawContext, Slot)
-     * Injection point: TAIL (after the slot has been drawn)
+     * For 1.21.8 and 1.21.10, HandledScreen#drawSlot(DrawContext, Slot) is used.
+     * For 1.21.11+, the signature became HandledScreen#drawSlot(DrawContext, Slot, int, int).
+     * We use Stonecutter conditionals to generate the correct overload per version.
      */
-    @Inject(
-        method = "drawSlot",
-        at = @At("TAIL")
-    )
+
+    //? if <1.21.11 {
+    /*@Inject(method = "drawSlot", at = @At("TAIL"))
     private void onDrawSlot(DrawContext context, Slot slot, CallbackInfo ci) {
+        handleDrawSlot(context, slot, slot.x, slot.y);
+    }
+    *///?} else {
+    @Inject(method = "drawSlot", at = @At("TAIL"))
+    private void onDrawSlot(DrawContext context, Slot slot, int x, int y, CallbackInfo ci) {
+        handleDrawSlot(context, slot, x, y);
+    }
+    //?}
+
+    private void handleDrawSlot(DrawContext context, Slot slot, int x, int y) {
         // Check if the feature is enabled
         if (!getConfig().renderCategory.highlightSubCategory.itemHighlightingEnabled) return;
 
@@ -43,7 +53,7 @@ public class HandledScreenMixin {
         Integer color = HighlightManager.INSTANCE.getColorForItem(skyblockId);
         if (color == null) return;
 
-        // Draw the highlight border
-        RenderHelper.drawSlotHighlight(context, slot.x, slot.y, color);
+        // Draw the highlight border at the slot's position
+        RenderHelper.drawSlotHighlight(context, x, y, color);
     }
 }

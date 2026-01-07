@@ -107,11 +107,6 @@ class ModConfigScreen<T : Any>(
         updateDimensions()
     }
     
-    override fun resize(client: net.minecraft.client.MinecraftClient, width: Int, height: Int) {
-        super.resize(client, width, height)
-        updateDimensions()
-    }
-    
     private fun updateDimensions() {
         // Calculate size based on layout fractions
         guiWidth = (width * layout.guiWidthFraction).toInt()
@@ -163,6 +158,9 @@ class ModConfigScreen<T : Any>(
     }
     
     override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+        // Recompute GUI bounds every frame to handle window resizes across
+        // all supported Minecraft versions without relying on Screen.resize.
+        updateDimensions()
         // Smooth scroll interpolation
         sidebarScroll = RenderHelper.lerp(sidebarScroll.toFloat(), targetSidebarScroll.toFloat(), scrollSmoothing).toDouble()
         contentScroll = RenderHelper.lerp(contentScroll.toFloat(), targetContentScroll.toFloat(), scrollSmoothing).toDouble()

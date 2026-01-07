@@ -14,8 +14,8 @@ plugins {
 
 stonecutter {
     create(rootProject) {
-        versions("1.21.8", "1.21.10")
-        vcsVersion = "1.21.10"
+        versions("1.21.8", "1.21.10", "1.21.11")
+        vcsVersion = "1.21.11"
     }
 }
 

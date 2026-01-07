@@ -54,6 +54,9 @@ dependencies {
 	modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("fabric_kotlin_version")}")
 
     modRuntimeOnly("me.djtheredstoner:${project.property("deps.devauth")}")
+
+    // DevAuth depends on Apache HttpClient; include it as a plain runtime library
+    runtimeOnly("org.apache.httpcomponents:httpclient:4.5.14")
 }
 
 loom {
