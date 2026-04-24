@@ -1,9 +1,12 @@
 package com.soulreturns.profileviewer.gui
 
+import com.soulreturns.config.gui.Theme
 import com.soulreturns.profileviewer.api.MojangApi
 import com.soulreturns.profileviewer.model.SkyblockProfile
 import com.soulreturns.profileviewer.model.SkyblockProfilesResponse
+import com.soulreturns.render.DrawContextRenderer
 import io.wispforest.owo.ui.base.BaseOwoScreen
+import io.wispforest.owo.ui.component.ButtonComponent
 import io.wispforest.owo.ui.component.LabelComponent
 import io.wispforest.owo.ui.component.UIComponents
 import io.wispforest.owo.ui.container.FlowLayout
@@ -14,6 +17,7 @@ import io.wispforest.owo.ui.core.OwoUIAdapter
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.Surface
 import io.wispforest.owo.ui.core.VerticalAlignment
+import net.minecraft.client.MinecraftClient
 import net.minecraft.text.Text
 import java.util.UUID
 
@@ -26,74 +30,104 @@ class ProfileViewerScreen(
 
     private var current: SkyblockProfile = initial
     private val uuidUndashed = MojangApi.toUndashed(uuid)
+    private var activeTab = "dungeons"
     private lateinit var bodyContainer: FlowLayout
-    private lateinit var profileLabel: LabelComponent
+    private var profileNameLabel: LabelComponent? = null
 
     override fun createAdapter(): OwoUIAdapter<FlowLayout> =
-        OwoUIAdapter.create(this) { hSize, vSize ->
-            UIContainers.verticalFlow(hSize, vSize)
-        }
+        OwoUIAdapter.create(this) { hSize, vSize -> UIContainers.verticalFlow(hSize, vSize) }
 
     override fun build(root: FlowLayout) {
-        root.gap(8)
-        root.padding(Insets.of(12))
-        root.surface(Surface.VANILLA_TRANSLUCENT)
+        root.surface(Theme.backgroundSurface)
         root.horizontalAlignment(HorizontalAlignment.CENTER)
-        root.verticalAlignment(VerticalAlignment.TOP)
+        root.verticalAlignment(VerticalAlignment.CENTER)
 
-        // Header: player name + profile selector
-        val header = UIContainers.horizontalFlow(Sizing.fill(90), Sizing.content())
-        header.gap(8)
-        header.padding(Insets.of(6))
-        header.surface(Surface.DARK_PANEL)
-        header.verticalAlignment(VerticalAlignment.CENTER)
-        header.horizontalAlignment(HorizontalAlignment.CENTER)
+        val card = UIContainers.verticalFlow(Sizing.fill(85), Sizing.fill(90))
+        card.surface(Theme.panelSurface)
+        card.padding(Insets.of(0))
 
-        header.child(UIComponents.label(Text.literal("§l$name")))
-        header.child(UIComponents.label(Text.literal("§7|")))
+        card.child(buildHeader())
+        card.child(horizontalDivider())
+        card.child(buildTabBar())
+        card.child(horizontalDivider())
 
-        header.child(
-            UIComponents.button(Text.literal("◀")) { cycleProfile(-1) }
-                .sizing(Sizing.fixed(20), Sizing.fixed(20))
-        )
-        profileLabel = UIComponents.label(Text.literal(profileDisplay(current)))
-        header.child(profileLabel)
-        header.child(
-            UIComponents.button(Text.literal("▶")) { cycleProfile(1) }
-                .sizing(Sizing.fixed(20), Sizing.fixed(20))
-        )
+        val scrollBody = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
+        scrollBody.padding(Insets.of(12, 16, 16, 16))
+        scrollBody.gap(8)
+        bodyContainer = scrollBody
 
-        root.child(header)
+        val scroll = UIContainers.verticalScroll(Sizing.fill(100), Sizing.fill(100), scrollBody)
+        scroll.scrollbarThiccness(4)
+        card.child(scroll)
 
-        // Tab strip — only Dungeons for now
-        val tabs = UIContainers.horizontalFlow(Sizing.fill(90), Sizing.content())
-        tabs.gap(4)
-        tabs.horizontalAlignment(HorizontalAlignment.CENTER)
-        tabs.child(
-            UIComponents.button(Text.literal("Dungeons")) { /* only tab */ }
-                .sizing(Sizing.fixed(80), Sizing.fixed(20))
-        )
-        root.child(tabs)
-
-        // Body: scrollable container that we replace contents of when profile changes
-        bodyContainer = UIContainers.verticalFlow(Sizing.fill(90), Sizing.fill(70))
-        bodyContainer.gap(6)
-        bodyContainer.padding(Insets.of(8))
-        bodyContainer.surface(Surface.DARK_PANEL)
-        bodyContainer.horizontalAlignment(HorizontalAlignment.CENTER)
-
-        root.child(UIContainers.verticalScroll(Sizing.fill(95), Sizing.fill(75), bodyContainer))
-
+        root.child(card)
         rebuildBody()
     }
 
+    private fun buildHeader(): FlowLayout {
+        val header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
+        header.padding(Insets.of(14, 16, 14, 20))
+        header.verticalAlignment(VerticalAlignment.CENTER)
+        header.gap(8)
+
+        header.child(
+            UIComponents.label(Text.literal(name))
+                .color(Theme.color(Theme.TEXT))
+        )
+
+        if (response.profiles.size > 1) {
+            header.child(verticalSeparator())
+            header.child(cycleButton("◀") { cycleProfile(-1) })
+            val lbl = UIComponents.label(Text.literal(profileDisplay(current)))
+                .color(Theme.color(Theme.TEXT_DIM))
+            profileNameLabel = lbl
+            header.child(lbl)
+            header.child(cycleButton("▶") { cycleProfile(1) })
+        }
+
+        return header
+    }
+
+    private fun buildTabBar(): FlowLayout {
+        val bar = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
+        bar.padding(Insets.of(6, 16, 4, 16))
+        bar.gap(4)
+        bar.verticalAlignment(VerticalAlignment.CENTER)
+        bar.child(tabButton("Dungeons", "dungeons"))
+        return bar
+    }
+
+    private fun tabButton(label: String, id: String): ButtonComponent {
+        val btn = UIComponents.button(Text.empty()) {
+            if (activeTab != id) { activeTab = id; rebuildBody() }
+        }
+        btn.horizontalSizing(Sizing.fixed(90))
+        btn.verticalSizing(Sizing.fixed(26))
+        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
+            val selected = activeTab == id
+            when {
+                selected -> DrawContextRenderer.roundedFill(
+                    ctx, button.x, button.y, button.x + button.width, button.y + button.height,
+                    Theme.ACCENT, Theme.ITEM_RADIUS
+                )
+                button.isHovered -> DrawContextRenderer.roundedFill(
+                    ctx, button.x, button.y, button.x + button.width, button.y + button.height,
+                    Theme.PANEL_HOVER, Theme.ITEM_RADIUS
+                )
+            }
+            val tr = MinecraftClient.getInstance().textRenderer
+            val tx = button.x + (button.width - tr.getWidth(label)) / 2
+            val ty = button.y + (button.height - tr.fontHeight) / 2
+            ctx.drawText(tr, Text.literal(label), tx, ty, if (selected) Theme.TEXT else Theme.TEXT_DIM, false)
+        })
+        return btn
+    }
+
     private fun cycleProfile(delta: Int) {
-        if (response.profiles.size < 2) return
         val idx = response.profiles.indexOf(current).coerceAtLeast(0)
         val size = response.profiles.size
-        val next = response.profiles[((idx + delta) % size + size) % size]
-        current = next
-        profileLabel.text(Text.literal(profileDisplay(current)))
+        current = response.profiles[((idx + delta) % size + size) % size]
+        profileNameLabel?.text(Text.literal(profileDisplay(current)))
         rebuildBody()
     }
 
@@ -102,7 +136,8 @@ class ProfileViewerScreen(
         val member = current.memberFor(uuidUndashed)
         if (member == null) {
             bodyContainer.child(
-                UIComponents.label(Text.literal("§cNo data for this player on profile §f${current.cuteName}§c."))
+                UIComponents.label(Text.literal("No data for this player on profile ${current.cuteName}."))
+                    .color(Theme.color(Theme.TEXT_DIM))
             )
             return
         }
@@ -111,8 +146,36 @@ class ProfileViewerScreen(
 
     private fun profileDisplay(p: SkyblockProfile): String {
         val mode = p.gameMode?.takeIf { it.isNotBlank() && it != "normal" }
-        val tag = if (p.selected) " §a(active)" else ""
-        val modeTag = mode?.let { " §7[$it]" } ?: ""
-        return "§f${p.cuteName}$modeTag$tag"
+        val active = if (p.selected) " (active)" else ""
+        val modeTag = mode?.let { " [$it]" } ?: ""
+        return "${p.cuteName}$modeTag$active"
+    }
+
+    private fun cycleButton(icon: String, action: () -> Unit): ButtonComponent {
+        val btn = UIComponents.button(Text.empty()) { action() }
+        btn.horizontalSizing(Sizing.fixed(20))
+        btn.verticalSizing(Sizing.fixed(20))
+        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
+            val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
+            DrawContextRenderer.roundedFill(ctx, button.x, button.y, button.x + button.width, button.y + button.height, bg, Theme.ITEM_RADIUS)
+            val tr = MinecraftClient.getInstance().textRenderer
+            val tx = button.x + (button.width - tr.getWidth(icon)) / 2
+            val ty = button.y + (button.height - tr.fontHeight) / 2
+            ctx.drawText(tr, Text.literal(icon), tx, ty, Theme.TEXT_DIM, false)
+        })
+        return btn
+    }
+
+    private fun verticalSeparator(): FlowLayout {
+        val s = UIContainers.verticalFlow(Sizing.fixed(1), Sizing.fixed(14))
+        s.surface(Surface.flat(Theme.SEPARATOR))
+        s.margins(Insets.horizontal(4))
+        return s
+    }
+
+    private fun horizontalDivider(): FlowLayout {
+        val d = UIContainers.verticalFlow(Sizing.fill(100), Sizing.fixed(1))
+        d.surface(Surface.flat(Theme.SEPARATOR))
+        return d
     }
 }
