@@ -1,15 +1,10 @@
-package com.soulreturns.profileviewer.api
+package com.soulreturns.api
 
-import com.soulreturns.profileviewer.SpvExecutor
 import net.minecraft.client.MinecraftClient
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * Holds the bearer token issued by the SPV backend after a successful
- * Mojang session-server handshake (mirrors meowdding/skyblock-pv).
- */
 object BackendAuth {
     private data class TokenEntry(val token: String, val acquiredAt: Instant)
 
@@ -35,14 +30,14 @@ object BackendAuth {
             val token = performHandshake()
             if (token != null) {
                 current.set(TokenEntry(token, Instant.now()))
-                SpvExecutor.log("Authenticated with SPV backend.")
+                SoulExecutor.log("Authenticated with backend.")
                 token
             } else {
                 lastFailureAt = Instant.now()
                 null
             }
         } catch (e: Exception) {
-            SpvExecutor.warn("SPV backend auth threw", e)
+            SoulExecutor.warn("Backend auth threw", e)
             lastFailureAt = Instant.now()
             null
         }
@@ -60,12 +55,12 @@ object BackendAuth {
         try {
             sessionService.joinServer(profileUuid, accessToken, serverId)
         } catch (e: Exception) {
-            SpvExecutor.warn("sessionService.joinServer failed", e)
+            SoulExecutor.warn("sessionService.joinServer failed", e)
             return null
         }
 
-        val response = SpvHttp.get(
-            "${SpvHttp.backendBaseUrl()}/authenticate",
+        val response = SoulHttp.get(
+            "${SoulHttp.backendBaseUrl()}/authenticate",
             headers = mapOf(
                 "x-minecraft-username" to username,
                 "x-minecraft-server" to serverId,
@@ -75,7 +70,7 @@ object BackendAuth {
         return if (response.statusCode() in 200..299 && response.body().isNotBlank()) {
             response.body().trim()
         } else {
-            SpvExecutor.warn("Backend /authenticate returned ${response.statusCode()}: ${response.body().take(200)}")
+            SoulExecutor.warn("Backend /authenticate returned ${response.statusCode()}: ${response.body().take(200)}")
             null
         }
     }

@@ -24,7 +24,7 @@ import net.minecraft.client.MinecraftClient
 import net.minecraft.text.Text
 import java.util.Locale
 
-class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.config.soul.title")) {
+class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.config.soul/config.title")) {
 
     private val wrapper: ConfigWrapper<*> get() = SoulConfigHolder.INSTANCE
 
@@ -277,7 +277,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             }
             for ((groupId, opts) in grouped) {
                 val displayName: String? = if (groupId != null) {
-                    val nameKey = "text.config.soul.group.${activeCategory}.${activeSubcategory}.$groupId"
+                    val nameKey = "text.config.soul/config.group.${activeCategory}.${activeSubcategory}.$groupId"
                     val nameText = Text.translatable(nameKey)
                     if (nameText.string == nameKey) formatGroupId(groupId) else nameText.string
                 } else {
@@ -542,7 +542,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         }
         return byCat.entries.map { (catId, groups) ->
             val subs = groups.entries.map { (subId, options) ->
-                val nameKey = "text.config.soul.group.$catId.$subId"
+                val nameKey = "text.config.soul/config.group.$catId.$subId"
                 SubcategoryEntry(
                     catId = catId,
                     subId = subId,
@@ -552,7 +552,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             }
             CategoryEntry(
                 id = catId,
-                displayName = Text.translatable("text.config.soul.category.$catId"),
+                displayName = Text.translatable("text.config.soul/config.category.$catId"),
                 subcategories = subs
             )
         }

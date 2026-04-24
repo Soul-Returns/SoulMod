@@ -3,7 +3,7 @@ package com.soulreturns.profileviewer.service
 import com.google.gson.JsonObject
 import com.soulreturns.config.cfg
 import com.soulreturns.profileviewer.SpvExecutor
-import com.soulreturns.profileviewer.api.BackendClient
+import com.soulreturns.api.BackendClient
 import com.soulreturns.profileviewer.api.MojangApi
 import com.soulreturns.profileviewer.gui.ProfileViewerScreen
 import com.soulreturns.profileviewer.model.SkyblockProfile

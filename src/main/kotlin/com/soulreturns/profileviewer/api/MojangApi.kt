@@ -1,6 +1,7 @@
 package com.soulreturns.profileviewer.api
 
 import com.google.gson.JsonParser
+import com.soulreturns.api.SoulHttp
 import com.soulreturns.profileviewer.SpvExecutor
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
@@ -17,7 +18,7 @@ object MojangApi {
             val key = name.lowercase()
             cache[key]?.let { return@supplyAsync it }
             try {
-                val response = SpvHttp.get("${SpvHttp.MOJANG_API}/users/profiles/minecraft/$name")
+                val response = SoulHttp.get("${SoulHttp.MOJANG_API}/users/profiles/minecraft/$name")
                 if (response.statusCode() == 200 && response.body().isNotBlank()) {
                     val obj = JsonParser.parseString(response.body()).asJsonObject
                     val raw = obj["id"].asString

@@ -1,24 +1,14 @@
 package com.soulreturns.profileviewer
 
+import com.soulreturns.api.SoulExecutor
 import com.soulreturns.config.cfg
 import org.slf4j.LoggerFactory
-import java.util.concurrent.Executors
-import java.util.concurrent.ThreadFactory
-import java.util.concurrent.atomic.AtomicInteger
 
+/** SPV-specific logging wrapper around [SoulExecutor]. Uses the [SPV] tag. */
 object SpvExecutor {
     private val logger = LoggerFactory.getLogger("SoulMod/SPV")
 
-    private val factory = object : ThreadFactory {
-        private val counter = AtomicInteger(0)
-        override fun newThread(r: Runnable): Thread {
-            val t = Thread(r, "soul-spv-${counter.incrementAndGet()}")
-            t.isDaemon = true
-            return t
-        }
-    }
-
-    val executor = Executors.newFixedThreadPool(2, factory)
+    val executor get() = SoulExecutor.executor
 
     fun log(msg: String) {
         try {

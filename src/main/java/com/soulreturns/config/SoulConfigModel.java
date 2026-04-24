@@ -16,7 +16,7 @@ import io.wispforest.owo.config.annotation.SectionHeader;
  * {@code text.config.soul.option.<path>} and {@code .tooltip}.
  */
 @Modmenu(modId = "soul")
-@Config(name = "soul", wrapperName = "SoulConfig")
+@Config(name = "soul/config", wrapperName = "SoulConfig")
 public class SoulConfigModel {
 
     @SectionHeader("render")
@@ -33,6 +33,9 @@ public class SoulConfigModel {
 
     @SectionHeader("profileViewer")
     @Nest public ProfileViewer profileViewer = new ProfileViewer();
+
+    @SectionHeader("backend")
+    @Nest public Backend backend = new Backend();
 
     @SectionHeader("debug")
     @Nest public Debug debug = new Debug();
@@ -108,6 +111,9 @@ public class SoulConfigModel {
 
     public static class ProfileViewer {
         public boolean enabled = true;
+    }
+
+    public static class Backend {
         public String backendUrlOverride = "";
     }
 

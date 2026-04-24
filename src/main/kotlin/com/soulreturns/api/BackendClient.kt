@@ -1,8 +1,7 @@
-package com.soulreturns.profileviewer.api
+package com.soulreturns.api
 
 import com.google.gson.JsonElement
 import com.google.gson.JsonParser
-import com.soulreturns.profileviewer.SpvExecutor
 import java.time.Instant
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
@@ -22,14 +21,14 @@ object BackendClient {
         CompletableFuture.supplyAsync({
             cache[endpoint]?.let { entry ->
                 if (entry.expiresAt.isAfter(Instant.now())) {
-                    SpvExecutor.log("Cache hit for $endpoint")
+                    SoulExecutor.log("Cache hit for $endpoint")
                     return@supplyAsync Result.Ok(entry.json, entry.expiresAt)
                 }
                 cache.remove(endpoint)
             }
 
             val token = BackendAuth.ensureAuthenticated()
-                ?: return@supplyAsync Result.Error(401, "Not authenticated with SPV backend")
+                ?: return@supplyAsync Result.Error(401, "Not authenticated with backend")
 
             val first = call(endpoint, token, intent)
             if (first is Result.Error && first.statusCode == 401) {
@@ -40,13 +39,13 @@ object BackendClient {
             } else {
                 first
             }
-        }, SpvExecutor.executor)
+        }, SoulExecutor.executor)
 
     private fun call(endpoint: String, token: String, intent: String?): Result {
-        val url = SpvHttp.backendBaseUrl() + endpoint
-        SpvExecutor.log("GET $url")
+        val url = SoulHttp.backendBaseUrl() + endpoint
+        SoulExecutor.log("GET $url")
         val response = try {
-            SpvHttp.get(
+            SoulHttp.get(
                 url,
                 headers = buildMap {
                     put("Authorization", token)
@@ -54,7 +53,7 @@ object BackendClient {
                 }
             )
         } catch (e: Exception) {
-            SpvExecutor.warn("Backend GET threw for $endpoint", e)
+            SoulExecutor.warn("Backend GET threw for $endpoint", e)
             return Result.Error(-1, e.message ?: "network error")
         }
 

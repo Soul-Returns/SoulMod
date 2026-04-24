@@ -1,16 +1,15 @@
-package com.soulreturns.profileviewer.api
+package com.soulreturns.api
 
 import com.soulreturns.Soul
 import com.soulreturns.config.cfg
-import com.soulreturns.profileviewer.SpvExecutor
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 
-object SpvHttp {
-    const val PROD_BACKEND_URL = "https://sky.soulreturns.com"
+object SoulHttp {
+    const val BACKEND_URL = "https://sky.soulreturns.com"
     const val MOJANG_API = "https://api.mojang.com"
 
     fun userAgent(): String {
@@ -23,20 +22,20 @@ object SpvHttp {
     }
 
     fun backendBaseUrl(): String {
-        val sysProp = System.getProperty("soul.spv.backendUrl")
+        val sysProp = System.getProperty("soul.backendUrl")
         if (!sysProp.isNullOrBlank()) return sysProp.trimEnd('/')
         val override = try {
-            cfg.profileViewer.backendUrlOverride()
+            cfg.backend.backendUrlOverride()
         } catch (_: Throwable) {
             ""
         }
         if (override.isNotBlank()) return override.trimEnd('/')
-        return PROD_BACKEND_URL
+        return BACKEND_URL
     }
 
     val client: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
-        .executor(SpvExecutor.executor)
+        .executor(SoulExecutor.executor)
         .build()
 
     fun get(url: String, headers: Map<String, String> = emptyMap()): HttpResponse<String> {
