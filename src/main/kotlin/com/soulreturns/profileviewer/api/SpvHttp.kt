@@ -10,7 +10,7 @@ import java.net.http.HttpResponse
 import java.time.Duration
 
 object SpvHttp {
-    const val PROD_BACKEND_URL = "https://spv.soulreturns.dev"
+    const val PROD_BACKEND_URL = "https://sky.soulreturns.com"
     const val MOJANG_API = "https://api.mojang.com"
 
     fun userAgent(): String {
