@@ -41,6 +41,21 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         val subcategories: List<SubcategoryEntry>
     )
 
+    /**
+     * Explicit section layout for subcategories whose config fields are flat
+     * (depth-2 paths, e.g. render.hideHeldItemTooltip) and can't be auto-grouped
+     * by path segment. Structure: cat → sub → ordered list of (label, field names).
+     * Options not listed in any section are collected into a trailing unlabelled card.
+     */
+    private val explicitSections: Map<String, Map<String, List<Pair<String, Set<String>>>>> = mapOf(
+        "render" to mapOf(
+            "misc" to listOf(
+                "Tooltips"         to setOf("hideHeldItemTooltip", "showSkyblockIdInTooltip"),
+                "Player Rendering" to setOf("oldSneakHeight")
+            )
+        )
+    )
+
     private val categories: List<CategoryEntry> by lazy { collectCategories() }
     private var activeCategory: String = categories.firstOrNull()?.id ?: ""
     private var activeSubcategory: String =
@@ -130,7 +145,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
                     subcategoryDisplayNames[cat.id to sub.subId] = sub.displayName.string
                 }
             }
-            sidebarList.child(spacer(4))
+            sidebarList.child(spacer(2))
         }
     }
 
@@ -171,9 +186,9 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             toggleCategory(cat)
         }
         btn.horizontalSizing(Sizing.fill(100))
-        btn.verticalSizing(Sizing.fixed(22))
+        btn.verticalSizing(Sizing.fixed(18))
         btn.renderer(categoryHeaderRenderer(label, expanded))
-        btn.margins(Insets.of(6, 1, 0, 0))
+        btn.margins(Insets.of(3, 1, 0, 0))
         return btn
     }
 
@@ -188,9 +203,9 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             }
         }
         btn.horizontalSizing(Sizing.fill(100))
-        btn.verticalSizing(Sizing.fixed(26))
+        btn.verticalSizing(Sizing.fixed(20))
         btn.renderer(sidebarItemRenderer(displayText, cat.id == activeCategory && sub.subId == activeSubcategory))
-        btn.margins(Insets.of(1, 1, 0, 4))
+        btn.margins(Insets.of(1, 1, 0, 2))
         return btn
     }
 
@@ -233,21 +248,63 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         val scrollBody = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
         // Right padding leaves room for the scrollbar so rows don't visually clip.
         scrollBody.padding(Insets.of(12, 16, 16, 20))
-        scrollBody.gap(4)
+        scrollBody.gap(8)
         scrollBody.horizontalAlignment(HorizontalAlignment.LEFT)
 
-        val groupCard = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
-        groupCard.surface(Theme.panelInsetSurface)
-        groupCard.padding(Insets.of(8))
-        groupCard.gap(2)
-        for (opt in sub.options) {
-            groupCard.child(buildRow(opt))
+        val sections = explicitSections[activeCategory]?.get(activeSubcategory)
+        if (sections != null) {
+            // Explicit section layout: split flat options into labeled groups by field name.
+            val byField = sub.options.associateBy { it.key().path().last() }
+            val placed = mutableSetOf<String>()
+            for ((label, fieldNames) in sections) {
+                val sectionOpts = fieldNames.mapNotNull { byField[it] }.also {
+                    placed.addAll(fieldNames)
+                }
+                if (sectionOpts.isEmpty()) continue
+                addSection(scrollBody, label, sectionOpts)
+            }
+            // Any options not covered by an explicit section go into a trailing unlabelled card.
+            val remaining = sub.options.filter { it.key().path().last() !in placed }
+            if (remaining.isNotEmpty()) addSection(scrollBody, null, remaining)
+        } else {
+            // Auto-group by 3rd path segment (e.g. render.overlays.field → group "overlays").
+            // Flat options (depth ≤ 2) fall into null → labelled with the subcategory name.
+            val grouped = LinkedHashMap<String?, MutableList<Option<*>>>()
+            for (opt in sub.options) {
+                val path = opt.key().path()
+                val group = if (path.size >= 4) path[2] else null
+                grouped.getOrPut(group) { mutableListOf() }.add(opt)
+            }
+            for ((groupId, opts) in grouped) {
+                val displayName: String? = if (groupId != null) {
+                    val nameKey = "text.config.soul.group.${activeCategory}.${activeSubcategory}.$groupId"
+                    val nameText = Text.translatable(nameKey)
+                    if (nameText.string == nameKey) formatGroupId(groupId) else nameText.string
+                } else {
+                    null
+                }
+                addSection(scrollBody, displayName, opts)
+            }
         }
-        scrollBody.child(groupCard)
 
         val scroll = UIContainers.verticalScroll(Sizing.fill(100), Sizing.fill(100), scrollBody)
         scroll.scrollbarThiccness(4)
         contentColumn.child(scroll)
+    }
+
+    private fun addSection(parent: FlowLayout, label: String?, opts: List<Option<*>>) {
+        if (label != null) {
+            val lbl = UIComponents.label(Text.literal(label))
+                .color(Theme.color(Theme.TEXT_DIM))
+            lbl.margins(Insets.of(4, 0, 0, 6))
+            parent.child(lbl)
+        }
+        val card = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
+        card.surface(Theme.panelInsetSurface)
+        card.padding(Insets.of(8))
+        card.gap(2)
+        for (opt in opts) card.child(buildRow(opt))
+        parent.child(card)
     }
 
     private fun buildRow(opt: Option<*>): FlowLayout {
@@ -347,7 +404,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             val icon = "↺"
             val tx = button.x + (button.width - tr.getWidth(icon)) / 2
             val ty = button.y + (button.height - tr.fontHeight) / 2
-            ctx.drawText(tr, icon, tx, ty, if (button.isHovered) Theme.ACCENT else Theme.TEXT_DIM, false)
+            ctx.drawText(tr, Text.literal(icon), tx, ty, if (button.isHovered) Theme.ACCENT else Theme.TEXT_DIM, false)
         })
         return btn
     }
@@ -357,6 +414,12 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         slot.clearChildren()
         if (opt.value() != opt.defaultValue()) slot.child(resetIconButton(opt))
     }
+
+    private fun formatGroupId(id: String): String =
+        // "playerRendering" → "Player Rendering", "tooltips" → "Tooltips"
+        id.replace(Regex("([A-Z])"), " $1")
+            .replaceFirstChar { it.uppercase() }
+            .trim()
 
     private fun formatValue(value: Any?): String = when (value) {
         is Float  -> String.format(Locale.ROOT, "%.2f", value)
@@ -423,7 +486,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             val arrow = if (expanded) "▾" else "▸"
             val label = "$arrow  $text"
             val ty = button.y + (button.height - tr.fontHeight) / 2
-            ctx.drawText(tr, label, button.x + 6, ty, Theme.TEXT_FAINT, false)
+            ctx.drawText(tr, Text.literal(label), button.x + 6, ty, Theme.TEXT_FAINT, false)
         }
     }
 
@@ -444,7 +507,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             }
             val textColor = if (selected) Theme.TEXT else Theme.TEXT_DIM
             val ty = button.y + (button.height - tr.fontHeight) / 2
-            ctx.drawText(tr, text, button.x + 10, ty, textColor, false)
+            ctx.drawText(tr, Text.literal(text), button.x + 10, ty, textColor, false)
         }
     }
 
