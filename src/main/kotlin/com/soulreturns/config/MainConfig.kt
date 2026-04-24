@@ -6,6 +6,7 @@ import com.soulreturns.config.categories.FixesCategory
 import com.soulreturns.config.categories.MiningCategory
 import com.soulreturns.config.categories.MinigamesCategory
 import com.soulreturns.config.categories.DebugCategory
+import com.soulreturns.config.categories.ProfileViewerCategory
 import com.soulreturns.config.lib.annotations.ConfigCategory
 
 const val CURRENT_CONFIG_VERSION: Int = 1
@@ -40,6 +41,10 @@ class MainConfig {
     @JvmField
     @ConfigCategory(name = "Minigames", description = "Config GUI minigames")
     var minigamesCategory = MinigamesCategory()
+
+    @JvmField
+    @ConfigCategory(name = "Profile Viewer", description = "Soul Profile Viewer (/spv) command")
+    var profileViewerCategory = ProfileViewerCategory()
 
     @JvmField
     @ConfigCategory(name = "Debug", description = "Debug settings")

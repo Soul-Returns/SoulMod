@@ -65,6 +65,7 @@ object Soul : ClientModInitializer {
 
     fun registerCommands() {
         SoulCommand.register()
+        com.soulreturns.profileviewer.SpvCommand.register()
     }
 
     fun registerFeatures() {
