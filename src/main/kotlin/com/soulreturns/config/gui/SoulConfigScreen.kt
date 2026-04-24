@@ -1,14 +1,14 @@
 package com.soulreturns.config.gui
 
 import com.soulreturns.config.SoulConfigHolder
+import com.soulreturns.config.gui.components.SoulSlider
+import com.soulreturns.config.gui.components.SoulToggle
+import com.soulreturns.render.DrawContextRenderer
 import io.wispforest.owo.config.ConfigWrapper
 import io.wispforest.owo.config.Option
 import io.wispforest.owo.config.annotation.RangeConstraint
 import io.wispforest.owo.ui.base.BaseOwoScreen
 import io.wispforest.owo.ui.component.ButtonComponent
-import io.wispforest.owo.ui.component.CheckboxComponent
-import io.wispforest.owo.ui.component.DiscreteSliderComponent
-import io.wispforest.owo.ui.component.SliderComponent
 import io.wispforest.owo.ui.component.TextBoxComponent
 import io.wispforest.owo.ui.component.UIComponents
 import io.wispforest.owo.ui.container.FlowLayout
@@ -51,6 +51,8 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
     private val categoryHeaderButtons = mutableMapOf<String, ButtonComponent>()
     private val expandedCategories = mutableSetOf<String>()
     private val resetSlots = mutableMapOf<String, FlowLayout>()
+    // Display text for each subcategory — populated on rebuild, never mutated, safe for renderers.
+    private val subcategoryDisplayNames = mutableMapOf<Pair<String, String>, String>()
 
     override fun createAdapter(): OwoUIAdapter<FlowLayout> =
         OwoUIAdapter.create(this) { hSize, vSize -> UIContainers.verticalFlow(hSize, vSize) }
@@ -72,7 +74,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         sidebarColumn.gap(2)
         sidebarColumn.horizontalAlignment(HorizontalAlignment.LEFT)
 
-        val title = UIComponents.label(Text.literal("§l${title.string}"))
+        val title = UIComponents.label(Text.literal(title.string))
             .color(Theme.color(Theme.ACCENT))
             .margins(Insets.of(4, 14, 4, 4))
         sidebarColumn.child(title)
@@ -93,7 +95,6 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         rebuildSidebarList()
 
         card.child(sidebarColumn)
-        card.child(verticalDivider())
 
         contentColumn = UIContainers.verticalFlow(Sizing.expand(), Sizing.fill(100))
         contentColumn.surface(Theme.contentSurface)
@@ -111,15 +112,22 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         sidebarList.clearChildren()
         sidebarButtons.clear()
         categoryHeaderButtons.clear()
+        subcategoryDisplayNames.clear()
         for (cat in categories) {
             val header = buildCategoryHeader(cat)
             categoryHeaderButtons[cat.id] = header
             sidebarList.child(header)
             if (expandedCategories.contains(cat.id)) {
                 for (sub in cat.subcategories) {
+                    subcategoryDisplayNames[cat.id to sub.subId] = sub.displayName.string
                     val btn = sidebarButton(cat, sub)
                     sidebarButtons[cat.id to sub.subId] = btn
                     sidebarList.child(btn)
+                }
+            } else {
+                // Pre-populate names even for collapsed entries so refreshSidebarSelection works.
+                for (sub in cat.subcategories) {
+                    subcategoryDisplayNames[cat.id to sub.subId] = sub.displayName.string
                 }
             }
             sidebarList.child(spacer(4))
@@ -142,6 +150,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             // Expand: insert subcategory buttons right after the header.
             expandedCategories.add(cat.id)
             for ((i, sub) in cat.subcategories.withIndex()) {
+                subcategoryDisplayNames[cat.id to sub.subId] = sub.displayName.string
                 val btn = sidebarButton(cat, sub)
                 sidebarButtons[cat.id to sub.subId] = btn
                 sidebarList.child(headerIdx + 1 + i, btn)
@@ -157,20 +166,20 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
 
     private fun buildCategoryHeader(cat: CategoryEntry): ButtonComponent {
         val expanded = expandedCategories.contains(cat.id)
-        val arrow = if (expanded) "▾" else "▸"
-        val text = Text.literal("$arrow  §l${cat.displayName.string.uppercase()}")
-        val btn = UIComponents.button(text) {
+        val label = cat.displayName.string.uppercase()
+        val btn = UIComponents.button(Text.empty()) {
             toggleCategory(cat)
         }
         btn.horizontalSizing(Sizing.fill(100))
         btn.verticalSizing(Sizing.fixed(22))
-        btn.renderer(categoryHeaderRenderer())
-        btn.margins(Insets.of(2, 2, 0, 0))
+        btn.renderer(categoryHeaderRenderer(label, expanded))
+        btn.margins(Insets.of(6, 1, 0, 0))
         return btn
     }
 
     private fun sidebarButton(cat: CategoryEntry, sub: SubcategoryEntry): ButtonComponent {
-        val btn = UIComponents.button(sub.displayName) {
+        val displayText = sub.displayName.string
+        val btn = UIComponents.button(Text.empty()) {
             if (activeCategory != cat.id || activeSubcategory != sub.subId) {
                 activeCategory = cat.id
                 activeSubcategory = sub.subId
@@ -179,18 +188,17 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             }
         }
         btn.horizontalSizing(Sizing.fill(100))
-        btn.verticalSizing(Sizing.fixed(22))
-        btn.renderer(flatButtonRenderer(
-            selected = cat.id == activeCategory && sub.subId == activeSubcategory
-        ))
-        btn.margins(Insets.of(0, 0, 14, 0))
+        btn.verticalSizing(Sizing.fixed(26))
+        btn.renderer(sidebarItemRenderer(displayText, cat.id == activeCategory && sub.subId == activeSubcategory))
+        btn.margins(Insets.of(1, 1, 0, 4))
         return btn
     }
 
     private fun refreshSidebarSelection() {
         for ((key, btn) in sidebarButtons) {
             val selected = key.first == activeCategory && key.second == activeSubcategory
-            btn.renderer(flatButtonRenderer(selected = selected))
+            val displayText = subcategoryDisplayNames[key] ?: ""
+            btn.renderer(sidebarItemRenderer(displayText, selected))
         }
     }
 
@@ -211,13 +219,13 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         header.verticalAlignment(VerticalAlignment.CENTER)
         header.gap(8)
         header.child(
-            UIComponents.label(Text.literal("§l${cat.displayName.string}"))
+            UIComponents.label(Text.literal(cat.displayName.string))
                 .color(Theme.color(Theme.TEXT_DIM))
         )
         header.child(UIComponents.label(Text.literal("›")).color(Theme.color(Theme.TEXT_DIM)))
         header.child(
-            UIComponents.label(Text.literal("§l${sub.displayName.string}"))
-                .color(Theme.color(Theme.ACCENT))
+            UIComponents.label(Text.literal(sub.displayName.string))
+                .color(Theme.color(Theme.TEXT))
         )
         contentColumn.child(header)
         contentColumn.child(horizontalDivider())
@@ -230,7 +238,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
 
         val groupCard = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
         groupCard.surface(Theme.panelInsetSurface)
-        groupCard.padding(Insets.of(4))
+        groupCard.padding(Insets.of(8))
         groupCard.gap(2)
         for (opt in sub.options) {
             groupCard.child(buildRow(opt))
@@ -278,28 +286,24 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun buildToggle(opt: Option<Boolean>): CheckboxComponent {
-        val cb = UIComponents.checkbox(Text.empty())
-        cb.checked(opt.value())
-        cb.onChanged { newVal -> opt.set(newVal); save(); refreshResetSlot(opt) }
-        return cb
+    private fun buildToggle(opt: Option<Boolean>): SoulToggle {
+        val toggle = SoulToggle(opt.value()) { newVal ->
+            opt.set(newVal)
+            save()
+            refreshResetSlot(opt)
+        }
+        return toggle
     }
 
-    private fun buildNumeric(opt: Option<*>): DiscreteSliderComponent {
+    private fun buildNumeric(opt: Option<*>): SoulSlider {
         val field = wrapper.fieldForKey(opt.key())
         val rc = field?.getAnnotation(RangeConstraint::class.java)
         val min: Double = rc?.min?.toDouble() ?: 0.0
         val max: Double = rc?.max?.toDouble() ?: 100.0
         val decimals: Int = rc?.decimalPlaces ?: 0
 
-        val slider = UIComponents.discreteSlider(Sizing.fixed(140), min, max)
-        slider.decimalPlaces(decimals)
-        slider.snap(decimals == 0)
-        val current = (opt.value() as Number).toDouble()
-        slider.setFromDiscreteValue(current)
-
-        slider.onChanged().subscribe(SliderComponent.OnChanged { _ ->
-            val v = slider.discreteValue()
+        val slider = SoulSlider(min, max, (opt.value() as Number).toDouble(), decimals)
+        slider.onChanged { v ->
             @Suppress("UNCHECKED_CAST")
             when (opt.value()) {
                 is Int    -> (opt as Option<Int>).set(v.toInt())
@@ -308,8 +312,8 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
                 is Double -> (opt as Option<Double>).set(v)
                 else      -> {}
             }
-        })
-        slider.slideEnd().subscribe(SliderComponent.OnSlideEnd { save(); refreshResetSlot(opt) })
+        }
+        slider.onSlideEnd { save(); refreshResetSlot(opt) }
         return slider
     }
 
@@ -393,39 +397,70 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             rebuildContent()
         }
         reload.horizontalSizing(Sizing.fixed(80))
-        reload.verticalSizing(Sizing.fixed(22))
-        reload.renderer(flatButtonRenderer(selected = false))
+        reload.verticalSizing(Sizing.fixed(24))
+        reload.renderer(footerButtonRenderer(accent = false))
 
         val done = UIComponents.button(Text.literal("Done")) { close() }
         done.horizontalSizing(Sizing.fixed(80))
-        done.verticalSizing(Sizing.fixed(22))
-        done.renderer(flatButtonRenderer(selected = true))
+        done.verticalSizing(Sizing.fixed(24))
+        done.renderer(footerButtonRenderer(accent = true))
 
         f.child(reload)
         f.child(done)
         return f
     }
 
-    private fun categoryHeaderRenderer(): ButtonComponent.Renderer {
+    private fun categoryHeaderRenderer(text: String, expanded: Boolean): ButtonComponent.Renderer {
         return ButtonComponent.Renderer { ctx, button, _ ->
-            val bg = if (button.isHovered) Theme.PANEL_HOVER else 0
-            if (bg != 0) ctx.fill(button.x, button.y, button.x + button.width, button.y + button.height, bg)
+            val tr = MinecraftClient.getInstance().textRenderer
+            if (button.isHovered) {
+                DrawContextRenderer.roundedFill(
+                    ctx,
+                    button.x, button.y, button.x + button.width, button.y + button.height,
+                    Theme.PANEL_HOVER, Theme.ITEM_RADIUS
+                )
+            }
+            val arrow = if (expanded) "▾" else "▸"
+            val label = "$arrow  $text"
+            val ty = button.y + (button.height - tr.fontHeight) / 2
+            ctx.drawText(tr, label, button.x + 6, ty, Theme.TEXT_FAINT, false)
         }
     }
 
-    private fun flatButtonRenderer(selected: Boolean): ButtonComponent.Renderer {
+    private fun sidebarItemRenderer(text: String, selected: Boolean): ButtonComponent.Renderer {
         return ButtonComponent.Renderer { ctx, button, _ ->
-            val hovered = button.isHovered
+            val tr = MinecraftClient.getInstance().textRenderer
+            when {
+                selected -> DrawContextRenderer.roundedFill(
+                    ctx,
+                    button.x, button.y, button.x + button.width, button.y + button.height,
+                    Theme.ACCENT, Theme.ITEM_RADIUS
+                )
+                button.isHovered -> DrawContextRenderer.roundedFill(
+                    ctx,
+                    button.x, button.y, button.x + button.width, button.y + button.height,
+                    Theme.PANEL_HOVER, Theme.ITEM_RADIUS
+                )
+            }
+            val textColor = if (selected) Theme.TEXT else Theme.TEXT_DIM
+            val ty = button.y + (button.height - tr.fontHeight) / 2
+            ctx.drawText(tr, text, button.x + 10, ty, textColor, false)
+        }
+    }
+
+    private fun footerButtonRenderer(accent: Boolean): ButtonComponent.Renderer {
+        return ButtonComponent.Renderer { ctx, button, _ ->
             val bg = when {
-                selected -> Theme.PANEL_HOVER
-                hovered  -> Theme.PANEL_HOVER
-                else     -> Theme.PANEL
+                accent && button.isHovered -> Theme.ACCENT_DIM
+                accent                     -> Theme.ACCENT
+                button.isHovered           -> Theme.PANEL_HOVER
+                else                       -> Theme.PANEL_INSET
             }
-            ctx.fill(button.x, button.y, button.x + button.width, button.y + button.height, bg)
-            if (selected) {
-                // Left accent bar
-                ctx.fill(button.x, button.y, button.x + 2, button.y + button.height, Theme.ACCENT)
-            }
+            DrawContextRenderer.roundedFill(
+                ctx,
+                button.x, button.y, button.x + button.width, button.y + button.height,
+                bg, Theme.ITEM_RADIUS
+            )
         }
     }
 
