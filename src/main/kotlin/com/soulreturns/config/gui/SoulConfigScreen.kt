@@ -328,9 +328,9 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         row.child(label)
 
         when (opt.value()) {
-            is Boolean -> row.child(buildToggle(opt as Option<Boolean>))
+            is Boolean -> row.child(buildToggle(@Suppress("UNCHECKED_CAST") (opt as Option<Boolean>)))
             is Int, is Long, is Float, is Double -> row.child(buildNumeric(opt))
-            is String -> row.child(buildTextBox(opt as Option<String>))
+            is String -> row.child(buildTextBox(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
             else -> row.child(UIComponents.label(Text.literal(opt.value().toString())))
         }
         // Fixed-width slot; button is added/removed dynamically to avoid phantom hover.
