@@ -1,6 +1,8 @@
 package com.soulreturns
 
 import com.soulreturns.command.SoulCommand
+import com.soulreturns.render.RoundRectRenderer
+import net.fabricmc.fabric.api.client.rendering.v1.SpecialGuiElementRegistry
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.LegionCounter
@@ -46,6 +48,9 @@ object Soul : ClientModInitializer {
         val configDir = FabricLoader.getInstance().configDir.toFile()
         val guiLayoutFile = File(configDir, "soul/gui_layout.json")
         GuiLayoutManager.configure(guiLayoutFile)
+
+        // Register round-rect PIP renderer for anti-aliased rounded corners.
+        SpecialGuiElementRegistry.register { context -> RoundRectRenderer(context.vertexConsumers()) }
 
         registerCommands()
         registerFeatures()

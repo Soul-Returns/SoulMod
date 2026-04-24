@@ -11,7 +11,8 @@
     "render.HandledScreenMixin",
     "render.ChatScreenMixin",
     "render.ChatHudMixin",
-    "render.PlayerListHudMixin"
+    "render.PlayerListHudMixin",
+    "render.GameRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

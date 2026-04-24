@@ -96,7 +96,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         card.child(verticalDivider())
 
         contentColumn = UIContainers.verticalFlow(Sizing.expand(), Sizing.fill(100))
-        contentColumn.surface(Theme.panelSurface)
+        contentColumn.surface(Theme.contentSurface)
         contentColumn.padding(Insets.of(0))
 
         card.child(contentColumn)

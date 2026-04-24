@@ -1,5 +1,6 @@
 package com.soulreturns.config.gui
 
+import com.soulreturns.render.DrawContextRenderer
 import io.wispforest.owo.ui.core.Color
 import io.wispforest.owo.ui.core.Surface
 
@@ -16,10 +17,45 @@ object Theme {
     const val TEXT_DIM    = 0xFFA09793.toInt()
     const val TEXT_FAINT  = 0xFF6E6663.toInt()
 
+    const val RADIUS = 8f
+    const val SIDEBAR_COLOR = 0xFF1F1B1A.toInt()
+
     val backgroundSurface: Surface = Surface.flat(BACKGROUND)
-    val panelSurface: Surface      = Surface.flat(PANEL)
     val panelInsetSurface: Surface = Surface.flat(PANEL_INSET)
-    val sidebarSurface: Surface    = Surface.flat(0xFF1F1B1A.toInt())
+
+    // Outer card — full rounded corners.
+    val panelSurface: Surface = Surface { context, component ->
+        DrawContextRenderer.roundedFill(
+            context,
+            component.x(), component.y(),
+            component.x() + component.width(), component.y() + component.height(),
+            PANEL, RADIUS
+        )
+    }
+
+    // Left panel (sidebar) — left corners rounded, right corners sharp.
+    val sidebarSurface: Surface = Surface { context, component ->
+        DrawContextRenderer.roundedFillCustomRadii(
+            context,
+            component.x(), component.y(),
+            component.x() + component.width(), component.y() + component.height(),
+            SIDEBAR_COLOR,
+            topLeftRadius = RADIUS, topRightRadius = 0f,
+            bottomRightRadius = 0f, bottomLeftRadius = RADIUS
+        )
+    }
+
+    // Right content panel — right corners rounded, left corners sharp.
+    val contentSurface: Surface = Surface { context, component ->
+        DrawContextRenderer.roundedFillCustomRadii(
+            context,
+            component.x(), component.y(),
+            component.x() + component.width(), component.y() + component.height(),
+            PANEL,
+            topLeftRadius = 0f, topRightRadius = RADIUS,
+            bottomRightRadius = RADIUS, bottomLeftRadius = 0f
+        )
+    }
 
     fun selectedSurface(): Surface = Surface.flat(PANEL_HOVER).and(Surface.outline(ACCENT_DIM))
     fun rowSurface(): Surface      = Surface.flat(PANEL)

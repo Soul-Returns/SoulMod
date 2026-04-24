@@ -32,6 +32,17 @@ bin/
 
 run/
 
+# Minecraft jar extraction artifacts (decompiled sources / assets dumped to project root)
+
+/assets/
+/com/
+/io/
+/net/
+/META-INF/
+/*.class
+/pack.png
+/version.json
+
 # java
 
 hs_err_*.log
