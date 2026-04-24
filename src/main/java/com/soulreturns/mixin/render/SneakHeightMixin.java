@@ -8,7 +8,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-import static com.soulreturns.config.ConfigInstanceKt.getConfig;
+import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 
 /**
  * Restores 1.8 sneaking eye height (1.54 blocks) instead of modern height (~1.27 blocks).
@@ -22,7 +22,7 @@ public abstract class SneakHeightMixin {
         // Only apply to players
         //noinspection ConstantValue
         if (!((Object) this instanceof PlayerEntity)) return original;
-        if (!getConfig().renderCategory.oldSneakHeight) return original;
+        if (!getCfg().render.oldSneakHeight()) return original;
 
         if (pose == EntityPose.CROUCHING) {
             return original.withEyeHeight(1.54F);

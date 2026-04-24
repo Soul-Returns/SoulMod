@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import static com.soulreturns.config.ConfigInstanceKt.getConfig;
+import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 
 @Mixin(ChatHud.class)
 public class ChatHudMixin {
@@ -31,7 +31,7 @@ public class ChatHudMixin {
             context.getMatrices().pushMatrix();
             return;
         }
-        float scale = getConfig().renderCategory.hudScaleSubCategory.chatScale;
+        float scale = getCfg().render.hudScale.chatScale();
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
         if (scale != 1.0f) {

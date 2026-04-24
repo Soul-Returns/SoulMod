@@ -1,6 +1,6 @@
 package com.soulreturns.features
 
-import com.soulreturns.config.config
+import com.soulreturns.config.cfg
 import com.soulreturns.gui.lib.GuiLayoutApi
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.MinecraftClient
@@ -44,7 +44,7 @@ object LegionCounter {
             title = "Legion",
             lines = listOf("Nearby players: $count"),
             color = 0xFFFFFFFF.toInt(),
-            enabled = config.renderCategory.overlaysSubCategory.enableLegionCounter,
+            enabled = cfg.render.overlays.enableLegionCounter(),
             defaultAnchorX = 0.02,
             defaultAnchorY = 0.3,
             defaultScale = 1.0f,

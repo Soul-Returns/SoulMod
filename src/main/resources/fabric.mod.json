@@ -30,7 +30,8 @@
   "depends": {
     "fabricloader": ">=0.17.3",
     "minecraft": "${minecraft}",
-    "fabric-language-kotlin": "*"
+    "fabric-language-kotlin": "*",
+    "owo": "*"
   },
   "suggests": {
     "another-mod": "*"

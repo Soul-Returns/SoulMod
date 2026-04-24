@@ -1,6 +1,6 @@
 package com.soulreturns.profileviewer
 
-import com.soulreturns.Soul
+import com.soulreturns.config.cfg
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
@@ -22,7 +22,7 @@ object SpvExecutor {
 
     fun log(msg: String) {
         try {
-            if (Soul.configManager.config.instance.debugCategory.debugMode) {
+            if (cfg.debug.debugMode()) {
                 logger.info("[SPV] $msg")
             }
         } catch (_: Throwable) {

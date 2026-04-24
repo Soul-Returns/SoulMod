@@ -1,7 +1,7 @@
 package com.soulreturns.features
 
-import com.soulreturns.config.categories.fishing.BobbinTimeSubCategory
-import com.soulreturns.config.config
+import com.soulreturns.config.SoulConfig
+import com.soulreturns.config.cfg
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.gui.lib.GuiLayoutApi
 import com.soulreturns.util.RenderUtils
@@ -37,7 +37,7 @@ object BobbinTimeCounter {
         val player = client.player ?: return
         val world = client.world ?: return
 
-        val fishingConfig = config.fishingCategory.bobbinTimeSubCategory
+        val fishingConfig = cfg.fishing.bobbinTime
 
         // Count fishing bobbers in range
         val count = world.entities
@@ -54,7 +54,7 @@ object BobbinTimeCounter {
             title = "Bobbin Time",
             lines = listOf("Nearby bobbers: $count"),
             color = 0xFF00FFFF.toInt(), // cyan-ish
-            enabled = fishingConfig.enableBobbinTimeCounter,
+            enabled = fishingConfig.enableBobbinTimeCounter(),
             defaultAnchorX = 0.02,
             defaultAnchorY = 0.35,
             defaultScale = 1.0f,
@@ -63,13 +63,13 @@ object BobbinTimeCounter {
         handleAlert(player, count, fishingConfig)
     }
 
-    private fun handleAlert(player: PlayerEntity, count: Int, fishingConfig: BobbinTimeSubCategory) {
-        if (!fishingConfig.enableBobbinTimeAlert) {
+    private fun handleAlert(player: PlayerEntity, count: Int, fishingConfig: SoulConfig.BobbinTime) {
+        if (!fishingConfig.enableBobbinTimeAlert()) {
             alertTriggered = false
             return
         }
 
-        val filters = fishingConfig.alertItemNameFilter
+        val filters = fishingConfig.alertItemNameFilter()
             .split(',')
             .map { it.trim() }
             .filter { it.isNotEmpty() }
@@ -94,14 +94,14 @@ object BobbinTimeCounter {
 
         // Determine effective threshold: either the static slider value, or
         // (party size - 1) capped at 5 when sync-with-party is enabled.
-        val staticThreshold = fishingConfig.alertBobberCount.coerceIn(1, 5)
+        val staticThreshold = fishingConfig.alertBobberCount().coerceIn(1, 5)
         val partySize = PartyManager.getPartySize()
         val partyThreshold = if (partySize > 0) {
             (partySize - 1).coerceIn(1, 5)
         } else {
             null
         }
-        val threshold = if (fishingConfig.syncBobbinAlertWithParty && partyThreshold != null) {
+        val threshold = if (fishingConfig.syncBobbinAlertWithParty() && partyThreshold != null) {
             partyThreshold
         } else {
             staticThreshold

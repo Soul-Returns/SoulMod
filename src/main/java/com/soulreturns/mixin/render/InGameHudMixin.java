@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import static com.soulreturns.config.ConfigInstanceKt.getConfig;
+import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 import static com.soulreturns.util.RenderHelper.pushScaledMatrix;
 
 @Mixin(InGameHud.class)
@@ -20,7 +20,7 @@ public class InGameHudMixin {
 
     @Inject(method = "renderHeldItemTooltip", at = @At("HEAD"), cancellable = true)
     public void renderHeldItemTooltip(DrawContext context, CallbackInfo ci) {
-        if (getConfig().renderCategory.hideHeldItemTooltip) {
+        if (getCfg().render.hideHeldItemTooltip()) {
             ci.cancel();
         }
     }
@@ -35,7 +35,7 @@ public class InGameHudMixin {
 
     @Inject(method = "renderMainHud", at = @At("HEAD"))
     private void beforeRenderMainHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        float scale = getConfig().renderCategory.hudScaleSubCategory.hotbarScale;
+        float scale = getCfg().render.hudScale.hotbarScale();
         float pivotX = MinecraftClient.getInstance().getWindow().getScaledWidth() / 2.0f;
         float pivotY = MinecraftClient.getInstance().getWindow().getScaledHeight();
         pushScaledMatrix(context, scale, pivotX, pivotY);
@@ -50,7 +50,7 @@ public class InGameHudMixin {
 
     @Inject(method = "renderOverlayMessage", at = @At("HEAD"))
     private void beforeRenderOverlayMessage(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        float scale = getConfig().renderCategory.hudScaleSubCategory.actionBarScale;
+        float scale = getCfg().render.hudScale.actionBarScale();
         float pivotX = MinecraftClient.getInstance().getWindow().getScaledWidth() / 2.0f;
         float pivotY = MinecraftClient.getInstance().getWindow().getScaledHeight();
         pushScaledMatrix(context, scale, pivotX, pivotY);
@@ -65,7 +65,7 @@ public class InGameHudMixin {
 
     @Inject(method = "renderBossBarHud", at = @At("HEAD"))
     private void beforeRenderBossBarHud(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        float scale = getConfig().renderCategory.hudScaleSubCategory.bossBarScale;
+        float scale = getCfg().render.hudScale.bossBarScale();
         float pivotX = MinecraftClient.getInstance().getWindow().getScaledWidth() / 2.0f;
         pushScaledMatrix(context, scale, pivotX, 0.0f);
     }
@@ -82,7 +82,7 @@ public class InGameHudMixin {
         at = @At("HEAD")
     )
     private void beforeRenderScoreboardSidebar(DrawContext context, RenderTickCounter tickCounter, CallbackInfo ci) {
-        float scale = getConfig().renderCategory.hudScaleSubCategory.scoreboardScale;
+        float scale = getCfg().render.hudScale.scoreboardScale();
         float pivotX = MinecraftClient.getInstance().getWindow().getScaledWidth();
         float pivotY = MinecraftClient.getInstance().getWindow().getScaledHeight() / 2.0f;
         pushScaledMatrix(context, scale, pivotX, pivotY);

@@ -1,6 +1,6 @@
 package com.soulreturns.features.party
 
-import com.soulreturns.config.config
+import com.soulreturns.config.cfg
 import com.soulreturns.features.party.PartyManager.PartyRole
 import com.soulreturns.gui.lib.GuiLayoutApi
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -21,15 +21,15 @@ object PartyHudOverlay {
     }
 
     private fun tick(client: MinecraftClient) {
-        val player = client.player ?: return
-        val cfg = try {
-            config.renderCategory.overlaysSubCategory
+        client.player ?: return
+        val enabled = try {
+            cfg.render.overlays.enablePartyOverlay()
         } catch (_: Exception) {
-            return // Config not ready yet
+            return
         }
 
         // If overlay is disabled, hide the element but keep any saved layout.
-        if (!cfg.enablePartyOverlay) {
+        if (!enabled) {
             GuiLayoutApi.updateTextBlock(
                 id = ELEMENT_ID,
                 enabled = false,

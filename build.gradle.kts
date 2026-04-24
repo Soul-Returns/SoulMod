@@ -1,5 +1,5 @@
 plugins {
-	id("fabric-loom") version "1.13-SNAPSHOT"
+	id("fabric-loom") version "1.15-SNAPSHOT"
     `maven-publish`
 	id("org.jetbrains.kotlin.jvm") version "2.2.21"
     id("com.gradleup.shadow") version "8.3.5"
@@ -28,6 +28,7 @@ repositories {
     mavenCentral()
     maven("https://jitpack.io")
     maven ("https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1")
+    maven("https://maven.wispforest.io")
 }
 
 dependencies {
@@ -52,6 +53,11 @@ dependencies {
     include("io.github.llamalad7:mixinextras-fabric:0.4.1")
 
 	modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("fabric_kotlin_version")}")
+
+    // owo-lib (config + UI framework)
+    modImplementation("io.wispforest:owo-lib:${project.property("deps.owo")}")
+    annotationProcessor("io.wispforest:owo-lib:${project.property("deps.owo")}")
+    include("io.wispforest:owo-lib:${project.property("deps.owo")}")
 
     modRuntimeOnly("me.djtheredstoner:${project.property("deps.devauth")}")
 
@@ -79,6 +85,46 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).all {
 		jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
 	}
 }
+
+// owo-config's annotation processor generates SoulConfig.java from SoulConfigModel.java.
+// Kotlin code (SoulConfigHolder, every feature) references the generated SoulConfig class,
+// so we run the AP in a dedicated task BEFORE both compileKotlin and compileJava and add
+// its output to the Java sourceset.
+val generatedConfigSrcDir = layout.buildDirectory.dir("generated/sources/owoConfig/java/main")
+val generatedConfigClassesDir = layout.buildDirectory.dir("generated/classes/owoConfig/java/main")
+
+val generateOwoConfig by tasks.registering(JavaCompile::class) {
+    group = "build"
+    description = "Runs the owo-config annotation processor to generate SoulConfig.java."
+    // Stonecutter relocates sources, so derive the source from the main sourceset rather than a hardcoded path.
+    source = sourceSets.named("main").get().java.matching { include("**/SoulConfigModel.java") }
+    classpath = configurations.compileClasspath.get() + configurations.annotationProcessor.get()
+    options.annotationProcessorPath = configurations.annotationProcessor.get()
+    options.generatedSourceOutputDirectory.set(generatedConfigSrcDir)
+    destinationDirectory.set(generatedConfigClassesDir)
+    sourceCompatibility = requiredJava.toString()
+    targetCompatibility = requiredJava.toString()
+    options.compilerArgs.add("-proc:full")
+}
+
+sourceSets.named("main") {
+    java.srcDir(generatedConfigSrcDir)
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class).configureEach {
+    dependsOn(generateOwoConfig)
+}
+tasks.withType<Jar>().configureEach {
+    dependsOn(generateOwoConfig)
+}
+tasks.named<JavaCompile>("compileJava") {
+    dependsOn(generateOwoConfig)
+    // The AP already ran in generateOwoConfig and produced the source file; don't re-run it here.
+    options.compilerArgs.add("-proc:none")
+}
+
+
+
 
 java {
     withSourcesJar()

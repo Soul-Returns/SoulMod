@@ -1,6 +1,7 @@
 package com.soulreturns.profileviewer.api
 
 import com.soulreturns.Soul
+import com.soulreturns.config.cfg
 import com.soulreturns.profileviewer.SpvExecutor
 import java.net.URI
 import java.net.http.HttpClient
@@ -25,7 +26,7 @@ object SpvHttp {
         val sysProp = System.getProperty("soul.spv.backendUrl")
         if (!sysProp.isNullOrBlank()) return sysProp.trimEnd('/')
         val override = try {
-            Soul.configManager.config.instance.profileViewerCategory.backendUrlOverride
+            cfg.profileViewer.backendUrlOverride()
         } catch (_: Throwable) {
             ""
         }

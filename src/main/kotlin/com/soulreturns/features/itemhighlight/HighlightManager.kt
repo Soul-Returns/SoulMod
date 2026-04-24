@@ -4,7 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import com.soulreturns.Soul
-import com.soulreturns.config.config
+import com.soulreturns.config.cfg
 import com.soulreturns.util.DebugLogger
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
@@ -127,28 +127,28 @@ object HighlightManager {
      * @return ARGB color integer, or null if item is not in any group
      */
     fun getColorForItem(skyblockId: String): Int? {
-        val renderConfig = config.renderCategory
+        val highlights = cfg.render.highlights
 
         // Check if item is in pest equipment group
         if (skyblockId in pestEquipment) {
-            if (!renderConfig.highlightSubCategory.highlightPestEquipment) return null
+            if (!highlights.highlightPestEquipment()) return null
             // If using pest vest, don't highlight the cloak
-            if (skyblockId == "PESTHUNTERS_CLOAK" && renderConfig.highlightSubCategory.usePestVest) return null
+            if (skyblockId == "PESTHUNTERS_CLOAK" && highlights.usePestVest()) return null
         }
 
         // Check if item is pest vest (only highlight if toggle is on and usePestVest is true)
         if (skyblockId == "PEST_VEST") {
-            if (!renderConfig.highlightSubCategory.highlightPestEquipment || !renderConfig.highlightSubCategory.usePestVest) return null
+            if (!highlights.highlightPestEquipment() || !highlights.usePestVest()) return null
         }
 
         // Check if item is in farming equipment group
         if (skyblockId in farmingEquipment) {
-            if (!renderConfig.highlightSubCategory.highlightFarmingEquipment) return null
+            if (!highlights.highlightFarmingEquipment()) return null
         }
 
         // Check if item is a custom item
         if (skyblockId in customItems) {
-            if (!renderConfig.highlightSubCategory.highlightCustomItems) return null
+            if (!highlights.highlightCustomItems()) return null
         }
 
         return itemToColorMap[skyblockId]

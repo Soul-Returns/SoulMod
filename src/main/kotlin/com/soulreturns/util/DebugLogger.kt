@@ -1,113 +1,25 @@
 package com.soulreturns.util
 
-import com.soulreturns.Soul
+import com.soulreturns.config.cfg
 import org.slf4j.LoggerFactory
 
 object DebugLogger {
     private val logger = LoggerFactory.getLogger("SoulMod")
 
-    private fun isDebugEnabled(): Boolean {
-        return try {
-            val config = Soul.configManager.config.instance
-            config.debugCategory.debugMode
-        } catch (e: Exception) {
-            false // Config not initialized yet
-        }
+    private inline fun log(prefix: String, message: String, predicate: () -> Boolean) {
+        try {
+            if (cfg.debug.debugMode() && predicate()) {
+                logger.info("[$prefix] $message")
+            }
+        } catch (_: Exception) { /* config not ready yet */ }
     }
 
-    fun logConfigChange(message: String) {
-        try {
-            val config = Soul.configManager.config.instance
-            if (config.debugCategory.debugMode && 
-                config.debugCategory.loggingSubCategory.logConfigChanges) {
-                logger.info("[Config] $message")
-            }
-        } catch (e: Exception) {
-            // Config not initialized yet, skip logging
-        }
-    }
-
-    fun logWidgetInteraction(message: String) {
-        try {
-            val config = Soul.configManager.config.instance
-            if (config.debugCategory.debugMode && 
-                config.debugCategory.loggingSubCategory.logWidgetInteractions) {
-                logger.info("[Widget] $message")
-            }
-        } catch (e: Exception) {
-            // Config not initialized yet, skip logging
-        }
-    }
-
-    fun logMessageHandler(message: String) {
-        try {
-            val config = Soul.configManager.config.instance
-            if (config.debugCategory.debugMode && 
-                config.debugCategory.loggingSubCategory.logMessageHandler) {
-                logger.info("[Message] $message")
-            }
-        } catch (e: Exception) {
-            // Config not initialized yet, skip logging
-        }
-    }
-
-    fun logFeatureEvent(message: String) {
-        try {
-            val config = Soul.configManager.config.instance
-            if (config.debugCategory.debugMode && 
-                config.debugCategory.loggingSubCategory.logFeatureEvents) {
-                logger.info("[Feature] $message")
-            }
-        } catch (e: Exception) {
-            // Config not initialized yet, skip logging
-        }
-    }
-
-    fun logGuiLayout(message: String) {
-        try {
-            val config = Soul.configManager.config.instance
-            if (config.debugCategory.debugMode &&
-                config.debugCategory.loggingSubCategory.logGuiLayout) {
-                logger.info("[GuiLayout] $message")
-            }
-        } catch (e: Exception) {
-            // Config not initialized yet, skip logging
-        }
-    }
-
-    fun logCommandExecution(commandInput: String) {
-        try {
-            val config = Soul.configManager.config.instance
-            if (config.debugCategory.debugMode &&
-                config.debugCategory.loggingSubCategory.logCommandsAndMessages) {
-                logger.info("[Command] $commandInput")
-            }
-        } catch (e: Exception) {
-            // Config not initialized yet, skip logging
-        }
-    }
-
-    fun logSentMessage(message: String) {
-        try {
-            val config = Soul.configManager.config.instance
-            if (config.debugCategory.debugMode &&
-                config.debugCategory.loggingSubCategory.logCommandsAndMessages) {
-                logger.info("[SentMessage] $message")
-            }
-        } catch (e: Exception) {
-            // Config not initialized yet, skip logging
-        }
-    }
-
-    fun logChatInput(input: String) {
-        try {
-            val config = Soul.configManager.config.instance
-            if (config.debugCategory.debugMode &&
-                config.debugCategory.loggingSubCategory.logCommandsAndMessages) {
-                logger.info("[ChatInput] $input")
-            }
-        } catch (e: Exception) {
-            // Config not initialized yet, skip logging
-        }
-    }
+    fun logConfigChange(message: String)     = log("Config",      message) { cfg.debug.logging.logConfigChanges() }
+    fun logWidgetInteraction(message: String) = log("Widget",     message) { cfg.debug.logging.logWidgetInteractions() }
+    fun logMessageHandler(message: String)   = log("Message",     message) { cfg.debug.logging.logMessageHandler() }
+    fun logFeatureEvent(message: String)     = log("Feature",     message) { cfg.debug.logging.logFeatureEvents() }
+    fun logGuiLayout(message: String)        = log("GuiLayout",   message) { cfg.debug.logging.logGuiLayout() }
+    fun logCommandExecution(commandInput: String) = log("Command", commandInput) { cfg.debug.logging.logCommandsAndMessages() }
+    fun logSentMessage(message: String)      = log("SentMessage", message) { cfg.debug.logging.logCommandsAndMessages() }
+    fun logChatInput(input: String)          = log("ChatInput",   input)   { cfg.debug.logging.logCommandsAndMessages() }
 }

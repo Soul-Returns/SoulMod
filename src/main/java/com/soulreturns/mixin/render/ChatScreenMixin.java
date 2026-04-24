@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import static com.soulreturns.config.ConfigInstanceKt.getConfig;
+import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 
 /**
  * Mixin to log all player-entered chat input (including commands) when debug logging is enabled,
@@ -29,7 +29,7 @@ public class ChatScreenMixin {
 
     @Inject(method = "render", at = @At("HEAD"))
     private void beforeRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        float scale = getConfig().renderCategory.hudScaleSubCategory.chatScale;
+        float scale = getCfg().render.hudScale.chatScale();
         Matrix3x2fStack matrices = context.getMatrices();
         matrices.pushMatrix();
         if (scale != 1.0f) {
@@ -57,7 +57,7 @@ public class ChatScreenMixin {
     )
     private double transformClickX(Click click, Operation<Double> original) {
         double rawX = original.call(click);
-        float scale = getConfig().renderCategory.hudScaleSubCategory.chatScale;
+        float scale = getCfg().render.hudScale.chatScale();
         if (scale == 1.0f) return rawX;
         return rawX / scale; // pivot x = 0  →  logical_x = rawX / scale
     }
@@ -68,7 +68,7 @@ public class ChatScreenMixin {
     )
     private double transformClickY(Click click, Operation<Double> original) {
         double rawY = original.call(click);
-        float scale = getConfig().renderCategory.hudScaleSubCategory.chatScale;
+        float scale = getCfg().render.hudScale.chatScale();
         if (scale == 1.0f) return rawY;
         double screenHeight = MinecraftClient.getInstance().getWindow().getScaledHeight();
         return screenHeight + (rawY - screenHeight) / scale;

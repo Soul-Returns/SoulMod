@@ -1,6 +1,6 @@
 package com.soulreturns.features.itemhighlight
 
-import com.soulreturns.config.config
+import com.soulreturns.config.cfg
 import com.soulreturns.util.SkyblockItemUtils
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback
 import net.minecraft.item.Item
@@ -15,7 +15,7 @@ object TooltipHandler {
     fun register() {
         ItemTooltipCallback.EVENT.register { stack, context, type, lines ->
             // Check if the feature is enabled
-            if (!config.renderCategory.showSkyblockIdInTooltip) return@register
+            if (!cfg.render.showSkyblockIdInTooltip()) return@register
 
             // Get the Skyblock ID
             val skyblockId = SkyblockItemUtils.getSkyblockId(stack) ?: return@register

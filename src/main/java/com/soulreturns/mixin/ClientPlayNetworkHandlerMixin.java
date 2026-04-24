@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.llamalad7.mixinextras.sugar.Local;
 
-import static com.soulreturns.config.ConfigInstanceKt.getConfig;
+import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 
 /*
  * This is code from https://modrinth.com/mod/no-double-sneak (under the MIT License)
@@ -24,7 +24,7 @@ import static com.soulreturns.config.ConfigInstanceKt.getConfig;
 public class ClientPlayNetworkHandlerMixin {
     @Inject(method = "onEntityTrackerUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/data/DataTracker;writeUpdatedEntries(Ljava/util/List;)V"))
     private void no_double_sneak$fixBug(EntityTrackerUpdateS2CPacket packet, CallbackInfo ci, @Local Entity entity) {
-        if (!getConfig().fixesCategory.fixDoubleSneak) return;
+        if (!getCfg().fixes.fixDoubleSneak()) return;
         if (!entity.equals(MinecraftClient.getInstance().player)) return;
         packet.trackedValues().removeIf(entry -> entry.handler().equals(TrackedDataHandlerRegistry.ENTITY_POSE));
     }

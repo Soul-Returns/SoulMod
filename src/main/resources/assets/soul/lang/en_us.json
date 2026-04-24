@@ -1,0 +1,81 @@
+{
+  "text.config.soul.title": "Soul",
+
+  "text.config.soul.category.render": "Render",
+  "text.config.soul.category.fishing": "Fishing",
+  "text.config.soul.category.mining": "Mining",
+  "text.config.soul.category.fixes": "Fixes",
+  "text.config.soul.category.profileViewer": "Profile Viewer",
+  "text.config.soul.category.debug": "Debug",
+
+  "text.config.soul.section.render": "Render",
+  "text.config.soul.section.fishing": "Fishing",
+  "text.config.soul.section.mining": "Mining",
+  "text.config.soul.section.fixes": "Fixes",
+  "text.config.soul.section.profileViewer": "Profile Viewer",
+  "text.config.soul.section.debug": "Debug",
+
+  "text.config.soul.group.render.hudScale": "HUD Scale",
+  "text.config.soul.group.render.highlights": "Item Highlights",
+  "text.config.soul.group.render.overlays": "Overlays",
+  "text.config.soul.group.render.misc": "Misc",
+  "text.config.soul.group.fishing.chat": "Chat",
+  "text.config.soul.group.fishing.bobbinTime": "Bobbin Time",
+  "text.config.soul.group.mining.dwarvenMines": "Dwarven Mines",
+  "text.config.soul.group.fixes.misc": "Fixes",
+  "text.config.soul.group.profileViewer.misc": "Profile Viewer",
+  "text.config.soul.group.debug.misc": "Debug",
+  "text.config.soul.group.debug.logging": "Logging",
+
+  "text.config.soul.option.render.hideHeldItemTooltip": "Hide Held Item Tooltip",
+  "text.config.soul.option.render.hideHeldItemTooltip.tooltip": "Hides the floating name of the item currently held in your hand.",
+  "text.config.soul.option.render.showSkyblockIdInTooltip": "Show SkyBlock ID in Tooltip",
+  "text.config.soul.option.render.showSkyblockIdInTooltip.tooltip": "Adds the internal SkyBlock item ID to item tooltips.",
+  "text.config.soul.option.render.oldSneakHeight": "Old Sneak Height",
+  "text.config.soul.option.render.oldSneakHeight.tooltip": "Restores the pre-1.14 sneaking eye height (1.54 blocks).",
+
+  "text.config.soul.option.render.hudScale.tabListScale": "Tab List Scale",
+  "text.config.soul.option.render.hudScale.hotbarScale": "Hotbar Scale",
+  "text.config.soul.option.render.hudScale.bossBarScale": "Boss Bar Scale",
+  "text.config.soul.option.render.hudScale.chatScale": "Chat Scale",
+  "text.config.soul.option.render.hudScale.actionBarScale": "Action Bar Scale",
+  "text.config.soul.option.render.hudScale.scoreboardScale": "Scoreboard Scale",
+
+  "text.config.soul.option.render.highlights.itemHighlightingEnabled": "Enable Item Highlighting",
+  "text.config.soul.option.render.highlights.itemHighlightingEnabled.tooltip": "Master toggle for the item highlight system.",
+  "text.config.soul.option.render.highlights.highlightPestEquipment": "Highlight Pest Equipment",
+  "text.config.soul.option.render.highlights.usePestVest": "Use Pest Vest",
+  "text.config.soul.option.render.highlights.highlightFarmingEquipment": "Highlight Farming Equipment",
+  "text.config.soul.option.render.highlights.highlightCustomItems": "Highlight Custom Items",
+
+  "text.config.soul.option.render.overlays.enableLegionCounter": "Enable Legion Counter",
+  "text.config.soul.option.render.overlays.enablePartyOverlay": "Enable Party Overlay",
+
+  "text.config.soul.option.fishing.chat.doubleHookMessageToggle": "Double Hook Message",
+  "text.config.soul.option.fishing.chat.doubleHookMessageToggle.tooltip": "Sends a chat message in party chat when a double hook occurs.",
+  "text.config.soul.option.fishing.chat.doubleHookMessageText": "Message Text",
+
+  "text.config.soul.option.fishing.bobbinTime.enableBobbinTimeCounter": "Enable Bobbin Time Counter",
+  "text.config.soul.option.fishing.bobbinTime.enableBobbinTimeAlert": "Enable Alert",
+  "text.config.soul.option.fishing.bobbinTime.alertBobberCount": "Alert at Bobber Count",
+  "text.config.soul.option.fishing.bobbinTime.syncBobbinAlertWithParty": "Sync Alert with Party",
+  "text.config.soul.option.fishing.bobbinTime.alertItemNameFilter": "Held Item Name Contains",
+
+  "text.config.soul.option.mining.dwarvenMines.donExpressoAlert": "Don Espresso Alert",
+
+  "text.config.soul.option.fixes.fixDoubleSneak": "Fix Double Sneak",
+  "text.config.soul.option.fixes.fixDoubleSneak.tooltip": "Prevents the duplicate sneak packet that triggers some servers' AFK detection.",
+
+  "text.config.soul.option.profileViewer.enabled": "Enabled",
+  "text.config.soul.option.profileViewer.backendUrlOverride": "Backend URL Override",
+  "text.config.soul.option.profileViewer.backendUrlOverride.tooltip": "Leave empty to use the default backend.",
+
+  "text.config.soul.option.debug.debugMode": "Debug Mode",
+  "text.config.soul.option.debug.debugMode.tooltip": "Master switch for verbose debug logging.",
+  "text.config.soul.option.debug.logging.logConfigChanges": "Log Config Changes",
+  "text.config.soul.option.debug.logging.logGuiLayout": "Log GUI Layout",
+  "text.config.soul.option.debug.logging.logWidgetInteractions": "Log Widget Interactions",
+  "text.config.soul.option.debug.logging.logMessageHandler": "Log Message Handler",
+  "text.config.soul.option.debug.logging.logFeatureEvents": "Log Feature Events",
+  "text.config.soul.option.debug.logging.logCommandsAndMessages": "Log Commands & Messages"
+}

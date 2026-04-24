@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import static com.soulreturns.config.ConfigInstanceKt.getConfig;
+import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 
 @Mixin(HandledScreen.class)
 public class HandledScreenMixin {
@@ -29,7 +29,7 @@ public class HandledScreenMixin {
     }
 
     private void handleDrawSlot(DrawContext context, Slot slot, int x, int y) {
-        if (!getConfig().renderCategory.highlightSubCategory.itemHighlightingEnabled) return;
+        if (!getCfg().render.highlights.itemHighlightingEnabled()) return;
 
         ItemStack stack = slot.getStack();
         if (stack == null || stack.isEmpty()) return;

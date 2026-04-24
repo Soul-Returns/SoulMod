@@ -1,7 +1,7 @@
 package com.soulreturns.profileviewer.service
 
 import com.google.gson.JsonObject
-import com.soulreturns.Soul
+import com.soulreturns.config.cfg
 import com.soulreturns.profileviewer.SpvExecutor
 import com.soulreturns.profileviewer.api.BackendClient
 import com.soulreturns.profileviewer.api.MojangApi
@@ -17,7 +17,7 @@ object ProfileViewerService {
 
     /** Enters the profile-viewer flow: resolve UUID -> fetch profiles -> open screen. */
     fun openFor(rawName: String, profileOverride: String?) {
-        if (!Soul.configManager.config.instance.profileViewerCategory.enabled) {
+        if (!cfg.profileViewer.enabled()) {
             chat("§c[SPV] Profile viewer is disabled in config.")
             return
         }
