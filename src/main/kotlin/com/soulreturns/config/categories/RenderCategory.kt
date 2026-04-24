@@ -1,6 +1,7 @@
 package com.soulreturns.config.categories
 
 import com.soulreturns.config.categories.render.HighlightSubCategory
+import com.soulreturns.config.categories.render.HudScaleSubCategory
 import com.soulreturns.config.categories.render.OverlaysSubCategory
 import com.soulreturns.config.lib.annotations.ConfigSubcategory
 import com.soulreturns.config.lib.annotations.ConfigOption
@@ -8,6 +9,10 @@ import com.soulreturns.config.lib.annotations.Toggle
 import com.soulreturns.config.lib.annotations.Divider
 
 class RenderCategory {
+    @JvmField
+    @ConfigSubcategory(name = "HUD Scale", description = "Scale individual HUD elements relative to the global GUI scale")
+    var hudScaleSubCategory = HudScaleSubCategory()
+
     @JvmField
     @ConfigSubcategory(name = "Highlights", description = "Item highlights")
     var highlightSubCategory = HighlightSubCategory()

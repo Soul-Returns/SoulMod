@@ -17,6 +17,8 @@ import static com.soulreturns.config.ConfigInstanceKt.getConfig;
 @Mixin(HandledScreen.class)
 public class HandledScreenMixin {
 
+    // ── Item highlighting ─────────────────────────────────────────────────────
+
     /**
      * Inject after each slot is drawn to add highlighting.
      *
@@ -38,22 +40,18 @@ public class HandledScreenMixin {
     //?}
 
     private void handleDrawSlot(DrawContext context, Slot slot, int x, int y) {
-        // Check if the feature is enabled
         if (!getConfig().renderCategory.highlightSubCategory.itemHighlightingEnabled) return;
 
-        // Get the item in this slot
         ItemStack stack = slot.getStack();
         if (stack == null || stack.isEmpty()) return;
 
-        // Get the Skyblock ID from the item
         String skyblockId = SkyblockItemUtils.INSTANCE.getSkyblockId(stack);
         if (skyblockId == null) return;
 
-        // Check if this item should be highlighted and get its color
         Integer color = HighlightManager.INSTANCE.getColorForItem(skyblockId);
         if (color == null) return;
 
-        // Draw the highlight border at the slot's position
         RenderHelper.drawSlotHighlight(context, x, y, color);
     }
 }
+

@@ -9,7 +9,8 @@
     "render.InGameHudMixin",
     "render.SneakHeightMixin",
     "render.HandledScreenMixin",
-    "render.ChatScreenMixin"
+    "render.ChatScreenMixin",
+    "render.ChatHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1
