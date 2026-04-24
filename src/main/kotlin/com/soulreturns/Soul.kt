@@ -12,6 +12,7 @@ import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
 import com.soulreturns.features.party.PartyHudOverlay
 import com.soulreturns.features.party.PartyManager
+import com.soulreturns.api.PresenceService
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.util.MessageHandler
 import net.fabricmc.api.ClientModInitializer
@@ -37,6 +38,9 @@ object Soul : ClientModInitializer {
 
         // Register message handler before features so they can use it.
         MessageHandler.register()
+
+        // Start presence ping so the backend knows who is online.
+        PresenceService.start()
 
         // Load highlight groups from JSON files.
         HighlightManager.loadGroups()
