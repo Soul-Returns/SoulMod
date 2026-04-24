@@ -6,6 +6,14 @@ import com.soulreturns.config.lib.annotations.SliderNumberInput
 class HudScaleSubCategory {
     @JvmField
     @ConfigOption(
+        name = "Tab List Scale",
+        description = "Scale the player tab list"
+    )
+    @SliderNumberInput(min = 0.5, max = 2.0, step = 0.05, decimals = 2)
+    var tabListScale: Float = 1.0f
+
+    @JvmField
+    @ConfigOption(
         name = "Hotbar Scale",
         description = "Scale the hotbar, health/food bars, and experience bar"
     )

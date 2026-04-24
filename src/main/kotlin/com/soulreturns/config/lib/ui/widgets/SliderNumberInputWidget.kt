@@ -10,6 +10,7 @@ import net.minecraft.client.gui.DrawContext
 import org.lwjgl.glfw.GLFW
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import java.util.Locale
 
 /**
  * Combo widget: slider + numeric input field.
@@ -306,7 +307,7 @@ class SliderNumberInputWidget(
         } else {
             val factor = 10.0.pow(decimals.toDouble())
             val rounded = (value * factor).roundToInt() / factor
-            "% .${decimals}f".format(rounded).trim()
+            String.format(Locale.ROOT, "%.${decimals}f", rounded)
         }
     }
 }

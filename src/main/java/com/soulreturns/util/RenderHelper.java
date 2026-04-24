@@ -6,6 +6,16 @@ import net.minecraft.text.Text;
 import org.joml.Matrix3x2fStack;
 
 public class RenderHelper {
+    public static void pushScaledMatrix(DrawContext context, float scale, float pivotX, float pivotY) {
+        Matrix3x2fStack matrices = context.getMatrices();
+        matrices.pushMatrix();
+        if (scale != 1.0f) {
+            matrices.translate(pivotX, pivotY);
+            matrices.scale(scale, scale);
+            matrices.translate(-pivotX, -pivotY);
+        }
+    }
+
     /**
      * Draw scaled text with shadow at the center of the screen
      * This method properly handles Matrix operations for Minecraft 1.21

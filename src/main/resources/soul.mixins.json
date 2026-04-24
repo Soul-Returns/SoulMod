@@ -10,7 +10,8 @@
     "render.SneakHeightMixin",
     "render.HandledScreenMixin",
     "render.ChatScreenMixin",
-    "render.ChatHudMixin"
+    "render.ChatHudMixin",
+    "render.PlayerListHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1

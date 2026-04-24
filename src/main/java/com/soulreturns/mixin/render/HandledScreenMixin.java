@@ -21,23 +21,12 @@ public class HandledScreenMixin {
 
     /**
      * Inject after each slot is drawn to add highlighting.
-     *
-     * For 1.21.8 and 1.21.10, HandledScreen#drawSlot(DrawContext, Slot) is used.
-     * For 1.21.11+, the signature became HandledScreen#drawSlot(DrawContext, Slot, int, int).
-     * We use Stonecutter conditionals to generate the correct overload per version.
      */
 
-    //? if <1.21.11 {
-    /*@Inject(method = "drawSlot", at = @At("TAIL"))
-    private void onDrawSlot(DrawContext context, Slot slot, CallbackInfo ci) {
-        handleDrawSlot(context, slot, slot.x, slot.y);
-    }
-    *///?} else {
     @Inject(method = "drawSlot", at = @At("TAIL"))
     private void onDrawSlot(DrawContext context, Slot slot, int x, int y, CallbackInfo ci) {
         handleDrawSlot(context, slot, x, y);
     }
-    //?}
 
     private void handleDrawSlot(DrawContext context, Slot slot, int x, int y) {
         if (!getConfig().renderCategory.highlightSubCategory.itemHighlightingEnabled) return;
