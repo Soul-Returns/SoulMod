@@ -16,6 +16,7 @@ import com.soulreturns.api.PresenceService
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.update.UpdateChecker
 import com.soulreturns.update.UpdateModal
+import com.soulreturns.update.Updater
 import com.soulreturns.util.MessageHandler
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
@@ -49,8 +50,9 @@ object Soul : ClientModInitializer {
         // Start presence ping so the backend knows who is online.
         PresenceService.start()
 
-        // Kick off async update check; modal shown on title screen or first world join.
+        // Clean up any old mod JARs left over from a previous auto-update (handles Windows file locks).
         UpdateChecker.checkAsync()
+        Updater.cleanupPendingDeletes()
         ScreenEvents.AFTER_INIT.register { client, screen, _, _ ->
             if (screen !is TitleScreen) return@register
             val update = UpdateChecker.latestUpdate ?: return@register

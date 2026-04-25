@@ -10,6 +10,7 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.time.Duration
 import java.util.concurrent.Executors
@@ -27,6 +28,34 @@ object Updater {
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build()
 
+    private val stagingDir: Path
+        get() = FabricLoader.getInstance().gameDir.resolve(".soul-update")
+
+    private val pendingDeleteFile: Path
+        get() = stagingDir.resolve("pending-delete.txt")
+
+    /** Called on mod init — deletes any JARs left over from a previous update. */
+    fun cleanupPendingDeletes() {
+        val marker = pendingDeleteFile
+        if (!Files.exists(marker)) return
+        try {
+            val paths = Files.readAllLines(marker).map { Path.of(it.trim()) }.filter { it.toString().isNotBlank() }
+            for (p in paths) {
+                try {
+                    if (Files.deleteIfExists(p)) {
+                        logger.info("Deleted old mod JAR: $p")
+                    }
+                } catch (e: Exception) {
+                    logger.warn("Could not delete old JAR $p: ${e.message}")
+                }
+            }
+            Files.deleteIfExists(marker)
+            stagingDir.toFile().delete()
+        } catch (e: Exception) {
+            logger.warn("Failed to process pending-delete marker: ${e.message}")
+        }
+    }
+
     fun downloadAndSchedule(
         info: UpdateInfo,
         onProgress: (Float) -> Unit,
@@ -39,14 +68,14 @@ object Updater {
                 val newJarName = "soul-${info.version}+$mcVersion.jar"
                 val gameDir = FabricLoader.getInstance().gameDir
                 val modsDir = gameDir.resolve("mods")
-                val stagingDir = gameDir.resolve(".soul-update")
-                Files.createDirectories(stagingDir)
+                val staging = stagingDir
+                Files.createDirectories(staging)
 
-                val partFile = stagingDir.resolve("$newJarName.part")
+                val partFile = staging.resolve("$newJarName.part")
                 val finalFile = modsDir.resolve(newJarName)
 
-                // Ask FabricLoader where it actually loaded the mod JAR from.
-                val oldJarPath: java.nio.file.Path? = FabricLoader.getInstance()
+                // Ask FabricLoader where it actually loaded this mod from.
+                val oldJarPath: Path? = FabricLoader.getInstance()
                     .getModContainer("soul")
                     .map { it.origin.paths.firstOrNull()?.takeIf { p -> p.toString().endsWith(".jar") } }
                     .orElse(null)
@@ -69,7 +98,6 @@ object Updater {
 
                 mc().execute { onProgress(0.1f) }
 
-                // Stream body to .part file in the staging directory.
                 response.body().use { input ->
                     Files.copy(input, partFile, StandardCopyOption.REPLACE_EXISTING)
                 }
@@ -88,17 +116,18 @@ object Updater {
                 // Move from staging into mods/.
                 Files.move(partFile, finalFile, StandardCopyOption.REPLACE_EXISTING)
 
-                // Schedule deletion of the old JAR on JVM shutdown (after game fully exits).
                 if (oldJarPath != null && Files.exists(oldJarPath)) {
-                    logger.info("Will delete old JAR on shutdown: $oldJarPath")
-                    Runtime.getRuntime().addShutdownHook(Thread({
-                        try {
-                            Files.deleteIfExists(oldJarPath)
-                            stagingDir.toFile().delete()
-                        } catch (e: Exception) {
-                            logger.warn("Failed to remove old JAR on shutdown: ${e.message}")
-                        }
-                    }, "soul-update-cleanup"))
+                    // Try to delete immediately — works on Linux/macOS where open files can be unlinked.
+                    // On Windows the JVM locks the JAR, so we fall back to a marker for next-launch cleanup.
+                    val deleted = try { Files.deleteIfExists(oldJarPath); true } catch (_: Exception) { false }
+                    if (deleted) {
+                        logger.info("Deleted old mod JAR immediately: $oldJarPath")
+                        staging.toFile().delete()
+                    } else {
+                        logger.info("Could not delete old JAR now (file locked); scheduled for next launch: $oldJarPath")
+                        Files.createDirectories(staging)
+                        Files.writeString(pendingDeleteFile, oldJarPath.toAbsolutePath().toString() + "\n")
+                    }
                 } else {
                     logger.warn("Old JAR not found (running from classes/dev?) — skipping deletion")
                 }
