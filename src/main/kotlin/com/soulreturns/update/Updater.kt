@@ -1,6 +1,5 @@
 package com.soulreturns.update
 
-import com.soulreturns.Soul
 import com.soulreturns.api.SoulHttp
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.SharedConstants
@@ -46,8 +45,11 @@ object Updater {
                 val partFile = stagingDir.resolve("$newJarName.part")
                 val finalFile = modsDir.resolve(newJarName)
 
-                // Old JAR is the currently running version; located in mods/ by build-system naming.
-                val oldJarPath = modsDir.resolve("soul-${Soul.version}.jar")
+                // Ask FabricLoader where it actually loaded the mod JAR from.
+                val oldJarPath: java.nio.file.Path? = FabricLoader.getInstance()
+                    .getModContainer("soul")
+                    .map { it.origin.paths.firstOrNull()?.takeIf { p -> p.toString().endsWith(".jar") } }
+                    .orElse(null)
 
                 mc().execute { onProgress(0.05f) }
 
@@ -87,18 +89,18 @@ object Updater {
                 Files.move(partFile, finalFile, StandardCopyOption.REPLACE_EXISTING)
 
                 // Schedule deletion of the old JAR on JVM shutdown (after game fully exits).
-                if (Files.exists(oldJarPath)) {
+                if (oldJarPath != null && Files.exists(oldJarPath)) {
+                    logger.info("Will delete old JAR on shutdown: $oldJarPath")
                     Runtime.getRuntime().addShutdownHook(Thread({
                         try {
                             Files.deleteIfExists(oldJarPath)
-                            // Clean up staging dir if empty.
                             stagingDir.toFile().delete()
                         } catch (e: Exception) {
                             logger.warn("Failed to remove old JAR on shutdown: ${e.message}")
                         }
                     }, "soul-update-cleanup"))
                 } else {
-                    logger.warn("Old JAR not found at $oldJarPath — new version will load alongside whatever is there")
+                    logger.warn("Old JAR not found (running from classes/dev?) — skipping deletion")
                 }
 
                 mc().execute {
