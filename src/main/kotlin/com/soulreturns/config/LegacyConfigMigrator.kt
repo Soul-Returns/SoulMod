@@ -5,7 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.JsonPrimitive
 import net.fabricmc.loader.api.FabricLoader
-import org.slf4j.LoggerFactory
+import com.soulreturns.util.SoulLogger
 import java.io.File
 import java.io.FileReader
 
@@ -16,7 +16,7 @@ import java.io.FileReader
  * that [SoulConfig.createAndLoad] picks it up on first run.
  */
 object LegacyConfigMigrator {
-    private val logger = LoggerFactory.getLogger("SoulMod/LegacyMigrator")
+    private val logger = SoulLogger("Soul/Config")
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
     fun runIfPresent() {

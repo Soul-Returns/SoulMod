@@ -1,7 +1,7 @@
 package com.soulreturns.api
 
 import net.minecraft.client.MinecraftClient
-import org.slf4j.LoggerFactory
+import com.soulreturns.util.SoulLogger
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
  */
 object PresenceService {
 
-    private val logger = LoggerFactory.getLogger("SoulMod/Presence")
+    private val logger = SoulLogger("Soul/Presence")
     private const val INTERVAL_SEC = 20L
 
     private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->

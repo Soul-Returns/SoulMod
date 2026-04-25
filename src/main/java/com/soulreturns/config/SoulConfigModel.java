@@ -34,6 +34,9 @@ public class SoulConfigModel {
     @SectionHeader("profileViewer")
     @Nest public ProfileViewer profileViewer = new ProfileViewer();
 
+    @SectionHeader("updates")
+    @Nest public Updates updates = new Updates();
+
     @SectionHeader("backend")
     @Nest public Backend backend = new Backend();
 
@@ -111,6 +114,10 @@ public class SoulConfigModel {
 
     public static class ProfileViewer {
         public boolean enabled = true;
+    }
+
+    public static class Updates {
+        public boolean checkForUpdates = true;
     }
 
     public static class Backend {

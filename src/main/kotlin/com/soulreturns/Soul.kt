@@ -14,15 +14,19 @@ import com.soulreturns.features.party.PartyHudOverlay
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.api.PresenceService
 import com.soulreturns.gui.lib.GuiLayoutManager
+import com.soulreturns.update.UpdateChecker
+import com.soulreturns.update.UpdateModal
 import com.soulreturns.util.MessageHandler
 import net.fabricmc.api.ClientModInitializer
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.loader.api.FabricLoader
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
+import net.minecraft.client.gui.screen.TitleScreen
+import com.soulreturns.util.SoulLogger
 import java.io.File
 
 object Soul : ClientModInitializer {
-    private val logger = LoggerFactory.getLogger("SoulMod")
+    private val logger = SoulLogger("Soul")
 
     val version: String by lazy {
         FabricLoader.getInstance().getModContainer("soul")
@@ -39,8 +43,25 @@ object Soul : ClientModInitializer {
         // Register message handler before features so they can use it.
         MessageHandler.register()
 
+        // Load persisted auth token so we don't re-authenticate on every launch.
+        com.soulreturns.api.BackendAuth.loadCached()
+
         // Start presence ping so the backend knows who is online.
         PresenceService.start()
+
+        // Kick off async update check; modal shown on title screen or first world join.
+        UpdateChecker.checkAsync()
+        ScreenEvents.AFTER_INIT.register { client, screen, _, _ ->
+            if (screen !is TitleScreen) return@register
+            val update = UpdateChecker.latestUpdate ?: return@register
+            if (UpdateModal.dismissed) return@register
+            client.execute { client.setScreen(UpdateModal(update)) }
+        }
+        ClientPlayConnectionEvents.JOIN.register { _, _, client ->
+            val update = UpdateChecker.latestUpdate ?: return@register
+            if (UpdateModal.dismissed) return@register
+            client.execute { client.setScreen(UpdateModal(update)) }
+        }
 
         // Load highlight groups from JSON files.
         HighlightManager.loadGroups()
@@ -84,5 +105,5 @@ object Soul : ClientModInitializer {
         HighlightManager.loadGroups()
     }
 
-    fun getLogger(): Logger? = this.logger
+    fun getLogger(): SoulLogger = this.logger
 }

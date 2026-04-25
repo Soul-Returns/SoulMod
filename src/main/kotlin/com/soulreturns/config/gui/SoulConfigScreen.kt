@@ -1,5 +1,6 @@
 package com.soulreturns.config.gui
 
+import com.soulreturns.Soul
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.config.gui.components.SoulSlider
 import com.soulreturns.config.gui.components.SoulToggle
@@ -89,10 +90,19 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         sidebarColumn.gap(2)
         sidebarColumn.horizontalAlignment(HorizontalAlignment.LEFT)
 
-        val title = UIComponents.label(Text.literal(title.string))
-            .color(Theme.color(Theme.ACCENT))
-            .margins(Insets.of(4, 14, 4, 4))
-        sidebarColumn.child(title)
+        val titleRow = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
+        titleRow.verticalAlignment(VerticalAlignment.CENTER)
+        titleRow.margins(Insets.of(4, 14, 4, 4))
+        titleRow.child(
+            UIComponents.label(Text.literal("Soul").styled { it.withColor(Theme.ACCENT) })
+        )
+        val versionContainer = UIContainers.horizontalFlow(Sizing.expand(), Sizing.content())
+        versionContainer.horizontalAlignment(HorizontalAlignment.RIGHT)
+        versionContainer.child(
+            UIComponents.label(Text.literal("v${Soul.version.substringBefore("+")}").styled { it.withColor(Theme.TEXT_DIM) })
+        )
+        titleRow.child(versionContainer)
+        sidebarColumn.child(titleRow)
         sidebarColumn.child(separator())
 
         sidebarList = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())

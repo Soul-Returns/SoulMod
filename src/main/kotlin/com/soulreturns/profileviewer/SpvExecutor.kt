@@ -2,11 +2,11 @@ package com.soulreturns.profileviewer
 
 import com.soulreturns.api.SoulExecutor
 import com.soulreturns.config.cfg
-import org.slf4j.LoggerFactory
+import com.soulreturns.util.SoulLogger
 
 /** SPV-specific logging wrapper around [SoulExecutor]. Uses the [SPV] tag. */
 object SpvExecutor {
-    private val logger = LoggerFactory.getLogger("SoulMod/SPV")
+    private val logger = SoulLogger("Soul/SPV")
 
     val executor get() = SoulExecutor.executor
 

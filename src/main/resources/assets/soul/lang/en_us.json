@@ -1,6 +1,8 @@
 {
   "text.config.soul/config.title": "Soul",
 
+  "text.config.soul/config.category.updates": "Updates",
+
   "text.config.soul/config.category.render": "Render",
   "text.config.soul/config.category.fishing": "Fishing",
   "text.config.soul/config.category.mining": "Mining",
@@ -9,6 +11,8 @@
   "text.config.soul/config.category.backend": "Backend",
   "text.config.soul/config.category.debug": "Debug",
 
+  "text.config.soul/config.section.updates": "Updates",
+
   "text.config.soul/config.section.render": "Render",
   "text.config.soul/config.section.fishing": "Fishing",
   "text.config.soul/config.section.mining": "Mining",
@@ -16,6 +20,8 @@
   "text.config.soul/config.section.profileViewer": "Profile Viewer",
   "text.config.soul/config.section.backend": "Backend",
   "text.config.soul/config.section.debug": "Debug",
+
+  "text.config.soul/config.group.updates.misc": "Updates",
 
   "text.config.soul/config.group.render.hudScale": "HUD Scale",
   "text.config.soul/config.group.render.highlights": "Item Highlights",
@@ -29,6 +35,9 @@
   "text.config.soul/config.group.backend.misc": "Backend",
   "text.config.soul/config.group.debug.misc": "Debug",
   "text.config.soul/config.group.debug.logging": "Logging",
+
+  "text.config.soul/config.option.updates.checkForUpdates": "Check for Updates",
+  "text.config.soul/config.option.updates.checkForUpdates.tooltip": "Checks for new Soul versions on startup and shows a notice when an update is available.",
 
   "text.config.soul/config.option.render.hideHeldItemTooltip": "Hide Held Item Tooltip",
   "text.config.soul/config.option.render.hideHeldItemTooltip.tooltip": "Hides the floating name of the item currently held in your hand.",

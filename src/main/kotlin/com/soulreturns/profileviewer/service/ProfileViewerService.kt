@@ -8,8 +8,8 @@ import com.soulreturns.profileviewer.api.MojangApi
 import com.soulreturns.profileviewer.gui.ProfileViewerScreen
 import com.soulreturns.profileviewer.model.SkyblockProfile
 import com.soulreturns.profileviewer.model.SkyblockProfilesResponse
+import com.soulreturns.util.soulChat
 import net.minecraft.client.MinecraftClient
-import net.minecraft.text.Text
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
@@ -18,20 +18,20 @@ object ProfileViewerService {
     /** Enters the profile-viewer flow: resolve UUID -> fetch profiles -> open screen. */
     fun openFor(rawName: String, profileOverride: String?) {
         if (!cfg.profileViewer.enabled()) {
-            chat("§c[SPV] Profile viewer is disabled in config.")
+            soulChat("§cProfile viewer is disabled in config.")
             return
         }
         val name = rawName.trim()
         if (name.isEmpty() || !name.matches(Regex("[A-Za-z0-9_]{1,16}"))) {
-            chat("§c[SPV] Invalid username: $rawName")
+            soulChat("§cInvalid username: $rawName")
             return
         }
 
-        chat("§7[SPV] Loading §f$name§7...")
+        soulChat("§7Loading §f$name§7...")
         MojangApi.resolveUuid(name)
             .thenComposeAsync({ uuid ->
                 if (uuid == null) {
-                    chat("§c[SPV] Unknown player: $name")
+                    soulChat("§cUnknown player: $name")
                     CompletableFuture.completedFuture(null)
                 } else {
                     fetchProfiles(uuid).thenApply { resp -> uuid to resp }
@@ -42,7 +42,7 @@ object ProfileViewerService {
                 val (uuid, response) = pair
                 if (response == null) return@thenAcceptAsync
                 if (response.profiles.isEmpty()) {
-                    chat("§c[SPV] No SkyBlock profiles found for §f$name§c.")
+                    soulChat("§cNo SkyBlock profiles found for §f$name§c.")
                     return@thenAcceptAsync
                 }
                 val target: SkyblockProfile? = profileOverride?.let { response.byCuteName(it) }
@@ -50,18 +50,18 @@ object ProfileViewerService {
                     ?: response.profiles.first()
                 if (profileOverride != null && target?.cuteName?.equals(profileOverride, true) != true) {
                     val available = response.profiles.joinToString(", ") { it.cuteName }
-                    chat("§c[SPV] Profile §f$profileOverride§c not found. Available: §7$available")
+                    soulChat("§cProfile §f$profileOverride§c not found. Available: §7$available")
                     return@thenAcceptAsync
                 }
                 if (target == null) {
-                    chat("§c[SPV] Could not pick a profile for $name.")
+                    soulChat("§cCould not pick a profile for $name.")
                     return@thenAcceptAsync
                 }
                 openScreen(name, uuid, response, target)
             }, SpvExecutor.executor)
             .exceptionally { ex ->
                 SpvExecutor.warn("openFor pipeline crashed", ex)
-                chat("§c[SPV] Unexpected error: ${ex.message}")
+                soulChat("§cUnexpected error: ${ex.message}")
                 null
             }
     }
@@ -73,7 +73,7 @@ object ProfileViewerService {
             when (result) {
                 is BackendClient.Result.Ok -> parseProfiles(result.json.asJsonObject)
                 is BackendClient.Result.Error -> {
-                    chat("§c[SPV] Backend error ${result.statusCode}: ${result.message}")
+                    soulChat("§cBackend error ${result.statusCode}: ${result.message}")
                     null
                 }
             }
@@ -101,13 +101,6 @@ object ProfileViewerService {
         MinecraftClient.getInstance().execute {
             val screen = ProfileViewerScreen(name, uuid, response, initial)
             MinecraftClient.getInstance().setScreen(screen)
-        }
-    }
-
-    private fun chat(message: String) {
-        MinecraftClient.getInstance().execute {
-            val player = MinecraftClient.getInstance().player ?: return@execute
-            player.sendMessage(Text.literal(message), false)
         }
     }
 }

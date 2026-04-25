@@ -1,13 +1,13 @@
 package com.soulreturns.api
 
 import com.soulreturns.config.cfg
-import org.slf4j.LoggerFactory
+import com.soulreturns.util.SoulLogger
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 import java.util.concurrent.atomic.AtomicInteger
 
 object SoulExecutor {
-    private val logger = LoggerFactory.getLogger("SoulMod/Backend")
+    private val logger = SoulLogger("Soul/Backend")
 
     private val factory = object : ThreadFactory {
         private val counter = AtomicInteger(0)

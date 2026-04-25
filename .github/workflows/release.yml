@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+      - name: validate gradle wrapper
+        uses: gradle/actions/wrapper-validation@v4
+      - name: setup jdk
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: cache gradle wrapper
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-wrapper-${{ hashFiles('**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-wrapper-
+      - name: cache gradle caches
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-caches-${{ hashFiles('**/gradle.properties', '**/build.gradle.kts', '**/settings.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-caches-
+      - name: cache loom
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/loom-cache
+            .gradle/loom-cache
+          key: ${{ runner.os }}-loom-${{ hashFiles('**/gradle.properties', '**/build.gradle.kts', '**/settings.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-loom-
+      - name: make gradle wrapper executable
+        run: chmod +x ./gradlew
+      - name: build
+        run: ./gradlew buildAndCollect --parallel --build-cache
+      - name: create draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: ${{ github.ref_name }}
+          files: |
+            build/libs/**/*.jar
+            !build/libs/**/*-sources.jar
+            !build/libs/**/*-dev.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

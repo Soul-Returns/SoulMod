@@ -35,6 +35,7 @@ object SoulHttp {
 
     val client: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
+        .followRedirects(HttpClient.Redirect.NORMAL)
         .executor(SoulExecutor.executor)
         .build()
 

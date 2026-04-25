@@ -1,10 +1,10 @@
 package com.soulreturns.util
 
 import com.soulreturns.config.cfg
-import org.slf4j.LoggerFactory
+import com.soulreturns.util.SoulLogger
 
 object DebugLogger {
-    private val logger = LoggerFactory.getLogger("SoulMod")
+    private val logger = SoulLogger("Soul")
 
     private inline fun log(prefix: String, message: String, predicate: () -> Boolean) {
         try {

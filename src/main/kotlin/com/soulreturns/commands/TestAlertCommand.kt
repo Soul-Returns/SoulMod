@@ -4,11 +4,10 @@ import com.mojang.brigadier.CommandDispatcher
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.RenderUtils
+import com.soulreturns.util.soulChat
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.client.MinecraftClient
-import net.minecraft.text.Text
 
 object TestAlertCommand {
     fun register() {
@@ -26,11 +25,8 @@ object TestAlertCommand {
                             DebugLogger.logCommandExecution(context.input)
                             val message = StringArgumentType.getString(context, "message")
                             RenderUtils.showAlert(message, 0xFFFF0000.toInt(), 2.0f, 5000) // Show for 5 seconds at 2x size
-
-                            val player = MinecraftClient.getInstance().player
-                            val feedback = "§aShowing alert: §r$message"
-                            player?.sendMessage(Text.literal(feedback), false)
-                            DebugLogger.logSentMessage(feedback)
+                            soulChat("§aShowing alert: §r$message")
+                            DebugLogger.logSentMessage("Showing alert: $message")
                             1
                         }
                 )
@@ -38,11 +34,8 @@ object TestAlertCommand {
                     DebugLogger.logCommandExecution(context.input)
                     // Default test message
                     RenderUtils.showAlert("Don Expresso is leaving in 1 minute!", 0xFFFF0000.toInt(), 2.0f, 5000)
-
-                    val player = MinecraftClient.getInstance().player
-                    val feedback = "§aShowing Don Expresso alert!"
-                    player?.sendMessage(Text.literal(feedback), false)
-                    DebugLogger.logSentMessage(feedback)
+                    soulChat("§aShowing Don Expresso alert!")
+                    DebugLogger.logSentMessage("Showing Don Expresso alert!")
                     1
                 }
         )
@@ -52,11 +45,8 @@ object TestAlertCommand {
                 .executes { context ->
                     DebugLogger.logCommandExecution(context.input)
                     RenderUtils.clearAlerts()
-
-                    val player = MinecraftClient.getInstance().player
-                    val feedback = "§aCleared all alerts!"
-                    player?.sendMessage(Text.literal(feedback), false)
-                    DebugLogger.logSentMessage(feedback)
+                    soulChat("§aCleared all alerts!")
+                    DebugLogger.logSentMessage("Cleared all alerts!")
                     1
                 }
         )

@@ -1,6 +1,7 @@
 package com.soulreturns.command
 
 import com.mojang.brigadier.context.CommandContext
+import com.soulreturns.commands.subcommands.CheckForUpdatesSubcommand
 import com.soulreturns.commands.subcommands.ClearAlertsSubcommand
 import com.soulreturns.commands.subcommands.GuiSubcommand
 import com.soulreturns.commands.subcommands.TestAlertSubcommand
@@ -25,6 +26,7 @@ object SoulCommand {
                     .then(TestAlertSubcommand.register())
                     .then(ClearAlertsSubcommand.register())
                     .then(GuiSubcommand.register())
+                    .then(CheckForUpdatesSubcommand.register())
             )
         }
     }
