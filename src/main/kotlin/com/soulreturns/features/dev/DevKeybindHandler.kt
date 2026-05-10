@@ -16,6 +16,8 @@ import net.minecraft.nbt.NbtOps
 import net.minecraft.resources.RegistryOps
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.scores.DisplaySlot
+import net.minecraft.world.scores.PlayerScoreEntry
+import net.minecraft.world.scores.Scoreboard
 import org.lwjgl.glfw.GLFW
 
 /**
@@ -124,25 +126,39 @@ object DevKeybindHandler {
     private fun copyScoreboard() {
         val mc = Minecraft.getInstance()
         val level = mc.level ?: run { soulChat("§7No world."); return }
-        val objective = level.scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR)
+        val scoreboard = level.scoreboard
+        val objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR)
         if (objective == null) {
             soulChat("§7No sidebar scoreboard."); return
         }
         val title = objective.displayName.string
-        val scores = level.scoreboard.listPlayerScores(objective)
-            .sortedByDescending { it.value() }
+        // Hypixel renders SkyBlock scoreboard top-to-bottom: highest score first.
+        val scores = scoreboard.listPlayerScores(objective).sortedByDescending { it.value() }
         val obj = JsonObject().apply { addProperty("title", title) }
         val linesArr = JsonArray()
         for (s in scores) {
             val line = JsonObject().apply {
-                addProperty("owner", s.owner())
                 addProperty("score", s.value())
+                addProperty("owner", s.owner())
+                addProperty("text", renderScoreLine(scoreboard, s))
                 s.display()?.let { addProperty("display", it.string) }
             }
             linesArr.add(line)
         }
         obj.add("lines", linesArr)
         copyToClipboard(obj, "scoreboard (${linesArr.size()} lines)")
+    }
+
+    /**
+     * Reconstructs the visible scoreboard line text the same way vanilla's sidebar renderer does:
+     * `team.prefix + team-formatted owner + team.suffix`. Hypixel uses placeholder `owner` strings
+     * (`§y`, `§x`, ...) and stores the actual line content in the team's prefix/suffix.
+     */
+    private fun renderScoreLine(scoreboard: Scoreboard, entry: PlayerScoreEntry): String {
+        val team = scoreboard.getPlayersTeam(entry.owner())
+        val ownerName = entry.ownerName()
+        return if (team == null) ownerName.string
+        else team.getPlayerPrefix().copy().append(ownerName).append(team.getPlayerSuffix()).string
     }
 
     private fun copyTablist() {

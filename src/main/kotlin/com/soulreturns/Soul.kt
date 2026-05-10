@@ -8,7 +8,9 @@ import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.LegionCounter
 import com.soulreturns.features.BobbinTimeCounter
 import com.soulreturns.features.dev.DevKeybindHandler
+import com.soulreturns.features.farming.SeasoningTracker
 import com.soulreturns.features.itemhighlight.HighlightManager
+import com.soulreturns.stats.PersistentStats
 import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
 import com.soulreturns.features.party.PartyHudOverlay
@@ -44,6 +46,9 @@ object Soul : ClientModInitializer {
 
         // Register message handler before features so they can use it.
         MessageHandler.register()
+
+        // Load persisted stats (tracked counters like seasonings) before features may read them.
+        PersistentStats.init()
 
         // Load persisted auth token so we don't re-authenticate on every launch.
         com.soulreturns.api.BackendAuth.loadCached()
@@ -104,6 +109,9 @@ object Soul : ClientModInitializer {
 
         // Dev tooling: global keybinds for clipboard data dumps
         DevKeybindHandler.register()
+
+        // Farming
+        SeasoningTracker.register()
     }
 
     fun reloadFeatures() {

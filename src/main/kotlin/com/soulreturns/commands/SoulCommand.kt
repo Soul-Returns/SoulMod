@@ -2,11 +2,9 @@ package com.soulreturns.command
 
 import com.mojang.brigadier.context.CommandContext
 import com.soulreturns.commands.subcommands.CheckForUpdatesSubcommand
-import com.soulreturns.commands.subcommands.ClearAlertsSubcommand
 import com.soulreturns.commands.subcommands.ConfigSubcommand
+import com.soulreturns.commands.subcommands.DevSubcommand
 import com.soulreturns.commands.subcommands.GuiSubcommand
-import com.soulreturns.commands.subcommands.TestAlertSubcommand
-import com.soulreturns.commands.subcommands.TestMessageSubcommand
 import com.soulreturns.config.gui.SoulConfigScreen
 import com.soulreturns.util.DebugLogger
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
@@ -23,12 +21,10 @@ object SoulCommand {
                         DebugLogger.logCommandExecution(context.input)
                         execute(context)
                     }
-                    .then(TestMessageSubcommand.register())
-                    .then(TestAlertSubcommand.register())
-                    .then(ClearAlertsSubcommand.register())
                     .then(GuiSubcommand.register())
                     .then(CheckForUpdatesSubcommand.register())
                     .then(ConfigSubcommand.register())
+                    .then(DevSubcommand.register())
             )
         }
     }

@@ -156,13 +156,15 @@ object MessageDetector {
     }
 
     /**
-     * Remove Minecraft color codes from a string.
+     * Remove Minecraft color codes from a string. Strips `§` followed by *any* single character
+     * — covers vanilla codes (§0-9, §a-f, §k-o, §r) as well as Hypixel's non-standard placeholder
+     * codes (§y, §x, §u, etc.) used as scoreboard line keys.
      *
      * @param text Text potentially containing color codes
      * @return Text with color codes removed
      */
     fun stripColorCodes(text: String): String {
-        return text.replace("§[0-9a-fk-or]".toRegex(), "")
+        return text.replace("§.".toRegex(), "")
     }
 
     /**

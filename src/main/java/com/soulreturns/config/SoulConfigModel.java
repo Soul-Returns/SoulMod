@@ -31,6 +31,9 @@ public class SoulConfigModel {
     @SectionHeader("mining")
     @Nest public Mining mining = new Mining();
 
+    @SectionHeader("farming")
+    @Nest public Farming farming = new Farming();
+
     @SectionHeader("profileViewer")
     @Nest public ProfileViewer profileViewer = new ProfileViewer();
 
@@ -103,6 +106,14 @@ public class SoulConfigModel {
 
     public static class DwarvenMines {
         public boolean donExpressoAlert = false;
+    }
+
+    public static class Farming {
+        @Nest public Seasonings seasonings = new Seasonings();
+    }
+
+    public static class Seasonings {
+        public boolean enableTracker = false;
     }
 
     public static class Fixes {
