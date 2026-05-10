@@ -34,6 +34,18 @@
   "text.config.soul/config.group.dev.backend": "Backend",
   "text.config.soul/config.group.dev.debug": "Debug",
   "text.config.soul/config.group.dev.config": "Config",
+  "text.config.soul/config.group.dev.keybinds": "Keybinds",
+
+  "text.config.soul/config.option.dev.keybinds.copyOpenedGui": "Copy Opened GUI",
+  "text.config.soul/config.option.dev.keybinds.copyOpenedGui.tooltip": "Copies a JSON dump of the currently open container screen (chest contents, slot map, title) to the clipboard.",
+  "text.config.soul/config.option.dev.keybinds.copyItemUnderCursor": "Copy Item Under Cursor",
+  "text.config.soul/config.option.dev.keybinds.copyItemUnderCursor.tooltip": "Copies a JSON dump of the item the cursor is hovering inside a container.",
+  "text.config.soul/config.option.dev.keybinds.copyHeldItem": "Copy Held Item",
+  "text.config.soul/config.option.dev.keybinds.copyHeldItem.tooltip": "Copies a JSON dump of the item in the player's main hand.",
+  "text.config.soul/config.option.dev.keybinds.copyScoreboard": "Copy Scoreboard",
+  "text.config.soul/config.option.dev.keybinds.copyScoreboard.tooltip": "Copies the scoreboard sidebar lines as text.",
+  "text.config.soul/config.option.dev.keybinds.copyTablist": "Copy Tablist",
+  "text.config.soul/config.option.dev.keybinds.copyTablist.tooltip": "Copies the tab list (header, footer, players) as JSON.",
   "text.config.soul/config.group.dev.debug.logging": "Logging",
 
   "text.config.soul/config.option.general.fixes.fixDoubleSneak": "Fix Double Sneak",

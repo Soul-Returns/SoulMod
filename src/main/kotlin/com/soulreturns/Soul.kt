@@ -7,6 +7,7 @@ import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.LegionCounter
 import com.soulreturns.features.BobbinTimeCounter
+import com.soulreturns.features.dev.DevKeybindHandler
 import com.soulreturns.features.itemhighlight.HighlightManager
 import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
@@ -100,6 +101,9 @@ object Soul : ClientModInitializer {
         // Party tracking and HUD overlay
         PartyManager.register()
         PartyHudOverlay.register()
+
+        // Dev tooling: global keybinds for clipboard data dumps
+        DevKeybindHandler.register()
     }
 
     fun reloadFeatures() {

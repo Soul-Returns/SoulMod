@@ -22,11 +22,15 @@ import io.wispforest.owo.ui.core.OwoUIAdapter
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.Surface
 import io.wispforest.owo.ui.core.VerticalAlignment
+import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
+import net.minecraft.client.input.KeyEvent
+import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
 import net.minecraft.resources.Identifier
 import net.minecraft.util.Util
+import org.lwjgl.glfw.GLFW
 import java.net.URI
 import java.util.Locale
 
@@ -117,6 +121,18 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
     private val categoryOrder: List<String> = listOf(
         "general", "render", "fishing", "mining", "farming", "profileViewer", "dev"
     )
+
+    /** Option full-paths whose String value is a Minecraft key translation key (e.g. "key.keyboard.f6"). */
+    private val keybindOptions: Set<String> = setOf(
+        "dev.keybinds.copyOpenedGui",
+        "dev.keybinds.copyItemUnderCursor",
+        "dev.keybinds.copyHeldItem",
+        "dev.keybinds.copyScoreboard",
+        "dev.keybinds.copyTablist"
+    )
+
+    /** When non-null, the next key/mouse press binds this option instead of acting on the screen. */
+    private var capturingKeybind: Option<String>? = null
 
     /** Option full-path → predicate. Option is hidden when predicate returns false. */
     private val optionVisibility: Map<String, () -> Boolean> = mapOf(
@@ -510,10 +526,16 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         }
         row.child(label)
 
-        when (opt.value()) {
-            is Boolean -> row.child(buildToggle(@Suppress("UNCHECKED_CAST") (opt as Option<Boolean>)))
-            is Int, is Long, is Float, is Double -> row.child(buildNumeric(opt))
-            is String -> row.child(buildTextBox(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
+        val pathKey = opt.key().path().joinToString(".")
+        when {
+            opt.value() is Boolean ->
+                row.child(buildToggle(@Suppress("UNCHECKED_CAST") (opt as Option<Boolean>)))
+            opt.value() is Int || opt.value() is Long || opt.value() is Float || opt.value() is Double ->
+                row.child(buildNumeric(opt))
+            opt.value() is String && pathKey in keybindOptions ->
+                row.child(buildKeybindButton(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
+            opt.value() is String ->
+                row.child(buildTextBox(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
             else -> row.child(UIComponents.label(Component.literal(opt.value().toString())))
         }
         // Fixed-width slot; button is added/removed dynamically to avoid phantom hover.
@@ -557,6 +579,61 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         }
         slider.onSlideEnd { save(); refreshResetSlot(opt) }
         return slider
+    }
+
+    private fun buildKeybindButton(opt: Option<String>): ButtonComponent {
+        val isCapturing = capturingKeybind === opt
+        val text = if (isCapturing) "> Press a key <" else keybindLabel(opt.value())
+        val btn = UIComponents.button(Component.literal(text)) {
+            // Click the same button while capturing → cancel capture.
+            capturingKeybind = if (capturingKeybind === opt) null else opt
+            rebuildContentBody()
+        }
+        btn.horizontalSizing(Sizing.fixed(110))
+        btn.verticalSizing(Sizing.fixed(20))
+        btn.renderer(actionButtonRenderer())
+        return btn
+    }
+
+    /** Pretty-print a stored key name like `key.keyboard.f6` → `F6`. Empty string → `Not bound`. */
+    private fun keybindLabel(stored: String): String {
+        if (stored.isBlank()) return "Not bound"
+        return try {
+            InputConstants.getKey(stored).getDisplayName().string
+        } catch (_: Throwable) {
+            stored
+        }
+    }
+
+    override fun keyPressed(input: KeyEvent): Boolean {
+        val capturing = capturingKeybind
+        if (capturing != null) {
+            if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+                capturing.set("")
+            } else {
+                capturing.set(InputConstants.getKey(input).getName())
+            }
+            capturingKeybind = null
+            save()
+            rebuildContentBody()
+            return true
+        }
+        return super.keyPressed(input)
+    }
+
+    override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean {
+        val capturing = capturingKeybind
+        // The very click that *enters* capture mode is consumed by the button's onClick first; this
+        // override only fires for clicks that *aren't* on the button — i.e. the user wants to bind a mouse btn.
+        if (capturing != null) {
+            val key = InputConstants.Type.MOUSE.getOrCreate(click.button())
+            capturing.set(key.getName())
+            capturingKeybind = null
+            save()
+            rebuildContentBody()
+            return true
+        }
+        return super.mouseClicked(click, doubled)
     }
 
     private fun buildTextBox(opt: Option<String>): TextBoxComponent {

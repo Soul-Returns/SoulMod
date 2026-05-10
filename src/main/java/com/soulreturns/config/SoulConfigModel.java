@@ -118,6 +118,17 @@ public class SoulConfigModel {
         @Nest public Updates updates = new Updates();
         @Nest public Backend backend = new Backend();
         @Nest public Debug debug = new Debug();
+        @Nest public DevKeybinds keybinds = new DevKeybinds();
+    }
+
+    public static class DevKeybinds {
+        // Each value is a Minecraft InputConstants key translation key (e.g. "key.keyboard.f6"),
+        // or "" for unbound. Picker UI in SoulConfigScreen treats these specially.
+        public String copyOpenedGui = "";
+        public String copyItemUnderCursor = "";
+        public String copyHeldItem = "";
+        public String copyScoreboard = "";
+        public String copyTablist = "";
     }
 
     public static class Updates {
