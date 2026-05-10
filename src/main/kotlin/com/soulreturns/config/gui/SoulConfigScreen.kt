@@ -119,7 +119,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
 
     /** Explicit category sort order. Categories not listed here fall to the end in their original order. */
     private val categoryOrder: List<String> = listOf(
-        "general", "render", "fishing", "mining", "farming", "profileViewer", "dev"
+        "general", "render", "fishing", "mining", "farming", "notifications", "profileViewer", "dev"
     )
 
     /** Option full-paths whose String value is a Minecraft key translation key (e.g. "key.keyboard.f6"). */

@@ -13,6 +13,7 @@ import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.seasoning.HarvestFeastReader
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
 import com.soulreturns.features.itemhighlight.HighlightManager
+import com.soulreturns.features.notifications.ChatNotifications
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.hud.SeasoningHud
 import com.soulreturns.features.itemhighlight.TooltipHandler
@@ -122,6 +123,9 @@ object Soul : ClientModInitializer {
         HarvestFeastReader.register()
         SeasoningTracker.register()
         SeasoningHud.register()
+
+        // Notifications
+        ChatNotifications.register()
     }
 
     fun reloadFeatures() {

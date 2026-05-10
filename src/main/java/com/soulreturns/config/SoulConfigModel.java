@@ -34,6 +34,9 @@ public class SoulConfigModel {
     @SectionHeader("farming")
     @Nest public Farming farming = new Farming();
 
+    @SectionHeader("notifications")
+    @Nest public Notifications notifications = new Notifications();
+
     @SectionHeader("profileViewer")
     @Nest public ProfileViewer profileViewer = new ProfileViewer();
 
@@ -123,6 +126,10 @@ public class SoulConfigModel {
     public static class Fixes {
         public boolean fixDoubleSneak = false;
         public boolean oldCactusHitbox = false;
+    }
+
+    public static class Notifications {
+        public boolean chatAlerts = true;
     }
 
     public static class ProfileViewer {
