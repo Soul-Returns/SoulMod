@@ -40,7 +40,14 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
     private val wrapper: ConfigWrapper<*> get() = SoulConfigHolder.INSTANCE
 
     /** When non-null, the next key/mouse press binds this option instead of acting on the screen. */
-    override var capturingKeybind: Option<String>? = null
+    private var capturingKeybind: Option<String>? = null
+
+    override fun requestKeybindCapture(opt: Option<String>) {
+        // Click the same button while capturing → cancel; otherwise start capturing this opt.
+        capturingKeybind = if (capturingKeybind === opt) null else opt
+    }
+
+    override fun isCapturing(opt: Option<String>): Boolean = capturingKeybind === opt
 
     private val categories: List<CategoryEntry> by lazy { collectCategories() }
     private var activeCategory: String = ""

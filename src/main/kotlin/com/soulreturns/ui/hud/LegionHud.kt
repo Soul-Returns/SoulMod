@@ -1,4 +1,4 @@
-package com.soulreturns.features
+package com.soulreturns.ui.hud
 
 import com.soulreturns.config.cfg
 import com.soulreturns.gui.lib.GuiLayoutApi
@@ -7,38 +7,33 @@ import net.minecraft.client.Minecraft
 import net.minecraft.world.entity.player.Player
 
 /**
- * Legion counter feature for Hypixel Skyblock.
+ * Legion HUD — counts other real players within a 30-block radius and exposes a
+ * positionable text block (anchored via [GuiLayoutApi]).
  *
- * Counts other players within a 30 block radius and updates a TextBlockElement
- * in the GUI layout so it can be positioned and scaled via the Edit GUI.
+ * No persistent state: the count is recomputed each tick. Pure view; nothing else
+ * in the codebase reads "legion count," so there's no separate state object.
  */
-object LegionCounter {
+object LegionHud {
     private const val ELEMENT_ID = "legion_counter"
     private const val RADIUS = 30.0
     private const val RADIUS_SQ = RADIUS * RADIUS
 
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register { client ->
-            tick(client)
-        }
+        ClientTickEvents.END_CLIENT_TICK.register { client -> tick(client) }
     }
 
     private fun tick(client: Minecraft) {
         val player = client.player ?: return
         val world = client.level ?: return
 
-        // Count other *real* players in a 30-block radius.
-        // Hypixel Skyblock NPCs typically have "[NPC]" in their display name;
-        // we filter those out so the number more closely matches Legion stacks.
+        // Hypixel SkyBlock NPCs typically have non-v4 UUIDs; filtering by UUID version
+        // gives us a count that closely matches Legion stacks.
         val count = world.players().count { other ->
             other !== player &&
                 other.isRealPlayer() &&
                 player.distanceToSqr(other) <= RADIUS_SQ
         }
 
-        // Update or create the Legion HUD text block. Position and scale are
-        // only taken from the defaults the first time; subsequent calls keep
-        // the player's edited layout from /soul gui.
         GuiLayoutApi.updateTextBlock(
             id = ELEMENT_ID,
             title = "Legion",
@@ -51,6 +46,5 @@ object LegionCounter {
         )
     }
 
-    private fun Player.isRealPlayer(): Boolean =
-        uuid?.let { it.version() == 4 } ?: false
+    private fun Player.isRealPlayer(): Boolean = uuid?.let { it.version() == 4 } ?: false
 }

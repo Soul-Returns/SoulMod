@@ -229,11 +229,10 @@ internal class RowBuilders(
     }
 
     private fun buildKeybindButton(opt: Option<String>): ButtonComponent {
-        val isCapturing = ctx.capturingKeybind === opt
-        val text = if (isCapturing) "> Press a key <" else keybindLabel(opt.value())
+        val text = if (ctx.isCapturing(opt)) "> Press a key <" else keybindLabel(opt.value())
         val btn = UIComponents.button(Component.literal(text)) {
-            // Click the same button while capturing → cancel capture.
-            ctx.capturingKeybind = if (ctx.capturingKeybind === opt) null else opt
+            // Click the same button while capturing → cancel capture (screen handles the toggle).
+            ctx.requestKeybindCapture(opt)
             ctx.rebuildContentBody()
         }
         btn.horizontalSizing(Sizing.fixed(110))

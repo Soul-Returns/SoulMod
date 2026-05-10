@@ -1,9 +1,8 @@
-package com.soulreturns.features
+package com.soulreturns.features.fishing
 
 import com.soulreturns.config.SoulConfig
 import com.soulreturns.config.cfg
 import com.soulreturns.features.party.PartyManager
-import com.soulreturns.gui.lib.GuiLayoutApi
 import com.soulreturns.util.RenderUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
@@ -11,56 +10,35 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.entity.projectile.FishingHook
 
 /**
- * Bobbin Time helper feature.
- *
- * Counts nearby fishing bobbers within a 30 block radius and exposes a
- * separate HUD counter via the GUI layout library. Also triggers a
- * configurable one-shot alert (title + sound) when at least X bobbers are
- * detected, where X comes from the Fishing → Bobbin Time config.
+ * Counts nearby fishing bobbers and fires the "Bobbin Time" alert when a configurable
+ * threshold is crossed. Pure model — exposes [nearbyBobbers] for the HUD to render but
+ * never touches the layout system itself.
  */
-object BobbinTimeCounter {
-    private const val ELEMENT_ID = "bobbin_time_counter"
+object BobbinSpotter {
     private const val RADIUS = 30.0
     private const val RADIUS_SQ = RADIUS * RADIUS
+    private const val ALERT_COOLDOWN_MS = 3000L
+
+    /** Most recent bobber count, refreshed each client tick. Read by the HUD. */
+    @Volatile var nearbyBobbers: Int = 0
+        private set
 
     private var alertTriggered = false
-    private const val ALERT_COOLDOWN_MS = 3000L
     private var lastAlertTimeMs: Long = 0L
 
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register { client ->
-            tick(client)
-        }
+        ClientTickEvents.END_CLIENT_TICK.register { client -> tick(client) }
     }
 
     private fun tick(client: Minecraft) {
         val player = client.player ?: return
         val world = client.level ?: return
 
-        val fishingConfig = cfg.fishing.bobbinTime
-
-        // Count fishing bobbers in range
-        val count = world.entitiesForRendering()
+        nearbyBobbers = world.entitiesForRendering()
             .filterIsInstance<FishingHook>()
-            .count { bobber ->
-                bobber.distanceToSqr(player) <= RADIUS_SQ
-            }
+            .count { bobber -> bobber.distanceToSqr(player) <= RADIUS_SQ }
 
-        // Update or create the Bobbin Time HUD text block. Position and scale
-        // are only taken from the defaults the first time; subsequent calls
-        // keep the player's edited layout from /soul gui.
-        GuiLayoutApi.updateTextBlock(
-            id = ELEMENT_ID,
-            title = "Bobbin Time",
-            lines = listOf("Nearby bobbers: $count"),
-            color = 0xFF00FFFF.toInt(), // cyan-ish
-            enabled = fishingConfig.enableBobbinTimeCounter(),
-            defaultAnchorX = 0.02,
-            defaultAnchorY = 0.35,
-            defaultScale = 1.0f,
-        )
-
-        handleAlert(player, count, fishingConfig)
+        handleAlert(player, nearbyBobbers, cfg.fishing.bobbinTime)
     }
 
     private fun handleAlert(player: Player, count: Int, fishingConfig: SoulConfig.BobbinTime) {
@@ -79,37 +57,27 @@ object BobbinTimeCounter {
             val hasMatchingItem = (0 until inventory.containerSize).any { slot ->
                 val stack = inventory.getItem(slot)
                 if (stack.isEmpty) return@any false
-
                 val name = stack.hoverName.string
-                filters.any { filter ->
-                    name.contains(filter, ignoreCase = true)
-                }
+                filters.any { filter -> name.contains(filter, ignoreCase = true) }
             }
-
             if (!hasMatchingItem) {
                 alertTriggered = false
                 return
             }
         }
 
-        // Determine effective threshold: either the static slider value, or
-        // (party size - 1) capped at 5 when sync-with-party is enabled.
+        // Effective threshold: static slider, or party-size-minus-self capped at 5
+        // when "sync with party" is on.
         val staticThreshold = fishingConfig.alertBobberCount().coerceIn(1, 5)
         val partySize = PartyManager.getPartySize()
-        val partyThreshold = if (partySize > 0) {
-            (partySize - 1).coerceIn(1, 5)
-        } else {
-            null
-        }
+        val partyThreshold = if (partySize > 0) (partySize - 1).coerceIn(1, 5) else null
         val threshold = if (fishingConfig.syncBobbinAlertWithParty() && partyThreshold != null) {
             partyThreshold
         } else {
             staticThreshold
         }
 
-        // Fire alert once when we reach the desired bobber count, but do not
-        // spam: enforce a cooldown between alerts even if the threshold is
-        // crossed repeatedly due to recasts.
+        // Fire once when count crosses threshold; cooldown stops re-cast spam.
         val now = System.currentTimeMillis()
         if (count >= threshold && !alertTriggered && now - lastAlertTimeMs >= ALERT_COOLDOWN_MS) {
             alertTriggered = true
@@ -122,8 +90,6 @@ object BobbinTimeCounter {
             )
         }
 
-        if (count < threshold) {
-            alertTriggered = false
-        }
+        if (count < threshold) alertTriggered = false
     }
 }

@@ -1,23 +1,21 @@
-package com.soulreturns.features.party
+package com.soulreturns.ui.hud
 
 import com.soulreturns.config.cfg
+import com.soulreturns.features.party.PartyManager
 import com.soulreturns.features.party.PartyManager.PartyRole
 import com.soulreturns.gui.lib.GuiLayoutApi
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 
 /**
- * Simple on-screen overlay that shows current party information using the
- * generic GUI layout system (TextBlockElement).
+ * Party HUD — pure view. Reads state directly from [PartyManager] (which owns party
+ * tracking via chat parsing) and pushes a text block into [GuiLayoutApi].
  */
-object PartyHudOverlay {
+object PartyHud {
     private const val ELEMENT_ID = "party_info"
 
     fun register() {
-        // Keep party state updated every client tick and refresh the HUD text.
-        ClientTickEvents.END_CLIENT_TICK.register { client ->
-            tick(client)
-        }
+        ClientTickEvents.END_CLIENT_TICK.register { client -> tick(client) }
     }
 
     private fun tick(client: Minecraft) {
@@ -28,8 +26,8 @@ object PartyHudOverlay {
             return
         }
 
-        // If overlay is disabled, hide the element but keep any saved layout.
         if (!enabled) {
+            // Hide but keep layout — defaults are not re-applied because layout already exists.
             GuiLayoutApi.updateTextBlock(
                 id = ELEMENT_ID,
                 enabled = false,
@@ -45,7 +43,6 @@ object PartyHudOverlay {
         val state = PartyManager.getPartyState()
 
         if (state == null) {
-            // Optionally show a small hint when not in a party.
             GuiLayoutApi.updateTextBlock(
                 id = ELEMENT_ID,
                 enabled = true,
@@ -62,7 +59,7 @@ object PartyHudOverlay {
         val leaderDisplay = state.leader?.displayName ?: state.leader?.name ?: "Unknown"
         val members = state.members.values
 
-        // Show everyone except the leader (members + moderators)
+        // Everyone except the leader (members + moderators).
         val memberNames = members
             .filter { it.role != PartyRole.LEADER }
             .joinToString(", ") { it.displayName }

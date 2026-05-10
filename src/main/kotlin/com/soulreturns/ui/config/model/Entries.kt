@@ -44,9 +44,6 @@ internal data class ActionRowSpec(
  * keybind capture, etc.). Keeps helpers decoupled from the concrete `SoulConfigScreen` class.
  */
 internal interface ConfigScreenContext {
-    /** When non-null, the next key/mouse press in the screen binds this option. */
-    var capturingKeybind: Option<String>?
-
     /** Persist the owo-config wrapper to disk. */
     fun save()
 
@@ -61,4 +58,14 @@ internal interface ConfigScreenContext {
 
     /** Reset the wrapper to disk state and rebuild content. Used by the Reload action row. */
     fun reloadConfig()
+
+    /**
+     * Toggle keybind-capture for [opt]: passing the same option twice cancels capture.
+     * The next key/mouse press the screen sees will bind this option. Screen owns the
+     * capture state internally — helpers just trigger it.
+     */
+    fun requestKeybindCapture(opt: Option<String>)
+
+    /** True while [opt] is the option currently waiting for a key press. */
+    fun isCapturing(opt: Option<String>): Boolean
 }

@@ -6,8 +6,9 @@ import net.fabricmc.fabric.api.client.rendering.v1.SpecialGuiElementRegistry
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.data.location.LocationReader
 import com.soulreturns.features.DoubleHookResponse
-import com.soulreturns.features.LegionCounter
-import com.soulreturns.features.BobbinTimeCounter
+import com.soulreturns.ui.hud.LegionHud
+import com.soulreturns.features.fishing.BobbinSpotter
+import com.soulreturns.ui.hud.BobbinHud
 import com.soulreturns.features.dev.DevKeybindHandler
 import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.seasoning.HarvestFeastReader
@@ -18,7 +19,7 @@ import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.hud.SeasoningHud
 import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
-import com.soulreturns.features.party.PartyHudOverlay
+import com.soulreturns.ui.hud.PartyHud
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.api.PresenceService
 import com.soulreturns.gui.lib.GuiLayoutManager
@@ -108,12 +109,14 @@ object Soul : ClientModInitializer {
     fun registerFeatures() {
         DoubleHookResponse.register()
         DonExpresso.register()
-        LegionCounter.register()
-        BobbinTimeCounter.register()
+        LegionHud.register()
+        // Fishing — spotter must register before HUD so per-tick count is fresh.
+        BobbinSpotter.register()
+        BobbinHud.register()
 
         // Party tracking and HUD overlay
         PartyManager.register()
-        PartyHudOverlay.register()
+        PartyHud.register()
 
         // Dev tooling: global keybinds for clipboard data dumps
         DevKeybindHandler.register()
