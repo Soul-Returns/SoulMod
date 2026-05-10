@@ -19,6 +19,9 @@ import io.wispforest.owo.config.annotation.SectionHeader;
 @Config(name = "soul/config", wrapperName = "SoulConfig")
 public class SoulConfigModel {
 
+    @SectionHeader("general")
+    @Nest public General general = new General();
+
     @SectionHeader("render")
     @Nest public Render render = new Render();
 
@@ -28,20 +31,15 @@ public class SoulConfigModel {
     @SectionHeader("mining")
     @Nest public Mining mining = new Mining();
 
-    @SectionHeader("fixes")
-    @Nest public Fixes fixes = new Fixes();
-
     @SectionHeader("profileViewer")
     @Nest public ProfileViewer profileViewer = new ProfileViewer();
 
-    @SectionHeader("updates")
-    @Nest public Updates updates = new Updates();
+    @SectionHeader("dev")
+    @Nest public Dev dev = new Dev();
 
-    @SectionHeader("backend")
-    @Nest public Backend backend = new Backend();
-
-    @SectionHeader("debug")
-    @Nest public Debug debug = new Debug();
+    public static class General {
+        @Nest public Fixes fixes = new Fixes();
+    }
 
     public static class Render {
         @Nest public HudScale hudScale = new HudScale();
@@ -69,7 +67,6 @@ public class SoulConfigModel {
     }
 
     public static class Highlights {
-        public boolean itemHighlightingEnabled = false;
         public boolean highlightPestEquipment = false;
         public boolean usePestVest = false;
         public boolean highlightFarmingEquipment = false;
@@ -115,6 +112,12 @@ public class SoulConfigModel {
 
     public static class ProfileViewer {
         public boolean enabled = true;
+    }
+
+    public static class Dev {
+        @Nest public Updates updates = new Updates();
+        @Nest public Backend backend = new Backend();
+        @Nest public Debug debug = new Debug();
     }
 
     public static class Updates {

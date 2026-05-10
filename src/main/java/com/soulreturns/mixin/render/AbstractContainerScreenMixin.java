@@ -31,8 +31,6 @@ public class AbstractContainerScreenMixin {
     }
 
     private void handleDrawSlot(GuiGraphics context, Slot slot) {
-        if (!getCfg().render.highlights.itemHighlightingEnabled()) return;
-
         ItemStack stack = slot.getItem();
         if (stack == null || stack.isEmpty()) return;
 

@@ -25,7 +25,7 @@ object UpdateChecker {
 
     /** Called on startup; respects the config toggle. */
     fun checkAsync() {
-        if (!cfg.updates.checkForUpdates()) {
+        if (!cfg.dev.updates.checkForUpdates()) {
             logger.debug("Update check skipped (disabled in config)")
             return
         }

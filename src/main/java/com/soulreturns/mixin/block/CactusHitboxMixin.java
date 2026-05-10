@@ -43,7 +43,7 @@ public abstract class CactusHitboxMixin {
     )
     private VoxelShape removeCollision(VoxelShape original, BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
         if (!SoulConfigHolder.isConfigReady()) return original;
-        if (!getCfg().fixes.oldCactusHitbox()) return original;
+        if (!getCfg().general.fixes.oldCactusHitbox()) return original;
         return Shapes.empty();
     }
 
@@ -53,7 +53,7 @@ public abstract class CactusHitboxMixin {
     )
     private VoxelShape expandOutline(VoxelShape original, BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
         if (!SoulConfigHolder.isConfigReady()) return original;
-        if (!getCfg().fixes.oldCactusHitbox()) return original;
+        if (!getCfg().general.fixes.oldCactusHitbox()) return original;
         return Shapes.block();
     }
 }

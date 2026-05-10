@@ -19,6 +19,76 @@ object LegacyConfigMigrator {
     private val logger = SoulLogger("Soul/Config")
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
+    /**
+     * Idempotent migration for in-place path changes within the owo-config file.
+     * Restructures `fixes`, `updates`, `backend`, `debug` (formerly top-level)
+     * into their new homes under `general` / `dev`, and drops the removed
+     * `render.highlights.itemHighlightingEnabled` master toggle. No-op if the
+     * file already uses the new layout.
+     */
+    fun migrateOwoConfigPaths() {
+        val configDir = FabricLoader.getInstance().configDir.toFile()
+        val file = File(configDir, "soul/config.json5")
+        if (!file.exists()) return
+
+        val root = try {
+            FileReader(file).use { JsonParser.parseReader(it) }.asJsonObject
+        } catch (e: Exception) {
+            logger.warn("Could not parse soul/config.json5 for path migration; skipping", e)
+            return
+        }
+
+        var changed = false
+
+        // fixes → general.fixes
+        if (root.has("fixes") && root.get("fixes").isJsonObject) {
+            val general = if (root.has("general") && root.get("general").isJsonObject) {
+                root.getAsJsonObject("general")
+            } else {
+                JsonObject().also { root.add("general", it) }
+            }
+            general.add("fixes", root.remove("fixes"))
+            changed = true
+        }
+
+        // updates / backend / debug → dev.{updates,backend,debug}
+        val devKeys = listOf("updates", "backend", "debug")
+        if (devKeys.any { root.has(it) && root.get(it).isJsonObject }) {
+            val dev = if (root.has("dev") && root.get("dev").isJsonObject) {
+                root.getAsJsonObject("dev")
+            } else {
+                JsonObject().also { root.add("dev", it) }
+            }
+            for (key in devKeys) {
+                if (root.has(key) && root.get(key).isJsonObject) {
+                    dev.add(key, root.remove(key))
+                    changed = true
+                }
+            }
+        }
+
+        // Drop the removed master toggle.
+        if (root.has("render") && root.get("render").isJsonObject) {
+            val render = root.getAsJsonObject("render")
+            if (render.has("highlights") && render.get("highlights").isJsonObject) {
+                val highlights = render.getAsJsonObject("highlights")
+                if (highlights.has("itemHighlightingEnabled")) {
+                    highlights.remove("itemHighlightingEnabled")
+                    changed = true
+                }
+            }
+        }
+
+        if (!changed) return
+
+        try {
+            file.writeText(gson.toJson(root))
+            logger.info("Migrated soul/config.json5 to new category layout (general / dev / no master highlight toggle)")
+        } catch (e: Exception) {
+            logger.warn("Failed to write migrated owo config paths", e)
+        }
+    }
+
     fun runIfPresent() {
         val configDir = FabricLoader.getInstance().configDir.toFile()
         val legacy = File(configDir, "soul/config.json")

@@ -12,7 +12,7 @@ object SpvExecutor {
 
     fun log(msg: String) {
         try {
-            if (cfg.debug.debugMode()) {
+            if (cfg.dev.debug.debugMode()) {
                 logger.info("[SPV] $msg")
             }
         } catch (_: Throwable) {

@@ -2,28 +2,25 @@
   "text.config.soul/config.title": "Soul",
   "text.config.soul/config.search": "Search",
 
-  "text.config.soul/config.category.updates": "Updates",
-
+  "text.config.soul/config.category.general": "General",
   "text.config.soul/config.category.render": "Render",
   "text.config.soul/config.category.fishing": "Fishing",
   "text.config.soul/config.category.mining": "Mining",
-  "text.config.soul/config.category.fixes": "Fixes",
+  "text.config.soul/config.category.farming": "Farming",
   "text.config.soul/config.category.profileViewer": "Profile Viewer",
-  "text.config.soul/config.category.backend": "Backend",
-  "text.config.soul/config.category.debug": "Debug",
+  "text.config.soul/config.category.dev": "Dev",
 
-  "text.config.soul/config.section.updates": "Updates",
+  "text.config.soul/config.dev.warning": "Only change if you know what you're doing.",
 
+  "text.config.soul/config.section.general": "General",
   "text.config.soul/config.section.render": "Render",
   "text.config.soul/config.section.fishing": "Fishing",
   "text.config.soul/config.section.mining": "Mining",
-  "text.config.soul/config.section.fixes": "Fixes",
+  "text.config.soul/config.section.farming": "Farming",
   "text.config.soul/config.section.profileViewer": "Profile Viewer",
-  "text.config.soul/config.section.backend": "Backend",
-  "text.config.soul/config.section.debug": "Debug",
+  "text.config.soul/config.section.dev": "Dev",
 
-  "text.config.soul/config.group.updates.misc": "Updates",
-
+  "text.config.soul/config.group.general.fixes": "Fixes",
   "text.config.soul/config.group.render.hudScale": "HUD Scale",
   "text.config.soul/config.group.render.highlights": "Item Highlights",
   "text.config.soul/config.group.render.overlays": "Overlays",
@@ -31,14 +28,18 @@
   "text.config.soul/config.group.fishing.chat": "Chat",
   "text.config.soul/config.group.fishing.bobbinTime": "Bobbin Time",
   "text.config.soul/config.group.mining.dwarvenMines": "Dwarven Mines",
-  "text.config.soul/config.group.fixes.misc": "Fixes",
+  "text.config.soul/config.group.farming.pestFarming": "Pest Farming",
   "text.config.soul/config.group.profileViewer.misc": "Profile Viewer",
-  "text.config.soul/config.group.backend.misc": "Backend",
-  "text.config.soul/config.group.debug.misc": "Debug",
-  "text.config.soul/config.group.debug.logging": "Logging",
+  "text.config.soul/config.group.dev.updates": "Updates",
+  "text.config.soul/config.group.dev.backend": "Backend",
+  "text.config.soul/config.group.dev.debug": "Debug",
+  "text.config.soul/config.group.dev.config": "Config",
+  "text.config.soul/config.group.dev.debug.logging": "Logging",
 
-  "text.config.soul/config.option.updates.checkForUpdates": "Check for Updates",
-  "text.config.soul/config.option.updates.checkForUpdates.tooltip": "Checks for new Soul versions on startup and shows a notice when an update is available.",
+  "text.config.soul/config.option.general.fixes.fixDoubleSneak": "Fix Double Sneak",
+  "text.config.soul/config.option.general.fixes.fixDoubleSneak.tooltip": "Prevents the duplicate sneak packet that triggers some servers' AFK detection.",
+  "text.config.soul/config.option.general.fixes.oldCactusHitbox": "Old Cactus Hitbox",
+  "text.config.soul/config.option.general.fixes.oldCactusHitbox.tooltip": "Expands the cactus targeting hitbox to a full cube and removes its collision. Fixes the breaking-stalls when cactus farming at ≥20 BPS in Hypixel SkyBlock Garden — the modern client's inset hitbox lets the crosshair slip through the gap between offset rows, which eventually triggers Hypixel's anti-cheat to throttle break packets.",
 
   "text.config.soul/config.option.render.hideHeldItemTooltip": "Hide Held Item Tooltip",
   "text.config.soul/config.option.render.hideHeldItemTooltip.tooltip": "Hides the floating name of the item currently held in your hand.",
@@ -54,10 +55,9 @@
   "text.config.soul/config.option.render.hudScale.actionBarScale": "Action Bar Scale",
   "text.config.soul/config.option.render.hudScale.scoreboardScale": "Scoreboard Scale",
 
-  "text.config.soul/config.option.render.highlights.itemHighlightingEnabled": "Enable Item Highlighting",
-  "text.config.soul/config.option.render.highlights.itemHighlightingEnabled.tooltip": "Master toggle for the item highlight system.",
   "text.config.soul/config.option.render.highlights.highlightPestEquipment": "Highlight Pest Equipment",
   "text.config.soul/config.option.render.highlights.usePestVest": "Use Pest Vest",
+  "text.config.soul/config.option.render.highlights.usePestVest.tooltip": "Highlight the Pest Vest instead of the Pesthunter's Cloak.",
   "text.config.soul/config.option.render.highlights.highlightFarmingEquipment": "Highlight Farming Equipment",
   "text.config.soul/config.option.render.highlights.highlightCustomItems": "Highlight Custom Items",
 
@@ -76,23 +76,18 @@
 
   "text.config.soul/config.option.mining.dwarvenMines.donExpressoAlert": "Don Espresso Alert",
 
-  "text.config.soul/config.option.fixes.fixDoubleSneak": "Fix Double Sneak",
-  "text.config.soul/config.option.fixes.fixDoubleSneak.tooltip": "Prevents the duplicate sneak packet that triggers some servers' AFK detection.",
-
-  "text.config.soul/config.option.fixes.oldCactusHitbox": "Old Cactus Hitbox",
-  "text.config.soul/config.option.fixes.oldCactusHitbox.tooltip": "Expands the cactus targeting hitbox to a full cube and removes its collision. Fixes the breaking-stalls when cactus farming at ≥20 BPS in Hypixel SkyBlock Garden — the modern client's inset hitbox lets the crosshair slip through the gap between offset rows, which eventually triggers Hypixel's anti-cheat to throttle break packets.",
-
   "text.config.soul/config.option.profileViewer.enabled": "Enabled",
 
-  "text.config.soul/config.option.backend.backendUrlOverride": "Backend URL Override",
-  "text.config.soul/config.option.backend.backendUrlOverride.tooltip": "Leave empty to use the default (sky.soulreturns.com).",
-
-  "text.config.soul/config.option.debug.debugMode": "Debug Mode",
-  "text.config.soul/config.option.debug.debugMode.tooltip": "Master switch for verbose debug logging.",
-  "text.config.soul/config.option.debug.logging.logConfigChanges": "Log Config Changes",
-  "text.config.soul/config.option.debug.logging.logGuiLayout": "Log GUI Layout",
-  "text.config.soul/config.option.debug.logging.logWidgetInteractions": "Log Widget Interactions",
-  "text.config.soul/config.option.debug.logging.logMessageHandler": "Log Message Handler",
-  "text.config.soul/config.option.debug.logging.logFeatureEvents": "Log Feature Events",
-  "text.config.soul/config.option.debug.logging.logCommandsAndMessages": "Log Commands & Messages"
+  "text.config.soul/config.option.dev.updates.checkForUpdates": "Check for Updates",
+  "text.config.soul/config.option.dev.updates.checkForUpdates.tooltip": "Checks for new Soul versions on startup and shows a notice when an update is available.",
+  "text.config.soul/config.option.dev.backend.backendUrlOverride": "Backend URL Override",
+  "text.config.soul/config.option.dev.backend.backendUrlOverride.tooltip": "Leave empty to use the default (sky.soulreturns.com).",
+  "text.config.soul/config.option.dev.debug.debugMode": "Debug Mode",
+  "text.config.soul/config.option.dev.debug.debugMode.tooltip": "Master switch for verbose debug logging.",
+  "text.config.soul/config.option.dev.debug.logging.logConfigChanges": "Log Config Changes",
+  "text.config.soul/config.option.dev.debug.logging.logGuiLayout": "Log GUI Layout",
+  "text.config.soul/config.option.dev.debug.logging.logWidgetInteractions": "Log Widget Interactions",
+  "text.config.soul/config.option.dev.debug.logging.logMessageHandler": "Log Message Handler",
+  "text.config.soul/config.option.dev.debug.logging.logFeatureEvents": "Log Feature Events",
+  "text.config.soul/config.option.dev.debug.logging.logCommandsAndMessages": "Log Commands & Messages"
 }

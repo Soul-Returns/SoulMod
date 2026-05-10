@@ -25,7 +25,7 @@ object SoulHttp {
         val sysProp = System.getProperty("soul.backendUrl")
         if (!sysProp.isNullOrBlank()) return sysProp.trimEnd('/')
         val override = try {
-            cfg.backend.backendUrlOverride()
+            cfg.dev.backend.backendUrlOverride()
         } catch (_: Throwable) {
             ""
         }

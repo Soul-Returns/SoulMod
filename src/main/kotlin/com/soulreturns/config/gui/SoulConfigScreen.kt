@@ -2,6 +2,7 @@ package com.soulreturns.config.gui
 
 import com.soulreturns.Soul
 import com.soulreturns.config.SoulConfigHolder
+import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.components.SoulSlider
 import com.soulreturns.config.gui.components.SoulToggle
 import com.soulreturns.gui.GuiEditScreen
@@ -67,8 +68,64 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
             "misc" to listOf(
                 "Tooltips"         to setOf("hideHeldItemTooltip", "showSkyblockIdInTooltip"),
                 "Player Rendering" to setOf("oldSneakHeight")
+            ),
+            "highlights" to listOf(
+                "Item Highlights" to setOf(
+                    "highlightPestEquipment",
+                    "usePestVest",
+                    "highlightFarmingEquipment",
+                    "highlightCustomItems"
+                )
             )
         )
+    )
+
+    private data class LinkTarget(val label: String, val targetCat: String, val targetSub: String)
+
+    /** Generic action row: a label paired with a button that runs an arbitrary callback. */
+    private data class ActionRow(val label: String, val buttonText: String, val action: () -> Unit)
+
+    /** Subcategories that include cross-navigation buttons to other config locations. */
+    private val linkSections: Map<String, Map<String, List<LinkTarget>>> = mapOf(
+        "farming" to mapOf(
+            "pestFarming" to listOf(
+                LinkTarget("Configure Pest Equipment Highlighting", "render", "highlights")
+            )
+        )
+    )
+
+    /** Subcategories that include action button rows. (cat, sub) → list of ActionRow. */
+    private val actionRows: Map<String, Map<String, List<ActionRow>>> = mapOf(
+        "dev" to mapOf(
+            "config" to listOf(
+                ActionRow(
+                    label = "Reload Config from Disk",
+                    buttonText = "Reload",
+                    action = { wrapper.load(); rebuildContent() }
+                )
+            )
+        )
+    )
+
+    /** Subcategories without backing config fields. Sidebar entries appear via translation keys. */
+    private val virtualSubs: Map<String, List<String>> = mapOf(
+        "farming" to listOf("pestFarming"),
+        "dev" to listOf("config")
+    )
+
+    /** Explicit category sort order. Categories not listed here fall to the end in their original order. */
+    private val categoryOrder: List<String> = listOf(
+        "general", "render", "fishing", "mining", "farming", "profileViewer", "dev"
+    )
+
+    /** Option full-path → predicate. Option is hidden when predicate returns false. */
+    private val optionVisibility: Map<String, () -> Boolean> = mapOf(
+        "render.highlights.usePestVest" to { cfg.render.highlights.highlightPestEquipment() }
+    )
+
+    /** Boolean option full-paths whose change should rebuild content (because they gate other options' visibility). */
+    private val rebuildOnChange: Set<String> = setOf(
+        "render.highlights.highlightPestEquipment"
     )
 
     private val categories: List<CategoryEntry> by lazy { collectCategories() }
@@ -336,8 +393,17 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
             contentBody.child(empty)
             return
         }
-        val sub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
+        val rawSub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
             ?: cat.subcategories.firstOrNull() ?: return
+        val sub = rawSub.copy(options = rawSub.options.filter { isOptionVisible(it) })
+
+        // Persistent banner for the Dev category — sits above the scrolling content.
+        if (activeCategory == "dev") {
+            val warning = UIComponents.label(Component.translatable("text.config.soul/config.dev.warning"))
+                .color(Theme.color(Theme.TEXT_DIM))
+            warning.margins(Insets.of(12, 4, 16, 16))
+            contentBody.child(warning)
+        }
 
         val scrollBody = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
         // Right padding leaves room for the scrollbar so rows don't visually clip.
@@ -358,12 +424,13 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
                 if (sectionOpts.isEmpty()) continue
                 addSection(scrollBody, label, sectionOpts)
             }
-            // Any options not covered by an explicit section go into a trailing unlabelled card.
+            // Any options not covered by an explicit section go into a trailing card,
+            // labelled with the subcategory name as a fallback.
             val remaining = sub.options.filter { it.key().path().last() !in placed }
-            if (remaining.isNotEmpty()) addSection(scrollBody, null, remaining)
+            if (remaining.isNotEmpty()) addSection(scrollBody, sub.displayName.string, remaining)
         } else {
             // Auto-group by 3rd path segment (e.g. render.overlays.field → group "overlays").
-            // Flat options (depth ≤ 2) fall into null → labelled with the subcategory name.
+            // Flat options (depth ≤ 2) fall back to the subcategory's own display name.
             val grouped = LinkedHashMap<String?, MutableList<Option<*>>>()
             for (opt in sub.options) {
                 val path = opt.key().path()
@@ -371,15 +438,27 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
                 grouped.getOrPut(group) { mutableListOf() }.add(opt)
             }
             for ((groupId, opts) in grouped) {
-                val displayName: String? = if (groupId != null) {
+                val displayName: String = if (groupId != null) {
                     val nameKey = "text.config.soul/config.group.${activeCategory}.${activeSubcategory}.$groupId"
                     val nameText = Component.translatable(nameKey)
                     if (nameText.string == nameKey) formatGroupId(groupId) else nameText.string
                 } else {
-                    null
+                    sub.displayName.string
                 }
                 addSection(scrollBody, displayName, opts)
             }
+        }
+
+        // Append action-button rows (e.g. "Reload Config from Disk").
+        val actions = actionRows[activeCategory]?.get(activeSubcategory)
+        if (!actions.isNullOrEmpty()) {
+            addActionSection(scrollBody, sub.displayName.string, actions)
+        }
+
+        // Append cross-navigation link buttons configured for this subcategory.
+        val links = linkSections[activeCategory]?.get(activeSubcategory)
+        if (!links.isNullOrEmpty()) {
+            addLinkSection(scrollBody, sub.displayName.string, links)
         }
 
         val scroll = UIContainers.verticalScroll(Sizing.fill(100), Sizing.fill(100), scrollBody)
@@ -410,6 +489,15 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         row.verticalAlignment(VerticalAlignment.CENTER)
         row.margins(Insets.of(1))
 
+        // Visual hint that this option is gated by another option above (e.g. usePestVest under highlightPestEquipment).
+        val isDependent = opt.key().path().joinToString(".") in optionVisibility
+        if (isDependent) {
+            val arrow = UIComponents.label(Component.literal("↳"))
+                .color(Theme.color(Theme.TEXT_DIM))
+            arrow.margins(Insets.of(0, 0, 8, 0))
+            row.child(arrow)
+        }
+
         val label = UIComponents.label(Component.translatable(opt.translationKey()))
             .color(Theme.color(Theme.TEXT))
         // Label expands to consume all leftover space, pushing the control to the row's end.
@@ -439,10 +527,12 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
 
     @Suppress("UNCHECKED_CAST")
     private fun buildToggle(opt: Option<Boolean>): SoulToggle {
+        val key = opt.key().path().joinToString(".")
         val toggle = SoulToggle(opt.value()) { newVal ->
             opt.set(newVal)
             save()
             refreshResetSlot(opt)
+            if (key in rebuildOnChange) rebuildContentBody()
         }
         return toggle
     }
@@ -584,11 +674,107 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
     }
 
     private fun optMatchesText(opt: Option<*>, q: String): Boolean {
+        if (!isOptionVisible(opt)) return false
         val labelText = Component.translatable(opt.translationKey()).string
         if (labelText.contains(q, ignoreCase = true)) return true
         val tooltipKey = opt.translationKey() + ".tooltip"
         val tooltipText = Component.translatable(tooltipKey).string
         return tooltipText != tooltipKey && tooltipText.contains(q, ignoreCase = true)
+    }
+
+    private fun isOptionVisible(opt: Option<*>): Boolean {
+        val key = opt.key().path().joinToString(".")
+        val pred = optionVisibility[key] ?: return true
+        return try { pred() } catch (_: Throwable) { true }
+    }
+
+    /** Render a labeled card containing one-or-more action rows (label + right-aligned button). */
+    private fun addActionSection(parent: FlowLayout, label: String, rows: List<ActionRow>) {
+        val lbl = UIComponents.label(Component.literal(label))
+            .color(Theme.color(Theme.TEXT_DIM))
+        lbl.margins(Insets.of(4, 0, 0, 6))
+        parent.child(lbl)
+        val card = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
+        card.surface(Theme.panelInsetSurface)
+        card.padding(Insets.of(8))
+        card.gap(2)
+        for (r in rows) card.child(actionRow(r))
+        parent.child(card)
+    }
+
+    private fun actionRow(action: ActionRow): FlowLayout {
+        val row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
+        row.surface(Theme.rowSurface())
+        row.padding(Insets.of(6, 6, 12, 12))
+        row.gap(8)
+        row.verticalAlignment(VerticalAlignment.CENTER)
+        row.margins(Insets.of(1))
+
+        val label = UIComponents.label(Component.literal(action.label))
+            .color(Theme.color(Theme.TEXT))
+        label.horizontalSizing(Sizing.expand())
+        row.child(label)
+
+        val btn = UIComponents.button(Component.literal(action.buttonText)) { action.action() }
+        btn.horizontalSizing(Sizing.fixed(80))
+        btn.verticalSizing(Sizing.fixed(20))
+        btn.renderer(actionButtonRenderer())
+        row.child(btn)
+        return row
+    }
+
+    private fun actionButtonRenderer(): ButtonComponent.Renderer {
+        return ButtonComponent.Renderer { ctx, button, _ ->
+            val bg = if (button.isHovered) Theme.ACCENT else Theme.PANEL_HOVER
+            DrawContextRenderer.roundedFill(
+                ctx,
+                button.x, button.y, button.x + button.width, button.y + button.height,
+                bg, Theme.ITEM_RADIUS
+            )
+        }
+    }
+
+    private fun addLinkSection(parent: FlowLayout, label: String, links: List<LinkTarget>) {
+        val lbl = UIComponents.label(Component.literal(label))
+            .color(Theme.color(Theme.TEXT_DIM))
+        lbl.margins(Insets.of(4, 0, 0, 6))
+        parent.child(lbl)
+        val container = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
+        container.gap(4)
+        for (link in links) container.child(linkRow(link))
+        parent.child(container)
+    }
+
+    private fun linkRow(link: LinkTarget): ButtonComponent {
+        val btn = UIComponents.button(Component.empty()) {
+            navigateTo(link.targetCat, link.targetSub)
+        }
+        btn.horizontalSizing(Sizing.fill(100))
+        btn.verticalSizing(Sizing.fixed(28))
+        btn.margins(Insets.of(2))
+        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
+            val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
+            DrawContextRenderer.roundedFill(
+                ctx,
+                button.x, button.y, button.x + button.width, button.y + button.height,
+                bg, Theme.ITEM_RADIUS
+            )
+            val tr = Minecraft.getInstance().font
+            val text = "${link.label}  ›"
+            val tx = button.x + 12
+            val ty = button.y + (button.height - tr.lineHeight) / 2
+            val color = if (button.isHovered) Theme.ACCENT else Theme.TEXT
+            ctx.drawString(tr, Component.literal(text), tx, ty, color, false)
+        })
+        return btn
+    }
+
+    private fun navigateTo(catId: String, subId: String) {
+        activeCategory = catId
+        activeSubcategory = subId
+        expandedCategories.add(catId)
+        rebuildSidebarList()
+        rebuildContent()
     }
 
     // ---- helpers ----
@@ -678,20 +864,11 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         f.verticalAlignment(VerticalAlignment.CENTER)
         f.horizontalAlignment(HorizontalAlignment.RIGHT)
 
-        val reload = UIComponents.button(Component.literal("Reload")) {
-            wrapper.load()
-            rebuildContent()
-        }
-        reload.horizontalSizing(Sizing.fixed(80))
-        reload.verticalSizing(Sizing.fixed(24))
-        reload.renderer(footerButtonRenderer(accent = false))
-
         val done = UIComponents.button(Component.literal("Done")) { onClose() }
         done.horizontalSizing(Sizing.fixed(80))
         done.verticalSizing(Sizing.fixed(24))
         done.renderer(footerButtonRenderer(accent = true))
 
-        f.child(reload)
         f.child(done)
         return f
     }
@@ -709,7 +886,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
             val arrow = if (expanded) "▾" else "▸"
             val label = "$arrow  $text"
             val ty = button.y + (button.height - tr.lineHeight) / 2
-            ctx.drawString(tr, Component.literal(label), button.x + 6, ty, Theme.TEXT_FAINT, false)
+            ctx.drawString(tr, Component.literal(label), button.x + 6, ty, Theme.TEXT, false)
         }
     }
 
@@ -763,7 +940,16 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
             val groups = byCat.getOrPut(cat) { LinkedHashMap() }
             groups.getOrPut(sub) { mutableListOf() }.add(opt)
         }
-        return byCat.entries.map { (catId, groups) ->
+        // Inject subcategories that have no backing config fields (purely navigational).
+        for ((catId, subIds) in virtualSubs) {
+            val groups = byCat.getOrPut(catId) { LinkedHashMap() }
+            for (subId in subIds) groups.getOrPut(subId) { mutableListOf() }
+        }
+        val maxOrderIdx = categoryOrder.size
+        return byCat.entries.sortedBy { entry ->
+            val idx = categoryOrder.indexOf(entry.key)
+            if (idx < 0) maxOrderIdx else idx
+        }.map { (catId, groups) ->
             val subs = groups.entries.map { (subId, options) ->
                 val nameKey = "text.config.soul/config.group.$catId.$subId"
                 SubcategoryEntry(

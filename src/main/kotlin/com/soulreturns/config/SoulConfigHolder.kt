@@ -10,9 +10,10 @@ object SoulConfigHolder {
         private set
 
     fun init(): SoulConfig {
-        // Migrator must run *before* createAndLoad() so it can write the
+        // Migrators must run *before* createAndLoad() so they can write the
         // legacy values into the new file before owo reads it.
         LegacyConfigMigrator.runIfPresent()
+        LegacyConfigMigrator.migrateOwoConfigPaths()
         INSTANCE = SoulConfig.createAndLoad()
         return INSTANCE
     }

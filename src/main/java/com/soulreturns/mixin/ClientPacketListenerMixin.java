@@ -24,7 +24,7 @@ import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 public class ClientPacketListenerMixin {
     @Inject(method = "handleSetEntityData", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/syncher/SynchedEntityData;assignValues(Ljava/util/List;)V"))
     private void no_double_sneak$fixBug(ClientboundSetEntityDataPacket packet, CallbackInfo ci, @Local Entity entity) {
-        if (!getCfg().fixes.fixDoubleSneak()) return;
+        if (!getCfg().general.fixes.fixDoubleSneak()) return;
         if (!entity.equals(Minecraft.getInstance().player)) return;
         packet.packedItems().removeIf(entry -> entry.serializer().equals(EntityDataSerializers.POSE));
     }

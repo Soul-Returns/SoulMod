@@ -22,7 +22,7 @@ object SoulExecutor {
 
     fun log(msg: String) {
         try {
-            if (cfg.debug.debugMode()) {
+            if (cfg.dev.debug.debugMode()) {
                 logger.info(msg)
             }
         } catch (_: Throwable) {
