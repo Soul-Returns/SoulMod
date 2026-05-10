@@ -21,14 +21,16 @@ public class HandledScreenMixin {
 
     /**
      * Inject after each slot is drawn to add highlighting.
+     * Note: the int parameters are mouseX/mouseY, not slot coordinates.
+     * slot.x/slot.y are already absolute screen coordinates (verified from bytecode).
      */
 
     @Inject(method = "drawSlot", at = @At("TAIL"))
-    private void onDrawSlot(DrawContext context, Slot slot, int x, int y, CallbackInfo ci) {
-        handleDrawSlot(context, slot, x, y);
+    private void onDrawSlot(DrawContext context, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+        handleDrawSlot(context, slot);
     }
 
-    private void handleDrawSlot(DrawContext context, Slot slot, int x, int y) {
+    private void handleDrawSlot(DrawContext context, Slot slot) {
         if (!getCfg().render.highlights.itemHighlightingEnabled()) return;
 
         ItemStack stack = slot.getStack();
@@ -40,7 +42,7 @@ public class HandledScreenMixin {
         Integer color = HighlightManager.INSTANCE.getColorForItem(skyblockId);
         if (color == null) return;
 
-        RenderHelper.drawSlotHighlight(context, x, y, color);
+        RenderHelper.drawSlotHighlight(context, slot.x, slot.y, color);
     }
 }
 

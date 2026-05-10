@@ -6,6 +6,7 @@
   ],
   "client": [
     "ClientPlayNetworkHandlerMixin",
+    "block.CactusHitboxMixin",
     "render.InGameHudMixin",
     "render.SneakHeightMixin",
     "render.HandledScreenMixin",

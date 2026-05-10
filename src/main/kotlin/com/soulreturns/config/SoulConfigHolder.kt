@@ -16,6 +16,9 @@ object SoulConfigHolder {
         INSTANCE = SoulConfig.createAndLoad()
         return INSTANCE
     }
+
+    @JvmStatic
+    fun isConfigReady(): Boolean = ::INSTANCE.isInitialized
 }
 
 /** Convenience accessor; mirrors the previous `config` top-level property. */

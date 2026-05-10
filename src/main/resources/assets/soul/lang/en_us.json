@@ -78,6 +78,9 @@
   "text.config.soul/config.option.fixes.fixDoubleSneak": "Fix Double Sneak",
   "text.config.soul/config.option.fixes.fixDoubleSneak.tooltip": "Prevents the duplicate sneak packet that triggers some servers' AFK detection.",
 
+  "text.config.soul/config.option.fixes.oldCactusHitbox": "Old Cactus Hitbox",
+  "text.config.soul/config.option.fixes.oldCactusHitbox.tooltip": "Expands the cactus targeting hitbox to a full cube and removes its collision. Fixes the breaking-stalls when cactus farming at ≥20 BPS in Hypixel SkyBlock Garden — the modern client's inset hitbox lets the crosshair slip through the gap between offset rows, which eventually triggers Hypixel's anti-cheat to throttle break packets.",
+
   "text.config.soul/config.option.profileViewer.enabled": "Enabled",
 
   "text.config.soul/config.option.backend.backendUrlOverride": "Backend URL Override",

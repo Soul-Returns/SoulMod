@@ -110,6 +110,7 @@ public class SoulConfigModel {
 
     public static class Fixes {
         public boolean fixDoubleSneak = false;
+        public boolean oldCactusHitbox = false;
     }
 
     public static class ProfileViewer {
