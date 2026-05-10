@@ -1,6 +1,8 @@
 package com.soulreturns.util
 
 import com.soulreturns.Soul
+import com.soulreturns.core.events.Events
+import com.soulreturns.data.model.ChatMessage
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
 
 /**
@@ -83,24 +85,22 @@ object MessageHandler {
             if (lastProcessed == trimmed) return
             lastProcessed = trimmed
 
-            // Determine message type and notify appropriate handlers
-            if (MessageDetector.isPlayerMessage(trimmed)) {
-                DebugLogger.logMessageHandler("Player message: $trimmed")
-                playerMessageHandlers.forEach { handler ->
-                    try {
-                        handler(trimmed)
-                    } catch (t: Throwable) {
-                        Soul.getLogger()?.error("Error in player message handler", t)
-                    }
-                }
-            } else {
-                DebugLogger.logMessageHandler("Server message: $trimmed")
-                serverMessageHandlers.forEach { handler ->
-                    try {
-                        handler(trimmed)
-                    } catch (t: Throwable) {
-                        Soul.getLogger()?.error("Error in server message handler", t)
-                    }
+            val source = if (MessageDetector.isPlayerMessage(trimmed))
+                ChatMessage.Source.PLAYER
+            else
+                ChatMessage.Source.SERVER
+
+            // Publish typed event for new event-driven subscribers.
+            Events.publish(ChatMessage(trimmed, source))
+
+            // Legacy callback API — kept for backwards compatibility while features migrate.
+            val handlers = if (source == ChatMessage.Source.PLAYER) playerMessageHandlers else serverMessageHandlers
+            DebugLogger.logMessageHandler("${source.name.lowercase().replaceFirstChar(Char::uppercase)} message: $trimmed")
+            handlers.forEach { handler ->
+                try {
+                    handler(trimmed)
+                } catch (t: Throwable) {
+                    Soul.getLogger()?.error("Error in ${source.name.lowercase()} message handler", t)
                 }
             }
         } catch (t: Throwable) {

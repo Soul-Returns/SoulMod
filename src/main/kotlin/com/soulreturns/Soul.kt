@@ -10,9 +10,11 @@ import com.soulreturns.features.LegionCounter
 import com.soulreturns.features.BobbinTimeCounter
 import com.soulreturns.features.dev.DevKeybindHandler
 import com.soulreturns.features.farming.FarmingTimer
-import com.soulreturns.features.farming.SeasoningTracker
+import com.soulreturns.features.farming.seasoning.HarvestFeastReader
+import com.soulreturns.features.farming.seasoning.SeasoningTracker
 import com.soulreturns.features.itemhighlight.HighlightManager
 import com.soulreturns.stats.PersistentStats
+import com.soulreturns.ui.hud.SeasoningHud
 import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
 import com.soulreturns.features.party.PartyHudOverlay
@@ -115,9 +117,11 @@ object Soul : ClientModInitializer {
         // Dev tooling: global keybinds for clipboard data dumps
         DevKeybindHandler.register()
 
-        // Farming
+        // Farming — split across reader / state-orchestrator / HUD
         FarmingTimer.register()
+        HarvestFeastReader.register()
         SeasoningTracker.register()
+        SeasoningHud.register()
     }
 
     fun reloadFeatures() {

@@ -1,7 +1,7 @@
 package com.soulreturns.commands.subcommands
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
-import com.soulreturns.features.farming.SeasoningTracker
+import com.soulreturns.features.farming.seasoning.SeasoningTracker
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageHandler
 import com.soulreturns.util.RenderUtils
