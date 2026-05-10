@@ -4,16 +4,16 @@ import com.soulreturns.gui.lib.EditState
 import com.soulreturns.gui.lib.GuiEditSession
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.gui.lib.GuiRenderer
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.screen.Screen
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.screens.Screen
+import net.minecraft.network.chat.Component
 
 /**
  * Edit GUI screen opened via "/soul gui". Allows moving and scaling GUI
  * elements defined by the GUI library.
  */
-class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
+class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
 
     private var editState: EditState = EditState()
 
@@ -39,12 +39,12 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
      * Lightweight context used for drag updates, where we only
      * need access to the screen dimensions and not actual rendering.
      */
-    private class EditHitTestContext(private val client: MinecraftClient) : com.soulreturns.gui.lib.GuiRenderContext {
+    private class EditHitTestContext(private val client: Minecraft) : com.soulreturns.gui.lib.GuiRenderContext {
         override val screenWidth: Int
-            get() = client.window.scaledWidth
+            get() = client.window.guiScaledWidth
 
         override val screenHeight: Int
-            get() = client.window.scaledHeight
+            get() = client.window.guiScaledHeight
 
         override fun drawText(text: String, x: Int, y: Int, color: Int, shadow: Boolean) {
             // no-op for hit testing
@@ -70,19 +70,19 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         }
     }
 
-    override fun render(context: DrawContext, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun render(context: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
         // Draw the in-game background behind our editor UI so the world remains
         // visible with Minecraft's standard slight blur, but without the
         // previous semi-transparent blue overlay.
-        renderInGameBackground(context)
+        renderTransparentBackground(context)
 
-        val client = MinecraftClient.getInstance()
+        val client = Minecraft.getInstance()
         val layout = GuiLayoutManager.getLayout()
         val guiCtx = MinecraftGuiRenderContext(context, client)
 
         // Precompute rough bounds for each element so we can draw edit boxes
         // and support hit testing.
-        val textRenderer = client.textRenderer
+        val textRenderer = client.font
         val bounds = mutableListOf<ElementBounds>()
         for (element in layout.elements) {
             if (!element.enabled) continue
@@ -97,10 +97,10 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
                     }
                     if (lines.isEmpty()) continue
                     val scale = element.scale.coerceAtLeast(0.25f)
-                    val lineHeight = ((textRenderer.fontHeight + 2) * scale).toInt().coerceAtLeast(4)
+                    val lineHeight = ((textRenderer.lineHeight + 2) * scale).toInt().coerceAtLeast(4)
                     var maxWidth = 0
                     for (line in lines) {
-                        val w = (textRenderer.getWidth(line) * scale).toInt()
+                        val w = (textRenderer.width(line) * scale).toInt()
                         if (w > maxWidth) maxWidth = w
                     }
                     val totalHeight = lines.size * lineHeight
@@ -116,7 +116,7 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
                     val rows = element.entries.size + if (element.title != null) 1 else 0
                     if (rows == 0) continue
                     val scale = element.scale.coerceAtLeast(0.25f)
-                    val lineHeight = ((textRenderer.fontHeight + 4) * scale).toInt().coerceAtLeast(4)
+                    val lineHeight = ((textRenderer.lineHeight + 4) * scale).toInt().coerceAtLeast(4)
                     val approxWidth = (160 * scale).toInt()
                     val totalHeight = rows * lineHeight
                     bounds += ElementBounds(
@@ -157,17 +157,10 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         super.render(context, mouseX, mouseY, delta)
     }
 
-    //? if >=1.21.10 {
-    override fun mouseClicked(click: net.minecraft.client.gui.Click, doubled: Boolean): Boolean {
-        val client = MinecraftClient.getInstance()
+    override fun mouseClicked(click: net.minecraft.client.input.MouseButtonEvent, doubled: Boolean): Boolean {
+        val client = Minecraft.getInstance()
         val mouseXInt = click.x.toInt()
         val mouseYInt = click.y.toInt()
-    //?} else {
-    /*override fun mouseClicked(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        val client = MinecraftClient.getInstance()
-        val mouseXInt = mouseX.toInt()
-        val mouseYInt = mouseY.toInt()
-    *///?}
 
         // First, check if the reset button was clicked; if so, clear the layout
         // back to defaults and skip element selection/dragging.
@@ -188,19 +181,11 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         return true
     }
 
-    //? if >=1.21.10 {
-    override fun mouseDragged(click: net.minecraft.client.gui.Click, offsetX: Double, offsetY: Double): Boolean {
-        val client = MinecraftClient.getInstance()
+    override fun mouseDragged(click: net.minecraft.client.input.MouseButtonEvent, offsetX: Double, offsetY: Double): Boolean {
+        val client = Minecraft.getInstance()
         val guiCtx = EditHitTestContext(client)
         val mouseXInt = click.x.toInt()
         val mouseYInt = click.y.toInt()
-    //?} else {
-    /*override fun mouseDragged(mouseX: Double, mouseY: Double, button: Int, deltaX: Double, deltaY: Double): Boolean {
-        val client = MinecraftClient.getInstance()
-        val guiCtx = EditHitTestContext(client)
-        val mouseXInt = mouseX.toInt()
-        val mouseYInt = mouseY.toInt()
-    *///?}
 
         // If a drag starts without a prior click being registered here, we
         // still want to begin dragging the element under the cursor.
@@ -215,35 +200,21 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
             editState = GuiEditSession.updateDrag(editState, guiCtx, mouseXInt, mouseYInt)
             return true
         }
-        //? if >=1.21.10 {
         return super.mouseDragged(click, offsetX, offsetY)
-        //?} else {
-        /*return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY)
-        *///?}
     }
 
-    //? if >=1.21.10 {
-    override fun mouseReleased(click: net.minecraft.client.gui.Click): Boolean {
+    override fun mouseReleased(click: net.minecraft.client.input.MouseButtonEvent): Boolean {
         if (editState.isDragging) {
             editState = GuiEditSession.endDrag(editState)
             return true
         }
         return super.mouseReleased(click)
     }
-    //?} else {
-    /*override fun mouseReleased(mouseX: Double, mouseY: Double, button: Int): Boolean {
-        if (editState.isDragging) {
-            editState = GuiEditSession.endDrag(editState)
-            return true
-        }
-        return super.mouseReleased(mouseX, mouseY, button)
-    }*/
-    //?}
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
         if (verticalAmount == 0.0) return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
 
-        val client = MinecraftClient.getInstance()
+        val client = Minecraft.getInstance()
         val hitId = findHitElement(mouseX.toInt(), mouseY.toInt())
             ?: editState.selectedElementId
             ?: return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
@@ -254,18 +225,18 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         return true
     }
 
-    override fun close() {
+    override fun onClose() {
         // Persist layout changes when leaving edit mode
         GuiLayoutManager.save()
-        super.close()
+        super.onClose()
     }
 
-    private fun drawResetButton(context: DrawContext, mouseX: Int, mouseY: Int) {
-        val textRenderer = MinecraftClient.getInstance().textRenderer
+    private fun drawResetButton(context: GuiGraphics, mouseX: Int, mouseY: Int) {
+        val textRenderer = Minecraft.getInstance().font
         val padding = 6
         val buttonHeight = 18
         val label = "Reset HUD"
-        val labelWidth = textRenderer.getWidth(label)
+        val labelWidth = textRenderer.width(label)
         val buttonWidth = labelWidth + padding * 2
         val x = width - buttonWidth - padding
         val y = padding
@@ -283,8 +254,8 @@ class GuiEditScreen : Screen(Text.literal("Edit GUI")) {
         context.fill(x, y, x + buttonWidth, y + buttonHeight, backgroundColor)
 
         val textX = x + padding
-        val textY = y + (buttonHeight - textRenderer.fontHeight) / 2
-        context.drawText(textRenderer, label, textX, textY, 0xFFFFFFFF.toInt(), false)
+        val textY = y + (buttonHeight - textRenderer.lineHeight) / 2
+        context.drawString(textRenderer, label, textX, textY, 0xFFFFFFFF.toInt(), false)
     }
 
     private fun isOverResetButton(mouseX: Int, mouseY: Int): Boolean {

@@ -3,10 +3,10 @@ package com.soulreturns.mixin.render;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.soulreturns.util.DebugLogger;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ChatScreen;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.ChatScreen;
 import org.joml.Matrix3x2fStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -22,18 +22,18 @@ import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 @Mixin(ChatScreen.class)
 public class ChatScreenMixin {
 
-    @Inject(method = "sendMessage", at = @At("HEAD"))
+    @Inject(method = "handleChatInput", at = @At("HEAD"))
     private void soulmod$logChatInput(String chatText, boolean addToHistory, CallbackInfo ci) {
         DebugLogger.INSTANCE.logChatInput(chatText);
     }
 
     @Inject(method = "render", at = @At("HEAD"))
-    private void beforeRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void beforeRender(GuiGraphics context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         float scale = getCfg().render.hudScale.chatScale();
-        Matrix3x2fStack matrices = context.getMatrices();
+        Matrix3x2fStack matrices = context.pose();
         matrices.pushMatrix();
         if (scale != 1.0f) {
-            float pivotY = MinecraftClient.getInstance().getWindow().getScaledHeight();
+            float pivotY = Minecraft.getInstance().getWindow().getGuiScaledHeight();
             matrices.translate(0.0f, pivotY);
             matrices.scale(scale, scale);
             matrices.translate(0.0f, -pivotY);
@@ -41,8 +41,8 @@ public class ChatScreenMixin {
     }
 
     @Inject(method = "render", at = @At("RETURN"))
-    private void afterRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        context.getMatrices().popMatrix();
+    private void afterRender(GuiGraphics context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+        context.pose().popMatrix();
     }
 
     // ── Fix click hit-testing with scaled chat ────────────────────────────────
@@ -53,9 +53,9 @@ public class ChatScreenMixin {
 
     @WrapOperation(
         method = "mouseClicked",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Click;x()D")
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/input/MouseButtonEvent;x()D")
     )
-    private double transformClickX(Click click, Operation<Double> original) {
+    private double transformClickX(MouseButtonEvent click, Operation<Double> original) {
         double rawX = original.call(click);
         float scale = getCfg().render.hudScale.chatScale();
         if (scale == 1.0f) return rawX;
@@ -64,13 +64,13 @@ public class ChatScreenMixin {
 
     @WrapOperation(
         method = "mouseClicked",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/Click;y()D")
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/input/MouseButtonEvent;y()D")
     )
-    private double transformClickY(Click click, Operation<Double> original) {
+    private double transformClickY(MouseButtonEvent click, Operation<Double> original) {
         double rawY = original.call(click);
         float scale = getCfg().render.hudScale.chatScale();
         if (scale == 1.0f) return rawY;
-        double screenHeight = MinecraftClient.getInstance().getWindow().getScaledHeight();
+        double screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
         return screenHeight + (rawY - screenHeight) / scale;
     }
 }

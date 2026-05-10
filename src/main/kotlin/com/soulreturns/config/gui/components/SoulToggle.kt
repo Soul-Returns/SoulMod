@@ -7,7 +7,7 @@ import io.wispforest.owo.ui.core.CursorStyle
 import io.wispforest.owo.ui.core.OwoUIGraphics
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.UIComponent
-import net.minecraft.client.gui.Click
+import net.minecraft.client.input.MouseButtonEvent
 import org.lwjgl.glfw.GLFW
 
 /** A modern pill-style toggle switch replacing owo's CheckboxComponent. */
@@ -40,7 +40,7 @@ class SoulToggle(
         )
     }
 
-    override fun onMouseDown(click: Click, doubled: Boolean): Boolean {
+    override fun onMouseDown(click: MouseButtonEvent, doubled: Boolean): Boolean {
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             checked = !checked
             onToggle(checked)

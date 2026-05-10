@@ -1,10 +1,10 @@
 package com.soulreturns.mixin.render;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import net.minecraft.entity.EntityDimensions;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -17,14 +17,14 @@ import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 @Mixin(LivingEntity.class)
 public abstract class SneakHeightMixin {
 
-    @ModifyReturnValue(method = "getDimensions(Lnet/minecraft/entity/EntityPose;)Lnet/minecraft/entity/EntityDimensions;", at = @At("RETURN"))
-    private EntityDimensions modifyDimensions(EntityDimensions original, EntityPose pose) {
+    @ModifyReturnValue(method = "getDimensions(Lnet/minecraft/world/entity/Pose;)Lnet/minecraft/world/entity/EntityDimensions;", at = @At("RETURN"))
+    private EntityDimensions modifyDimensions(EntityDimensions original, Pose pose) {
         // Only apply to players
         //noinspection ConstantValue
-        if (!((Object) this instanceof PlayerEntity)) return original;
+        if (!((Object) this instanceof Player)) return original;
         if (!getCfg().render.oldSneakHeight()) return original;
 
-        if (pose == EntityPose.CROUCHING) {
+        if (pose == Pose.CROUCHING) {
             return original.withEyeHeight(1.54F);
         }
 

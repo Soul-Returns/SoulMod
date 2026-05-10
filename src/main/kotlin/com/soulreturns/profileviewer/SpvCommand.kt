@@ -32,12 +32,12 @@ object SpvCommand {
                     )
                     .executes { ctx ->
                         DebugLogger.logCommandExecution(ctx.input)
-                        val mc = net.minecraft.client.MinecraftClient.getInstance()
-                        val self = mc.session?.username
+                        val mc = net.minecraft.client.Minecraft.getInstance()
+                        val self = mc.user?.name
                         if (self != null) {
                             ProfileViewerService.openFor(self, null)
                         } else {
-                            ctx.source.sendError(net.minecraft.text.Text.literal("[SPV] Could not determine your username."))
+                            ctx.source.sendError(net.minecraft.network.chat.Component.literal("[SPV] Could not determine your username."))
                         }
                         1
                     }

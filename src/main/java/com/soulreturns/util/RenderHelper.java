@@ -1,13 +1,13 @@
 package com.soulreturns.util;
 
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.text.Text;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import org.joml.Matrix3x2fStack;
 
 public class RenderHelper {
-    public static void pushScaledMatrix(DrawContext context, float scale, float pivotX, float pivotY) {
-        Matrix3x2fStack matrices = context.getMatrices();
+    public static void pushScaledMatrix(GuiGraphics context, float scale, float pivotX, float pivotY) {
+        Matrix3x2fStack matrices = context.pose();
         matrices.pushMatrix();
         if (scale != 1.0f) {
             matrices.translate(pivotX, pivotY);
@@ -20,12 +20,12 @@ public class RenderHelper {
      * Draw scaled text with shadow at the center of the screen
      * This method properly handles Matrix operations for Minecraft 1.21
      */
-    public static void drawScaledText(DrawContext context, TextRenderer textRenderer,
-                                     Text text, int centerX, int centerY,
-                                     float scale, int color) {
-        Matrix3x2fStack matrices = context.getMatrices();
+    public static void drawScaledText(GuiGraphics context, Font textRenderer,
+                                      Component text, int centerX, int centerY,
+                                      float scale, int color) {
+        Matrix3x2fStack matrices = context.pose();
 
-        int textWidth = textRenderer.getWidth(text);
+        int textWidth = textRenderer.width(text);
 
         // Calculate scaled dimensions
         int scaledTextWidth = (int)(textWidth * scale);
@@ -39,7 +39,7 @@ public class RenderHelper {
         matrices.scale(scale, scale);
 
         // Draw text at the scaled position
-        context.drawTextWithShadow(textRenderer, text, (int)x, (int)y, color);
+        context.drawString(textRenderer, text, (int)x, (int)y, color);
 
         // Restore matrix state
         matrices.popMatrix();
@@ -53,7 +53,7 @@ public class RenderHelper {
      * @param y The y position of the slot
      * @param color The color in ARGB format (0xAARRGGBB)
      */
-    public static void drawSlotHighlight(DrawContext context, int x, int y, int color) {
+    public static void drawSlotHighlight(GuiGraphics context, int x, int y, int color) {
         // Draw a 2-pixel thick border around the 16x16 slot
         // Slots are 16x16 pixels in size
 

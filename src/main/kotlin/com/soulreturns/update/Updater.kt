@@ -3,7 +3,7 @@ package com.soulreturns.update
 import com.soulreturns.api.SoulHttp
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.SharedConstants
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 import com.soulreturns.util.SoulLogger
 import java.net.URI
 import java.net.http.HttpClient
@@ -64,7 +64,7 @@ object Updater {
     ) {
         executor.submit {
             try {
-                val mcVersion = SharedConstants.getGameVersion().name()
+                val mcVersion = SharedConstants.getCurrentVersion().name()
                 val newJarName = "soul-${info.version}+$mcVersion.jar"
                 val gameDir = FabricLoader.getInstance().gameDir
                 val modsDir = gameDir.resolve("mods")
@@ -143,5 +143,5 @@ object Updater {
         }
     }
 
-    private fun mc(): MinecraftClient = MinecraftClient.getInstance()
+    private fun mc(): Minecraft = Minecraft.getInstance()
 }

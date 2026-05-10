@@ -6,9 +6,9 @@ import com.soulreturns.features.party.PartyManager
 import com.soulreturns.gui.lib.GuiLayoutApi
 import com.soulreturns.util.RenderUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.minecraft.client.MinecraftClient
-import net.minecraft.entity.player.PlayerEntity
-import net.minecraft.entity.projectile.FishingBobberEntity
+import net.minecraft.client.Minecraft
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.projectile.FishingHook
 
 /**
  * Bobbin Time helper feature.
@@ -33,17 +33,17 @@ object BobbinTimeCounter {
         }
     }
 
-    private fun tick(client: MinecraftClient) {
+    private fun tick(client: Minecraft) {
         val player = client.player ?: return
-        val world = client.world ?: return
+        val world = client.level ?: return
 
         val fishingConfig = cfg.fishing.bobbinTime
 
         // Count fishing bobbers in range
-        val count = world.entities
-            .filterIsInstance<FishingBobberEntity>()
+        val count = world.entitiesForRendering()
+            .filterIsInstance<FishingHook>()
             .count { bobber ->
-                bobber.squaredDistanceTo(player) <= RADIUS_SQ
+                bobber.distanceToSqr(player) <= RADIUS_SQ
             }
 
         // Update or create the Bobbin Time HUD text block. Position and scale
@@ -63,7 +63,7 @@ object BobbinTimeCounter {
         handleAlert(player, count, fishingConfig)
     }
 
-    private fun handleAlert(player: PlayerEntity, count: Int, fishingConfig: SoulConfig.BobbinTime) {
+    private fun handleAlert(player: Player, count: Int, fishingConfig: SoulConfig.BobbinTime) {
         if (!fishingConfig.enableBobbinTimeAlert()) {
             alertTriggered = false
             return
@@ -76,11 +76,11 @@ object BobbinTimeCounter {
 
         if (filters.isNotEmpty()) {
             val inventory = player.inventory
-            val hasMatchingItem = (0 until inventory.size()).any { slot ->
-                val stack = inventory.getStack(slot)
+            val hasMatchingItem = (0 until inventory.containerSize).any { slot ->
+                val stack = inventory.getItem(slot)
                 if (stack.isEmpty) return@any false
 
-                val name = stack.name.string
+                val name = stack.hoverName.string
                 filters.any { filter ->
                     name.contains(filter, ignoreCase = true)
                 }

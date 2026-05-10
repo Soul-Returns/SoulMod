@@ -7,8 +7,8 @@ import io.wispforest.owo.ui.core.CursorStyle
 import io.wispforest.owo.ui.core.OwoUIGraphics
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.UIComponent
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.Click
+import net.minecraft.client.Minecraft
+import net.minecraft.client.input.MouseButtonEvent
 import org.lwjgl.glfw.GLFW
 import java.util.Locale
 
@@ -69,16 +69,16 @@ class SoulSlider(
 
         // Value label (right-aligned in the reserved label area)
         val label  = formatValue()
-        val tr     = MinecraftClient.getInstance().textRenderer
+        val tr     = Minecraft.getInstance().font
         val labelAreaX = x + TOTAL_W - LABEL_W
-        val labelX = labelAreaX + (LABEL_W - tr.getWidth(label)) / 2
-        val labelY = y + (height - tr.fontHeight) / 2
-        context.drawText(tr, label, labelX, labelY, Theme.TEXT_DIM, false)
+        val labelX = labelAreaX + (LABEL_W - tr.width(label)) / 2
+        val labelY = y + (height - tr.lineHeight) / 2
+        context.drawString(tr, label, labelX, labelY, Theme.TEXT_DIM, false)
     }
 
     // ── Mouse input ──────────────────────────────────────────────────────────
 
-    override fun onMouseDown(click: Click, doubled: Boolean): Boolean {
+    override fun onMouseDown(click: MouseButtonEvent, doubled: Boolean): Boolean {
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             updateFromClick(click.x())
             return true
@@ -86,7 +86,7 @@ class SoulSlider(
         return super.onMouseDown(click, doubled)
     }
 
-    override fun onMouseDrag(click: Click, deltaX: Double, deltaY: Double): Boolean {
+    override fun onMouseDrag(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             updateFromClick(click.x())
             return true
@@ -94,7 +94,7 @@ class SoulSlider(
         return super.onMouseDrag(click, deltaX, deltaY)
     }
 
-    override fun onMouseUp(click: Click): Boolean {
+    override fun onMouseUp(click: MouseButtonEvent): Boolean {
         slideEndListeners.forEach { it() }
         return super.onMouseUp(click)
     }

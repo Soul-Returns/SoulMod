@@ -3,7 +3,7 @@ package com.soulreturns.commands.subcommands
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.soulreturns.config.gui.SoulConfigScreen
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 /**
  * Opens the config screen via "/soul config", optionally with a pre-filled search:
@@ -19,7 +19,7 @@ object ConfigSubcommand : SoulSubcommand {
     }
 
     private fun openConfig(search: String) {
-        val mc = MinecraftClient.getInstance()
-        mc.send { mc.setScreen(SoulConfigScreen(search)) }
+        val mc = Minecraft.getInstance()
+        mc.schedule { mc.setScreen(SoulConfigScreen(search)) }
     }
 }

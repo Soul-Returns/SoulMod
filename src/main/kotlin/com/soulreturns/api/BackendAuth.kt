@@ -1,7 +1,7 @@
 package com.soulreturns.api
 
 import net.fabricmc.loader.api.FabricLoader
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 import java.io.File
 import java.time.Instant
 import java.util.UUID
@@ -93,12 +93,12 @@ object BackendAuth {
     }
 
     private fun performHandshake(): String? {
-        val mc = MinecraftClient.getInstance() ?: return null
-        val session = mc.session ?: return null
-        val username = session.username ?: return null
+        val mc = Minecraft.getInstance() ?: return null
+        val session = mc.user ?: return null
+        val username = session.name ?: return null
         val accessToken = session.accessToken ?: return null
-        val profileUuid: UUID = session.uuidOrNull ?: return null
-        val sessionService = mc.apiServices?.sessionService() ?: return null
+        val profileUuid: UUID = session.profileId ?: return null
+        val sessionService = mc.services()?.sessionService() ?: return null
         val serverId = UUID.randomUUID().toString().replace("-", "")
 
         try {

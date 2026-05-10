@@ -1,6 +1,6 @@
 package com.soulreturns.api
 
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 import com.soulreturns.util.SoulLogger
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -35,7 +35,7 @@ object PresenceService {
         try {
             val token = BackendAuth.ensureAuthenticated() ?: return
 
-            val serverAddress = MinecraftClient.getInstance()?.currentServerEntry?.address
+            val serverAddress = Minecraft.getInstance()?.currentServer?.ip
             val url = buildUrl(serverAddress)
 
             var response = SoulHttp.get(url, mapOf("Authorization" to token))

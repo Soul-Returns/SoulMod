@@ -1,12 +1,12 @@
 // Adapted from Odin (github.com/odtheking/Odin) — BSD 3-Clause License, Copyright (c) odtheking
 package com.soulreturns.render
 
-import net.minecraft.client.gui.DrawContext
+import net.minecraft.client.gui.GuiGraphics
 
 object DrawContextRenderer {
 
     fun roundedFill(
-        context: DrawContext,
+        context: GuiGraphics,
         x0: Int, y0: Int, x1: Int, y1: Int,
         color: Int,
         radius: Float,
@@ -22,7 +22,7 @@ object DrawContextRenderer {
     }
 
     fun roundedFillGradient(
-        context: DrawContext,
+        context: GuiGraphics,
         x0: Int, y0: Int, x1: Int, y1: Int,
         topLeftColor: Int, topRightColor: Int,
         bottomRightColor: Int, bottomLeftColor: Int,
@@ -39,7 +39,7 @@ object DrawContextRenderer {
     }
 
     fun roundedFillCustomRadii(
-        context: DrawContext,
+        context: GuiGraphics,
         x0: Int, y0: Int, x1: Int, y1: Int,
         color: Int,
         topLeftRadius: Float,

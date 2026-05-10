@@ -4,7 +4,7 @@ import com.soulreturns.config.cfg
 import com.soulreturns.features.party.PartyManager.PartyRole
 import com.soulreturns.gui.lib.GuiLayoutApi
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 /**
  * Simple on-screen overlay that shows current party information using the
@@ -20,7 +20,7 @@ object PartyHudOverlay {
         }
     }
 
-    private fun tick(client: MinecraftClient) {
+    private fun tick(client: Minecraft) {
         client.player ?: return
         val enabled = try {
             cfg.render.overlays.enablePartyOverlay()

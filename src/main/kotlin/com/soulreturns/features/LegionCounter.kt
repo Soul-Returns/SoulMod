@@ -3,8 +3,8 @@ package com.soulreturns.features
 import com.soulreturns.config.cfg
 import com.soulreturns.gui.lib.GuiLayoutApi
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.minecraft.client.MinecraftClient
-import net.minecraft.entity.player.PlayerEntity
+import net.minecraft.client.Minecraft
+import net.minecraft.world.entity.player.Player
 
 /**
  * Legion counter feature for Hypixel Skyblock.
@@ -23,17 +23,17 @@ object LegionCounter {
         }
     }
 
-    private fun tick(client: MinecraftClient) {
+    private fun tick(client: Minecraft) {
         val player = client.player ?: return
-        val world = client.world ?: return
+        val world = client.level ?: return
 
         // Count other *real* players in a 30-block radius.
         // Hypixel Skyblock NPCs typically have "[NPC]" in their display name;
         // we filter those out so the number more closely matches Legion stacks.
-        val count = world.players.count { other ->
+        val count = world.players().count { other ->
             other !== player &&
                 other.isRealPlayer() &&
-                player.squaredDistanceTo(other) <= RADIUS_SQ
+                player.distanceToSqr(other) <= RADIUS_SQ
         }
 
         // Update or create the Legion HUD text block. Position and scale are
@@ -51,6 +51,6 @@ object LegionCounter {
         )
     }
 
-    private fun PlayerEntity.isRealPlayer(): Boolean =
+    private fun Player.isRealPlayer(): Boolean =
         uuid?.let { it.version() == 4 } ?: false
 }

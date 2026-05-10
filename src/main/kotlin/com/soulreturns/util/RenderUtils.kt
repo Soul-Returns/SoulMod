@@ -1,9 +1,9 @@
 package com.soulreturns.util
 
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.sound.SoundEvents
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.network.chat.Component
 
 object RenderUtils {
     private val alertMessages = mutableListOf<AlertMessage>()
@@ -30,23 +30,23 @@ object RenderUtils {
         }
         alertMessages.add(AlertMessage(text, color, textScale, expiryTime))
 
-        val client = MinecraftClient.getInstance()
+        val client = Minecraft.getInstance()
         val player = client.player
 
         Thread {
-            player?.playSound(SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), 5.0f, 0.5f)
+            player?.playSound(SoundEvents.NOTE_BLOCK_BELL.value(), 5.0f, 0.5f)
 
             Thread.sleep(150)
             client.execute {
-                player?.playSound(SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), 5.0f, 0.7f)
+                player?.playSound(SoundEvents.NOTE_BLOCK_BELL.value(), 5.0f, 0.7f)
             }
             Thread.sleep(150)
             client.execute {
-                player?.playSound(SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), 5.0f, 0.9f)
+                player?.playSound(SoundEvents.NOTE_BLOCK_BELL.value(), 5.0f, 0.9f)
             }
             Thread.sleep(150)
             client.execute {
-                player?.playSound(SoundEvents.BLOCK_NOTE_BLOCK_BELL.value(), 5.0f, 1.1f)
+                player?.playSound(SoundEvents.NOTE_BLOCK_BELL.value(), 5.0f, 1.1f)
             }
         }.start()
     }
@@ -64,25 +64,25 @@ object RenderUtils {
      * Render all active alert messages
      * Should be called from the HUD render mixin
      */
-    fun renderAlerts(context: DrawContext) {
+    fun renderAlerts(context: GuiGraphics) {
         clearExpiredAlerts()
 
         if (alertMessages.isEmpty()) return
 
-        val minecraft = MinecraftClient.getInstance()
-        val textRenderer = minecraft.textRenderer
+        val minecraft = Minecraft.getInstance()
+        val textRenderer = minecraft.font
         val window = minecraft.window
 
-        val screenWidth = window.scaledWidth
-        val screenHeight = window.scaledHeight
+        val screenWidth = window.guiScaledWidth
+        val screenHeight = window.guiScaledHeight
         val centerX = screenWidth / 2
         val centerY = (screenHeight / 2.5f).toInt()
 
         // Render each alert message
         alertMessages.forEachIndexed { index, alert ->
-            val text = Text.literal(alert.text)
+            val text = Component.literal(alert.text)
             val scale = alert.textScale
-            val scaledTextHeight = (textRenderer.fontHeight * scale).toInt()
+            val scaledTextHeight = (textRenderer.lineHeight * scale).toInt()
 
             // Calculate Y position with spacing for multiple alerts
             val posY = centerY - 20 + (index * scaledTextHeight)

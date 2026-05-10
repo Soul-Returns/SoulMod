@@ -1,13 +1,13 @@
 package com.soulreturns.mixin.block;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.CactusBlock;
-import net.minecraft.block.ShapeContext;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.util.shape.VoxelShapes;
-import net.minecraft.world.BlockView;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.CactusBlock;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.level.BlockGetter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -38,22 +38,22 @@ import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 public abstract class CactusHitboxMixin {
 
     @ModifyReturnValue(
-        method = "getCollisionShape(Lnet/minecraft/block/BlockState;Lnet/minecraft/world/BlockView;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/ShapeContext;)Lnet/minecraft/util/shape/VoxelShape;",
+        method = "getCollisionShape(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/shapes/CollisionContext;)Lnet/minecraft/world/phys/shapes/VoxelShape;",
         at = @At("RETURN")
     )
-    private VoxelShape removeCollision(VoxelShape original, BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
+    private VoxelShape removeCollision(VoxelShape original, BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
         if (!SoulConfigHolder.isConfigReady()) return original;
         if (!getCfg().fixes.oldCactusHitbox()) return original;
-        return VoxelShapes.empty();
+        return Shapes.empty();
     }
 
     @ModifyReturnValue(
-        method = "getOutlineShape(Lnet/minecraft/block/BlockState;Lnet/minecraft/world/BlockView;Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/ShapeContext;)Lnet/minecraft/util/shape/VoxelShape;",
+        method = "getShape(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/phys/shapes/CollisionContext;)Lnet/minecraft/world/phys/shapes/VoxelShape;",
         at = @At("RETURN")
     )
-    private VoxelShape expandOutline(VoxelShape original, BlockState state, BlockView world, BlockPos pos, ShapeContext context) {
+    private VoxelShape expandOutline(VoxelShape original, BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
         if (!SoulConfigHolder.isConfigReady()) return original;
         if (!getCfg().fixes.oldCactusHitbox()) return original;
-        return VoxelShapes.fullCube();
+        return Shapes.block();
     }
 }

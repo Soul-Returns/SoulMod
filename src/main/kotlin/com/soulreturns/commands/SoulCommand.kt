@@ -12,7 +12,7 @@ import com.soulreturns.util.DebugLogger
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 object SoulCommand {
     fun register() {
@@ -34,8 +34,8 @@ object SoulCommand {
     }
 
     private fun execute(context: CommandContext<FabricClientCommandSource>): Int {
-        val mc = MinecraftClient.getInstance()
-        mc.send {
+        val mc = Minecraft.getInstance()
+        mc.schedule {
             mc.setScreen(SoulConfigScreen())
         }
         return 1

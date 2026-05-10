@@ -4,7 +4,7 @@ import com.soulreturns.Soul
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.MessageHandler
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
@@ -842,6 +842,6 @@ object PartyManager {
     }
 
     private fun localPlayerName(): String? {
-        return MinecraftClient.getInstance().session?.username
+        return Minecraft.getInstance().user?.name
     }
 }

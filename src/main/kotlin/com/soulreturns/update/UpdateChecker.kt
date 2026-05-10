@@ -5,8 +5,8 @@ import com.soulreturns.Soul
 import com.soulreturns.api.SoulHttp
 import com.soulreturns.config.cfg
 import net.minecraft.SharedConstants
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.screen.TitleScreen
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.TitleScreen
 import com.soulreturns.util.SoulLogger
 import java.util.concurrent.Executors
 
@@ -34,10 +34,10 @@ object UpdateChecker {
                 val info = doCheck()
                 if (info != null) {
                     latestUpdate = info
-                    val mc = MinecraftClient.getInstance()
+                    val mc = Minecraft.getInstance()
                     mc?.execute {
                         if (!UpdateModal.dismissed &&
-                            (mc.world != null || mc.currentScreen is TitleScreen)
+                            (mc.level != null || mc.screen is TitleScreen)
                         ) {
                             mc.setScreen(UpdateModal(info))
                         }
@@ -67,7 +67,7 @@ object UpdateChecker {
     /** Performs the GitHub API request and returns [UpdateInfo] if a newer release exists, else null. */
     private fun doCheck(): UpdateInfo? {
         val currentVersion = Soul.version.substringBefore("+")
-        val mcVersion = SharedConstants.getGameVersion().name()
+        val mcVersion = SharedConstants.getCurrentVersion().name()
         logger.info("Checking for updates... (current: $currentVersion, mc: $mcVersion)")
 
         val response = SoulHttp.get(

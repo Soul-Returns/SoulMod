@@ -9,7 +9,7 @@ import com.soulreturns.profileviewer.gui.ProfileViewerScreen
 import com.soulreturns.profileviewer.model.SkyblockProfile
 import com.soulreturns.profileviewer.model.SkyblockProfilesResponse
 import com.soulreturns.util.soulChat
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
@@ -98,9 +98,9 @@ object ProfileViewerService {
     }
 
     private fun openScreen(name: String, uuid: UUID, response: SkyblockProfilesResponse, initial: SkyblockProfile) {
-        MinecraftClient.getInstance().execute {
+        Minecraft.getInstance().execute {
             val screen = ProfileViewerScreen(name, uuid, response, initial)
-            MinecraftClient.getInstance().setScreen(screen)
+            Minecraft.getInstance().setScreen(screen)
         }
     }
 }

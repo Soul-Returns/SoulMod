@@ -18,7 +18,7 @@ import io.wispforest.owo.ui.core.Insets
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.Surface
 import io.wispforest.owo.ui.core.VerticalAlignment
-import net.minecraft.text.Text
+import net.minecraft.network.chat.Component
 import java.util.Locale
 
 object DungeonsTab {
@@ -30,7 +30,7 @@ object DungeonsTab {
         val dungeonsObj = member.getAsJsonObject("dungeons")
         if (dungeonsObj == null) {
             container.child(
-                UIComponents.label(Text.literal("This profile has no dungeon data."))
+                UIComponents.label(Component.literal("This profile has no dungeon data."))
                     .color(Theme.color(Theme.TEXT_DIM))
             )
             return container
@@ -47,8 +47,8 @@ object DungeonsTab {
             val selected = view.selectedClass?.let { c -> DungeonClassNames.displayName(c) } ?: "—"
             val selRow = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
             selRow.gap(8)
-            selRow.child(UIComponents.label(Text.literal("Selected")).color(Theme.color(Theme.TEXT_DIM)).sizing(Sizing.fixed(130), Sizing.content()))
-            selRow.child(UIComponents.label(Text.literal(selected)).color(Theme.color(Theme.TEXT)))
+            selRow.child(UIComponents.label(Component.literal("Selected")).color(Theme.color(Theme.TEXT_DIM)).sizing(Sizing.fixed(130), Sizing.content()))
+            selRow.child(UIComponents.label(Component.literal(selected)).color(Theme.color(Theme.TEXT)))
             it.child(selRow)
             it.child(rowDivider())
             for (cls in DungeonClassNames.ORDER) {
@@ -74,7 +74,7 @@ object DungeonsTab {
     }
 
     private fun section(parent: FlowLayout, label: String, block: (FlowLayout) -> Unit) {
-        val lbl = UIComponents.label(Text.literal(label)).color(Theme.color(Theme.TEXT_DIM))
+        val lbl = UIComponents.label(Component.literal(label)).color(Theme.color(Theme.TEXT_DIM))
         lbl.margins(Insets.of(4, 0, 0, 6))
         parent.child(lbl)
 
@@ -92,10 +92,10 @@ object DungeonsTab {
         row.verticalAlignment(VerticalAlignment.CENTER)
 
         val lvlText = if (info.level >= cap) "MAX" else info.level.toString()
-        row.child(UIComponents.label(Text.literal(label)).color(Theme.color(Theme.TEXT)).sizing(Sizing.fixed(140), Sizing.content()))
-        row.child(UIComponents.label(Text.literal("Lv $lvlText")).color(Theme.color(Theme.ACCENT)).sizing(Sizing.fixed(52), Sizing.content()))
+        row.child(UIComponents.label(Component.literal(label)).color(Theme.color(Theme.TEXT)).sizing(Sizing.fixed(140), Sizing.content()))
+        row.child(UIComponents.label(Component.literal("Lv $lvlText")).color(Theme.color(Theme.ACCENT)).sizing(Sizing.fixed(52), Sizing.content()))
         row.child(xpBar(info.progress))
-        row.child(UIComponents.label(Text.literal(DungeonsCalculator.formatXp(xp))).color(Theme.color(Theme.TEXT_DIM)))
+        row.child(UIComponents.label(Component.literal(DungeonsCalculator.formatXp(xp))).color(Theme.color(Theme.TEXT_DIM)))
 
         return row
     }
@@ -103,8 +103,8 @@ object DungeonsTab {
     private fun statRow(parent: FlowLayout, label: String, value: String) {
         val row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
         row.gap(10)
-        row.child(UIComponents.label(Text.literal(label)).color(Theme.color(Theme.TEXT_DIM)).sizing(Sizing.fixed(130), Sizing.content()))
-        row.child(UIComponents.label(Text.literal(value)).color(Theme.color(Theme.TEXT)))
+        row.child(UIComponents.label(Component.literal(label)).color(Theme.color(Theme.TEXT_DIM)).sizing(Sizing.fixed(130), Sizing.content()))
+        row.child(UIComponents.label(Component.literal(value)).color(Theme.color(Theme.TEXT)))
         parent.child(row)
     }
 
@@ -131,7 +131,7 @@ object DungeonsTab {
         row.gap(4)
         row.verticalAlignment(VerticalAlignment.CENTER)
         val color = if (isHeader) Theme.TEXT_DIM else Theme.TEXT
-        fun cell(text: String, w: Int) = UIComponents.label(Text.literal(text)).color(Theme.color(color)).sizing(Sizing.fixed(w), Sizing.content())
+        fun cell(text: String, w: Int) = UIComponents.label(Component.literal(text)).color(Theme.color(color)).sizing(Sizing.fixed(w), Sizing.content())
         row.child(cell(c0, 32))
         row.child(cell(c1, 42))
         row.child(cell(c2, 46))

@@ -4,30 +4,30 @@ import com.soulreturns.gui.lib.GuiInteractionHandler
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.gui.lib.GuiRenderContext
 import com.soulreturns.gui.lib.GuiRenderer
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.item.ItemStack
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.world.item.ItemStack
 
 /**
  * Minecraft/Fabric-specific implementation of GuiRenderContext.
  */
 class MinecraftGuiRenderContext(
-    private val context: DrawContext,
-    private val client: MinecraftClient,
+    private val context: GuiGraphics,
+    private val client: Minecraft,
 ) : GuiRenderContext {
 
     override val screenWidth: Int
-        get() = client.window.scaledWidth
+        get() = client.window.guiScaledWidth
 
     override val screenHeight: Int
-        get() = client.window.scaledHeight
+        get() = client.window.guiScaledHeight
 
     override fun drawText(text: String, x: Int, y: Int, color: Int, shadow: Boolean) {
-        val renderer = client.textRenderer
+        val renderer = client.font
         if (shadow) {
-            context.drawTextWithShadow(renderer, text, x, y, color)
+            context.drawString(renderer, text, x, y, color)
         } else {
-            context.drawText(renderer, text, x, y, color, false)
+            context.drawString(renderer, text, x, y, color, false)
         }
     }
 
@@ -44,8 +44,8 @@ class MinecraftGuiRenderContext(
             return
         }
 
-        val renderer = client.textRenderer
-        val matrices = context.matrices
+        val renderer = client.font
+        val matrices = context.pose()
 
         // Convert target top-left coordinates into scaled space.
         val invScale = 1.0f / scale
@@ -55,9 +55,9 @@ class MinecraftGuiRenderContext(
         matrices.pushMatrix()
         matrices.scale(scale, scale)
         if (shadow) {
-            context.drawTextWithShadow(renderer, text, sx.toInt(), sy.toInt(), color)
+            context.drawString(renderer, text, sx.toInt(), sy.toInt(), color)
         } else {
-            context.drawText(renderer, text, sx.toInt(), sy.toInt(), color, false)
+            context.drawString(renderer, text, sx.toInt(), sy.toInt(), color, false)
         }
         matrices.popMatrix()
     }
@@ -71,7 +71,7 @@ class MinecraftGuiRenderContext(
         // ItemStack via a simple registry. To keep this adapter self-contained,
         // fall back to an empty stack when not found.
         val stack: ItemStack = GuiIconRegistry.resolve(iconKey)
-        context.drawItem(stack, x, y)
+        context.renderItem(stack, x, y)
     }
 }
 
@@ -101,8 +101,8 @@ object SoulGuiHudAdapter {
     var lastSnapshot: com.soulreturns.gui.lib.GuiInteractionSnapshot? = null
         private set
 
-    fun renderHud(context: DrawContext) {
-        val client = MinecraftClient.getInstance()
+    fun renderHud(context: GuiGraphics) {
+        val client = Minecraft.getInstance()
         val layout = GuiLayoutManager.getLayout()
         val guiCtx = MinecraftGuiRenderContext(context, client)
         lastSnapshot = GuiRenderer.renderHud(layout, guiCtx)

@@ -3,10 +3,10 @@ package com.soulreturns.mixin.render;
 import com.soulreturns.features.itemhighlight.HighlightManager;
 import com.soulreturns.util.RenderHelper;
 import com.soulreturns.util.SkyblockItemUtils;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.item.ItemStack;
-import net.minecraft.screen.slot.Slot;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.inventory.Slot;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -14,8 +14,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
 
-@Mixin(HandledScreen.class)
-public class HandledScreenMixin {
+@Mixin(AbstractContainerScreen.class)
+public class AbstractContainerScreenMixin {
 
     // ── Item highlighting ─────────────────────────────────────────────────────
 
@@ -25,15 +25,15 @@ public class HandledScreenMixin {
      * slot.x/slot.y are already absolute screen coordinates (verified from bytecode).
      */
 
-    @Inject(method = "drawSlot", at = @At("TAIL"))
-    private void onDrawSlot(DrawContext context, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
+    @Inject(method = "renderSlot", at = @At("TAIL"))
+    private void onDrawSlot(GuiGraphics context, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
         handleDrawSlot(context, slot);
     }
 
-    private void handleDrawSlot(DrawContext context, Slot slot) {
+    private void handleDrawSlot(GuiGraphics context, Slot slot) {
         if (!getCfg().render.highlights.itemHighlightingEnabled()) return;
 
-        ItemStack stack = slot.getStack();
+        ItemStack stack = slot.getItem();
         if (stack == null || stack.isEmpty()) return;
 
         String skyblockId = SkyblockItemUtils.INSTANCE.getSkyblockId(stack);

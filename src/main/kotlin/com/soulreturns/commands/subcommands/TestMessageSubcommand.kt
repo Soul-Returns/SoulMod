@@ -3,8 +3,8 @@ package com.soulreturns.commands.subcommands
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.soulreturns.util.MessageHandler
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.client.MinecraftClient
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 
 object TestMessageSubcommand : SoulSubcommand {
 
@@ -74,8 +74,8 @@ object TestMessageSubcommand : SoulSubcommand {
         }
 
         // Send the formatted message to chat for visibility
-        val minecraft = MinecraftClient.getInstance()
-        minecraft.inGameHud.chatHud.addMessage(Text.literal(formattedMessage))
+        val minecraft = Minecraft.getInstance()
+        minecraft.gui.chat.addMessage(Component.literal(formattedMessage))
 
         // Also log the message through the debug logger if enabled
         com.soulreturns.util.DebugLogger.logSentMessage(formattedMessage)

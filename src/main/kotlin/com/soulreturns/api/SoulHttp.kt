@@ -14,7 +14,7 @@ object SoulHttp {
 
     fun userAgent(): String {
         val mc = try {
-            net.minecraft.SharedConstants.getGameVersion().name()
+            net.minecraft.SharedConstants.getCurrentVersion().name()
         } catch (_: Throwable) {
             "unknown"
         }

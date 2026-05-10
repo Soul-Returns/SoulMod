@@ -17,8 +17,8 @@ import io.wispforest.owo.ui.core.OwoUIAdapter
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.Surface
 import io.wispforest.owo.ui.core.VerticalAlignment
-import net.minecraft.client.MinecraftClient
-import net.minecraft.text.Text
+import net.minecraft.client.Minecraft
+import net.minecraft.network.chat.Component
 import java.util.UUID
 
 class ProfileViewerScreen(
@@ -26,7 +26,7 @@ class ProfileViewerScreen(
     uuid: UUID,
     private val response: SkyblockProfilesResponse,
     initial: SkyblockProfile,
-) : BaseOwoScreen<FlowLayout>(Text.literal("Soul Profile Viewer — $name")) {
+) : BaseOwoScreen<FlowLayout>(Component.literal("Soul Profile Viewer — $name")) {
 
     private var current: SkyblockProfile = initial
     private val uuidUndashed = MojangApi.toUndashed(uuid)
@@ -71,14 +71,14 @@ class ProfileViewerScreen(
         header.gap(8)
 
         header.child(
-            UIComponents.label(Text.literal(name))
+            UIComponents.label(Component.literal(name))
                 .color(Theme.color(Theme.TEXT))
         )
 
         if (response.profiles.size > 1) {
             header.child(verticalSeparator())
             header.child(cycleButton("◀") { cycleProfile(-1) })
-            val lbl = UIComponents.label(Text.literal(profileDisplay(current)))
+            val lbl = UIComponents.label(Component.literal(profileDisplay(current)))
                 .color(Theme.color(Theme.TEXT_DIM))
             profileNameLabel = lbl
             header.child(lbl)
@@ -98,7 +98,7 @@ class ProfileViewerScreen(
     }
 
     private fun tabButton(label: String, id: String): ButtonComponent {
-        val btn = UIComponents.button(Text.empty()) {
+        val btn = UIComponents.button(Component.empty()) {
             if (activeTab != id) { activeTab = id; rebuildBody() }
         }
         btn.horizontalSizing(Sizing.fixed(90))
@@ -115,10 +115,10 @@ class ProfileViewerScreen(
                     Theme.PANEL_HOVER, Theme.ITEM_RADIUS
                 )
             }
-            val tr = MinecraftClient.getInstance().textRenderer
-            val tx = button.x + (button.width - tr.getWidth(label)) / 2
-            val ty = button.y + (button.height - tr.fontHeight) / 2
-            ctx.drawText(tr, Text.literal(label), tx, ty, if (selected) Theme.TEXT else Theme.TEXT_DIM, false)
+            val tr = Minecraft.getInstance().font
+            val tx = button.x + (button.width - tr.width(label)) / 2
+            val ty = button.y + (button.height - tr.lineHeight) / 2
+            ctx.drawString(tr, Component.literal(label), tx, ty, if (selected) Theme.TEXT else Theme.TEXT_DIM, false)
         })
         return btn
     }
@@ -127,7 +127,7 @@ class ProfileViewerScreen(
         val idx = response.profiles.indexOf(current).coerceAtLeast(0)
         val size = response.profiles.size
         current = response.profiles[((idx + delta) % size + size) % size]
-        profileNameLabel?.text(Text.literal(profileDisplay(current)))
+        profileNameLabel?.text(Component.literal(profileDisplay(current)))
         rebuildBody()
     }
 
@@ -136,7 +136,7 @@ class ProfileViewerScreen(
         val member = current.memberFor(uuidUndashed)
         if (member == null) {
             bodyContainer.child(
-                UIComponents.label(Text.literal("No data for this player on profile ${current.cuteName}."))
+                UIComponents.label(Component.literal("No data for this player on profile ${current.cuteName}."))
                     .color(Theme.color(Theme.TEXT_DIM))
             )
             return
@@ -152,16 +152,16 @@ class ProfileViewerScreen(
     }
 
     private fun cycleButton(icon: String, action: () -> Unit): ButtonComponent {
-        val btn = UIComponents.button(Text.empty()) { action() }
+        val btn = UIComponents.button(Component.empty()) { action() }
         btn.horizontalSizing(Sizing.fixed(20))
         btn.verticalSizing(Sizing.fixed(20))
         btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
             val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
             DrawContextRenderer.roundedFill(ctx, button.x, button.y, button.x + button.width, button.y + button.height, bg, Theme.ITEM_RADIUS)
-            val tr = MinecraftClient.getInstance().textRenderer
-            val tx = button.x + (button.width - tr.getWidth(icon)) / 2
-            val ty = button.y + (button.height - tr.fontHeight) / 2
-            ctx.drawText(tr, Text.literal(icon), tx, ty, Theme.TEXT_DIM, false)
+            val tr = Minecraft.getInstance().font
+            val tx = button.x + (button.width - tr.width(icon)) / 2
+            val ty = button.y + (button.height - tr.lineHeight) / 2
+            ctx.drawString(tr, Component.literal(icon), tx, ty, Theme.TEXT_DIM, false)
         })
         return btn
     }

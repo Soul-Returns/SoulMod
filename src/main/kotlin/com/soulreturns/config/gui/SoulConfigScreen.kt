@@ -21,22 +21,22 @@ import io.wispforest.owo.ui.core.OwoUIAdapter
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.Surface
 import io.wispforest.owo.ui.core.VerticalAlignment
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gl.RenderPipelines
-import net.minecraft.text.Text
-import net.minecraft.util.Identifier
+import net.minecraft.client.Minecraft
+import net.minecraft.client.renderer.RenderPipelines
+import net.minecraft.network.chat.Component
+import net.minecraft.resources.Identifier
 import net.minecraft.util.Util
 import java.net.URI
 import java.util.Locale
 
-class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(Text.translatable("text.config.soul/config.title")) {
+class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(Component.translatable("text.config.soul/config.title")) {
 
     companion object {
-        private val DISCORD_ICON: Identifier = Identifier.of("soul", "textures/gui/discord.png")
+        private val DISCORD_ICON: Identifier = Identifier.fromNamespaceAndPath("soul", "textures/gui/discord.png")
         private const val DISCORD_TEX_W = 528
         private const val DISCORD_TEX_H = 400
 
-        private val GITHUB_ICON: Identifier = Identifier.of("soul", "textures/gui/github.png")
+        private val GITHUB_ICON: Identifier = Identifier.fromNamespaceAndPath("soul", "textures/gui/github.png")
         private const val GITHUB_TEX_W = 294
         private const val GITHUB_TEX_H = 288
     }
@@ -46,13 +46,13 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
     private data class SubcategoryEntry(
         val catId: String,
         val subId: String,
-        val displayName: Text,
+        val displayName: Component,
         val options: List<Option<*>>
     )
 
     private data class CategoryEntry(
         val id: String,
-        val displayName: Text,
+        val displayName: Component,
         val subcategories: List<SubcategoryEntry>
     )
 
@@ -116,7 +116,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         titleRow.verticalAlignment(VerticalAlignment.CENTER)
         titleRow.margins(Insets.of(2, 2, 4, 4))
         titleRow.child(
-            UIComponents.label(Text.literal("Soul").styled { it.withColor(Theme.ACCENT) })
+            UIComponents.label(Component.literal("Soul").withStyle { it.withColor(Theme.ACCENT) })
         )
         val versionContainer = UIContainers.horizontalFlow(Sizing.expand(), Sizing.content())
         versionContainer.horizontalAlignment(HorizontalAlignment.RIGHT)
@@ -125,7 +125,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         versionContainer.child(githubButton())
         versionContainer.child(discordButton())
         versionContainer.child(
-            UIComponents.label(Text.literal("v${Soul.version.substringBefore("+")}").styled { it.withColor(Theme.TEXT_DIM) })
+            UIComponents.label(Component.literal("v${Soul.version.substringBefore("+")}").withStyle { it.withColor(Theme.TEXT_DIM) })
         )
         titleRow.child(versionContainer)
         sidebarColumn.child(titleRow)
@@ -160,7 +160,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         breadcrumbBar.gap(8)
         headerRow.child(breadcrumbBar)
 
-        val searchLabel = UIComponents.label(Text.translatable("text.config.soul/config.search"))
+        val searchLabel = UIComponents.label(Component.translatable("text.config.soul/config.search"))
             .color(Theme.color(Theme.TEXT_DIM))
         headerRow.child(searchLabel)
 
@@ -198,7 +198,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         val visible = filteredCategories()
         if (visible.isEmpty()) {
             val empty = UIComponents.label(
-                Text.literal("No results").styled { it.withColor(Theme.TEXT_DIM) }
+                Component.literal("No results").withStyle { it.withColor(Theme.TEXT_DIM) }
             )
             empty.margins(Insets.of(6, 0, 12, 0))
             sidebarList.child(empty)
@@ -259,7 +259,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
     private fun buildCategoryHeader(cat: CategoryEntry): ButtonComponent {
         val expanded = expandedCategories.contains(cat.id)
         val label = cat.displayName.string.uppercase()
-        val btn = UIComponents.button(Text.empty()) {
+        val btn = UIComponents.button(Component.empty()) {
             toggleCategory(cat)
         }
         btn.horizontalSizing(Sizing.fill(100))
@@ -271,7 +271,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
 
     private fun sidebarButton(cat: CategoryEntry, sub: SubcategoryEntry): ButtonComponent {
         val displayText = sub.displayName.string
-        val btn = UIComponents.button(Text.empty()) {
+        val btn = UIComponents.button(Component.empty()) {
             if (activeCategory != cat.id || activeSubcategory != sub.subId) {
                 activeCategory = cat.id
                 activeSubcategory = sub.subId
@@ -310,14 +310,14 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         val sub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
             ?: cat.subcategories.firstOrNull() ?: return
         breadcrumbBar.child(
-            UIComponents.label(Text.literal(cat.displayName.string))
+            UIComponents.label(Component.literal(cat.displayName.string))
                 .color(Theme.color(Theme.TEXT_DIM))
         )
         breadcrumbBar.child(
-            UIComponents.label(Text.literal("›")).color(Theme.color(Theme.TEXT_DIM))
+            UIComponents.label(Component.literal("›")).color(Theme.color(Theme.TEXT_DIM))
         )
         breadcrumbBar.child(
-            UIComponents.label(Text.literal(sub.displayName.string))
+            UIComponents.label(Component.literal(sub.displayName.string))
                 .color(Theme.color(Theme.TEXT))
         )
     }
@@ -330,7 +330,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         val cat = visible.firstOrNull { it.id == activeCategory }
         if (cat == null) {
             val empty = UIComponents.label(
-                Text.literal("No matching options.").styled { it.withColor(Theme.TEXT_DIM) }
+                Component.literal("No matching options.").withStyle { it.withColor(Theme.TEXT_DIM) }
             )
             empty.margins(Insets.of(20))
             contentBody.child(empty)
@@ -373,7 +373,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
             for ((groupId, opts) in grouped) {
                 val displayName: String? = if (groupId != null) {
                     val nameKey = "text.config.soul/config.group.${activeCategory}.${activeSubcategory}.$groupId"
-                    val nameText = Text.translatable(nameKey)
+                    val nameText = Component.translatable(nameKey)
                     if (nameText.string == nameKey) formatGroupId(groupId) else nameText.string
                 } else {
                     null
@@ -389,7 +389,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
 
     private fun addSection(parent: FlowLayout, label: String?, opts: List<Option<*>>) {
         if (label != null) {
-            val lbl = UIComponents.label(Text.literal(label))
+            val lbl = UIComponents.label(Component.literal(label))
                 .color(Theme.color(Theme.TEXT_DIM))
             lbl.margins(Insets.of(4, 0, 0, 6))
             parent.child(lbl)
@@ -410,13 +410,13 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         row.verticalAlignment(VerticalAlignment.CENTER)
         row.margins(Insets.of(1))
 
-        val label = UIComponents.label(Text.translatable(opt.translationKey()))
+        val label = UIComponents.label(Component.translatable(opt.translationKey()))
             .color(Theme.color(Theme.TEXT))
         // Label expands to consume all leftover space, pushing the control to the row's end.
         label.horizontalSizing(Sizing.expand())
 
         val tooltipKey = opt.translationKey() + ".tooltip"
-        val tooltipText = Text.translatable(tooltipKey)
+        val tooltipText = Component.translatable(tooltipKey)
         if (tooltipText.string != tooltipKey) {
             label.tooltip(tooltipText)
         }
@@ -426,7 +426,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
             is Boolean -> row.child(buildToggle(@Suppress("UNCHECKED_CAST") (opt as Option<Boolean>)))
             is Int, is Long, is Float, is Double -> row.child(buildNumeric(opt))
             is String -> row.child(buildTextBox(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
-            else -> row.child(UIComponents.label(Text.literal(opt.value().toString())))
+            else -> row.child(UIComponents.label(Component.literal(opt.value().toString())))
         }
         // Fixed-width slot; button is added/removed dynamically to avoid phantom hover.
         val slot = UIContainers.horizontalFlow(Sizing.fixed(18), Sizing.fixed(16))
@@ -484,22 +484,22 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
     @Suppress("UNCHECKED_CAST")
     private fun resetIconButton(opt: Option<*>): ButtonComponent {
         val default = opt.defaultValue()
-        val btn = UIComponents.button(Text.empty()) {
+        val btn = UIComponents.button(Component.empty()) {
             (opt as Option<Any>).set(default as Any)
             save()
             rebuildContent()
         }
         btn.horizontalSizing(Sizing.fill(100))
         btn.verticalSizing(Sizing.fill(100))
-        btn.tooltip(Text.literal("Reset to default: ${formatValue(default)}"))
+        btn.tooltip(Component.literal("Reset to default: ${formatValue(default)}"))
         btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
             val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
             ctx.fill(button.x, button.y, button.x + button.width, button.y + button.height, bg)
-            val tr = MinecraftClient.getInstance().textRenderer
+            val tr = Minecraft.getInstance().font
             val icon = "↺"
-            val tx = button.x + (button.width - tr.getWidth(icon)) / 2
-            val ty = button.y + (button.height - tr.fontHeight) / 2
-            ctx.drawText(tr, Text.literal(icon), tx, ty, if (button.isHovered) Theme.ACCENT else Theme.TEXT_DIM, false)
+            val tx = button.x + (button.width - tr.width(icon)) / 2
+            val ty = button.y + (button.height - tr.lineHeight) / 2
+            ctx.drawString(tr, Component.literal(icon), tx, ty, if (button.isHovered) Theme.ACCENT else Theme.TEXT_DIM, false)
         })
         return btn
     }
@@ -584,10 +584,10 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
     }
 
     private fun optMatchesText(opt: Option<*>, q: String): Boolean {
-        val labelText = Text.translatable(opt.translationKey()).string
+        val labelText = Component.translatable(opt.translationKey()).string
         if (labelText.contains(q, ignoreCase = true)) return true
         val tooltipKey = opt.translationKey() + ".tooltip"
-        val tooltipText = Text.translatable(tooltipKey).string
+        val tooltipText = Component.translatable(tooltipKey).string
         return tooltipText != tooltipKey && tooltipText.contains(q, ignoreCase = true)
     }
 
@@ -633,15 +633,15 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         url: String,
         tooltip: String
     ): ButtonComponent {
-        val btn = UIComponents.button(Text.empty()) {
-            Util.getOperatingSystem().open(URI.create(url))
+        val btn = UIComponents.button(Component.empty()) {
+            Util.getPlatform().openUri(URI.create(url))
         }
         btn.horizontalSizing(Sizing.fixed(destW))
         btn.verticalSizing(Sizing.fixed(destH))
-        btn.tooltip(Text.literal(tooltip))
+        btn.tooltip(Component.literal(tooltip))
         btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
             val tint = if (button.isHovered) 0xFFFFFFFF.toInt() else 0xCCFFFFFF.toInt()
-            ctx.drawTexture(
+            ctx.blit(
                 RenderPipelines.GUI_TEXTURED,
                 texture,
                 button.x, button.y,
@@ -660,8 +660,8 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         container.horizontalAlignment(HorizontalAlignment.CENTER)
         container.margins(Insets.of(2, 0, 0, 0))
 
-        val moveGui = UIComponents.button(Text.literal("Move GUI")) {
-            MinecraftClient.getInstance().setScreen(GuiEditScreen())
+        val moveGui = UIComponents.button(Component.literal("Move GUI")) {
+            Minecraft.getInstance().setScreen(GuiEditScreen())
         }
         moveGui.horizontalSizing(Sizing.fill(100))
         moveGui.verticalSizing(Sizing.fixed(18))
@@ -678,7 +678,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         f.verticalAlignment(VerticalAlignment.CENTER)
         f.horizontalAlignment(HorizontalAlignment.RIGHT)
 
-        val reload = UIComponents.button(Text.literal("Reload")) {
+        val reload = UIComponents.button(Component.literal("Reload")) {
             wrapper.load()
             rebuildContent()
         }
@@ -686,7 +686,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
         reload.verticalSizing(Sizing.fixed(24))
         reload.renderer(footerButtonRenderer(accent = false))
 
-        val done = UIComponents.button(Text.literal("Done")) { close() }
+        val done = UIComponents.button(Component.literal("Done")) { onClose() }
         done.horizontalSizing(Sizing.fixed(80))
         done.verticalSizing(Sizing.fixed(24))
         done.renderer(footerButtonRenderer(accent = true))
@@ -698,7 +698,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
 
     private fun categoryHeaderRenderer(text: String, expanded: Boolean): ButtonComponent.Renderer {
         return ButtonComponent.Renderer { ctx, button, _ ->
-            val tr = MinecraftClient.getInstance().textRenderer
+            val tr = Minecraft.getInstance().font
             if (button.isHovered) {
                 DrawContextRenderer.roundedFill(
                     ctx,
@@ -708,14 +708,14 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
             }
             val arrow = if (expanded) "▾" else "▸"
             val label = "$arrow  $text"
-            val ty = button.y + (button.height - tr.fontHeight) / 2
-            ctx.drawText(tr, Text.literal(label), button.x + 6, ty, Theme.TEXT_FAINT, false)
+            val ty = button.y + (button.height - tr.lineHeight) / 2
+            ctx.drawString(tr, Component.literal(label), button.x + 6, ty, Theme.TEXT_FAINT, false)
         }
     }
 
     private fun sidebarItemRenderer(text: String, selected: Boolean): ButtonComponent.Renderer {
         return ButtonComponent.Renderer { ctx, button, _ ->
-            val tr = MinecraftClient.getInstance().textRenderer
+            val tr = Minecraft.getInstance().font
             when {
                 selected -> DrawContextRenderer.roundedFill(
                     ctx,
@@ -729,8 +729,8 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
                 )
             }
             val textColor = if (selected) Theme.TEXT else Theme.TEXT_DIM
-            val ty = button.y + (button.height - tr.fontHeight) / 2
-            ctx.drawText(tr, Text.literal(text), button.x + 10, ty, textColor, false)
+            val ty = button.y + (button.height - tr.lineHeight) / 2
+            ctx.drawString(tr, Component.literal(text), button.x + 10, ty, textColor, false)
         }
     }
 
@@ -769,13 +769,13 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(T
                 SubcategoryEntry(
                     catId = catId,
                     subId = subId,
-                    displayName = Text.translatable(nameKey),
+                    displayName = Component.translatable(nameKey),
                     options = options
                 )
             }
             CategoryEntry(
                 id = catId,
-                displayName = Text.translatable("text.config.soul/config.category.$catId"),
+                displayName = Component.translatable("text.config.soul/config.category.$catId"),
                 subcategories = subs
             )
         }

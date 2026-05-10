@@ -5,16 +5,16 @@ import com.mojang.blaze3d.buffers.Std140Builder
 import com.mojang.blaze3d.buffers.Std140SizeCalculator
 import com.mojang.blaze3d.systems.RenderSystem
 import com.mojang.blaze3d.vertex.VertexFormat
-import net.minecraft.client.MinecraftClient
-import net.minecraft.client.gl.DynamicUniformStorage
-import net.minecraft.client.gui.DrawContext
-import net.minecraft.client.gui.ScreenRect
-import net.minecraft.client.gui.render.SpecialGuiElementRenderer
-import net.minecraft.client.gui.render.state.special.SpecialGuiElementRenderState
-import net.minecraft.client.render.Tessellator
-import net.minecraft.client.render.VertexConsumerProvider
-import net.minecraft.client.render.VertexFormats
-import net.minecraft.client.util.math.MatrixStack
+import net.minecraft.client.Minecraft
+import net.minecraft.client.renderer.DynamicUniformStorage
+import net.minecraft.client.gui.GuiGraphics
+import net.minecraft.client.gui.navigation.ScreenRectangle
+import net.minecraft.client.gui.render.pip.PictureInPictureRenderer
+import net.minecraft.client.gui.render.state.pip.PictureInPictureRenderState
+import com.mojang.blaze3d.vertex.Tesselator
+import net.minecraft.client.renderer.MultiBufferSource
+import com.mojang.blaze3d.vertex.DefaultVertexFormat
+import com.mojang.blaze3d.vertex.PoseStack
 import org.joml.Matrix3x2f
 import org.joml.Matrix4f
 import org.joml.Vector2f
@@ -23,35 +23,35 @@ import org.joml.Vector4f
 import java.util.OptionalInt
 import kotlin.math.roundToInt
 
-class RoundRectRenderer(vertexConsumers: VertexConsumerProvider.Immediate)
-    : SpecialGuiElementRenderer<RoundRectRenderer.State>(vertexConsumers) {
+class RoundRectRenderer(vertexConsumers: MultiBufferSource.BufferSource)
+    : PictureInPictureRenderer<RoundRectRenderer.State>(vertexConsumers) {
 
-    override fun getElementClass(): Class<State> = State::class.java
+    override fun getRenderStateClass(): Class<State> = State::class.java
 
-    override fun getName(): String = "soul:round_rect"
+    override fun getTextureLabel(): String = "soul:round_rect"
 
     // Center the 2D quad in the PIP texture (instead of the default entity-style bottom anchor).
-    override fun getYOffset(textureH: Int, scale: Int): Float = textureH / 2f
+    override fun getTranslateY(textureH: Int, scale: Int): Float = textureH / 2f
 
-    override fun render(state: State, matrixStack: MatrixStack) {
-        val w = (state.x2() - state.x1()).toFloat()
-        val h = (state.y2() - state.y1()).toFloat()
+    override fun renderToTexture(state: State, matrixStack: PoseStack) {
+        val w = (state.x1() - state.x0()).toFloat()
+        val h = (state.y1() - state.y0()).toFloat()
 
         // Build a quad centered at the origin in GUI-unit model space.
-        val builder = Tessellator.getInstance()
-            .begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR)
-        builder.vertex(-w / 2f, -h / 2f, 0f).color(state.topLeftColor)
-        builder.vertex(-w / 2f,  h / 2f, 0f).color(state.bottomLeftColor)
-        builder.vertex( w / 2f,  h / 2f, 0f).color(state.bottomRightColor)
-        builder.vertex( w / 2f, -h / 2f, 0f).color(state.topRightColor)
-        val mesh = builder.end()
+        val builder = Tesselator.getInstance()
+            .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR)
+        builder.addVertex(-w / 2f, -h / 2f, 0f).setColor(state.topLeftColor)
+        builder.addVertex(-w / 2f,  h / 2f, 0f).setColor(state.bottomLeftColor)
+        builder.addVertex( w / 2f,  h / 2f, 0f).setColor(state.bottomRightColor)
+        builder.addVertex( w / 2f, -h / 2f, 0f).setColor(state.topRightColor)
+        val mesh = builder.buildOrThrow()
 
-        val modelView = matrixStack.peek().getPositionMatrix()
-        val dynamicTransforms = RenderSystem.getDynamicUniforms().write(
+        val modelView = matrixStack.last().pose()
+        val dynamicTransforms = RenderSystem.getDynamicUniforms().writeTransform(
             modelView, Vector4f(1f, 1f, 1f, 1f), Vector3f(), Matrix4f()
         )
 
-        val uniformBuffer = uniformStorage.write(DynamicUniformStorage.Uploadable { buffer ->
+        val uniformBuffer = uniformStorage.writeUniform(DynamicUniformStorage.DynamicUniform { buffer ->
             Std140Builder.intoBuffer(buffer)
                 .putVec4(0f, 0f, w, h)   // center at origin, full size
                 .putVec4(state.topLeftRadius, state.topRightRadius, state.bottomRightRadius, state.bottomLeftRadius)
@@ -61,13 +61,14 @@ class RoundRectRenderer(vertexConsumers: VertexConsumerProvider.Immediate)
 
         mesh.use {
             val vertexBuf = SoulRenderPipelines.ROUND_RECT.getVertexFormat()
-                .uploadImmediateVertexBuffer(mesh.getBuffer())
-            val params = mesh.getDrawParameters()
+                .uploadImmediateVertexBuffer(mesh.vertexBuffer())
+            val params = mesh.drawState()
             val indexStorage = RenderSystem.getSequentialBuffer(params.mode())
-            val indexBuf = indexStorage.getIndexBuffer(params.indexCount())
+            val indexBuf = indexStorage.getBuffer(params.indexCount())
 
             val colorTarget = RenderSystem.outputColorTextureOverride
-                ?: MinecraftClient.getInstance().getFramebuffer().getColorAttachmentView()
+                ?: Minecraft.getInstance().mainRenderTarget.colorTextureView
+                ?: return@use
 
             RenderSystem.getDevice().createCommandEncoder()
                 .createRenderPass({ "Soul Rounded Rectangle" }, colorTarget, OptionalInt.empty())
@@ -77,7 +78,7 @@ class RoundRectRenderer(vertexConsumers: VertexConsumerProvider.Immediate)
                     pass.setUniform("DynamicTransforms", dynamicTransforms)
                     pass.setUniform("u", uniformBuffer)
                     pass.setVertexBuffer(0, vertexBuf)
-                    pass.setIndexBuffer(indexBuf, indexStorage.getIndexType())
+                    pass.setIndexBuffer(indexBuf, indexStorage.type())
                     pass.drawIndexed(0, 0, params.indexCount(), 1)
                 }
         }
@@ -98,43 +99,43 @@ class RoundRectRenderer(vertexConsumers: VertexConsumerProvider.Immediate)
         val bottomLeftRadius: Float,
         val outlineColor: Int,
         val outlineWidth: Float,
-        private val scissor: ScreenRect?,
-        private val cachedBounds: ScreenRect?
-    ) : SpecialGuiElementRenderState {
+        private val scissor: ScreenRectangle?,
+        private val cachedBounds: ScreenRectangle?
+    ) : PictureInPictureRenderState {
 
         val outlineRed   = (outlineColor shr 16 and 0xFF) / 255f
         val outlineGreen = (outlineColor shr 8  and 0xFF) / 255f
         val outlineBlue  = (outlineColor        and 0xFF) / 255f
         val outlineAlpha = (outlineColor shr 24 and 0xFF) / 255f
 
-        override fun x1(): Int = x
-        override fun y1(): Int = y
-        override fun x2(): Int = x + width
-        override fun y2(): Int = y + height
+        override fun x0(): Int = x
+        override fun y0(): Int = y
+        override fun x1(): Int = x + width
+        override fun y1(): Int = y + height
         override fun scale(): Float = 1f
-        override fun scissorArea(): ScreenRect? = scissor
-        override fun bounds(): ScreenRect = cachedBounds ?: ScreenRect(x, y, width, height)
+        override fun scissorArea(): ScreenRectangle? = scissor
+        override fun bounds(): ScreenRectangle = cachedBounds ?: ScreenRectangle(x, y, width, height)
     }
 
     companion object {
-        private val uniformStorage = DynamicUniformStorage<DynamicUniformStorage.Uploadable>(
+        private val uniformStorage = DynamicUniformStorage<DynamicUniformStorage.DynamicUniform>(
             "Soul Rounded Rectangle UBO",
             Std140SizeCalculator().putVec4().putVec4().putVec4().putVec4().get(),
             16
         )
 
         @JvmStatic
-        fun clear() = uniformStorage.clear()
+        fun clear() = uniformStorage.endFrame()
 
         fun submit(
-            context: DrawContext,
+            context: GuiGraphics,
             x0: Int, y0: Int, x1: Int, y1: Int,
             topLeftColor: Int, topRightColor: Int, bottomRightColor: Int, bottomLeftColor: Int,
             topLeftRadius: Float, topRightRadius: Float, bottomRightRadius: Float, bottomLeftRadius: Float,
             outlineColor: Int, outlineWidth: Float
         ) {
-            val scissor: ScreenRect? = context.scissorStack.peekLast()
-            val pose = Matrix3x2f(context.getMatrices())
+            val scissor: ScreenRectangle? = context.scissorStack.peek()
+            val pose = Matrix3x2f(context.pose())
 
             val p0 = pose.transformPosition(Vector2f(x0.toFloat(), y0.toFloat()))
             val p1 = pose.transformPosition(Vector2f(x1.toFloat(), y1.toFloat()))
@@ -146,11 +147,11 @@ class RoundRectRenderer(vertexConsumers: VertexConsumerProvider.Immediate)
 
             val poseScale  = pose.transformDirection(Vector2f(1f, 0f)).length()
 
-            val bounds = SpecialGuiElementRenderState.createBounds(
+            val bounds = PictureInPictureRenderState.getBounds(
                 screenLeft, screenTop, screenLeft + screenW, screenTop + screenH, scissor
             )
 
-            context.state.addSpecialElement(
+            context.guiRenderState.submitPicturesInPictureState(
                 State(
                     screenLeft, screenTop, screenW, screenH,
                     topLeftColor, topRightColor, bottomRightColor, bottomLeftColor,

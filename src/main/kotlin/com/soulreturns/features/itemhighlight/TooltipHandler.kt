@@ -3,9 +3,9 @@ package com.soulreturns.features.itemhighlight
 import com.soulreturns.config.cfg
 import com.soulreturns.util.SkyblockItemUtils
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback
-import net.minecraft.item.Item
-import net.minecraft.item.tooltip.TooltipType
-import net.minecraft.text.Text
+import net.minecraft.world.item.Item
+import net.minecraft.world.item.TooltipFlag
+import net.minecraft.network.chat.Component
 
 /**
  * Handles adding Skyblock ID to item tooltips
@@ -21,7 +21,7 @@ object TooltipHandler {
             val skyblockId = SkyblockItemUtils.getSkyblockId(stack) ?: return@register
 
             // Add the Skyblock ID line to the tooltip
-            lines.add(Text.literal("§7Skyblock ID: §e$skyblockId"))
+            lines.add(Component.literal("§7Skyblock ID: §e$skyblockId"))
         }
     }
 }

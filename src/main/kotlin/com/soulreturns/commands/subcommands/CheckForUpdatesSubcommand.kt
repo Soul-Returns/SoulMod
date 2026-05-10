@@ -5,14 +5,14 @@ import com.soulreturns.update.UpdateChecker
 import com.soulreturns.update.UpdateModal
 import com.soulreturns.util.soulChat
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
-import net.minecraft.client.MinecraftClient
+import net.minecraft.client.Minecraft
 
 object CheckForUpdatesSubcommand : SoulSubcommand {
 
     override fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return literal("checkForUpdates") {
             runs { _ ->
-                val mc = MinecraftClient.getInstance()
+                val mc = Minecraft.getInstance()
                 soulChat("§7Checking for updates...")
                 UpdateChecker.checkNow { info ->
                     if (info != null) {

@@ -1,8 +1,8 @@
 package com.soulreturns.util
 
-import net.minecraft.component.DataComponentTypes
-import net.minecraft.item.ItemStack
-import net.minecraft.nbt.NbtCompound
+import net.minecraft.core.component.DataComponents
+import net.minecraft.world.item.ItemStack
+import net.minecraft.nbt.CompoundTag
 
 object SkyblockItemUtils {
     /**
@@ -19,17 +19,17 @@ object SkyblockItemUtils {
 
         try {
             // Get the CUSTOM_DATA component
-            val customData = stack.get(DataComponentTypes.CUSTOM_DATA) ?: return null
+            val customData = stack.get(DataComponents.CUSTOM_DATA) ?: return null
 
             // Extract NBT from the component
-            val nbt: NbtCompound = customData.copyNbt()
+            val nbt: CompoundTag = customData.copyTag()
 
             // Check if the "id" key exists
             if (!nbt.contains("id")) return null
 
             // Return the Skyblock ID as a string
             // In Minecraft 1.21.5+, getString with default value returns String directly
-            val idValue = nbt.getString("id", "")
+            val idValue = nbt.getStringOr("id", "")
             return if (idValue.isEmpty()) null else idValue
         } catch (e: Exception) {
             // Silently handle any errors (corrupted data, etc.)
