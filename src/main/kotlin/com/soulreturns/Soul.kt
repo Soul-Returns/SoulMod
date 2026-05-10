@@ -4,6 +4,7 @@ import com.soulreturns.command.SoulCommand
 import com.soulreturns.render.RoundRectRenderer
 import net.fabricmc.fabric.api.client.rendering.v1.SpecialGuiElementRegistry
 import com.soulreturns.config.SoulConfigHolder
+import com.soulreturns.data.location.LocationReader
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.LegionCounter
 import com.soulreturns.features.BobbinTimeCounter
@@ -50,6 +51,9 @@ object Soul : ClientModInitializer {
 
         // Load persisted stats (tracked counters like seasonings) before features may read them.
         PersistentStats.init()
+
+        // Start polling Hypixel SkyBlock location (publishes AreaChanged/SublocationChanged events).
+        LocationReader.register()
 
         // Load persisted auth token so we don't re-authenticate on every launch.
         com.soulreturns.api.BackendAuth.loadCached()
