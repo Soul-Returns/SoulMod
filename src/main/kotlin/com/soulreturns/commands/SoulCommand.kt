@@ -3,6 +3,7 @@ package com.soulreturns.command
 import com.mojang.brigadier.context.CommandContext
 import com.soulreturns.commands.subcommands.CheckForUpdatesSubcommand
 import com.soulreturns.commands.subcommands.ClearAlertsSubcommand
+import com.soulreturns.commands.subcommands.ConfigSubcommand
 import com.soulreturns.commands.subcommands.GuiSubcommand
 import com.soulreturns.commands.subcommands.TestAlertSubcommand
 import com.soulreturns.commands.subcommands.TestMessageSubcommand
@@ -27,6 +28,7 @@ object SoulCommand {
                     .then(ClearAlertsSubcommand.register())
                     .then(GuiSubcommand.register())
                     .then(CheckForUpdatesSubcommand.register())
+                    .then(ConfigSubcommand.register())
             )
         }
     }

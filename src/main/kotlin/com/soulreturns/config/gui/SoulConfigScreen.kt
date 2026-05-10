@@ -4,6 +4,7 @@ import com.soulreturns.Soul
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.config.gui.components.SoulSlider
 import com.soulreturns.config.gui.components.SoulToggle
+import com.soulreturns.gui.GuiEditScreen
 import com.soulreturns.render.DrawContextRenderer
 import io.wispforest.owo.config.ConfigWrapper
 import io.wispforest.owo.config.Option
@@ -20,12 +21,25 @@ import io.wispforest.owo.ui.core.OwoUIAdapter
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.Surface
 import io.wispforest.owo.ui.core.VerticalAlignment
-import io.wispforest.owo.ui.core.OwoUIGraphics
 import net.minecraft.client.MinecraftClient
+import net.minecraft.client.gl.RenderPipelines
 import net.minecraft.text.Text
+import net.minecraft.util.Identifier
+import net.minecraft.util.Util
+import java.net.URI
 import java.util.Locale
 
-class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.config.soul/config.title")) {
+class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(Text.translatable("text.config.soul/config.title")) {
+
+    companion object {
+        private val DISCORD_ICON: Identifier = Identifier.of("soul", "textures/gui/discord.png")
+        private const val DISCORD_TEX_W = 528
+        private const val DISCORD_TEX_H = 400
+
+        private val GITHUB_ICON: Identifier = Identifier.of("soul", "textures/gui/github.png")
+        private const val GITHUB_TEX_W = 294
+        private const val GITHUB_TEX_H = 288
+    }
 
     private val wrapper: ConfigWrapper<*> get() = SoulConfigHolder.INSTANCE
 
@@ -58,10 +72,13 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
     )
 
     private val categories: List<CategoryEntry> by lazy { collectCategories() }
-    private var activeCategory: String = categories.firstOrNull()?.id ?: ""
-    private var activeSubcategory: String =
-        categories.firstOrNull()?.subcategories?.firstOrNull()?.subId ?: ""
+    private var activeCategory: String = ""
+    private var activeSubcategory: String = ""
+    private var searchQuery: String = initialSearch
     private lateinit var contentColumn: FlowLayout
+    private lateinit var contentBody: FlowLayout
+    private lateinit var breadcrumbBar: FlowLayout
+    private lateinit var searchBox: TextBoxComponent
     private lateinit var sidebarList: FlowLayout
     private val sidebarButtons = mutableMapOf<Pair<String, String>, ButtonComponent>()
     private val categoryHeaderButtons = mutableMapOf<String, ButtonComponent>()
@@ -69,6 +86,11 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
     private val resetSlots = mutableMapOf<String, FlowLayout>()
     // Display text for each subcategory — populated on rebuild, never mutated, safe for renderers.
     private val subcategoryDisplayNames = mutableMapOf<Pair<String, String>, String>()
+
+    init {
+        activeCategory = categories.firstOrNull()?.id ?: ""
+        activeSubcategory = categories.firstOrNull()?.subcategories?.firstOrNull()?.subId ?: ""
+    }
 
     override fun createAdapter(): OwoUIAdapter<FlowLayout> =
         OwoUIAdapter.create(this) { hSize, vSize -> UIContainers.verticalFlow(hSize, vSize) }
@@ -92,12 +114,16 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
 
         val titleRow = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
         titleRow.verticalAlignment(VerticalAlignment.CENTER)
-        titleRow.margins(Insets.of(4, 14, 4, 4))
+        titleRow.margins(Insets.of(2, 2, 4, 4))
         titleRow.child(
             UIComponents.label(Text.literal("Soul").styled { it.withColor(Theme.ACCENT) })
         )
         val versionContainer = UIContainers.horizontalFlow(Sizing.expand(), Sizing.content())
         versionContainer.horizontalAlignment(HorizontalAlignment.RIGHT)
+        versionContainer.verticalAlignment(VerticalAlignment.CENTER)
+        versionContainer.gap(4)
+        versionContainer.child(githubButton())
+        versionContainer.child(discordButton())
         versionContainer.child(
             UIComponents.label(Text.literal("v${Soul.version.substringBefore("+")}").styled { it.withColor(Theme.TEXT_DIM) })
         )
@@ -114,10 +140,8 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         )
         sidebarScrollLocal.scrollbarThiccness(4)
         sidebarColumn.child(sidebarScrollLocal)
-
-        // Default: expand the active category so the user immediately sees their subcategories.
-        if (activeCategory.isNotEmpty()) expandedCategories.add(activeCategory)
-        rebuildSidebarList()
+        sidebarColumn.child(separator())
+        sidebarColumn.child(sidebarFooter())
 
         card.child(sidebarColumn)
 
@@ -125,11 +149,43 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         contentColumn.surface(Theme.contentSurface)
         contentColumn.padding(Insets.of(0))
 
+        // Persistent header: breadcrumb (left, rebuilt on sub change) + search box (right, never recreated).
+        val headerRow = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
+        headerRow.padding(Insets.of(16, 12, 20, 16))
+        headerRow.verticalAlignment(VerticalAlignment.CENTER)
+        headerRow.gap(8)
+
+        breadcrumbBar = UIContainers.horizontalFlow(Sizing.expand(), Sizing.content())
+        breadcrumbBar.verticalAlignment(VerticalAlignment.CENTER)
+        breadcrumbBar.gap(8)
+        headerRow.child(breadcrumbBar)
+
+        val searchLabel = UIComponents.label(Text.translatable("text.config.soul/config.search"))
+            .color(Theme.color(Theme.TEXT_DIM))
+        headerRow.child(searchLabel)
+
+        searchBox = UIComponents.textBox(Sizing.fixed(160), searchQuery)
+        searchBox.onChanged().subscribe(TextBoxComponent.OnChanged { newVal ->
+            if (newVal != searchQuery) {
+                searchQuery = newVal
+                applySearch()
+            }
+        })
+        headerRow.child(searchBox)
+
+        contentColumn.child(headerRow)
+        contentColumn.child(horizontalDivider())
+
+        contentBody = UIContainers.verticalFlow(Sizing.fill(100), Sizing.fill(100))
+        contentColumn.child(contentBody)
+
         card.child(contentColumn)
 
         root.child(card)
         root.child(footer())
 
+        adjustActiveToFilter()
+        rebuildSidebarList()
         rebuildContent()
     }
 
@@ -138,7 +194,18 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         sidebarButtons.clear()
         categoryHeaderButtons.clear()
         subcategoryDisplayNames.clear()
-        for (cat in categories) {
+
+        val visible = filteredCategories()
+        if (visible.isEmpty()) {
+            val empty = UIComponents.label(
+                Text.literal("No results").styled { it.withColor(Theme.TEXT_DIM) }
+            )
+            empty.margins(Insets.of(6, 0, 12, 0))
+            sidebarList.child(empty)
+            return
+        }
+
+        for (cat in visible) {
             val header = buildCategoryHeader(cat)
             categoryHeaderButtons[cat.id] = header
             sidebarList.child(header)
@@ -232,28 +299,45 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
     }
 
     private fun rebuildContent() {
-        contentColumn.clearChildren()
-        resetSlots.clear()
+        rebuildBreadcrumb()
+        rebuildContentBody()
+    }
 
-        val cat = categories.firstOrNull { it.id == activeCategory } ?: return
+    private fun rebuildBreadcrumb() {
+        breadcrumbBar.clearChildren()
+        val visible = filteredCategories()
+        val cat = visible.firstOrNull { it.id == activeCategory } ?: return
         val sub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
             ?: cat.subcategories.firstOrNull() ?: return
-
-        val header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        header.padding(Insets.of(16, 12, 20, 20))
-        header.verticalAlignment(VerticalAlignment.CENTER)
-        header.gap(8)
-        header.child(
+        breadcrumbBar.child(
             UIComponents.label(Text.literal(cat.displayName.string))
                 .color(Theme.color(Theme.TEXT_DIM))
         )
-        header.child(UIComponents.label(Text.literal("›")).color(Theme.color(Theme.TEXT_DIM)))
-        header.child(
+        breadcrumbBar.child(
+            UIComponents.label(Text.literal("›")).color(Theme.color(Theme.TEXT_DIM))
+        )
+        breadcrumbBar.child(
             UIComponents.label(Text.literal(sub.displayName.string))
                 .color(Theme.color(Theme.TEXT))
         )
-        contentColumn.child(header)
-        contentColumn.child(horizontalDivider())
+    }
+
+    private fun rebuildContentBody() {
+        contentBody.clearChildren()
+        resetSlots.clear()
+
+        val visible = filteredCategories()
+        val cat = visible.firstOrNull { it.id == activeCategory }
+        if (cat == null) {
+            val empty = UIComponents.label(
+                Text.literal("No matching options.").styled { it.withColor(Theme.TEXT_DIM) }
+            )
+            empty.margins(Insets.of(20))
+            contentBody.child(empty)
+            return
+        }
+        val sub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
+            ?: cat.subcategories.firstOrNull() ?: return
 
         val scrollBody = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
         // Right padding leaves room for the scrollbar so rows don't visually clip.
@@ -261,6 +345,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         scrollBody.gap(8)
         scrollBody.horizontalAlignment(HorizontalAlignment.LEFT)
 
+        val visibleFieldNames = sub.options.map { it.key().path().last() }.toSet()
         val sections = explicitSections[activeCategory]?.get(activeSubcategory)
         if (sections != null) {
             // Explicit section layout: split flat options into labeled groups by field name.
@@ -268,7 +353,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
             val placed = mutableSetOf<String>()
             for ((label, fieldNames) in sections) {
                 val sectionOpts = fieldNames.mapNotNull { byField[it] }.also {
-                    placed.addAll(fieldNames)
+                    placed.addAll(fieldNames.filter { name -> name in visibleFieldNames })
                 }
                 if (sectionOpts.isEmpty()) continue
                 addSection(scrollBody, label, sectionOpts)
@@ -299,7 +384,7 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
 
         val scroll = UIContainers.verticalScroll(Sizing.fill(100), Sizing.fill(100), scrollBody)
         scroll.scrollbarThiccness(4)
-        contentColumn.child(scroll)
+        contentBody.child(scroll)
     }
 
     private fun addSection(parent: FlowLayout, label: String?, opts: List<Option<*>>) {
@@ -437,6 +522,75 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         else      -> value?.toString() ?: "null"
     }
 
+    // ---- search ----
+
+    private fun applySearch() {
+        adjustActiveToFilter()
+        rebuildSidebarList()
+        rebuildContent()
+    }
+
+    /**
+     * Sync active selection and expansion state with the current filter.
+     * - Picks a visible (cat, sub) if the previous active is hidden.
+     * - While searching: expand all visible categories so matches are immediately discoverable.
+     * - When search is cleared: collapse all but the active category.
+     */
+    private fun adjustActiveToFilter() {
+        val visible = filteredCategories()
+        if (visible.isEmpty()) {
+            expandedCategories.clear()
+            return
+        }
+        val cat = visible.firstOrNull { it.id == activeCategory } ?: visible.first()
+        activeCategory = cat.id
+        val sub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
+            ?: cat.subcategories.firstOrNull()
+        if (sub != null) activeSubcategory = sub.subId
+
+        expandedCategories.clear()
+        if (searchQuery.isNotBlank()) {
+            visible.forEach { expandedCategories.add(it.id) }
+        } else if (activeCategory.isNotEmpty()) {
+            expandedCategories.add(activeCategory)
+        }
+    }
+
+    /**
+     * Returns categories filtered against [searchQuery]. Empty query returns all categories.
+     * Match rules:
+     *  - Category display-name match → keep entire category and all subs intact.
+     *  - Subcategory display-name match → keep entire sub intact.
+     *  - Otherwise → keep only options whose label or tooltip text contains the query.
+     */
+    private fun filteredCategories(): List<CategoryEntry> {
+        val q = searchQuery.trim()
+        if (q.isEmpty()) return categories
+        return categories.mapNotNull { cat ->
+            val catMatches = cat.displayName.string.contains(q, ignoreCase = true)
+            val filteredSubs = cat.subcategories.mapNotNull { sub ->
+                val subMatches = sub.displayName.string.contains(q, ignoreCase = true)
+                if (catMatches || subMatches) {
+                    sub
+                } else {
+                    val matchingOpts = sub.options.filter { optMatchesText(it, q) }
+                    if (matchingOpts.isEmpty()) null
+                    else SubcategoryEntry(sub.catId, sub.subId, sub.displayName, matchingOpts)
+                }
+            }
+            if (filteredSubs.isEmpty()) null
+            else CategoryEntry(cat.id, cat.displayName, filteredSubs)
+        }
+    }
+
+    private fun optMatchesText(opt: Option<*>, q: String): Boolean {
+        val labelText = Text.translatable(opt.translationKey()).string
+        if (labelText.contains(q, ignoreCase = true)) return true
+        val tooltipKey = opt.translationKey() + ".tooltip"
+        val tooltipText = Text.translatable(tooltipKey).string
+        return tooltipText != tooltipKey && tooltipText.contains(q, ignoreCase = true)
+    }
+
     // ---- helpers ----
 
     private fun separator(): FlowLayout {
@@ -456,6 +610,65 @@ class SoulConfigScreen : BaseOwoScreen<FlowLayout>(Text.translatable("text.confi
         val d = UIContainers.verticalFlow(Sizing.fixed(1), Sizing.fill(100))
         d.surface(Surface.flat(Theme.SEPARATOR))
         return d
+    }
+
+    private fun discordButton(): ButtonComponent = linkButton(
+        DISCORD_ICON, DISCORD_TEX_W, DISCORD_TEX_H,
+        14, 11,
+        "https://discord.gg/Mn5dzEJEaJ",
+        "Join the Discord"
+    )
+
+    private fun githubButton(): ButtonComponent = linkButton(
+        GITHUB_ICON, GITHUB_TEX_W, GITHUB_TEX_H,
+        11, 11,
+        "https://github.com/Soul-Returns/SoulMod",
+        "View on GitHub"
+    )
+
+    private fun linkButton(
+        texture: Identifier,
+        texW: Int, texH: Int,
+        destW: Int, destH: Int,
+        url: String,
+        tooltip: String
+    ): ButtonComponent {
+        val btn = UIComponents.button(Text.empty()) {
+            Util.getOperatingSystem().open(URI.create(url))
+        }
+        btn.horizontalSizing(Sizing.fixed(destW))
+        btn.verticalSizing(Sizing.fixed(destH))
+        btn.tooltip(Text.literal(tooltip))
+        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
+            val tint = if (button.isHovered) 0xFFFFFFFF.toInt() else 0xCCFFFFFF.toInt()
+            ctx.drawTexture(
+                RenderPipelines.GUI_TEXTURED,
+                texture,
+                button.x, button.y,
+                0f, 0f,
+                button.width, button.height,
+                texW, texH,
+                texW, texH,
+                tint
+            )
+        })
+        return btn
+    }
+
+    private fun sidebarFooter(): FlowLayout {
+        val container = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
+        container.horizontalAlignment(HorizontalAlignment.CENTER)
+        container.margins(Insets.of(2, 0, 0, 0))
+
+        val moveGui = UIComponents.button(Text.literal("Move GUI")) {
+            MinecraftClient.getInstance().setScreen(GuiEditScreen())
+        }
+        moveGui.horizontalSizing(Sizing.fill(100))
+        moveGui.verticalSizing(Sizing.fixed(18))
+        moveGui.renderer(footerButtonRenderer(accent = false))
+        container.child(moveGui)
+
+        return container
     }
 
     private fun footer(): FlowLayout {
