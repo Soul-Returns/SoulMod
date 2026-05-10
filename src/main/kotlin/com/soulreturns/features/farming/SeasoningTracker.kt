@@ -26,29 +26,35 @@ import net.minecraft.world.item.ItemStack
 object SeasoningTracker {
     private val logger = SoulLogger("Soul/Seasoning")
     private const val ELEMENT_ID = "seasoning_tracker"
-    private const val FEAST_MENU_TITLE = "Harvest Feast"
+    /** Substring rather than exact match — covers both "Harvest Feast" and "Grand Harvest Feast". */
+    private const val FEAST_MENU_TITLE_NEEDLE = "Harvest Feast"
+    /** Substring inside item display names — covers "Feast Milestone I..V" and any Grand-event variants. */
+    private const val MILESTONE_NAME_NEEDLE = "Feast Milestone"
     private val DONATIONS_PATTERN = Regex("(\\d+(?:,\\d+)*)\\s*/\\s*(\\d+(?:,\\d+)*)\\s+Donations")
 
     /**
-     * Seasonings collected via chat increments *this client session only*.
-     * Menu hard-updates intentionally do NOT contribute — they'd produce huge spikes (catching up
-     * after offline farming) or sudden drops (a new event resetting the counter to 0), making the
-     * per-hour rate meaningless.
+     * Seasonings collected via chat increments *this client session only*. Used for the per-hour
+     * rate; menu hard-updates intentionally do NOT contribute (they'd produce huge spikes after
+     * offline farming or sudden drops at event resets, making the rate meaningless).
      */
     @Volatile private var sessionChatGain: Long = 0L
-    private var sessionStartNanos: Long = 0L
+
     /** Last screen instance we read the menu from — avoid re-parsing every tick of the same open. */
     private var lastReadScreen: AbstractContainerScreen<*>? = null
 
     fun register() {
-        sessionStartNanos = System.nanoTime()
-
         MessageHandler.onServerMessage { handleChat(it) }
 
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client ->
             tryReadMenu(client)
             updateHud()
         })
+    }
+
+    /** Wipe persisted total *and* session chat gain — invoked by `/soul dev resetSeasonings`. */
+    fun reset() {
+        PersistentStats.update { seasonings = 0L }
+        sessionChatGain = 0L
     }
 
     // ───────────────────── chat increment ─────────────────────
@@ -69,7 +75,7 @@ object SeasoningTracker {
             return
         }
         if (screen === lastReadScreen) return
-        if (screen.title.string != FEAST_MENU_TITLE) {
+        if (!screen.title.string.contains(FEAST_MENU_TITLE_NEEDLE)) {
             lastReadScreen = null
             return
         }
@@ -80,31 +86,48 @@ object SeasoningTracker {
     }
 
     /**
-     * Sums the "X / Y Donations" lines across all milestone slots in the chest.
-     * Returns null if no parseable milestone line is found (= menu not yet populated).
+     * Reads cumulative seasoning count from the milestone tiles.
+     *
+     * Hypixel's milestones display CUMULATIVE progress: a milestone with goal `Y` shows `X/Y`
+     * where `X` is your total donation count *capped at Y*. Lower (already completed) milestones
+     * show `Y/Y`. Higher (locked) milestones show `0/Y`. Exactly one milestone is "in-progress"
+     * with `0 < X < Y`, and that `X` is the true cumulative total.
+     *
+     * Cases:
+     *  - Found in-progress milestone (`0 < X < Y`) → return `X`.
+     *  - All milestones at `0/Y` → fresh event, return `0` (so we reset the counter).
+     *  - All maxed (`Y/Y` everywhere up to and including milestone V) OR transitioning between
+     *    completed and next-not-yet-ticked → return `null` so the caller does NOT update the
+     *    persisted total. Past the highest milestone there's no on-screen way to know the count.
      */
     private fun parseFeastMenu(screen: AbstractContainerScreen<*>): Long? {
-        var total = 0L
-        var foundAny = false
+        val pairs = mutableListOf<Pair<Long, Long>>()
         for (slot in screen.menu.slots) {
             val stack = slot.item
             if (stack.isEmpty) continue
-            val displayName = stack.hoverName.string
-            if (!displayName.startsWith("Feast Milestone")) continue
-            val per = parseDonationsFromLore(stack) ?: continue
-            total += per
-            foundAny = true
+            if (!stack.hoverName.string.contains(MILESTONE_NAME_NEEDLE)) continue
+            val pair = parseDonationsFromLore(stack) ?: continue
+            pairs += pair
         }
-        return if (foundAny) total else null
+        if (pairs.isEmpty()) return null
+        // In-progress: 0 < X < Y. Should be at most one such milestone at any time.
+        val inProgress = pairs.firstOrNull { (x, y) -> x in 1L..<y }
+        if (inProgress != null) return inProgress.first
+        // Fresh event start: every milestone shows 0/Y.
+        if (pairs.all { it.first == 0L }) return 0L
+        // All maxed or instant-transition state → can't determine; leave the counter alone.
+        return null
     }
 
-    /** Reads the LORE component, finds the first "X/Y Donations" match, returns X (commas stripped). */
-    private fun parseDonationsFromLore(stack: ItemStack): Long? {
+    /** Reads the LORE component, finds the first "X/Y Donations" match. Returns (X, Y) with commas stripped. */
+    private fun parseDonationsFromLore(stack: ItemStack): Pair<Long, Long>? {
         val lore = stack.get(DataComponents.LORE) ?: return null
         for (line in lore.lines) {
             val raw = MessageDetector.stripColorCodes(line.string)
             val m = DONATIONS_PATTERN.find(raw) ?: continue
-            return m.groupValues[1].replace(",", "").toLongOrNull()
+            val x = m.groupValues[1].replace(",", "").toLongOrNull() ?: continue
+            val y = m.groupValues[2].replace(",", "").toLongOrNull() ?: continue
+            return x to y
         }
         return null
     }
@@ -113,7 +136,11 @@ object SeasoningTracker {
 
     private fun updateHud() {
         val total = PersistentStats.current.seasonings
+        val timeStr = FarmingTimer.formatTime()
+        val timeLine = if (FarmingTimer.isPaused) "Farming Time: $timeStr §c(Paused)"
+                       else "Farming Time: $timeStr"
         val perHour = computePerHour()
+        val perHourLine = "Per hour: ${if (perHour == null) "—" else "%,d".format(perHour)}"
         // HUD is gated on (a) user toggle and (b) being on the Garden island. Tracking still
         // runs everywhere — only the on-screen overlay is suppressed off-island.
         val showHud = cfg.farming.seasonings.enableTracker() && SkyblockLocation.area == "Garden"
@@ -122,7 +149,8 @@ object SeasoningTracker {
             title = "Seasonings",
             lines = listOf(
                 "Total: $total",
-                "Per hour: ${if (perHour == null) "—" else "%,d".format(perHour)}"
+                timeLine,
+                perHourLine
             ),
             color = 0xFFFFFFFF.toInt(),
             enabled = showHud,
@@ -132,11 +160,12 @@ object SeasoningTracker {
         )
     }
 
+    /** Per-hour rate based on this session's chat-driven gain divided by [FarmingTimer]'s active hours. */
     private fun computePerHour(): Long? {
-        val elapsedNanos = System.nanoTime() - sessionStartNanos
-        if (elapsedNanos < 60_000_000_000L) return null   // < 1 minute → too noisy
+        val farmingMs = FarmingTimer.totalMs
+        if (farmingMs < 60_000L) return null   // < 1 minute of active farming → too noisy
         if (sessionChatGain <= 0L) return 0L
-        val hours = elapsedNanos / 3_600_000_000_000.0
+        val hours = farmingMs / 3_600_000.0
         return (sessionChatGain / hours).toLong()
     }
 }

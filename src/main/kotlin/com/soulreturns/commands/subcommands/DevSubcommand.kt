@@ -1,6 +1,7 @@
 package com.soulreturns.commands.subcommands
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import com.soulreturns.features.farming.SeasoningTracker
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageHandler
 import com.soulreturns.util.RenderUtils
@@ -15,6 +16,7 @@ import net.minecraft.network.chat.Component
  *
  *  - `/soul dev getArea`                                  → SkyBlock island from the tab list
  *  - `/soul dev getSubLocation`                           → sublocation from the scoreboard sidebar
+ *  - `/soul dev resetSeasonings`                          → reset seasoning total to 0 (persisted)
  *  - `/soul dev clearAlerts`                              → wipe in-flight alert overlays
  *  - `/soul dev testAlert [<message>]`                    → render a test alert
  *  - `/soul dev testMessage <type> <message>`             → simulate an incoming chat line of [type]
@@ -35,6 +37,14 @@ object DevSubcommand : SoulSubcommand {
                 runs { _ ->
                     val sub = SkyblockLocation.sublocation
                     soulChat(if (sub == null) "§7Sublocation: §c<unknown>" else "§7Sublocation: §a$sub")
+                }
+            })
+
+            // Persisted-stat resets
+            then(literal("resetSeasonings") {
+                runs { _ ->
+                    SeasoningTracker.reset()
+                    soulChat("§aSeasonings counter reset to §f0§a (persisted to stats.json).")
                 }
             })
 

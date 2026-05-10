@@ -53,9 +53,6 @@ jobs:
         with:
           draft: true
           name: ${{ github.ref_name }}
-          files: |
-            build/libs/**/*.jar
-            !build/libs/**/*-sources.jar
-            !build/libs/**/*-dev.jar
+          files: build/libs/**/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

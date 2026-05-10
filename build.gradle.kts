@@ -154,10 +154,12 @@ tasks {
         filesMatching("*.mixins.json") { expand("java" to mixinJava) }
     }
 
-    // Builds the version into a shared folder in `build/libs/${mod version}/`
+    // Builds the version into a shared folder in `build/libs/${mod version}/`.
+    // Only the production mod jar is collected — sources/dev jars stay in the per-version
+    // `versions/<mc>/build/libs/` and don't get uploaded to releases.
     register<Copy>("buildAndCollect") {
         group = "build"
-        from(remapJar.map { it.archiveFile }, remapSourcesJar.map { it.archiveFile })
+        from(remapJar.map { it.archiveFile })
         into(rootProject.layout.buildDirectory.file("libs/${project.property("mod.version")}"))
         dependsOn("build")
     }

@@ -8,6 +8,7 @@ import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.LegionCounter
 import com.soulreturns.features.BobbinTimeCounter
 import com.soulreturns.features.dev.DevKeybindHandler
+import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.SeasoningTracker
 import com.soulreturns.features.itemhighlight.HighlightManager
 import com.soulreturns.stats.PersistentStats
@@ -111,6 +112,7 @@ object Soul : ClientModInitializer {
         DevKeybindHandler.register()
 
         // Farming
+        FarmingTimer.register()
         SeasoningTracker.register()
     }
 
