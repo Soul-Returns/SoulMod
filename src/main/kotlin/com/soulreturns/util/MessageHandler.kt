@@ -13,7 +13,14 @@ object MessageHandler {
     private val serverMessageHandlers = mutableListOf<(String) -> Unit>()
     private val playerMessageHandlers = mutableListOf<(String) -> Unit>()
     private var lastProcessed: String? = null
+    private var lastProcessedAt: Long = 0L
     private var isRegistered = false
+
+    // Short window — only suppress true within-tick duplicates (e.g. CHAT and GAME firing for the
+    // same packet). Any longer window swallows legitimate back-to-back identical server messages,
+    // which breaks per-event counters like the seasoning tracker, especially under chat-compacting
+    // mods that re-emit the same line repeatedly.
+    private const val DEDUP_WINDOW_MS = 50L
 
     /**
      * Initialize the message handler and register event listeners.
@@ -81,9 +88,11 @@ object MessageHandler {
         try {
             val trimmed = raw.trim()
 
-            // Basic deduplication in case both GAME and CHAT fire for same content
-            if (lastProcessed == trimmed) return
+            // Suppress only same-tick duplicates (CHAT and GAME firing for the same packet).
+            val now = System.currentTimeMillis()
+            if (lastProcessed == trimmed && now - lastProcessedAt < DEDUP_WINDOW_MS) return
             lastProcessed = trimmed
+            lastProcessedAt = now
 
             val source = if (MessageDetector.isPlayerMessage(trimmed))
                 ChatMessage.Source.PLAYER
