@@ -1,5 +1,6 @@
 package com.soulreturns.config.gui
 
+import com.mojang.blaze3d.platform.InputConstants
 import com.soulreturns.Soul
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.config.cfg
@@ -7,6 +8,15 @@ import com.soulreturns.config.gui.components.SoulSlider
 import com.soulreturns.config.gui.components.SoulToggle
 import com.soulreturns.gui.GuiEditScreen
 import com.soulreturns.render.DrawContextRenderer
+import com.soulreturns.ui.config.components.SocialIcons
+import com.soulreturns.ui.config.model.ActionRowSpec
+import com.soulreturns.ui.config.model.CategoriesCollector
+import com.soulreturns.ui.config.model.CategoryEntry
+import com.soulreturns.ui.config.model.ConfigScreenContext
+import com.soulreturns.ui.config.model.LinkTarget
+import com.soulreturns.ui.config.model.SubcategoryEntry
+import com.soulreturns.ui.config.registry.ConfigSections
+import com.soulreturns.ui.config.search.ConfigSearchFilter
 import io.wispforest.owo.config.ConfigWrapper
 import io.wispforest.owo.config.Option
 import io.wispforest.owo.config.annotation.RangeConstraint
@@ -22,132 +32,21 @@ import io.wispforest.owo.ui.core.OwoUIAdapter
 import io.wispforest.owo.ui.core.Sizing
 import io.wispforest.owo.ui.core.Surface
 import io.wispforest.owo.ui.core.VerticalAlignment
-import com.mojang.blaze3d.platform.InputConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
-import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.network.chat.Component
-import net.minecraft.resources.Identifier
-import net.minecraft.util.Util
 import org.lwjgl.glfw.GLFW
-import java.net.URI
 import java.util.Locale
 
-class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(Component.translatable("text.config.soul/config.title")) {
-
-    companion object {
-        private val DISCORD_ICON: Identifier = Identifier.fromNamespaceAndPath("soul", "textures/gui/discord.png")
-        private const val DISCORD_TEX_W = 528
-        private const val DISCORD_TEX_H = 400
-
-        private val GITHUB_ICON: Identifier = Identifier.fromNamespaceAndPath("soul", "textures/gui/github.png")
-        private const val GITHUB_TEX_W = 294
-        private const val GITHUB_TEX_H = 288
-    }
+class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
+    Component.translatable("text.config.soul/config.title")
+), ConfigScreenContext {
 
     private val wrapper: ConfigWrapper<*> get() = SoulConfigHolder.INSTANCE
 
-    private data class SubcategoryEntry(
-        val catId: String,
-        val subId: String,
-        val displayName: Component,
-        val options: List<Option<*>>
-    )
-
-    private data class CategoryEntry(
-        val id: String,
-        val displayName: Component,
-        val subcategories: List<SubcategoryEntry>
-    )
-
-    /**
-     * Explicit section layout for subcategories whose config fields are flat
-     * (depth-2 paths, e.g. render.hideHeldItemTooltip) and can't be auto-grouped
-     * by path segment. Structure: cat → sub → ordered list of (label, field names).
-     * Options not listed in any section are collected into a trailing unlabelled card.
-     */
-    private val explicitSections: Map<String, Map<String, List<Pair<String, Set<String>>>>> = mapOf(
-        "render" to mapOf(
-            "misc" to listOf(
-                "Tooltips"         to setOf("hideHeldItemTooltip", "showSkyblockIdInTooltip"),
-                "Player Rendering" to setOf("oldSneakHeight")
-            ),
-            "highlights" to listOf(
-                "Item Highlights" to setOf(
-                    "highlightPestEquipment",
-                    "usePestVest",
-                    "highlightFarmingEquipment",
-                    "highlightCustomItems"
-                )
-            )
-        )
-    )
-
-    private data class LinkTarget(val label: String, val targetCat: String, val targetSub: String)
-
-    /** Generic action row: a label paired with a button that runs an arbitrary callback. */
-    private data class ActionRow(val label: String, val buttonText: String, val action: () -> Unit)
-
-    /** Subcategories that include cross-navigation buttons to other config locations. */
-    private val linkSections: Map<String, Map<String, List<LinkTarget>>> = mapOf(
-        "farming" to mapOf(
-            "pestFarming" to listOf(
-                LinkTarget("Configure Pest Equipment Highlighting", "render", "highlights")
-            )
-        )
-    )
-
-    /** Subcategories that include action button rows. (cat, sub) → list of ActionRow. */
-    private val actionRows: Map<String, Map<String, List<ActionRow>>> = mapOf(
-        "dev" to mapOf(
-            "config" to listOf(
-                ActionRow(
-                    label = "Reload Config from Disk",
-                    buttonText = "Reload",
-                    action = { wrapper.load(); rebuildContent() }
-                )
-            )
-        )
-    )
-
-    /** Subcategories without backing config fields. Sidebar entries appear via translation keys. */
-    private val virtualSubs: Map<String, List<String>> = mapOf(
-        "farming" to listOf("pestFarming"),
-        "dev" to listOf("config")
-    )
-
-    /** Explicit category sort order. Categories not listed here fall to the end in their original order. */
-    private val categoryOrder: List<String> = listOf(
-        "general", "render", "fishing", "mining", "farming", "notifications", "profileViewer", "dev"
-    )
-
-    /** Option full-paths whose String value is a Minecraft key translation key (e.g. "key.keyboard.f6"). */
-    private val keybindOptions: Set<String> = setOf(
-        "dev.keybinds.copyOpenedGui",
-        "dev.keybinds.copyItemUnderCursor",
-        "dev.keybinds.copyHeldItem",
-        "dev.keybinds.copyScoreboard",
-        "dev.keybinds.copyTablist"
-    )
-
     /** When non-null, the next key/mouse press binds this option instead of acting on the screen. */
-    private var capturingKeybind: Option<String>? = null
-
-    /** Option full-path → predicate. Option is hidden when predicate returns false. */
-    private val optionVisibility: Map<String, () -> Boolean> = mapOf(
-        "render.highlights.usePestVest" to { cfg.render.highlights.highlightPestEquipment() },
-        "farming.seasonings.showMaxMilestone"  to { cfg.farming.seasonings.enableTracker() },
-        "farming.seasonings.showNextMilestone" to { cfg.farming.seasonings.enableTracker() },
-        "farming.seasonings.showFarmingTime"   to { cfg.farming.seasonings.enableTracker() },
-        "farming.seasonings.showPerHour"       to { cfg.farming.seasonings.enableTracker() }
-    )
-
-    /** Boolean option full-paths whose change should rebuild content (because they gate other options' visibility). */
-    private val rebuildOnChange: Set<String> = setOf(
-        "render.highlights.highlightPestEquipment",
-        "farming.seasonings.enableTracker"
-    )
+    override var capturingKeybind: Option<String>? = null
 
     private val categories: List<CategoryEntry> by lazy { collectCategories() }
     private var activeCategory: String = ""
@@ -376,7 +275,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         return UIContainers.verticalFlow(Sizing.fill(100), Sizing.fixed(h))
     }
 
-    private fun rebuildContent() {
+    override fun rebuildContent() {
         rebuildBreadcrumb()
         rebuildContentBody()
     }
@@ -400,7 +299,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         )
     }
 
-    private fun rebuildContentBody() {
+    override fun rebuildContentBody() {
         contentBody.clearChildren()
         resetSlots.clear()
 
@@ -433,7 +332,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         scrollBody.horizontalAlignment(HorizontalAlignment.LEFT)
 
         val visibleFieldNames = sub.options.map { it.key().path().last() }.toSet()
-        val sections = explicitSections[activeCategory]?.get(activeSubcategory)
+        val sections = ConfigSections.explicitSections[activeCategory]?.get(activeSubcategory)
         if (sections != null) {
             // Explicit section layout: split flat options into labeled groups by field name.
             val byField = sub.options.associateBy { it.key().path().last() }
@@ -471,13 +370,13 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         }
 
         // Append action-button rows (e.g. "Reload Config from Disk").
-        val actions = actionRows[activeCategory]?.get(activeSubcategory)
+        val actions = ConfigSections.actionRows[activeCategory]?.get(activeSubcategory)
         if (!actions.isNullOrEmpty()) {
             addActionSection(scrollBody, sub.displayName.string, actions)
         }
 
         // Append cross-navigation link buttons configured for this subcategory.
-        val links = linkSections[activeCategory]?.get(activeSubcategory)
+        val links = ConfigSections.linkSections[activeCategory]?.get(activeSubcategory)
         if (!links.isNullOrEmpty()) {
             addLinkSection(scrollBody, sub.displayName.string, links)
         }
@@ -511,7 +410,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         row.margins(Insets.of(1))
 
         // Visual hint that this option is gated by another option above (e.g. usePestVest under highlightPestEquipment).
-        val isDependent = opt.key().path().joinToString(".") in optionVisibility
+        val isDependent = opt.key().path().joinToString(".") in ConfigSections.optionVisibility
         if (isDependent) {
             val arrow = UIComponents.label(Component.literal("↳"))
                 .color(Theme.color(Theme.TEXT_DIM))
@@ -537,7 +436,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
                 row.child(buildToggle(@Suppress("UNCHECKED_CAST") (opt as Option<Boolean>)))
             opt.value() is Int || opt.value() is Long || opt.value() is Float || opt.value() is Double ->
                 row.child(buildNumeric(opt))
-            opt.value() is String && pathKey in keybindOptions ->
+            opt.value() is String && pathKey in ConfigSections.keybindOptions ->
                 row.child(buildKeybindButton(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
             opt.value() is String ->
                 row.child(buildTextBox(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
@@ -559,7 +458,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
             opt.set(newVal)
             save()
             refreshResetSlot(opt)
-            if (key in rebuildOnChange) rebuildContentBody()
+            if (key in ConfigSections.rebuildOnChange) rebuildContentBody()
         }
         return toggle
     }
@@ -649,8 +548,13 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         return tb
     }
 
-    private fun save() {
+    override fun save() {
         try { wrapper.save() } catch (_: Throwable) {}
+    }
+
+    override fun reloadConfig() {
+        try { wrapper.load() } catch (_: Throwable) {}
+        rebuildContent()
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -728,50 +632,15 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         }
     }
 
-    /**
-     * Returns categories filtered against [searchQuery]. Empty query returns all categories.
-     * Match rules:
-     *  - Category display-name match → keep entire category and all subs intact.
-     *  - Subcategory display-name match → keep entire sub intact.
-     *  - Otherwise → keep only options whose label or tooltip text contains the query.
-     */
-    private fun filteredCategories(): List<CategoryEntry> {
-        val q = searchQuery.trim()
-        if (q.isEmpty()) return categories
-        return categories.mapNotNull { cat ->
-            val catMatches = cat.displayName.string.contains(q, ignoreCase = true)
-            val filteredSubs = cat.subcategories.mapNotNull { sub ->
-                val subMatches = sub.displayName.string.contains(q, ignoreCase = true)
-                if (catMatches || subMatches) {
-                    sub
-                } else {
-                    val matchingOpts = sub.options.filter { optMatchesText(it, q) }
-                    if (matchingOpts.isEmpty()) null
-                    else SubcategoryEntry(sub.catId, sub.subId, sub.displayName, matchingOpts)
-                }
-            }
-            if (filteredSubs.isEmpty()) null
-            else CategoryEntry(cat.id, cat.displayName, filteredSubs)
-        }
-    }
+    /** Search filtering delegated to [ConfigSearchFilter] — pure function over the categories list. */
+    private fun filteredCategories(): List<CategoryEntry> =
+        ConfigSearchFilter.filter(categories, searchQuery)
 
-    private fun optMatchesText(opt: Option<*>, q: String): Boolean {
-        if (!isOptionVisible(opt)) return false
-        val labelText = Component.translatable(opt.translationKey()).string
-        if (labelText.contains(q, ignoreCase = true)) return true
-        val tooltipKey = opt.translationKey() + ".tooltip"
-        val tooltipText = Component.translatable(tooltipKey).string
-        return tooltipText != tooltipKey && tooltipText.contains(q, ignoreCase = true)
-    }
-
-    private fun isOptionVisible(opt: Option<*>): Boolean {
-        val key = opt.key().path().joinToString(".")
-        val pred = optionVisibility[key] ?: return true
-        return try { pred() } catch (_: Throwable) { true }
-    }
+    /** Visibility predicate delegated to [ConfigSections]; same logic, single source of truth. */
+    private fun isOptionVisible(opt: Option<*>): Boolean = ConfigSections.isOptionVisible(opt)
 
     /** Render a labeled card containing one-or-more action rows (label + right-aligned button). */
-    private fun addActionSection(parent: FlowLayout, label: String, rows: List<ActionRow>) {
+    private fun addActionSection(parent: FlowLayout, label: String, rows: List<ActionRowSpec>) {
         val lbl = UIComponents.label(Component.literal(label))
             .color(Theme.color(Theme.TEXT_DIM))
         lbl.margins(Insets.of(4, 0, 0, 6))
@@ -784,7 +653,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         parent.child(card)
     }
 
-    private fun actionRow(action: ActionRow): FlowLayout {
+    private fun actionRow(action: ActionRowSpec): FlowLayout {
         val row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
         row.surface(Theme.rowSurface())
         row.padding(Insets.of(6, 6, 12, 12))
@@ -797,7 +666,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         label.horizontalSizing(Sizing.expand())
         row.child(label)
 
-        val btn = UIComponents.button(Component.literal(action.buttonText)) { action.action() }
+        val btn = UIComponents.button(Component.literal(action.buttonText)) { action.action(this@SoulConfigScreen) }
         btn.horizontalSizing(Sizing.fixed(80))
         btn.verticalSizing(Sizing.fixed(20))
         btn.renderer(actionButtonRenderer())
@@ -851,7 +720,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         return btn
     }
 
-    private fun navigateTo(catId: String, subId: String) {
+    override fun navigateTo(catId: String, subId: String) {
         activeCategory = catId
         activeSubcategory = subId
         expandedCategories.add(catId)
@@ -880,48 +749,9 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
         return d
     }
 
-    private fun discordButton(): ButtonComponent = linkButton(
-        DISCORD_ICON, DISCORD_TEX_W, DISCORD_TEX_H,
-        14, 11,
-        "https://discord.gg/Mn5dzEJEaJ",
-        "Join the Discord"
-    )
+    private fun discordButton(): ButtonComponent = SocialIcons.discord()
 
-    private fun githubButton(): ButtonComponent = linkButton(
-        GITHUB_ICON, GITHUB_TEX_W, GITHUB_TEX_H,
-        11, 11,
-        "https://github.com/Soul-Returns/SoulMod",
-        "View on GitHub"
-    )
-
-    private fun linkButton(
-        texture: Identifier,
-        texW: Int, texH: Int,
-        destW: Int, destH: Int,
-        url: String,
-        tooltip: String
-    ): ButtonComponent {
-        val btn = UIComponents.button(Component.empty()) {
-            Util.getPlatform().openUri(URI.create(url))
-        }
-        btn.horizontalSizing(Sizing.fixed(destW))
-        btn.verticalSizing(Sizing.fixed(destH))
-        btn.tooltip(Component.literal(tooltip))
-        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
-            val tint = if (button.isHovered) 0xFFFFFFFF.toInt() else 0xCCFFFFFF.toInt()
-            ctx.blit(
-                RenderPipelines.GUI_TEXTURED,
-                texture,
-                button.x, button.y,
-                0f, 0f,
-                button.width, button.height,
-                texW, texH,
-                texW, texH,
-                tint
-            )
-        })
-        return btn
-    }
+    private fun githubButton(): ButtonComponent = SocialIcons.github()
 
     private fun sidebarFooter(): FlowLayout {
         val container = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
@@ -1011,41 +841,6 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
 
     // ---- model collection ----
 
-    private fun collectCategories(): List<CategoryEntry> {
-        // path[0] = category, path[1..n-2] = nested groups, path[n-1] = leaf field.
-        val byCat = LinkedHashMap<String, LinkedHashMap<String, MutableList<Option<*>>>>()
-        wrapper.forEachOption { opt ->
-            val path = opt.key().path()
-            if (path.isEmpty()) return@forEachOption
-            val cat = path[0]
-            val sub = if (path.size >= 3) path[1] else "misc"
-            val groups = byCat.getOrPut(cat) { LinkedHashMap() }
-            groups.getOrPut(sub) { mutableListOf() }.add(opt)
-        }
-        // Inject subcategories that have no backing config fields (purely navigational).
-        for ((catId, subIds) in virtualSubs) {
-            val groups = byCat.getOrPut(catId) { LinkedHashMap() }
-            for (subId in subIds) groups.getOrPut(subId) { mutableListOf() }
-        }
-        val maxOrderIdx = categoryOrder.size
-        return byCat.entries.sortedBy { entry ->
-            val idx = categoryOrder.indexOf(entry.key)
-            if (idx < 0) maxOrderIdx else idx
-        }.map { (catId, groups) ->
-            val subs = groups.entries.map { (subId, options) ->
-                val nameKey = "text.config.soul/config.group.$catId.$subId"
-                SubcategoryEntry(
-                    catId = catId,
-                    subId = subId,
-                    displayName = Component.translatable(nameKey),
-                    options = options
-                )
-            }
-            CategoryEntry(
-                id = catId,
-                displayName = Component.translatable("text.config.soul/config.category.$catId"),
-                subcategories = subs
-            )
-        }
-    }
+    /** Reads the owo-config wrapper into normalized [CategoryEntry]s — pure delegation. */
+    private fun collectCategories(): List<CategoryEntry> = CategoriesCollector.collect(wrapper)
 }
