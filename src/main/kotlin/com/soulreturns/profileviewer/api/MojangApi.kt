@@ -1,7 +1,7 @@
 package com.soulreturns.profileviewer.api
 
 import com.google.gson.JsonParser
-import com.soulreturns.api.SoulHttp
+import com.soulreturns.platform.http.SoulHttp
 import com.soulreturns.profileviewer.SpvExecutor
 import java.util.UUID
 import java.util.concurrent.CompletableFuture

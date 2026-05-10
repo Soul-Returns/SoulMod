@@ -1,4 +1,4 @@
-package com.soulreturns.config.gui
+package com.soulreturns.ui.theme
 
 import com.soulreturns.render.DrawContextRenderer
 import io.wispforest.owo.ui.core.Color

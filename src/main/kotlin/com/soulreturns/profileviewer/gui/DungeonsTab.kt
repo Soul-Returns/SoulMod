@@ -1,7 +1,7 @@
 package com.soulreturns.profileviewer.gui
 
 import com.google.gson.JsonObject
-import com.soulreturns.config.gui.Theme
+import com.soulreturns.ui.theme.Theme
 import com.soulreturns.profileviewer.model.DungeonsView
 import com.soulreturns.profileviewer.model.FloorStats
 import com.soulreturns.profileviewer.service.DungeonClassNames

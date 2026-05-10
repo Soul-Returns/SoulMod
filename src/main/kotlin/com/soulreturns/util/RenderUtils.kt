@@ -1,5 +1,6 @@
 package com.soulreturns.util
 
+import com.soulreturns.platform.mixinbridge.RenderHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.sounds.SoundEvents

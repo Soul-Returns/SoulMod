@@ -1,10 +1,15 @@
-package com.soulreturns.util;
+package com.soulreturns.platform.mixinbridge;
 
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import org.joml.Matrix3x2fStack;
 
+/**
+ * Java helpers called from Mixin classes (and a couple of Kotlin call sites).
+ * Lives in Java specifically because Mixin classes are Java and can't have
+ * non-private static helpers — these need to live outside the mixin.
+ */
 public class RenderHelper {
     public static void pushScaledMatrix(GuiGraphics context, float scale, float pivotX, float pivotY) {
         Matrix3x2fStack matrices = context.pose();
@@ -70,4 +75,3 @@ public class RenderHelper {
         context.fill(x + 14, y + 2, x + 16, y + 14, color);
     }
 }
-

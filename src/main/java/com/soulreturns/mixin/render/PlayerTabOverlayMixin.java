@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
-import static com.soulreturns.util.RenderHelper.pushScaledMatrix;
+import static com.soulreturns.platform.mixinbridge.RenderHelper.pushScaledMatrix;
 
 @Mixin(PlayerTabOverlay.class)
 public class PlayerTabOverlayMixin {

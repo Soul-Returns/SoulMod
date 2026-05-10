@@ -1,6 +1,6 @@
 package com.soulreturns.update
 
-import com.soulreturns.api.SoulHttp
+import com.soulreturns.platform.http.SoulHttp
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.SharedConstants
 import net.minecraft.client.Minecraft

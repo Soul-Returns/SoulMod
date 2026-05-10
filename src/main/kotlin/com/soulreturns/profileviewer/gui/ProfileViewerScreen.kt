@@ -1,6 +1,6 @@
 package com.soulreturns.profileviewer.gui
 
-import com.soulreturns.config.gui.Theme
+import com.soulreturns.ui.theme.Theme
 import com.soulreturns.profileviewer.api.MojangApi
 import com.soulreturns.profileviewer.model.SkyblockProfile
 import com.soulreturns.profileviewer.model.SkyblockProfilesResponse

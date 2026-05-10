@@ -1,7 +1,7 @@
 package com.soulreturns.update
 
 import com.soulreturns.Soul
-import com.soulreturns.config.gui.Theme
+import com.soulreturns.ui.theme.Theme
 import com.soulreturns.render.DrawContextRenderer
 import io.wispforest.owo.ui.base.BaseOwoScreen
 import io.wispforest.owo.ui.component.ButtonComponent

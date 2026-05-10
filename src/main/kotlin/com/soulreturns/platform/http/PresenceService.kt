@@ -1,4 +1,4 @@
-package com.soulreturns.api
+package com.soulreturns.platform.http
 
 import net.minecraft.client.Minecraft
 import com.soulreturns.util.SoulLogger

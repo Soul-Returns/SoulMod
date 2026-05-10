@@ -21,7 +21,7 @@ import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
 import com.soulreturns.ui.hud.PartyHud
 import com.soulreturns.features.party.PartyManager
-import com.soulreturns.api.PresenceService
+import com.soulreturns.platform.http.PresenceService
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.update.UpdateChecker
 import com.soulreturns.update.UpdateModal
@@ -60,7 +60,7 @@ object Soul : ClientModInitializer {
         LocationReader.register()
 
         // Load persisted auth token so we don't re-authenticate on every launch.
-        com.soulreturns.api.BackendAuth.loadCached()
+        com.soulreturns.platform.http.BackendAuth.loadCached()
 
         // Start presence ping so the backend knows who is online.
         PresenceService.start()

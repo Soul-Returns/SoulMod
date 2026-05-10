@@ -5,6 +5,7 @@ import com.soulreturns.Soul
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.gui.GuiEditScreen
 import com.soulreturns.ui.config.components.ConfigRenderers
+import com.soulreturns.ui.theme.Theme
 import com.soulreturns.ui.config.components.SocialIcons
 import com.soulreturns.ui.config.model.CategoriesCollector
 import com.soulreturns.ui.config.model.CategoryEntry

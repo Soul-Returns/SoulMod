@@ -2,7 +2,7 @@ package com.soulreturns.update
 
 import com.google.gson.JsonParser
 import com.soulreturns.Soul
-import com.soulreturns.api.SoulHttp
+import com.soulreturns.platform.http.SoulHttp
 import com.soulreturns.config.cfg
 import net.minecraft.SharedConstants
 import net.minecraft.client.Minecraft

@@ -1,7 +1,7 @@
 package com.soulreturns.mixin.render;
 
 import com.soulreturns.gui.SoulGuiHudAdapter;
-import com.soulreturns.util.RenderHelper;
+import com.soulreturns.platform.mixinbridge.RenderHelper;
 import com.soulreturns.util.RenderUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
-import static com.soulreturns.util.RenderHelper.pushScaledMatrix;
+import static com.soulreturns.platform.mixinbridge.RenderHelper.pushScaledMatrix;
 
 @Mixin(Gui.class)
 public class GuiMixin {

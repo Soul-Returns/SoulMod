@@ -1,7 +1,7 @@
 package com.soulreturns.mixin.render;
 
 import com.soulreturns.features.itemhighlight.HighlightManager;
-import com.soulreturns.util.RenderHelper;
+import com.soulreturns.platform.mixinbridge.RenderHelper;
 import com.soulreturns.util.SkyblockItemUtils;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;

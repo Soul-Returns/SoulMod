@@ -1,6 +1,6 @@
 package com.soulreturns.config.gui.components
 
-import com.soulreturns.config.gui.Theme
+import com.soulreturns.ui.theme.Theme
 import com.soulreturns.render.DrawContextRenderer
 import io.wispforest.owo.ui.base.BaseUIComponent
 import io.wispforest.owo.ui.core.CursorStyle

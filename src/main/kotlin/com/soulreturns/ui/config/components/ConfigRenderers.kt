@@ -1,6 +1,6 @@
 package com.soulreturns.ui.config.components
 
-import com.soulreturns.config.gui.Theme
+import com.soulreturns.ui.theme.Theme
 import com.soulreturns.render.DrawContextRenderer
 import io.wispforest.owo.ui.component.ButtonComponent
 import net.minecraft.client.Minecraft

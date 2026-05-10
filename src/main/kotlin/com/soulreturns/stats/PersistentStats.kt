@@ -1,7 +1,7 @@
 package com.soulreturns.stats
 
 import com.google.gson.GsonBuilder
-import com.soulreturns.api.SoulExecutor
+import com.soulreturns.platform.concurrent.SoulExecutor
 import com.soulreturns.util.SoulLogger
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.loader.api.FabricLoader

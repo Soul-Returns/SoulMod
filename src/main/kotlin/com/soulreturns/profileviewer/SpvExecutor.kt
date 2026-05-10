@@ -1,6 +1,6 @@
 package com.soulreturns.profileviewer
 
-import com.soulreturns.api.SoulExecutor
+import com.soulreturns.platform.concurrent.SoulExecutor
 import com.soulreturns.config.cfg
 import com.soulreturns.util.SoulLogger
 
