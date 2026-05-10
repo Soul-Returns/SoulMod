@@ -1,16 +1,11 @@
 package com.soulreturns.gui
 
-import com.soulreturns.gui.lib.GuiInteractionHandler
-import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.gui.lib.GuiRenderContext
-import com.soulreturns.gui.lib.GuiRenderer
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.world.item.ItemStack
 
-/**
- * Minecraft/Fabric-specific implementation of GuiRenderContext.
- */
+/** Minecraft/Fabric-specific implementation of [GuiRenderContext]. */
 class MinecraftGuiRenderContext(
     private val context: GuiGraphics,
     private val client: Minecraft,
@@ -67,52 +62,8 @@ class MinecraftGuiRenderContext(
     }
 
     override fun drawItemIcon(iconKey: String, x: Int, y: Int) {
-        // For now, rely on the host to supply a mapping from iconKey to
-        // ItemStack via a simple registry. To keep this adapter self-contained,
-        // fall back to an empty stack when not found.
+        // Falls back to an empty stack when the key isn't registered — keeps the adapter self-contained.
         val stack: ItemStack = GuiIconRegistry.resolve(iconKey)
         context.renderItem(stack, x, y)
-    }
-}
-
-/**
- * Simple registry mapping icon keys to ItemStacks. Hosts can register mappings
- * during mod initialization.
- */
-object GuiIconRegistry {
-    private val icons: MutableMap<String, ItemStack> = mutableMapOf()
-
-    fun registerIcon(key: String, stack: ItemStack) {
-        icons[key] = stack
-    }
-
-    fun resolve(key: String): ItemStack {
-        return icons[key] ?: ItemStack.EMPTY
-    }
-}
-
-/**
- * HUD adapter entrypoint called from the InGameHud mixin.
- */
-object SoulGuiHudAdapter {
-    // Last interaction snapshot from the previous render. This is used by
-    // click handling when the user interacts with tracker +/- buttons.
-    @Volatile
-    var lastSnapshot: com.soulreturns.gui.lib.GuiInteractionSnapshot? = null
-        private set
-
-    fun renderHud(context: GuiGraphics) {
-        val client = Minecraft.getInstance()
-        val layout = GuiLayoutManager.getLayout()
-        val guiCtx = MinecraftGuiRenderContext(context, client)
-        lastSnapshot = GuiRenderer.renderHud(layout, guiCtx)
-    }
-
-    /**
-     * Handle a mouse click routed from client code or a mixin.
-     */
-    fun handleClick(screenX: Int, screenY: Int): Boolean {
-        val snapshot = lastSnapshot ?: return false
-        return GuiInteractionHandler.handleClick(screenX, screenY, snapshot)
     }
 }

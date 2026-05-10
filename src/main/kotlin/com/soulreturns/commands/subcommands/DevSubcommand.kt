@@ -1,7 +1,9 @@
 package com.soulreturns.commands.subcommands
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import com.soulreturns.data.profile.ProfileApi
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
+import com.soulreturns.stats.PersistentStats
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageHandler
 import com.soulreturns.util.RenderUtils
@@ -16,6 +18,8 @@ import net.minecraft.network.chat.Component
  *
  *  - `/soul dev getArea`                                  → SkyBlock island from the tab list
  *  - `/soul dev getSubLocation`                           → sublocation from the scoreboard sidebar
+ *  - `/soul dev getProfile`                               → active SkyBlock profile from the tab list
+ *  - `/soul dev listStatProfiles`                         → all profile slots in stats.json, marking the active one
  *  - `/soul dev resetSeasonings`                          → reset seasoning total to 0 (persisted)
  *  - `/soul dev clearAlerts`                              → wipe in-flight alert overlays
  *  - `/soul dev testAlert [<message>]`                    → render a test alert
@@ -37,6 +41,31 @@ object DevSubcommand : SoulSubcommand {
                 runs { _ ->
                     val sub = SkyblockLocation.sublocation
                     soulChat(if (sub == null) "§7Sublocation: §c<unknown>" else "§7Sublocation: §a$sub")
+                }
+            })
+            then(literal("getProfile") {
+                runs { _ ->
+                    val p = ProfileApi.currentProfile
+                    soulChat(if (p == null) "§7Profile: §c<unknown>" else "§7Profile: §a$p")
+                }
+            })
+            then(literal("listStatProfiles") {
+                runs { _ ->
+                    val active = ProfileApi.currentProfile
+                    val known = PersistentStats.knownProfiles()
+                    if (known.isEmpty()) {
+                        soulChat("§7No persisted stat profiles yet.")
+                    } else {
+                        soulChat("§7Stat profiles (§a${known.size}§7):")
+                        known.sorted().forEach { key ->
+                            val marker = when {
+                                key == PersistentStats.LEGACY_KEY -> " §8(pre-profile bucket)"
+                                key == active                     -> " §a(active)"
+                                else                              -> ""
+                            }
+                            soulChat("  §7- §f$key$marker")
+                        }
+                    }
                 }
             })
 

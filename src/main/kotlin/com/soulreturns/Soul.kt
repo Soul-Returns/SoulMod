@@ -1,6 +1,6 @@
 package com.soulreturns
 
-import com.soulreturns.command.SoulCommand
+import com.soulreturns.commands.SoulCommand
 import com.soulreturns.render.RoundRectRenderer
 import net.fabricmc.fabric.api.client.rendering.v1.SpecialGuiElementRegistry
 import com.soulreturns.config.SoulConfigHolder
@@ -58,6 +58,9 @@ object Soul : ClientModInitializer {
 
         // Start polling Hypixel SkyBlock location (publishes AreaChanged/SublocationChanged events).
         LocationReader.register()
+
+        // Start polling Hypixel SkyBlock profile (publishes ProfileChanged — drives PersistentStats keying).
+        com.soulreturns.data.profile.ProfileReader.register()
 
         // Load persisted auth token so we don't re-authenticate on every launch.
         com.soulreturns.platform.http.BackendAuth.loadCached()

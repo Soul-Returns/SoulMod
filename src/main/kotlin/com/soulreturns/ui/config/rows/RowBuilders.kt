@@ -2,8 +2,8 @@ package com.soulreturns.ui.config.rows
 
 import com.mojang.blaze3d.platform.InputConstants
 import com.soulreturns.ui.theme.Theme
-import com.soulreturns.config.gui.components.SoulSlider
-import com.soulreturns.config.gui.components.SoulToggle
+import com.soulreturns.ui.components.SoulSlider
+import com.soulreturns.ui.components.SoulToggle
 import com.soulreturns.render.DrawContextRenderer
 import com.soulreturns.ui.config.components.ConfigRenderers
 import com.soulreturns.ui.config.model.ActionRowSpec

@@ -1,6 +1,6 @@
 package com.soulreturns.mixin.render;
 
-import com.soulreturns.gui.SoulGuiHudAdapter;
+import com.soulreturns.platform.mixinbridge.SoulGuiHudAdapter;
 import com.soulreturns.platform.mixinbridge.RenderHelper;
 import com.soulreturns.util.RenderUtils;
 import net.minecraft.client.Minecraft;

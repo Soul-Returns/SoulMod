@@ -1,4 +1,4 @@
-package com.soulreturns.command
+package com.soulreturns.commands
 
 import com.mojang.brigadier.context.CommandContext
 import com.soulreturns.commands.subcommands.CheckForUpdatesSubcommand

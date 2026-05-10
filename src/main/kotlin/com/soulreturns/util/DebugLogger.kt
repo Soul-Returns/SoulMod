@@ -1,7 +1,6 @@
 package com.soulreturns.util
 
 import com.soulreturns.config.cfg
-import com.soulreturns.util.SoulLogger
 
 object DebugLogger {
     private val logger = SoulLogger("Soul")
@@ -14,12 +13,27 @@ object DebugLogger {
         } catch (_: Exception) { /* config not ready yet */ }
     }
 
-    fun logConfigChange(message: String)     = log("Config",      message) { cfg.dev.debug.logging.logConfigChanges() }
-    fun logWidgetInteraction(message: String) = log("Widget",     message) { cfg.dev.debug.logging.logWidgetInteractions() }
-    fun logMessageHandler(message: String)   = log("Message",     message) { cfg.dev.debug.logging.logMessageHandler() }
-    fun logFeatureEvent(message: String)     = log("Feature",     message) { cfg.dev.debug.logging.logFeatureEvents() }
-    fun logGuiLayout(message: String)        = log("GuiLayout",   message) { cfg.dev.debug.logging.logGuiLayout() }
-    fun logCommandExecution(commandInput: String) = log("Command", commandInput) { cfg.dev.debug.logging.logCommandsAndMessages() }
-    fun logSentMessage(message: String)      = log("SentMessage", message) { cfg.dev.debug.logging.logCommandsAndMessages() }
-    fun logChatInput(input: String)          = log("ChatInput",   input)   { cfg.dev.debug.logging.logCommandsAndMessages() }
+    fun logConfigChange(message: String) =
+        log("Config", message) { cfg.dev.debug.logging.logConfigChanges() }
+
+    fun logWidgetInteraction(message: String) =
+        log("Widget", message) { cfg.dev.debug.logging.logWidgetInteractions() }
+
+    fun logMessageHandler(message: String) =
+        log("Message", message) { cfg.dev.debug.logging.logMessageHandler() }
+
+    fun logFeatureEvent(message: String) =
+        log("Feature", message) { cfg.dev.debug.logging.logFeatureEvents() }
+
+    fun logGuiLayout(message: String) =
+        log("GuiLayout", message) { cfg.dev.debug.logging.logGuiLayout() }
+
+    fun logCommandExecution(commandInput: String) =
+        log("Command", commandInput) { cfg.dev.debug.logging.logCommandsAndMessages() }
+
+    fun logSentMessage(message: String) =
+        log("SentMessage", message) { cfg.dev.debug.logging.logCommandsAndMessages() }
+
+    fun logChatInput(input: String) =
+        log("ChatInput", input) { cfg.dev.debug.logging.logCommandsAndMessages() }
 }

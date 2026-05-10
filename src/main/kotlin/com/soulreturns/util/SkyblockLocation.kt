@@ -14,7 +14,10 @@ import com.soulreturns.data.location.LocationApi
 )
 object SkyblockLocation {
     val area: String? get() = LocationApi.currentArea
+
     val sublocation: String? get() = LocationApi.currentSublocation
+
     fun isInArea(name: String): Boolean = LocationApi.isInArea(name)
+
     fun isInSublocation(name: String): Boolean = LocationApi.isInSublocation(name)
 }
