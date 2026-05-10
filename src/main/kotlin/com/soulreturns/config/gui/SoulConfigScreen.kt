@@ -136,12 +136,17 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(C
 
     /** Option full-path → predicate. Option is hidden when predicate returns false. */
     private val optionVisibility: Map<String, () -> Boolean> = mapOf(
-        "render.highlights.usePestVest" to { cfg.render.highlights.highlightPestEquipment() }
+        "render.highlights.usePestVest" to { cfg.render.highlights.highlightPestEquipment() },
+        "farming.seasonings.showMaxMilestone"  to { cfg.farming.seasonings.enableTracker() },
+        "farming.seasonings.showNextMilestone" to { cfg.farming.seasonings.enableTracker() },
+        "farming.seasonings.showFarmingTime"   to { cfg.farming.seasonings.enableTracker() },
+        "farming.seasonings.showPerHour"       to { cfg.farming.seasonings.enableTracker() }
     )
 
     /** Boolean option full-paths whose change should rebuild content (because they gate other options' visibility). */
     private val rebuildOnChange: Set<String> = setOf(
-        "render.highlights.highlightPestEquipment"
+        "render.highlights.highlightPestEquipment",
+        "farming.seasonings.enableTracker"
     )
 
     private val categories: List<CategoryEntry> by lazy { collectCategories() }

@@ -114,6 +114,10 @@ public class SoulConfigModel {
 
     public static class Seasonings {
         public boolean enableTracker = false;
+        public boolean showMaxMilestone = true;
+        public boolean showNextMilestone = true;
+        public boolean showFarmingTime = true;
+        public boolean showPerHour = true;
     }
 
     public static class Fixes {

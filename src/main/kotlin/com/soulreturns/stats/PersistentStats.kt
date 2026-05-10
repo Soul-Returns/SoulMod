@@ -24,7 +24,9 @@ object PersistentStats {
 
     /** All persisted stats live here. Adding a `var x: Long = 0L` field is a no-migration extension. */
     data class Data(
-        var seasonings: Long = 0L
+        var seasonings: Long = 0L,
+        /** Sorted ascending Y values from the Harvest Feast milestones (e.g. `[5, 25, 75, 150, 250]`). */
+        var milestoneTargets: List<Long> = emptyList()
     )
 
     @Volatile private var data: Data = Data()
