@@ -3,23 +3,18 @@ package com.soulreturns.config.gui
 import com.mojang.blaze3d.platform.InputConstants
 import com.soulreturns.Soul
 import com.soulreturns.config.SoulConfigHolder
-import com.soulreturns.config.cfg
-import com.soulreturns.config.gui.components.SoulSlider
-import com.soulreturns.config.gui.components.SoulToggle
 import com.soulreturns.gui.GuiEditScreen
-import com.soulreturns.render.DrawContextRenderer
+import com.soulreturns.ui.config.components.ConfigRenderers
 import com.soulreturns.ui.config.components.SocialIcons
-import com.soulreturns.ui.config.model.ActionRowSpec
 import com.soulreturns.ui.config.model.CategoriesCollector
 import com.soulreturns.ui.config.model.CategoryEntry
 import com.soulreturns.ui.config.model.ConfigScreenContext
-import com.soulreturns.ui.config.model.LinkTarget
 import com.soulreturns.ui.config.model.SubcategoryEntry
 import com.soulreturns.ui.config.registry.ConfigSections
+import com.soulreturns.ui.config.rows.RowBuilders
 import com.soulreturns.ui.config.search.ConfigSearchFilter
 import io.wispforest.owo.config.ConfigWrapper
 import io.wispforest.owo.config.Option
-import io.wispforest.owo.config.annotation.RangeConstraint
 import io.wispforest.owo.ui.base.BaseOwoScreen
 import io.wispforest.owo.ui.component.ButtonComponent
 import io.wispforest.owo.ui.component.TextBoxComponent
@@ -37,7 +32,6 @@ import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
-import java.util.Locale
 
 class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
     Component.translatable("text.config.soul/config.title")
@@ -60,9 +54,11 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
     private val sidebarButtons = mutableMapOf<Pair<String, String>, ButtonComponent>()
     private val categoryHeaderButtons = mutableMapOf<String, ButtonComponent>()
     private val expandedCategories = mutableSetOf<String>()
-    private val resetSlots = mutableMapOf<String, FlowLayout>()
     // Display text for each subcategory — populated on rebuild, never mutated, safe for renderers.
     private val subcategoryDisplayNames = mutableMapOf<Pair<String, String>, String>()
+
+    /** Row/section builders, scoped to this screen instance. Lazy so [wrapper]'s getter is ready. */
+    private val rows: RowBuilders by lazy { RowBuilders(this, wrapper) }
 
     init {
         activeCategory = categories.firstOrNull()?.id ?: ""
@@ -241,7 +237,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         }
         btn.horizontalSizing(Sizing.fill(100))
         btn.verticalSizing(Sizing.fixed(18))
-        btn.renderer(categoryHeaderRenderer(label, expanded))
+        btn.renderer(ConfigRenderers.categoryHeader(label, expanded))
         btn.margins(Insets.of(3, 1, 0, 0))
         return btn
     }
@@ -258,7 +254,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         }
         btn.horizontalSizing(Sizing.fill(100))
         btn.verticalSizing(Sizing.fixed(20))
-        btn.renderer(sidebarItemRenderer(displayText, cat.id == activeCategory && sub.subId == activeSubcategory))
+        btn.renderer(ConfigRenderers.sidebarItem(displayText, cat.id == activeCategory && sub.subId == activeSubcategory))
         btn.margins(Insets.of(1, 1, 0, 2))
         return btn
     }
@@ -267,7 +263,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         for ((key, btn) in sidebarButtons) {
             val selected = key.first == activeCategory && key.second == activeSubcategory
             val displayText = subcategoryDisplayNames[key] ?: ""
-            btn.renderer(sidebarItemRenderer(displayText, selected))
+            btn.renderer(ConfigRenderers.sidebarItem(displayText, selected))
         }
     }
 
@@ -301,7 +297,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
 
     override fun rebuildContentBody() {
         contentBody.clearChildren()
-        resetSlots.clear()
+        rows.resetTracking()
 
         val visible = filteredCategories()
         val cat = visible.firstOrNull { it.id == activeCategory }
@@ -342,12 +338,12 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
                     placed.addAll(fieldNames.filter { name -> name in visibleFieldNames })
                 }
                 if (sectionOpts.isEmpty()) continue
-                addSection(scrollBody, label, sectionOpts)
+                rows.addOptionSection(scrollBody, label, sectionOpts)
             }
             // Any options not covered by an explicit section go into a trailing card,
             // labelled with the subcategory name as a fallback.
             val remaining = sub.options.filter { it.key().path().last() !in placed }
-            if (remaining.isNotEmpty()) addSection(scrollBody, sub.displayName.string, remaining)
+            if (remaining.isNotEmpty()) rows.addOptionSection(scrollBody, sub.displayName.string, remaining)
         } else {
             // Auto-group by 3rd path segment (e.g. render.overlays.field → group "overlays").
             // Flat options (depth ≤ 2) fall back to the subcategory's own display name.
@@ -365,148 +361,25 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
                 } else {
                     sub.displayName.string
                 }
-                addSection(scrollBody, displayName, opts)
+                rows.addOptionSection(scrollBody, displayName, opts)
             }
         }
 
         // Append action-button rows (e.g. "Reload Config from Disk").
         val actions = ConfigSections.actionRows[activeCategory]?.get(activeSubcategory)
         if (!actions.isNullOrEmpty()) {
-            addActionSection(scrollBody, sub.displayName.string, actions)
+            rows.addActionSection(scrollBody, sub.displayName.string, actions)
         }
 
         // Append cross-navigation link buttons configured for this subcategory.
         val links = ConfigSections.linkSections[activeCategory]?.get(activeSubcategory)
         if (!links.isNullOrEmpty()) {
-            addLinkSection(scrollBody, sub.displayName.string, links)
+            rows.addLinkSection(scrollBody, sub.displayName.string, links)
         }
 
         val scroll = UIContainers.verticalScroll(Sizing.fill(100), Sizing.fill(100), scrollBody)
         scroll.scrollbarThiccness(4)
         contentBody.child(scroll)
-    }
-
-    private fun addSection(parent: FlowLayout, label: String?, opts: List<Option<*>>) {
-        if (label != null) {
-            val lbl = UIComponents.label(Component.literal(label))
-                .color(Theme.color(Theme.TEXT_DIM))
-            lbl.margins(Insets.of(4, 0, 0, 6))
-            parent.child(lbl)
-        }
-        val card = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
-        card.surface(Theme.panelInsetSurface)
-        card.padding(Insets.of(8))
-        card.gap(2)
-        for (opt in opts) card.child(buildRow(opt))
-        parent.child(card)
-    }
-
-    private fun buildRow(opt: Option<*>): FlowLayout {
-        val row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        row.surface(Theme.rowSurface())
-        row.padding(Insets.of(6, 6, 12, 12))
-        row.gap(8)
-        row.verticalAlignment(VerticalAlignment.CENTER)
-        row.margins(Insets.of(1))
-
-        // Visual hint that this option is gated by another option above (e.g. usePestVest under highlightPestEquipment).
-        val isDependent = opt.key().path().joinToString(".") in ConfigSections.optionVisibility
-        if (isDependent) {
-            val arrow = UIComponents.label(Component.literal("↳"))
-                .color(Theme.color(Theme.TEXT_DIM))
-            arrow.margins(Insets.of(0, 0, 8, 0))
-            row.child(arrow)
-        }
-
-        val label = UIComponents.label(Component.translatable(opt.translationKey()))
-            .color(Theme.color(Theme.TEXT))
-        // Label expands to consume all leftover space, pushing the control to the row's end.
-        label.horizontalSizing(Sizing.expand())
-
-        val tooltipKey = opt.translationKey() + ".tooltip"
-        val tooltipText = Component.translatable(tooltipKey)
-        if (tooltipText.string != tooltipKey) {
-            label.tooltip(tooltipText)
-        }
-        row.child(label)
-
-        val pathKey = opt.key().path().joinToString(".")
-        when {
-            opt.value() is Boolean ->
-                row.child(buildToggle(@Suppress("UNCHECKED_CAST") (opt as Option<Boolean>)))
-            opt.value() is Int || opt.value() is Long || opt.value() is Float || opt.value() is Double ->
-                row.child(buildNumeric(opt))
-            opt.value() is String && pathKey in ConfigSections.keybindOptions ->
-                row.child(buildKeybindButton(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
-            opt.value() is String ->
-                row.child(buildTextBox(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
-            else -> row.child(UIComponents.label(Component.literal(opt.value().toString())))
-        }
-        // Fixed-width slot; button is added/removed dynamically to avoid phantom hover.
-        val slot = UIContainers.horizontalFlow(Sizing.fixed(18), Sizing.fixed(16))
-        val optKey = opt.key().path().joinToString(".")
-        resetSlots[optKey] = slot
-        if (opt.value() != opt.defaultValue()) slot.child(resetIconButton(opt))
-        row.child(slot)
-        return row
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    private fun buildToggle(opt: Option<Boolean>): SoulToggle {
-        val key = opt.key().path().joinToString(".")
-        val toggle = SoulToggle(opt.value()) { newVal ->
-            opt.set(newVal)
-            save()
-            refreshResetSlot(opt)
-            if (key in ConfigSections.rebuildOnChange) rebuildContentBody()
-        }
-        return toggle
-    }
-
-    private fun buildNumeric(opt: Option<*>): SoulSlider {
-        val field = wrapper.fieldForKey(opt.key())
-        val rc = field?.getAnnotation(RangeConstraint::class.java)
-        val min: Double = rc?.min?.toDouble() ?: 0.0
-        val max: Double = rc?.max?.toDouble() ?: 100.0
-        val decimals: Int = rc?.decimalPlaces ?: 0
-
-        val slider = SoulSlider(min, max, (opt.value() as Number).toDouble(), decimals)
-        slider.onChanged { v ->
-            @Suppress("UNCHECKED_CAST")
-            when (opt.value()) {
-                is Int    -> (opt as Option<Int>).set(v.toInt())
-                is Long   -> (opt as Option<Long>).set(v.toLong())
-                is Float  -> (opt as Option<Float>).set(v.toFloat())
-                is Double -> (opt as Option<Double>).set(v)
-                else      -> {}
-            }
-        }
-        slider.onSlideEnd { save(); refreshResetSlot(opt) }
-        return slider
-    }
-
-    private fun buildKeybindButton(opt: Option<String>): ButtonComponent {
-        val isCapturing = capturingKeybind === opt
-        val text = if (isCapturing) "> Press a key <" else keybindLabel(opt.value())
-        val btn = UIComponents.button(Component.literal(text)) {
-            // Click the same button while capturing → cancel capture.
-            capturingKeybind = if (capturingKeybind === opt) null else opt
-            rebuildContentBody()
-        }
-        btn.horizontalSizing(Sizing.fixed(110))
-        btn.verticalSizing(Sizing.fixed(20))
-        btn.renderer(actionButtonRenderer())
-        return btn
-    }
-
-    /** Pretty-print a stored key name like `key.keyboard.f6` → `F6`. Empty string → `Not bound`. */
-    private fun keybindLabel(stored: String): String {
-        if (stored.isBlank()) return "Not bound"
-        return try {
-            InputConstants.getKey(stored).getDisplayName().string
-        } catch (_: Throwable) {
-            stored
-        }
     }
 
     override fun keyPressed(input: KeyEvent): Boolean {
@@ -540,14 +413,6 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         return super.mouseClicked(click, doubled)
     }
 
-    private fun buildTextBox(opt: Option<String>): TextBoxComponent {
-        val tb = UIComponents.textBox(Sizing.fixed(160), opt.value())
-        tb.onChanged().subscribe(TextBoxComponent.OnChanged { newVal ->
-            opt.set(newVal); save()
-        })
-        return tb
-    }
-
     override fun save() {
         try { wrapper.save() } catch (_: Throwable) {}
     }
@@ -557,46 +422,11 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         rebuildContent()
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun resetIconButton(opt: Option<*>): ButtonComponent {
-        val default = opt.defaultValue()
-        val btn = UIComponents.button(Component.empty()) {
-            (opt as Option<Any>).set(default as Any)
-            save()
-            rebuildContent()
-        }
-        btn.horizontalSizing(Sizing.fill(100))
-        btn.verticalSizing(Sizing.fill(100))
-        btn.tooltip(Component.literal("Reset to default: ${formatValue(default)}"))
-        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
-            val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
-            ctx.fill(button.x, button.y, button.x + button.width, button.y + button.height, bg)
-            val tr = Minecraft.getInstance().font
-            val icon = "↺"
-            val tx = button.x + (button.width - tr.width(icon)) / 2
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            ctx.drawString(tr, Component.literal(icon), tx, ty, if (button.isHovered) Theme.ACCENT else Theme.TEXT_DIM, false)
-        })
-        return btn
-    }
-
-    private fun refreshResetSlot(opt: Option<*>) {
-        val slot = resetSlots[opt.key().path().joinToString(".")] ?: return
-        slot.clearChildren()
-        if (opt.value() != opt.defaultValue()) slot.child(resetIconButton(opt))
-    }
-
     private fun formatGroupId(id: String): String =
         // "playerRendering" → "Player Rendering", "tooltips" → "Tooltips"
         id.replace(Regex("([A-Z])"), " $1")
             .replaceFirstChar { it.uppercase() }
             .trim()
-
-    private fun formatValue(value: Any?): String = when (value) {
-        is Float  -> String.format(Locale.ROOT, "%.2f", value)
-        is Double -> String.format(Locale.ROOT, "%.2f", value)
-        else      -> value?.toString() ?: "null"
-    }
 
     // ---- search ----
 
@@ -639,87 +469,6 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
     /** Visibility predicate delegated to [ConfigSections]; same logic, single source of truth. */
     private fun isOptionVisible(opt: Option<*>): Boolean = ConfigSections.isOptionVisible(opt)
 
-    /** Render a labeled card containing one-or-more action rows (label + right-aligned button). */
-    private fun addActionSection(parent: FlowLayout, label: String, rows: List<ActionRowSpec>) {
-        val lbl = UIComponents.label(Component.literal(label))
-            .color(Theme.color(Theme.TEXT_DIM))
-        lbl.margins(Insets.of(4, 0, 0, 6))
-        parent.child(lbl)
-        val card = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
-        card.surface(Theme.panelInsetSurface)
-        card.padding(Insets.of(8))
-        card.gap(2)
-        for (r in rows) card.child(actionRow(r))
-        parent.child(card)
-    }
-
-    private fun actionRow(action: ActionRowSpec): FlowLayout {
-        val row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        row.surface(Theme.rowSurface())
-        row.padding(Insets.of(6, 6, 12, 12))
-        row.gap(8)
-        row.verticalAlignment(VerticalAlignment.CENTER)
-        row.margins(Insets.of(1))
-
-        val label = UIComponents.label(Component.literal(action.label))
-            .color(Theme.color(Theme.TEXT))
-        label.horizontalSizing(Sizing.expand())
-        row.child(label)
-
-        val btn = UIComponents.button(Component.literal(action.buttonText)) { action.action(this@SoulConfigScreen) }
-        btn.horizontalSizing(Sizing.fixed(80))
-        btn.verticalSizing(Sizing.fixed(20))
-        btn.renderer(actionButtonRenderer())
-        row.child(btn)
-        return row
-    }
-
-    private fun actionButtonRenderer(): ButtonComponent.Renderer {
-        return ButtonComponent.Renderer { ctx, button, _ ->
-            val bg = if (button.isHovered) Theme.ACCENT else Theme.PANEL_HOVER
-            DrawContextRenderer.roundedFill(
-                ctx,
-                button.x, button.y, button.x + button.width, button.y + button.height,
-                bg, Theme.ITEM_RADIUS
-            )
-        }
-    }
-
-    private fun addLinkSection(parent: FlowLayout, label: String, links: List<LinkTarget>) {
-        val lbl = UIComponents.label(Component.literal(label))
-            .color(Theme.color(Theme.TEXT_DIM))
-        lbl.margins(Insets.of(4, 0, 0, 6))
-        parent.child(lbl)
-        val container = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
-        container.gap(4)
-        for (link in links) container.child(linkRow(link))
-        parent.child(container)
-    }
-
-    private fun linkRow(link: LinkTarget): ButtonComponent {
-        val btn = UIComponents.button(Component.empty()) {
-            navigateTo(link.targetCat, link.targetSub)
-        }
-        btn.horizontalSizing(Sizing.fill(100))
-        btn.verticalSizing(Sizing.fixed(28))
-        btn.margins(Insets.of(2))
-        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
-            val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
-            DrawContextRenderer.roundedFill(
-                ctx,
-                button.x, button.y, button.x + button.width, button.y + button.height,
-                bg, Theme.ITEM_RADIUS
-            )
-            val tr = Minecraft.getInstance().font
-            val text = "${link.label}  ›"
-            val tx = button.x + 12
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            val color = if (button.isHovered) Theme.ACCENT else Theme.TEXT
-            ctx.drawString(tr, Component.literal(text), tx, ty, color, false)
-        })
-        return btn
-    }
-
     override fun navigateTo(catId: String, subId: String) {
         activeCategory = catId
         activeSubcategory = subId
@@ -743,12 +492,6 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         return d
     }
 
-    private fun verticalDivider(): FlowLayout {
-        val d = UIContainers.verticalFlow(Sizing.fixed(1), Sizing.fill(100))
-        d.surface(Surface.flat(Theme.SEPARATOR))
-        return d
-    }
-
     private fun discordButton(): ButtonComponent = SocialIcons.discord()
 
     private fun githubButton(): ButtonComponent = SocialIcons.github()
@@ -763,7 +506,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         }
         moveGui.horizontalSizing(Sizing.fill(100))
         moveGui.verticalSizing(Sizing.fixed(18))
-        moveGui.renderer(footerButtonRenderer(accent = false))
+        moveGui.renderer(ConfigRenderers.footerButton(accent = false))
         container.child(moveGui)
 
         return container
@@ -779,64 +522,10 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         val done = UIComponents.button(Component.literal("Done")) { onClose() }
         done.horizontalSizing(Sizing.fixed(80))
         done.verticalSizing(Sizing.fixed(24))
-        done.renderer(footerButtonRenderer(accent = true))
+        done.renderer(ConfigRenderers.footerButton(accent = true))
 
         f.child(done)
         return f
-    }
-
-    private fun categoryHeaderRenderer(text: String, expanded: Boolean): ButtonComponent.Renderer {
-        return ButtonComponent.Renderer { ctx, button, _ ->
-            val tr = Minecraft.getInstance().font
-            if (button.isHovered) {
-                DrawContextRenderer.roundedFill(
-                    ctx,
-                    button.x, button.y, button.x + button.width, button.y + button.height,
-                    Theme.PANEL_HOVER, Theme.ITEM_RADIUS
-                )
-            }
-            val arrow = if (expanded) "▾" else "▸"
-            val label = "$arrow  $text"
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            ctx.drawString(tr, Component.literal(label), button.x + 6, ty, Theme.TEXT, false)
-        }
-    }
-
-    private fun sidebarItemRenderer(text: String, selected: Boolean): ButtonComponent.Renderer {
-        return ButtonComponent.Renderer { ctx, button, _ ->
-            val tr = Minecraft.getInstance().font
-            when {
-                selected -> DrawContextRenderer.roundedFill(
-                    ctx,
-                    button.x, button.y, button.x + button.width, button.y + button.height,
-                    Theme.ACCENT, Theme.ITEM_RADIUS
-                )
-                button.isHovered -> DrawContextRenderer.roundedFill(
-                    ctx,
-                    button.x, button.y, button.x + button.width, button.y + button.height,
-                    Theme.PANEL_HOVER, Theme.ITEM_RADIUS
-                )
-            }
-            val textColor = if (selected) Theme.TEXT else Theme.TEXT_DIM
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            ctx.drawString(tr, Component.literal(text), button.x + 10, ty, textColor, false)
-        }
-    }
-
-    private fun footerButtonRenderer(accent: Boolean): ButtonComponent.Renderer {
-        return ButtonComponent.Renderer { ctx, button, _ ->
-            val bg = when {
-                accent && button.isHovered -> Theme.ACCENT_DIM
-                accent                     -> Theme.ACCENT
-                button.isHovered           -> Theme.PANEL_HOVER
-                else                       -> Theme.PANEL_INSET
-            }
-            DrawContextRenderer.roundedFill(
-                ctx,
-                button.x, button.y, button.x + button.width, button.y + button.height,
-                bg, Theme.ITEM_RADIUS
-            )
-        }
     }
 
     // ---- model collection ----
