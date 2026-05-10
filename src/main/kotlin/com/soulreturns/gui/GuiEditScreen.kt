@@ -14,7 +14,6 @@ import net.minecraft.network.chat.Component
  * elements defined by the GUI library.
  */
 class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
-
     private var editState: EditState = EditState()
 
     private data class ElementBounds(
@@ -46,7 +45,13 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         override val screenHeight: Int
             get() = client.window.guiScaledHeight
 
-        override fun drawText(text: String, x: Int, y: Int, color: Int, shadow: Boolean) {
+        override fun drawText(
+            text: String,
+            x: Int,
+            y: Int,
+            color: Int,
+            shadow: Boolean
+        ) {
             // no-op for hit testing
         }
 
@@ -61,16 +66,31 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
             // no-op for hit testing
         }
 
-        override fun fillRect(x: Int, y: Int, width: Int, height: Int, color: Int) {
+        override fun fillRect(
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+            color: Int
+        ) {
             // no-op for hit testing
         }
 
-        override fun drawItemIcon(iconKey: String, x: Int, y: Int) {
+        override fun drawItemIcon(
+            iconKey: String,
+            x: Int,
+            y: Int
+        ) {
             // no-op for hit testing
         }
     }
 
-    override fun render(context: GuiGraphics, mouseX: Int, mouseY: Int, delta: Float) {
+    override fun render(
+        context: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        delta: Float
+    ) {
         // Draw the in-game background behind our editor UI so the world remains
         // visible with Minecraft's standard slight blur, but without the
         // previous semi-transparent blue overlay.
@@ -91,10 +111,11 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
 
             when (element) {
                 is com.soulreturns.gui.lib.TextBlockElement -> {
-                    val lines = buildList {
-                        element.title?.let { add(it) }
-                        addAll(element.lines)
-                    }
+                    val lines =
+                        buildList {
+                            element.title?.let { add(it) }
+                            addAll(element.lines)
+                        }
                     if (lines.isEmpty()) continue
                     val scale = element.scale.coerceAtLeast(0.25f)
                     val lineHeight = ((textRenderer.lineHeight + 2) * scale).toInt().coerceAtLeast(4)
@@ -104,13 +125,14 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
                         if (w > maxWidth) maxWidth = w
                     }
                     val totalHeight = lines.size * lineHeight
-                    bounds += ElementBounds(
-                        id = element.id,
-                        x = baseX - 4,
-                        y = baseY - 4,
-                        width = maxWidth + 8,
-                        height = totalHeight + 8,
-                    )
+                    bounds +=
+                        ElementBounds(
+                            id = element.id,
+                            x = baseX - 4,
+                            y = baseY - 4,
+                            width = maxWidth + 8,
+                            height = totalHeight + 8,
+                        )
                 }
                 is com.soulreturns.gui.lib.ItemTrackerElement -> {
                     val rows = element.entries.size + if (element.title != null) 1 else 0
@@ -119,13 +141,14 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
                     val lineHeight = ((textRenderer.lineHeight + 4) * scale).toInt().coerceAtLeast(4)
                     val approxWidth = (160 * scale).toInt()
                     val totalHeight = rows * lineHeight
-                    bounds += ElementBounds(
-                        id = element.id,
-                        x = baseX - 4,
-                        y = baseY - 4,
-                        width = approxWidth,
-                        height = totalHeight + 8,
-                    )
+                    bounds +=
+                        ElementBounds(
+                            id = element.id,
+                            x = baseX - 4,
+                            y = baseY - 4,
+                            width = approxWidth,
+                            height = totalHeight + 8,
+                        )
                 }
             }
         }
@@ -134,11 +157,12 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         // Highlight hovered & selected elements.
         val hoveredId = findHitElement(mouseX, mouseY)
         for (b in elementBounds) {
-            val color = when {
-                b.id == editState.selectedElementId -> 0x40FFFFFF.toInt() // selected
-                b.id == hoveredId -> 0x2000FFFF.toInt() // hovered
-                else -> 0x20000000.toInt()
-            }
+            val color =
+                when {
+                    b.id == editState.selectedElementId -> 0x40FFFFFF.toInt() // selected
+                    b.id == hoveredId -> 0x2000FFFF.toInt() // hovered
+                    else -> 0x20000000.toInt()
+                }
             context.fill(b.x, b.y, b.x + b.width, b.y + b.height, color)
         }
 
@@ -157,7 +181,10 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         super.render(context, mouseX, mouseY, delta)
     }
 
-    override fun mouseClicked(click: net.minecraft.client.input.MouseButtonEvent, doubled: Boolean): Boolean {
+    override fun mouseClicked(
+        click: net.minecraft.client.input.MouseButtonEvent,
+        doubled: Boolean
+    ): Boolean {
         val client = Minecraft.getInstance()
         val mouseXInt = click.x.toInt()
         val mouseYInt = click.y.toInt()
@@ -181,7 +208,11 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         return true
     }
 
-    override fun mouseDragged(click: net.minecraft.client.input.MouseButtonEvent, offsetX: Double, offsetY: Double): Boolean {
+    override fun mouseDragged(
+        click: net.minecraft.client.input.MouseButtonEvent,
+        offsetX: Double,
+        offsetY: Double
+    ): Boolean {
         val client = Minecraft.getInstance()
         val guiCtx = EditHitTestContext(client)
         val mouseXInt = click.x.toInt()
@@ -211,13 +242,19 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         return super.mouseReleased(click)
     }
 
-    override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
+    override fun mouseScrolled(
+        mouseX: Double,
+        mouseY: Double,
+        horizontalAmount: Double,
+        verticalAmount: Double
+    ): Boolean {
         if (verticalAmount == 0.0) return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
 
         val client = Minecraft.getInstance()
-        val hitId = findHitElement(mouseX.toInt(), mouseY.toInt())
-            ?: editState.selectedElementId
-            ?: return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
+        val hitId =
+            findHitElement(mouseX.toInt(), mouseY.toInt())
+                ?: editState.selectedElementId
+                ?: return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
 
         // Treat the hovered element as selected for scaling purposes.
         editState = editState.copy(selectedElementId = hitId)
@@ -231,7 +268,11 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         super.onClose()
     }
 
-    private fun drawResetButton(context: GuiGraphics, mouseX: Int, mouseY: Int) {
+    private fun drawResetButton(
+        context: GuiGraphics,
+        mouseX: Int,
+        mouseY: Int
+    ) {
         val textRenderer = Minecraft.getInstance().font
         val padding = 6
         val buttonHeight = 18
@@ -258,7 +299,10 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         context.drawString(textRenderer, label, textX, textY, 0xFFFFFFFF.toInt(), false)
     }
 
-    private fun isOverResetButton(mouseX: Int, mouseY: Int): Boolean {
+    private fun isOverResetButton(
+        mouseX: Int,
+        mouseY: Int
+    ): Boolean {
         val b = resetButtonBounds ?: return false
         return mouseX >= b.x && mouseX <= b.x + b.width && mouseY >= b.y && mouseY <= b.y + b.height
     }
@@ -270,7 +314,10 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         GuiLayoutManager.resetToDefaults()
     }
 
-    private fun findHitElement(mouseX: Int, mouseY: Int): String? {
+    private fun findHitElement(
+        mouseX: Int,
+        mouseY: Int
+    ): String? {
         return elementBounds.lastOrNull { b ->
             mouseX >= b.x && mouseX <= b.x + b.width &&
                 mouseY >= b.y && mouseY <= b.y + b.height

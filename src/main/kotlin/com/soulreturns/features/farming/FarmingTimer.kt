@@ -1,6 +1,6 @@
 package com.soulreturns.features.farming
 
-import com.soulreturns.util.SkyblockLocation
+import com.soulreturns.data.location.LocationApi
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Blocks
@@ -19,20 +19,24 @@ object FarmingTimer {
     private const val IDLE_TIMEOUT_MS = 2_000L
 
     /** Block list per-spec — every harvestable Garden crop block. Stage doesn't matter; the block class is the same. */
-    private val HARVESTABLE_CROPS: Set<Block> = setOf(
-        Blocks.WHEAT, Blocks.POTATOES, Blocks.CARROTS,
-        Blocks.CACTUS, Blocks.MELON, Blocks.PUMPKIN,
-        Blocks.SUGAR_CANE,
-        Blocks.RED_MUSHROOM, Blocks.BROWN_MUSHROOM,
-        Blocks.ROSE_BUSH, Blocks.SUNFLOWER,
-        Blocks.NETHER_WART, Blocks.COCOA
-    )
+    private val HARVESTABLE_CROPS: Set<Block> =
+        setOf(
+            Blocks.WHEAT, Blocks.POTATOES, Blocks.CARROTS,
+            Blocks.CACTUS, Blocks.MELON, Blocks.PUMPKIN,
+            Blocks.SUGAR_CANE,
+            Blocks.RED_MUSHROOM, Blocks.BROWN_MUSHROOM,
+            Blocks.ROSE_BUSH, Blocks.SUNFLOWER,
+            Blocks.NETHER_WART, Blocks.COCOA
+        )
 
     private enum class State { PAUSED, ACTIVE }
 
     @Volatile private var state: State = State.PAUSED
+
     @Volatile private var lastBreakTime = 0L
+
     @Volatile private var activeStartTime = 0L
+
     @Volatile private var accumulatedMs = 0L
 
     fun register() {
@@ -42,7 +46,7 @@ object FarmingTimer {
     /** Invoked from MultiPlayerGameModeMixin on each client-side block destroy. */
     fun onBlockBreak(block: Block) {
         if (block !in HARVESTABLE_CROPS) return
-        if (SkyblockLocation.area != "Garden") return
+        if (!LocationApi.isInArea("Garden")) return
         val now = System.currentTimeMillis()
         if (state == State.PAUSED) {
             state = State.ACTIVE
@@ -65,10 +69,11 @@ object FarmingTimer {
 
     val isPaused: Boolean get() = state == State.PAUSED
 
-    val totalMs: Long get() = when (state) {
-        State.PAUSED -> accumulatedMs
-        State.ACTIVE -> accumulatedMs + (System.currentTimeMillis() - activeStartTime)
-    }
+    val totalMs: Long get() =
+        when (state) {
+            State.PAUSED -> accumulatedMs
+            State.ACTIVE -> accumulatedMs + (System.currentTimeMillis() - activeStartTime)
+        }
 
     fun formatTime(): String {
         val totalSec = totalMs / 1000

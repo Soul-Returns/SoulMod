@@ -9,14 +9,16 @@ import java.util.concurrent.atomic.AtomicInteger
 object SoulExecutor {
     private val logger = SoulLogger("Soul/Backend")
 
-    private val factory = object : ThreadFactory {
-        private val counter = AtomicInteger(0)
-        override fun newThread(r: Runnable): Thread {
-            val t = Thread(r, "soul-bg-${counter.incrementAndGet()}")
-            t.isDaemon = true
-            return t
+    private val factory =
+        object : ThreadFactory {
+            private val counter = AtomicInteger(0)
+
+            override fun newThread(r: Runnable): Thread {
+                val t = Thread(r, "soul-bg-${counter.incrementAndGet()}")
+                t.isDaemon = true
+                return t
+            }
         }
-    }
 
     val executor = Executors.newFixedThreadPool(2, factory)
 
@@ -30,7 +32,10 @@ object SoulExecutor {
         }
     }
 
-    fun warn(msg: String, t: Throwable? = null) {
+    fun warn(
+        msg: String,
+        t: Throwable? = null
+    ) {
         if (t != null) logger.warn(msg, t) else logger.warn(msg)
     }
 }

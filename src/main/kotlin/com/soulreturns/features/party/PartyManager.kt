@@ -13,28 +13,30 @@ import java.util.concurrent.CopyOnWriteArraySet
  * Call [register] once during client init to start listening to server messages.
  */
 object PartyManager {
-
     // ===== Public data types =====
 
     enum class PartyRole { LEADER, MODERATOR, MEMBER }
 
+    // name = plain username ("SoulReturns"), displayName = with rank, etc. ("[MVP+] SoulReturns")
     data class PartyMember(
-        val name: String,          // plain username ("SoulReturns")
-        val displayName: String,   // with rank, etc. ("[MVP+] SoulReturns")
+        val name: String,
+        val displayName: String,
         val role: PartyRole,
     )
 
+    // from/to = plain usernames; outgoing = true if we invited someone, false if they invited us.
     data class PartyInvite(
-        val from: String,          // inviter username (plain)
-        val to: String,            // target username (plain)
-        val outgoing: Boolean,     // true if we invited someone, false if they invited us
+        val from: String,
+        val to: String,
+        val outgoing: Boolean,
         val createdAt: Long,
         val expiresAt: Long,
     )
 
+    // members keyed by lowercase username.
     data class PartyState(
         val leader: PartyMember?,
-        val members: MutableMap<String, PartyMember>, // key = username (lowercase)
+        val members: MutableMap<String, PartyMember>,
         val createdAt: Long,
         var lastUpdatedAt: Long,
     ) {
@@ -51,15 +53,21 @@ object PartyManager {
 
     sealed class PartyEvent {
         data class PartyJoined(val state: PartyState, val joinedAsLeader: Boolean) : PartyEvent()
+
         data class PartyLeft(val previousState: PartyState, val reason: PartyDisbandReason) : PartyEvent()
+
         data class PartyDisbanded(val previousState: PartyState, val reason: PartyDisbandReason) : PartyEvent()
 
         data class MemberJoined(val member: PartyMember, val newState: PartyState) : PartyEvent()
+
         data class MemberLeft(val memberName: String, val newState: PartyState?) : PartyEvent()
+
         data class MemberKicked(val memberName: String, val by: String?, val newState: PartyState?) : PartyEvent()
 
         data class InviteReceived(val invite: PartyInvite) : PartyEvent()
+
         data class InviteSent(val invite: PartyInvite) : PartyEvent()
+
         data class InviteExpired(val invite: PartyInvite) : PartyEvent()
 
         data class PartySyncedFromList(val state: PartyState) : PartyEvent()
@@ -137,8 +145,7 @@ object PartyManager {
         return state.members.values.filter { includeLeader || it.role != PartyRole.LEADER }
     }
 
-    fun getMemberNames(includeLeader: Boolean = true): List<String> =
-        getMembers(includeLeader).map { it.name }
+    fun getMemberNames(includeLeader: Boolean = true): List<String> = getMembers(includeLeader).map { it.name }
 
     fun getPartySize(): Int = currentState?.size ?: 0
 
@@ -242,13 +249,14 @@ object PartyManager {
         val me = localPlayerName() ?: return
 
         val now = System.currentTimeMillis()
-        val invite = PartyInvite(
-            from = inviterName,
-            to = me,
-            outgoing = false,
-            createdAt = now,
-            expiresAt = now + INVITE_LIFETIME_MS,
-        )
+        val invite =
+            PartyInvite(
+                from = inviterName,
+                to = me,
+                outgoing = false,
+                createdAt = now,
+                expiresAt = now + INVITE_LIFETIME_MS,
+            )
         pendingInvites += invite
         DebugLogger.logFeatureEvent("Party invite received from $inviterName")
         fire(PartyEvent.InviteReceived(invite))
@@ -261,13 +269,14 @@ object PartyManager {
         val me = localPlayerName() ?: return
 
         val now = System.currentTimeMillis()
-        val invite = PartyInvite(
-            from = inviterName,
-            to = me,
-            outgoing = false,
-            createdAt = now,
-            expiresAt = now + INVITE_LIFETIME_MS,
-        )
+        val invite =
+            PartyInvite(
+                from = inviterName,
+                to = me,
+                outgoing = false,
+                createdAt = now,
+                expiresAt = now + INVITE_LIFETIME_MS,
+            )
         pendingInvites += invite
         DebugLogger.logFeatureEvent("Party invite (named party) received from $inviterName")
         fire(PartyEvent.InviteReceived(invite))
@@ -288,13 +297,14 @@ object PartyManager {
         val me = localPlayerName()
 
         val now = System.currentTimeMillis()
-        val invite = PartyInvite(
-            from = inviterName,
-            to = targetName,
-            outgoing = inviterName.equals(me, ignoreCase = true),
-            createdAt = now,
-            expiresAt = now + INVITE_LIFETIME_MS,
-        )
+        val invite =
+            PartyInvite(
+                from = inviterName,
+                to = targetName,
+                outgoing = inviterName.equals(me, ignoreCase = true),
+                createdAt = now,
+                expiresAt = now + INVITE_LIFETIME_MS,
+            )
         pendingInvites += invite
         DebugLogger.logFeatureEvent("Party invite sent from $inviterName to $targetName")
         fire(PartyEvent.InviteSent(invite))
@@ -307,10 +317,11 @@ object PartyManager {
 
     private fun handleYouJoinedParty(line: String) {
         // Example: "You have joined [MVP+] Thyla's party!"
-        val leaderDisplay = line
-            .removePrefix("You have joined ")
-            .removeSuffix("'s party!")
-            .trim()
+        val leaderDisplay =
+            line
+                .removePrefix("You have joined ")
+                .removeSuffix("'s party!")
+                .trim()
 
         val leaderName = extractUsername(leaderDisplay) ?: leaderDisplay
         val me = localPlayerName() ?: return
@@ -319,27 +330,31 @@ object PartyManager {
         // Any pending invites involving us are now obsolete.
         clearInvitesInvolving(me)
 
-        val leaderMember = PartyMember(
-            name = leaderName,
-            displayName = leaderDisplay,
-            role = PartyRole.LEADER,
-        )
-        val myMember = PartyMember(
-            name = me,
-            displayName = me, // we don't have our own rank here; can be enriched later
-            role = if (leaderName.equals(me, ignoreCase = true)) PartyRole.LEADER else PartyRole.MEMBER,
-        )
+        val leaderMember =
+            PartyMember(
+                name = leaderName,
+                displayName = leaderDisplay,
+                role = PartyRole.LEADER,
+            )
+        // displayName = me because we don't have our own rank in scope; can be enriched later.
+        val myMember =
+            PartyMember(
+                name = me,
+                displayName = me,
+                role = if (leaderName.equals(me, ignoreCase = true)) PartyRole.LEADER else PartyRole.MEMBER,
+            )
 
         val members = mutableMapOf<String, PartyMember>()
         members[leaderName.lowercase()] = leaderMember
         members[me.lowercase()] = myMember
 
-        val newState = PartyState(
-            leader = leaderMember,
-            members = members,
-            createdAt = now,
-            lastUpdatedAt = now,
-        )
+        val newState =
+            PartyState(
+                leader = leaderMember,
+                members = members,
+                createdAt = now,
+                lastUpdatedAt = now,
+            )
         val joinedAsLeader = leaderName.equals(me, ignoreCase = true)
 
         val oldState = currentState
@@ -370,17 +385,19 @@ object PartyManager {
             val key = name.lowercase()
             if (state.members.containsKey(key)) continue
 
-            val role = if (state.leader?.name.equals(name, ignoreCase = true)) {
-                PartyRole.LEADER
-            } else {
-                PartyRole.MEMBER
-            }
+            val role =
+                if (state.leader?.name.equals(name, ignoreCase = true)) {
+                    PartyRole.LEADER
+                } else {
+                    PartyRole.MEMBER
+                }
 
-            val member = PartyMember(
-                name = name,
-                displayName = display,
-                role = role,
-            )
+            val member =
+                PartyMember(
+                    name = name,
+                    displayName = display,
+                    role = role,
+                )
             state.members[key] = member
         }
 
@@ -410,26 +427,30 @@ object PartyManager {
             // We somehow missed creation; assume leader is someone else and we are member
             val me = localPlayerName() ?: return
 
-            val leader = PartyMember(
-                name = name,
-                displayName = display,
-                role = PartyRole.LEADER,
-            )
-            val meMember = PartyMember(
-                name = me,
-                displayName = me,
-                role = PartyRole.MEMBER,
-            )
-            val members = mutableMapOf(
-                leader.name.lowercase() to leader,
-                me.lowercase() to meMember,
-            )
-            val newState = PartyState(
-                leader = leader,
-                members = members,
-                createdAt = now,
-                lastUpdatedAt = now,
-            )
+            val leader =
+                PartyMember(
+                    name = name,
+                    displayName = display,
+                    role = PartyRole.LEADER,
+                )
+            val meMember =
+                PartyMember(
+                    name = me,
+                    displayName = me,
+                    role = PartyRole.MEMBER,
+                )
+            val members =
+                mutableMapOf(
+                    leader.name.lowercase() to leader,
+                    me.lowercase() to meMember,
+                )
+            val newState =
+                PartyState(
+                    leader = leader,
+                    members = members,
+                    createdAt = now,
+                    lastUpdatedAt = now,
+                )
             currentState = newState
             DebugLogger.logFeatureEvent("Inferred new party with leader $name due to join message")
             fire(PartyEvent.PartyJoined(newState, joinedAsLeader = false))
@@ -440,17 +461,19 @@ object PartyManager {
         val existing = state.members[name.lowercase()]
         if (existing != null) return // already tracked
 
-        val role = if (state.leader?.name.equals(name, ignoreCase = true)) {
-            PartyRole.LEADER
-        } else {
-            PartyRole.MEMBER
-        }
+        val role =
+            if (state.leader?.name.equals(name, ignoreCase = true)) {
+                PartyRole.LEADER
+            } else {
+                PartyRole.MEMBER
+            }
 
-        val member = PartyMember(
-            name = name,
-            displayName = display,
-            role = role,
-        )
+        val member =
+            PartyMember(
+                name = name,
+                displayName = display,
+                role = role,
+            )
         state.members[name.lowercase()] = member
         state.lastUpdatedAt = now
         DebugLogger.logFeatureEvent("Party member joined: $display (size=${state.size})")
@@ -574,8 +597,9 @@ object PartyManager {
             listParsedLeader = null
             listParsedMembers.clear()
 
-            val countStr = line.substringAfter("Party Members (")
-                .substringBefore(")")
+            val countStr =
+                line.substringAfter("Party Members (")
+                    .substringBefore(")")
             listExpectedSize = countStr.toIntOrNull()
             return
         }
@@ -583,16 +607,18 @@ object PartyManager {
         if (!parsingList) return
 
         if (line.startsWith("Party Leader:")) {
-            val display = line.removePrefix("Party Leader:")
-                .trim()
-                .removeSuffix(" ●")
-                .trim()
+            val display =
+                line.removePrefix("Party Leader:")
+                    .trim()
+                    .removeSuffix(" ●")
+                    .trim()
             val name = extractUsername(display) ?: display
-            val leader = PartyMember(
-                name = name,
-                displayName = display,
-                role = PartyRole.LEADER,
-            )
+            val leader =
+                PartyMember(
+                    name = name,
+                    displayName = display,
+                    role = PartyRole.LEADER,
+                )
             listParsedLeader = leader
             if (listParsedMembers.none { it.name.equals(name, ignoreCase = true) }) {
                 listParsedMembers.add(leader)
@@ -606,10 +632,11 @@ object PartyManager {
 
             val parts = membersSection.split(", ")
             for (part in parts) {
-                val display = part
-                    .trim()
-                    .removeSuffix(" ●")
-                    .trim()
+                val display =
+                    part
+                        .trim()
+                        .removeSuffix(" ●")
+                        .trim()
                 if (display.isEmpty()) continue
                 val name = extractUsername(display) ?: display
                 if (listParsedMembers.none { it.name.equals(name, ignoreCase = true) }) {
@@ -631,10 +658,11 @@ object PartyManager {
 
             val parts = moderatorsSection.split(", ")
             for (part in parts) {
-                val display = part
-                    .trim()
-                    .removeSuffix(" ●")
-                    .trim()
+                val display =
+                    part
+                        .trim()
+                        .removeSuffix(" ●")
+                        .trim()
                 if (display.isEmpty()) continue
                 val name = extractUsername(display) ?: display
                 if (listParsedMembers.none { it.name.equals(name, ignoreCase = true) }) {
@@ -668,21 +696,23 @@ object PartyManager {
         val now = System.currentTimeMillis()
         val memberMap = mutableMapOf<String, PartyMember>()
         listParsedMembers.forEach { m ->
-            val finalRole = when {
-                m.name.equals(leader.name, ignoreCase = true) -> PartyRole.LEADER
-                else -> m.role
-            }
+            val finalRole =
+                when {
+                    m.name.equals(leader.name, ignoreCase = true) -> PartyRole.LEADER
+                    else -> m.role
+                }
             memberMap[m.name.lowercase()] = m.copy(role = finalRole)
         }
 
-        val newState = PartyState(
-            leader = leader,
-            members = memberMap,
-            createdAt = currentState?.createdAt ?: now,
-            lastUpdatedAt = now,
-        )
+        val newState =
+            PartyState(
+                leader = leader,
+                members = memberMap,
+                createdAt = currentState?.createdAt ?: now,
+                lastUpdatedAt = now,
+            )
         currentState = newState
-        DebugLogger.logFeatureEvent("Party state synced from /p list (size=${newState.size}, expected=${listExpectedSize})")
+        DebugLogger.logFeatureEvent("Party state synced from /p list (size=${newState.size}, expected=$listExpectedSize)")
         fire(PartyEvent.PartySyncedFromList(newState))
 
         parsingList = false
@@ -703,24 +733,29 @@ object PartyManager {
         }
     }
 
-    private fun ensurePartyExistsWithSelfAsLeader(display: String, name: String) {
+    private fun ensurePartyExistsWithSelfAsLeader(
+        display: String,
+        name: String
+    ) {
         val me = localPlayerName() ?: return
         val now = System.currentTimeMillis()
-        val leaderMember = PartyMember(
-            name = me,
-            displayName = display,
-            role = PartyRole.LEADER,
-        )
+        val leaderMember =
+            PartyMember(
+                name = me,
+                displayName = display,
+                role = PartyRole.LEADER,
+            )
         val members = mutableMapOf(me.lowercase() to leaderMember)
 
         val existing = currentState
         if (existing == null || !existing.leader?.name.equals(me, ignoreCase = true)) {
-            currentState = PartyState(
-                leader = leaderMember,
-                members = members,
-                createdAt = now,
-                lastUpdatedAt = now,
-            )
+            currentState =
+                PartyState(
+                    leader = leaderMember,
+                    members = members,
+                    createdAt = now,
+                    lastUpdatedAt = now,
+                )
             DebugLogger.logFeatureEvent("Created new party state with self as leader ($name)")
             fire(PartyEvent.PartyJoined(currentState!!, joinedAsLeader = true))
         }
@@ -763,28 +798,35 @@ object PartyManager {
      * Does not handle leader demotion; callers that promote a new leader
      * should instead call [setLeaderWithDemotion].
      */
-    private fun applyRoleChangeToMember(memberName: String, displayName: String?, newRole: PartyRole) {
+    private fun applyRoleChangeToMember(
+        memberName: String,
+        displayName: String?,
+        newRole: PartyRole
+    ) {
         val oldState = currentState ?: return
         val key = memberName.lowercase()
         val oldMembers = oldState.members
-        val existing = oldMembers[key]
-            ?: PartyMember(memberName, displayName ?: memberName, PartyRole.MEMBER)
+        val existing =
+            oldMembers[key]
+                ?: PartyMember(memberName, displayName ?: memberName, PartyRole.MEMBER)
 
         if (existing.role == newRole && displayName == null) return
 
-        val updated = existing.copy(
-            role = newRole,
-            displayName = displayName ?: existing.displayName,
-        )
+        val updated =
+            existing.copy(
+                role = newRole,
+                displayName = displayName ?: existing.displayName,
+            )
 
         val newMembers = oldMembers.toMutableMap()
         newMembers[key] = updated
 
-        val newState = oldState.copy(
-            // Leader is unchanged here; callers use setLeaderWithDemotion for that.
-            members = newMembers,
-            lastUpdatedAt = System.currentTimeMillis(),
-        )
+        val newState =
+            oldState.copy(
+                // Leader is unchanged here; callers use setLeaderWithDemotion for that.
+                members = newMembers,
+                lastUpdatedAt = System.currentTimeMillis(),
+            )
         currentState = newState
         fire(PartyEvent.RoleChanged(updated, existing.role, newRole))
     }
@@ -792,15 +834,19 @@ object PartyManager {
     /**
      * Set a new leader and demote any previous leader to MODERATOR.
      */
-    private fun setLeaderWithDemotion(newLeaderName: String, newLeaderDisplay: String) {
+    private fun setLeaderWithDemotion(
+        newLeaderName: String,
+        newLeaderDisplay: String
+    ) {
         val oldState = currentState ?: return
         val now = System.currentTimeMillis()
 
         val newMembers = oldState.members.toMutableMap()
 
         val key = newLeaderName.lowercase()
-        val existing = newMembers[key]
-            ?: PartyMember(newLeaderName, newLeaderDisplay, PartyRole.MEMBER)
+        val existing =
+            newMembers[key]
+                ?: PartyMember(newLeaderName, newLeaderDisplay, PartyRole.MEMBER)
         val oldRole = existing.role
 
         val newLeader = existing.copy(role = PartyRole.LEADER, displayName = newLeaderDisplay)
@@ -816,11 +862,12 @@ object PartyManager {
             fire(PartyEvent.RoleChanged(demoted, prevOldRole, demoted.role))
         }
 
-        val newState = oldState.copy(
-            leader = newLeader,
-            members = newMembers,
-            lastUpdatedAt = now,
-        )
+        val newState =
+            oldState.copy(
+                leader = newLeader,
+                members = newMembers,
+                lastUpdatedAt = now,
+            )
         currentState = newState
         fire(PartyEvent.RoleChanged(newLeader, oldRole, PartyRole.LEADER))
     }

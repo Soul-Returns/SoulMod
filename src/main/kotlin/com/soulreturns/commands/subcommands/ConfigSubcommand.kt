@@ -10,7 +10,6 @@ import net.minecraft.client.Minecraft
  * "/soul config <search>".
  */
 object ConfigSubcommand : SoulSubcommand {
-
     override fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return literal("config") {
             runs { _ -> openConfig("") }

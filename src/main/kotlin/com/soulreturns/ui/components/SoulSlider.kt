@@ -23,7 +23,6 @@ class SoulSlider(
     initial: Double,
     private val decimals: Int,
 ) : BaseUIComponent() {
-
     var value: Double = initial.coerceIn(min, max)
         private set
 
@@ -38,24 +37,40 @@ class SoulSlider(
 
     // ── Drawing ──────────────────────────────────────────────────────────────
 
-    override fun draw(context: OwoUIGraphics, mouseX: Int, mouseY: Int, partialTicks: Float, delta: Float) {
+    override fun draw(
+        context: OwoUIGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        partialTicks: Float,
+        delta: Float
+    ) {
         val trackStart = x + KNOB / 2
-        val trackEnd   = x + trackWidth() + KNOB / 2
-        val trackY     = y + (height - TRACK_H) / 2
+        val trackEnd = x + trackWidth() + KNOB / 2
+        val trackY = y + (height - TRACK_H) / 2
 
         // Background track
         DrawContextRenderer.roundedFill(
-            context, trackStart, trackY, trackEnd, trackY + TRACK_H,
-            Theme.PANEL_HOVER, TRACK_H / 2f,
+            context,
+            trackStart,
+            trackY,
+            trackEnd,
+            trackY + TRACK_H,
+            Theme.PANEL_HOVER,
+            TRACK_H / 2f,
         )
 
         // Filled (accent) portion
         val progress = progress()
-        val fillEnd  = trackStart + (trackWidth() * progress).toInt()
+        val fillEnd = trackStart + (trackWidth() * progress).toInt()
         if (fillEnd > trackStart) {
             DrawContextRenderer.roundedFill(
-                context, trackStart, trackY, fillEnd, trackY + TRACK_H,
-                Theme.ACCENT, TRACK_H / 2f,
+                context,
+                trackStart,
+                trackY,
+                fillEnd,
+                trackY + TRACK_H,
+                Theme.ACCENT,
+                TRACK_H / 2f,
             )
         }
 
@@ -63,13 +78,18 @@ class SoulSlider(
         val knobX = trackStart + (trackWidth() * progress).toInt() - KNOB / 2
         val knobY = y + (height - KNOB) / 2
         DrawContextRenderer.roundedFill(
-            context, knobX, knobY, knobX + KNOB, knobY + KNOB,
-            Theme.TEXT, KNOB / 2f,
+            context,
+            knobX,
+            knobY,
+            knobX + KNOB,
+            knobY + KNOB,
+            Theme.TEXT,
+            KNOB / 2f,
         )
 
         // Value label (right-aligned in the reserved label area)
-        val label  = formatValue()
-        val tr     = Minecraft.getInstance().font
+        val label = formatValue()
+        val tr = Minecraft.getInstance().font
         val labelAreaX = x + TOTAL_W - LABEL_W
         val labelX = labelAreaX + (LABEL_W - tr.width(label)) / 2
         val labelY = y + (height - tr.lineHeight) / 2
@@ -78,7 +98,10 @@ class SoulSlider(
 
     // ── Mouse input ──────────────────────────────────────────────────────────
 
-    override fun onMouseDown(click: MouseButtonEvent, doubled: Boolean): Boolean {
+    override fun onMouseDown(
+        click: MouseButtonEvent,
+        doubled: Boolean
+    ): Boolean {
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             updateFromClick(click.x())
             return true
@@ -86,7 +109,11 @@ class SoulSlider(
         return super.onMouseDown(click, doubled)
     }
 
-    override fun onMouseDrag(click: MouseButtonEvent, deltaX: Double, deltaY: Double): Boolean {
+    override fun onMouseDrag(
+        click: MouseButtonEvent,
+        deltaX: Double,
+        deltaY: Double
+    ): Boolean {
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             updateFromClick(click.x())
             return true
@@ -101,10 +128,20 @@ class SoulSlider(
 
     // ── Public API ───────────────────────────────────────────────────────────
 
-    fun onChanged(listener: (Double) -> Unit): SoulSlider { changedListeners.add(listener); return this }
-    fun onSlideEnd(listener: () -> Unit): SoulSlider { slideEndListeners.add(listener); return this }
+    fun onChanged(listener: (Double) -> Unit): SoulSlider {
+        changedListeners.add(listener)
+        return this
+    }
 
-    fun setValue(v: Double) { value = v.coerceIn(min, max) }
+    fun onSlideEnd(listener: () -> Unit): SoulSlider {
+        slideEndListeners.add(listener)
+        return this
+    }
+
+    fun setValue(v: Double) {
+        value = v.coerceIn(min, max)
+    }
+
     fun discreteValue(): Double = value
 
     // ── Internals ────────────────────────────────────────────────────────────
@@ -123,18 +160,23 @@ class SoulSlider(
     }
 
     private fun formatValue(): String =
-        if (decimals == 0) value.toLong().toString()
-        else String.format(Locale.ROOT, "%.${decimals}f", value)
+        if (decimals == 0) {
+            value.toLong().toString()
+        } else {
+            String.format(Locale.ROOT, "%.${decimals}f", value)
+        }
 
     override fun determineHorizontalContentSize(sizing: Sizing): Int = TOTAL_W
+
     override fun determineVerticalContentSize(sizing: Sizing): Int = HEIGHT
+
     override fun canFocus(source: UIComponent.FocusSource): Boolean = true
 
     companion object {
         const val TOTAL_W = 160
-        const val HEIGHT  = 20
+        const val HEIGHT = 20
         private const val TRACK_H = 4
-        private const val KNOB    = 14
+        private const val KNOB = 14
         private const val LABEL_W = 36
     }
 }

@@ -22,10 +22,11 @@ data class GuiLayout(
  * an "Edit GUI" screen).
  */
 object GuiLayoutManager {
-    private val gson: Gson = GsonBuilder()
-        .registerTypeAdapterFactory(GuiRuntimeTypeAdapterFactory())
-        .setPrettyPrinting()
-        .create()
+    private val gson: Gson =
+        GsonBuilder()
+            .registerTypeAdapterFactory(GuiRuntimeTypeAdapterFactory())
+            .setPrettyPrinting()
+            .create()
 
     /**
      * Set of element ids that are known to the mod. Currently used only for
@@ -63,9 +64,10 @@ object GuiLayoutManager {
     /**
      * Returns the current layout snapshot.
      */
-    fun getLayout(): GuiLayout = currentLayout.copy(
-        elements = currentLayout.elements.filterNotNull(),
-    )
+    fun getLayout(): GuiLayout =
+        currentLayout.copy(
+            elements = currentLayout.elements.filterNotNull(),
+        )
 
     /**
      * Replace the entire layout in memory (no implicit save).
@@ -88,56 +90,72 @@ object GuiLayoutManager {
         offsetX: Int,
         offsetY: Int,
     ) {
-        currentLayout = currentLayout.copy(
-            elements = currentLayout.elements.map { element ->
-                if (element.id != id) return@map element
-                when (element) {
-                    is TextBlockElement -> element.copy(
-                        anchorX = anchorX,
-                        anchorY = anchorY,
-                        offsetX = offsetX,
-                        offsetY = offsetY,
-                    )
-                    is ItemTrackerElement -> element.copy(
-                        anchorX = anchorX,
-                        anchorY = anchorY,
-                        offsetX = offsetX,
-                        offsetY = offsetY,
-                    )
-                }
-            },
-        )
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element.id != id) return@map element
+                        when (element) {
+                            is TextBlockElement ->
+                                element.copy(
+                                    anchorX = anchorX,
+                                    anchorY = anchorY,
+                                    offsetX = offsetX,
+                                    offsetY = offsetY,
+                                )
+                            is ItemTrackerElement ->
+                                element.copy(
+                                    anchorX = anchorX,
+                                    anchorY = anchorY,
+                                    offsetX = offsetX,
+                                    offsetY = offsetY,
+                                )
+                        }
+                    },
+            )
     }
 
     @Synchronized
-    fun updateElementScale(id: GuiElementId, scale: Float) {
-        currentLayout = currentLayout.copy(
-            elements = currentLayout.elements.map { element ->
-                if (element.id != id) return@map element
-                val clamped = scale.coerceIn(0.25f, 4.0f)
-                when (element) {
-                    is TextBlockElement -> element.copy(scale = clamped)
-                    is ItemTrackerElement -> element.copy(scale = clamped)
-                }
-            },
-        )
+    fun updateElementScale(
+        id: GuiElementId,
+        scale: Float
+    ) {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element.id != id) return@map element
+                        val clamped = scale.coerceIn(0.25f, 4.0f)
+                        when (element) {
+                            is TextBlockElement -> element.copy(scale = clamped)
+                            is ItemTrackerElement -> element.copy(scale = clamped)
+                        }
+                    },
+            )
     }
 
     @Synchronized
-    fun updateTrackerCounts(id: GuiElementId, entryId: String, delta: Int) {
-        currentLayout = currentLayout.copy(
-            elements = currentLayout.elements.map { element ->
-                if (element.id != id || element !is ItemTrackerElement) return@map element
+    fun updateTrackerCounts(
+        id: GuiElementId,
+        entryId: String,
+        delta: Int
+    ) {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element.id != id || element !is ItemTrackerElement) return@map element
 
-                val updatedEntries = element.entries.map { entry ->
-                    if (entry.entryId != entryId) return@map entry
-                    val newCount = (entry.currentCount + delta).coerceAtLeast(0)
-                    entry.copy(currentCount = newCount)
-                }
+                        val updatedEntries =
+                            element.entries.map { entry ->
+                                if (entry.entryId != entryId) return@map entry
+                                val newCount = (entry.currentCount + delta).coerceAtLeast(0)
+                                entry.copy(currentCount = newCount)
+                            }
 
-                element.copy(entries = updatedEntries)
-            },
-        )
+                        element.copy(entries = updatedEntries)
+                    },
+            )
     }
 
     /**
@@ -159,7 +177,9 @@ object GuiLayoutManager {
         if (file != null && file.exists()) {
             try {
                 if (!file.delete()) {
-                    DebugLogger.logGuiLayout("Failed to delete GUI layout file at ${file.absolutePath} during reset; will be overwritten on next save")
+                    DebugLogger.logGuiLayout(
+                        "Failed to delete GUI layout file at ${file.absolutePath} during reset; will be overwritten on next save"
+                    )
                 } else {
                     DebugLogger.logGuiLayout("Deleted GUI layout file at ${file.absolutePath}; layout will be reseeded from defaults")
                 }
@@ -180,7 +200,9 @@ object GuiLayoutManager {
         val file = layoutFile ?: return
         if (!file.exists()) {
             save()
-            DebugLogger.logGuiLayout("No existing GUI layout, wrote default layout with ${currentLayout.elements.size} elements to ${file.absolutePath}")
+            DebugLogger.logGuiLayout(
+                "No existing GUI layout, wrote default layout with ${currentLayout.elements.size} elements to ${file.absolutePath}"
+            )
             return
         }
 
@@ -196,9 +218,10 @@ object GuiLayoutManager {
             }
             // Keep all non-null elements as-is; we no longer filter by
             // knownElementIds to avoid dropping valid saved elements.
-            currentLayout = loaded.copy(
-                elements = loaded.elements.filterNotNull(),
-            )
+            currentLayout =
+                loaded.copy(
+                    elements = loaded.elements.filterNotNull(),
+                )
             DebugLogger.logGuiLayout(
                 "Loaded GUI layout from ${file.absolutePath} with ${currentLayout.elements.size} elements after filtering"
             )
@@ -242,24 +265,31 @@ object GuiLayoutManager {
  * contain mixed TextBlockElement and ItemTrackerElement instances.
  */
 class GuiRuntimeTypeAdapterFactory : com.google.gson.TypeAdapterFactory {
-    override fun <T> create(gson: Gson, type: com.google.gson.reflect.TypeToken<T>): com.google.gson.TypeAdapter<T>? {
+    override fun <T> create(
+        gson: Gson,
+        type: com.google.gson.reflect.TypeToken<T>
+    ): com.google.gson.TypeAdapter<T>? {
         // Only wrap the abstract base type GuiElement; concrete subclasses
         // like TextBlockElement should be (de)serialized normally.
         if (type.rawType != GuiElement::class.java) return null
 
         val elementAdapter = gson.getDelegateAdapter(this, type)
         return object : com.google.gson.TypeAdapter<T>() {
-            override fun write(out: com.google.gson.stream.JsonWriter, value: T) {
+            override fun write(
+                out: com.google.gson.stream.JsonWriter,
+                value: T
+            ) {
                 if (value == null) {
                     out.nullValue()
                     return
                 }
                 out.beginObject()
                 val element = value as GuiElement
-                val kind = when (element) {
-                    is TextBlockElement -> "text_block"
-                    is ItemTrackerElement -> "item_tracker"
-                }
+                val kind =
+                    when (element) {
+                        is TextBlockElement -> "text_block"
+                        is ItemTrackerElement -> "item_tracker"
+                    }
                 out.name("type").value(kind)
                 out.name("data")
                 when (element) {
@@ -274,11 +304,12 @@ class GuiRuntimeTypeAdapterFactory : com.google.gson.TypeAdapterFactory {
                 val json = com.google.gson.JsonParser.parseReader(`in`).asJsonObject
                 val typeName = json.get("type")?.asString ?: return null
                 val data = json.get("data") ?: return null
-                val targetType = when (typeName) {
-                    "text_block" -> TextBlockElement::class.java
-                    "item_tracker" -> ItemTrackerElement::class.java
-                    else -> return null
-                }
+                val targetType =
+                    when (typeName) {
+                        "text_block" -> TextBlockElement::class.java
+                        "item_tracker" -> ItemTrackerElement::class.java
+                        else -> return null
+                    }
                 // The Gson call returns a concrete GuiElement subtype; we
                 // explicitly trust this mapping and suppress the generic cast.
                 return gson.fromJson(data, targetType) as T

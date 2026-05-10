@@ -1,15 +1,15 @@
 package com.soulreturns.ui.config.rows
 
 import com.mojang.blaze3d.platform.InputConstants
-import com.soulreturns.ui.theme.Theme
+import com.soulreturns.render.DrawContextRenderer
 import com.soulreturns.ui.components.SoulSlider
 import com.soulreturns.ui.components.SoulToggle
-import com.soulreturns.render.DrawContextRenderer
 import com.soulreturns.ui.config.components.ConfigRenderers
 import com.soulreturns.ui.config.model.ActionRowSpec
 import com.soulreturns.ui.config.model.ConfigScreenContext
 import com.soulreturns.ui.config.model.LinkTarget
 import com.soulreturns.ui.config.registry.ConfigSections
+import com.soulreturns.ui.theme.Theme
 import io.wispforest.owo.config.ConfigWrapper
 import io.wispforest.owo.config.Option
 import io.wispforest.owo.config.annotation.RangeConstraint
@@ -36,7 +36,6 @@ internal class RowBuilders(
     private val ctx: ConfigScreenContext,
     private val wrapper: ConfigWrapper<*>,
 ) {
-
     /**
      * Per-option reset-button slot containers, keyed by option full path. Buttons get added /
      * removed as the value diverges from / matches the default. Cleared by [resetTracking].
@@ -51,10 +50,15 @@ internal class RowBuilders(
     // ───────────────────── option-row card sections ─────────────────────
 
     /** Render a labeled card containing one-or-more option rows. `label = null` → no header. */
-    fun addOptionSection(parent: FlowLayout, label: String?, opts: List<Option<*>>) {
+    fun addOptionSection(
+        parent: FlowLayout,
+        label: String?,
+        opts: List<Option<*>>
+    ) {
         if (label != null) {
-            val lbl = UIComponents.label(Component.literal(label))
-                .color(Theme.color(Theme.TEXT_DIM))
+            val lbl =
+                UIComponents.label(Component.literal(label))
+                    .color(Theme.color(Theme.TEXT_DIM))
             lbl.margins(Insets.of(4, 0, 0, 6))
             parent.child(lbl)
         }
@@ -67,9 +71,14 @@ internal class RowBuilders(
     }
 
     /** Render a labeled section of cross-navigation link buttons (no card wrap). */
-    fun addLinkSection(parent: FlowLayout, label: String, links: List<LinkTarget>) {
-        val lbl = UIComponents.label(Component.literal(label))
-            .color(Theme.color(Theme.TEXT_DIM))
+    fun addLinkSection(
+        parent: FlowLayout,
+        label: String,
+        links: List<LinkTarget>
+    ) {
+        val lbl =
+            UIComponents.label(Component.literal(label))
+                .color(Theme.color(Theme.TEXT_DIM))
         lbl.margins(Insets.of(4, 0, 0, 6))
         parent.child(lbl)
         val container = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
@@ -79,9 +88,14 @@ internal class RowBuilders(
     }
 
     /** Render a labeled card containing one-or-more action rows (label + right-aligned button). */
-    fun addActionSection(parent: FlowLayout, label: String, rows: List<ActionRowSpec>) {
-        val lbl = UIComponents.label(Component.literal(label))
-            .color(Theme.color(Theme.TEXT_DIM))
+    fun addActionSection(
+        parent: FlowLayout,
+        label: String,
+        rows: List<ActionRowSpec>
+    ) {
+        val lbl =
+            UIComponents.label(Component.literal(label))
+                .color(Theme.color(Theme.TEXT_DIM))
         lbl.margins(Insets.of(4, 0, 0, 6))
         parent.child(lbl)
         val card = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
@@ -105,14 +119,16 @@ internal class RowBuilders(
         // Visual hint that this option is gated by another option above (e.g. usePestVest under highlightPestEquipment).
         val isDependent = opt.key().path().joinToString(".") in ConfigSections.optionVisibility
         if (isDependent) {
-            val arrow = UIComponents.label(Component.literal("↳"))
-                .color(Theme.color(Theme.TEXT_DIM))
+            val arrow =
+                UIComponents.label(Component.literal("↳"))
+                    .color(Theme.color(Theme.TEXT_DIM))
             arrow.margins(Insets.of(0, 0, 8, 0))
             row.child(arrow)
         }
 
-        val label = UIComponents.label(Component.translatable(opt.translationKey()))
-            .color(Theme.color(Theme.TEXT))
+        val label =
+            UIComponents.label(Component.translatable(opt.translationKey()))
+                .color(Theme.color(Theme.TEXT))
         label.horizontalSizing(Sizing.expand())
         val tooltipKey = opt.translationKey() + ".tooltip"
         val tooltipText = Component.translatable(tooltipKey)
@@ -148,8 +164,9 @@ internal class RowBuilders(
         row.verticalAlignment(VerticalAlignment.CENTER)
         row.margins(Insets.of(1))
 
-        val label = UIComponents.label(Component.literal(action.label))
-            .color(Theme.color(Theme.TEXT))
+        val label =
+            UIComponents.label(Component.literal(action.label))
+                .color(Theme.color(Theme.TEXT))
         label.horizontalSizing(Sizing.expand())
         row.child(label)
 
@@ -162,26 +179,33 @@ internal class RowBuilders(
     }
 
     fun buildLinkRow(link: LinkTarget): ButtonComponent {
-        val btn = UIComponents.button(Component.empty()) {
-            ctx.navigateTo(link.targetCat, link.targetSub)
-        }
+        val btn =
+            UIComponents.button(Component.empty()) {
+                ctx.navigateTo(link.targetCat, link.targetSub)
+            }
         btn.horizontalSizing(Sizing.fill(100))
         btn.verticalSizing(Sizing.fixed(28))
         btn.margins(Insets.of(2))
-        btn.renderer(ButtonComponent.Renderer { ctx2, button, _ ->
-            val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
-            DrawContextRenderer.roundedFill(
-                ctx2,
-                button.x, button.y, button.x + button.width, button.y + button.height,
-                bg, Theme.ITEM_RADIUS,
-            )
-            val tr = Minecraft.getInstance().font
-            val text = "${link.label}  ›"
-            val tx = button.x + 12
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            val color = if (button.isHovered) Theme.ACCENT else Theme.TEXT
-            ctx2.drawString(tr, Component.literal(text), tx, ty, color, false)
-        })
+        btn.renderer(
+            ButtonComponent.Renderer { ctx2, button, _ ->
+                val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
+                DrawContextRenderer.roundedFill(
+                    ctx2,
+                    button.x,
+                    button.y,
+                    button.x + button.width,
+                    button.y + button.height,
+                    bg,
+                    Theme.ITEM_RADIUS,
+                )
+                val tr = Minecraft.getInstance().font
+                val text = "${link.label}  ›"
+                val tx = button.x + 12
+                val ty = button.y + (button.height - tr.lineHeight) / 2
+                val color = if (button.isHovered) Theme.ACCENT else Theme.TEXT
+                ctx2.drawString(tr, Component.literal(text), tx, ty, color, false)
+            }
+        )
         return btn
     }
 
@@ -209,32 +233,39 @@ internal class RowBuilders(
         slider.onChanged { v ->
             @Suppress("UNCHECKED_CAST")
             when (opt.value()) {
-                is Int    -> (opt as Option<Int>).set(v.toInt())
-                is Long   -> (opt as Option<Long>).set(v.toLong())
-                is Float  -> (opt as Option<Float>).set(v.toFloat())
+                is Int -> (opt as Option<Int>).set(v.toInt())
+                is Long -> (opt as Option<Long>).set(v.toLong())
+                is Float -> (opt as Option<Float>).set(v.toFloat())
                 is Double -> (opt as Option<Double>).set(v)
-                else      -> {}
+                else -> {}
             }
         }
-        slider.onSlideEnd { ctx.save(); refreshResetSlot(opt) }
+        slider.onSlideEnd {
+            ctx.save()
+            refreshResetSlot(opt)
+        }
         return slider
     }
 
     private fun buildTextBox(opt: Option<String>): TextBoxComponent {
         val tb = UIComponents.textBox(Sizing.fixed(160), opt.value())
-        tb.onChanged().subscribe(TextBoxComponent.OnChanged { newVal ->
-            opt.set(newVal); ctx.save()
-        })
+        tb.onChanged().subscribe(
+            TextBoxComponent.OnChanged { newVal ->
+                opt.set(newVal)
+                ctx.save()
+            }
+        )
         return tb
     }
 
     private fun buildKeybindButton(opt: Option<String>): ButtonComponent {
         val text = if (ctx.isCapturing(opt)) "> Press a key <" else keybindLabel(opt.value())
-        val btn = UIComponents.button(Component.literal(text)) {
-            // Click the same button while capturing → cancel capture (screen handles the toggle).
-            ctx.requestKeybindCapture(opt)
-            ctx.rebuildContentBody()
-        }
+        val btn =
+            UIComponents.button(Component.literal(text)) {
+                // Click the same button while capturing → cancel capture (screen handles the toggle).
+                ctx.requestKeybindCapture(opt)
+                ctx.rebuildContentBody()
+            }
         btn.horizontalSizing(Sizing.fixed(110))
         btn.verticalSizing(Sizing.fixed(20))
         btn.renderer(ConfigRenderers.actionButton())
@@ -256,23 +287,26 @@ internal class RowBuilders(
     @Suppress("UNCHECKED_CAST")
     private fun buildResetIconButton(opt: Option<*>): ButtonComponent {
         val default = opt.defaultValue()
-        val btn = UIComponents.button(Component.empty()) {
-            (opt as Option<Any>).set(default as Any)
-            ctx.save()
-            ctx.rebuildContent()
-        }
+        val btn =
+            UIComponents.button(Component.empty()) {
+                (opt as Option<Any>).set(default as Any)
+                ctx.save()
+                ctx.rebuildContent()
+            }
         btn.horizontalSizing(Sizing.fill(100))
         btn.verticalSizing(Sizing.fill(100))
         btn.tooltip(Component.literal("Reset to default: ${formatValue(default)}"))
-        btn.renderer(ButtonComponent.Renderer { gctx, button, _ ->
-            val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
-            gctx.fill(button.x, button.y, button.x + button.width, button.y + button.height, bg)
-            val tr = Minecraft.getInstance().font
-            val icon = "↺"
-            val tx = button.x + (button.width - tr.width(icon)) / 2
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            gctx.drawString(tr, Component.literal(icon), tx, ty, if (button.isHovered) Theme.ACCENT else Theme.TEXT_DIM, false)
-        })
+        btn.renderer(
+            ButtonComponent.Renderer { gctx, button, _ ->
+                val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
+                gctx.fill(button.x, button.y, button.x + button.width, button.y + button.height, bg)
+                val tr = Minecraft.getInstance().font
+                val icon = "↺"
+                val tx = button.x + (button.width - tr.width(icon)) / 2
+                val ty = button.y + (button.height - tr.lineHeight) / 2
+                gctx.drawString(tr, Component.literal(icon), tx, ty, if (button.isHovered) Theme.ACCENT else Theme.TEXT_DIM, false)
+            }
+        )
         return btn
     }
 
@@ -282,9 +316,10 @@ internal class RowBuilders(
         if (opt.value() != opt.defaultValue()) slot.child(buildResetIconButton(opt))
     }
 
-    private fun formatValue(value: Any?): String = when (value) {
-        is Float  -> String.format(Locale.ROOT, "%.2f", value)
-        is Double -> String.format(Locale.ROOT, "%.2f", value)
-        else      -> value?.toString() ?: "null"
-    }
+    private fun formatValue(value: Any?): String =
+        when (value) {
+            is Float -> String.format(Locale.ROOT, "%.2f", value)
+            is Double -> String.format(Locale.ROOT, "%.2f", value)
+            else -> value?.toString() ?: "null"
+        }
 }

@@ -25,10 +25,12 @@ object LocationReader {
     private val LOCATION_NAME_PATTERN = Regex("[a-zA-Z\\s']+")
 
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { _ ->
-            LocationApi.updateArea(readArea())
-            LocationApi.updateSublocation(readSublocation())
-        })
+        ClientTickEvents.END_CLIENT_TICK.register(
+            ClientTickEvents.EndTick { _ ->
+                LocationApi.updateArea(readArea())
+                LocationApi.updateSublocation(readSublocation())
+            }
+        )
     }
 
     private fun readArea(): String? {
@@ -48,11 +50,12 @@ object LocationReader {
         val objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return null
         for (entry in scoreboard.listPlayerScores(objective)) {
             val team = scoreboard.getPlayersTeam(entry.owner())
-            val rendered = if (team == null) {
-                entry.ownerName().string
-            } else {
-                team.getPlayerPrefix().copy().append(entry.ownerName()).append(team.getPlayerSuffix()).string
-            }
+            val rendered =
+                if (team == null) {
+                    entry.ownerName().string
+                } else {
+                    team.getPlayerPrefix().copy().append(entry.ownerName()).append(team.getPlayerSuffix()).string
+                }
             val stripped = MessageDetector.stripColorCodes(rendered)
             val idx = stripped.indexOf('⏣')
             if (idx < 0) continue

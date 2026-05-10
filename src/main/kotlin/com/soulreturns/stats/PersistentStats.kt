@@ -35,6 +35,7 @@ object PersistentStats {
     }
 
     private const val SCHEMA_VERSION = 2
+
     /** Bucket holding stats accumulated before [ProfileApi] knew which profile we were on. */
     const val LEGACY_KEY = "_legacy"
 
@@ -55,7 +56,9 @@ object PersistentStats {
     )
 
     @Volatile private var storage: Storage = Storage()
+
     @Volatile private var dirty: Boolean = false
+
     @Volatile private var saving: Boolean = false
 
     fun init() {
@@ -63,13 +66,15 @@ object PersistentStats {
         Events.subscribe(::onProfileChanged)
         // Persist no more than once per second; coalesces bursts of mutations into one write.
         var lastSaveTick = 0
-        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { _ ->
-            lastSaveTick++
-            if (dirty && !saving && lastSaveTick >= 20) {
-                lastSaveTick = 0
-                saveAsync()
+        ClientTickEvents.END_CLIENT_TICK.register(
+            ClientTickEvents.EndTick { _ ->
+                lastSaveTick++
+                if (dirty && !saving && lastSaveTick >= 20) {
+                    lastSaveTick = 0
+                    saveAsync()
+                }
             }
-        })
+        )
     }
 
     /**
@@ -78,9 +83,10 @@ object PersistentStats {
      * default slot.
      */
     val current: Data
-        get() = synchronized(this) {
-            storage.profiles.getOrPut(activeKey()) { Data() }
-        }
+        get() =
+            synchronized(this) {
+                storage.profiles.getOrPut(activeKey()) { Data() }
+            }
 
     /** Mutate the active profile's stats. Marks dirty so the next tick triggers a save. */
     inline fun update(block: Data.() -> Unit) {
@@ -90,7 +96,9 @@ object PersistentStats {
         }
     }
 
-    @PublishedApi internal fun markDirty() { dirty = true }
+    @PublishedApi internal fun markDirty() {
+        dirty = true
+    }
 
     /** Profiles currently in storage. Useful for debug commands. */
     fun knownProfiles(): Set<String> = storage.profiles.keys.toSet()
@@ -143,10 +151,11 @@ object PersistentStats {
                 } else {
                     // v1 (legacy flat) format — wrap into the legacy slot.
                     val legacyData = gson.fromJson(obj, Data::class.java)
-                    storage = Storage(
-                        version = SCHEMA_VERSION,
-                        profiles = mutableMapOf(LEGACY_KEY to legacyData),
-                    )
+                    storage =
+                        Storage(
+                            version = SCHEMA_VERSION,
+                            profiles = mutableMapOf(LEGACY_KEY to legacyData),
+                        )
                     logger.info("Migrated legacy stats.json (v1 → v2). Bound to '$LEGACY_KEY' until profile detected.")
                     markDirty()
                 }
@@ -159,13 +168,14 @@ object PersistentStats {
     private fun saveAsync() {
         saving = true
         dirty = false
-        val snapshot = synchronized(this) {
-            // Deep-copy: each Data value is itself mutable so a shallow Storage.copy() isn't enough.
-            Storage(
-                version = storage.version,
-                profiles = storage.profiles.mapValuesTo(mutableMapOf()) { (_, d) -> d.copy() },
-            )
-        }
+        val snapshot =
+            synchronized(this) {
+                // Deep-copy: each Data value is itself mutable so a shallow Storage.copy() isn't enough.
+                Storage(
+                    version = storage.version,
+                    profiles = storage.profiles.mapValuesTo(mutableMapOf()) { (_, d) -> d.copy() },
+                )
+            }
         SoulExecutor.executor.submit {
             try {
                 file.parentFile?.mkdirs()

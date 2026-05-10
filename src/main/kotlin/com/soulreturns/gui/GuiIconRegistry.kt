@@ -9,7 +9,10 @@ import net.minecraft.world.item.ItemStack
 object GuiIconRegistry {
     private val icons: MutableMap<String, ItemStack> = mutableMapOf()
 
-    fun registerIcon(key: String, stack: ItemStack) {
+    fun registerIcon(
+        key: String,
+        stack: ItemStack
+    ) {
         icons[key] = stack
     }
 

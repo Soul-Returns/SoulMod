@@ -1,7 +1,5 @@
 package com.soulreturns.gui.lib
 
-import kotlin.math.roundToInt
-
 /**
  * Represents the current state of an edit session (e.g. "/soul gui").
  */
@@ -20,7 +18,6 @@ data class EditState(
  * Library-side helper that applies edit operations to the layout.
  */
 object GuiEditSession {
-
     /**
      * Hit test elements based on their current layout and return the id of the
      * top-most element under the given coordinates, or null if none.
@@ -28,7 +25,12 @@ object GuiEditSession {
      * For now this uses a simple bounding box based on text/row estimates.
      * Hosts can refine this later if needed.
      */
-    fun hitTestElement(layout: GuiLayout, ctx: GuiRenderContext, x: Int, y: Int): GuiElementId? {
+    fun hitTestElement(
+        layout: GuiLayout,
+        ctx: GuiRenderContext,
+        x: Int,
+        y: Int
+    ): GuiElementId? {
         // Simple heuristic: treat each element as a rectangle around its
         // computed base position. This is mainly for selecting an element to
         // move/scale; it does not need pixel-perfect precision.
@@ -36,10 +38,11 @@ object GuiEditSession {
             if (!element.enabled) return@lastOrNull false
             val (baseX, baseY) = computeBasePosition(element, ctx)
             val width = 200
-            val height = when (element) {
-                is TextBlockElement -> 20 + element.lines.size * 10
-                is ItemTrackerElement -> 20 + element.entries.size * 18
-            }
+            val height =
+                when (element) {
+                    is TextBlockElement -> 20 + element.lines.size * 10
+                    is ItemTrackerElement -> 20 + element.entries.size * 18
+                }
             x >= baseX && x <= baseX + width && y >= baseY && y <= baseY + height
         }?.id
     }
@@ -47,9 +50,15 @@ object GuiEditSession {
     /**
      * Begin dragging the given element.
      */
-    fun beginDrag(elementId: GuiElementId, ctx: GuiRenderContext, mouseX: Int, mouseY: Int): EditState {
-        val element = GuiLayoutManager.getElements().firstOrNull { it.id == elementId }
-            ?: return EditState()
+    fun beginDrag(
+        elementId: GuiElementId,
+        ctx: GuiRenderContext,
+        mouseX: Int,
+        mouseY: Int
+    ): EditState {
+        val element =
+            GuiLayoutManager.getElements().firstOrNull { it.id == elementId }
+                ?: return EditState()
 
         return EditState(
             selectedElementId = elementId,
@@ -67,7 +76,12 @@ object GuiEditSession {
      * Update drag: compute new anchor/offset based on mouse delta and apply to
      * the selected element via GuiLayoutManager.
      */
-    fun updateDrag(state: EditState, ctx: GuiRenderContext, mouseX: Int, mouseY: Int): EditState {
+    fun updateDrag(
+        state: EditState,
+        ctx: GuiRenderContext,
+        mouseX: Int,
+        mouseY: Int
+    ): EditState {
         val elementId = state.selectedElementId ?: return state
         if (!state.isDragging) return state
 
@@ -102,7 +116,10 @@ object GuiEditSession {
     /**
      * Adjust the scale of the selected element based on scroll wheel input.
      */
-    fun adjustScale(state: EditState, scrollDelta: Double) {
+    fun adjustScale(
+        state: EditState,
+        scrollDelta: Double
+    ) {
         val elementId = state.selectedElementId ?: return
         val current = GuiLayoutManager.getElements().firstOrNull { it.id == elementId } ?: return
         val factor = 1.0f + (scrollDelta * 0.1f).toFloat()
@@ -110,7 +127,10 @@ object GuiEditSession {
         GuiLayoutManager.updateElementScale(elementId, newScale)
     }
 
-    private fun computeBasePosition(element: GuiElement, ctx: GuiRenderContext): Pair<Int, Int> {
+    private fun computeBasePosition(
+        element: GuiElement,
+        ctx: GuiRenderContext
+    ): Pair<Int, Int> {
         val baseX = (element.anchorX * ctx.screenWidth).toInt() + element.offsetX
         val baseY = (element.anchorY * ctx.screenHeight).toInt() + element.offsetY
         return baseX to baseY

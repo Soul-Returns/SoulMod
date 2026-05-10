@@ -1,10 +1,10 @@
 package com.soulreturns.update
 
 import com.soulreturns.platform.http.SoulHttp
+import com.soulreturns.util.SoulLogger
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.SharedConstants
 import net.minecraft.client.Minecraft
-import com.soulreturns.util.SoulLogger
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -16,17 +16,18 @@ import java.time.Duration
 import java.util.concurrent.Executors
 
 object Updater {
-
     private val logger = SoulLogger("Soul/Updater")
 
-    private val executor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "soul-updater").also { it.isDaemon = true }
-    }
+    private val executor =
+        Executors.newSingleThreadExecutor { r ->
+            Thread(r, "soul-updater").also { it.isDaemon = true }
+        }
 
-    private val client: HttpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(10))
-        .followRedirects(HttpClient.Redirect.NORMAL)
-        .build()
+    private val client: HttpClient =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build()
 
     private val stagingDir: Path
         get() = FabricLoader.getInstance().gameDir.resolve(".soul-update")
@@ -75,20 +76,22 @@ object Updater {
                 val finalFile = modsDir.resolve(newJarName)
 
                 // Ask FabricLoader where it actually loaded this mod from.
-                val oldJarPath: Path? = FabricLoader.getInstance()
-                    .getModContainer("soul")
-                    .map { it.origin.paths.firstOrNull()?.takeIf { p -> p.toString().endsWith(".jar") } }
-                    .orElse(null)
+                val oldJarPath: Path? =
+                    FabricLoader.getInstance()
+                        .getModContainer("soul")
+                        .map { it.origin.paths.firstOrNull()?.takeIf { p -> p.toString().endsWith(".jar") } }
+                        .orElse(null)
 
                 mc().execute { onProgress(0.05f) }
 
                 logger.info("Downloading $newJarName from ${info.assetDownloadUrl}")
-                val request = HttpRequest.newBuilder()
-                    .GET()
-                    .uri(URI.create(info.assetDownloadUrl))
-                    .timeout(Duration.ofSeconds(120))
-                    .header("User-Agent", SoulHttp.userAgent())
-                    .build()
+                val request =
+                    HttpRequest.newBuilder()
+                        .GET()
+                        .uri(URI.create(info.assetDownloadUrl))
+                        .timeout(Duration.ofSeconds(120))
+                        .header("User-Agent", SoulHttp.userAgent())
+                        .build()
 
                 val response = client.send(request, HttpResponse.BodyHandlers.ofInputStream())
                 if (response.statusCode() !in 200..299) {
@@ -119,7 +122,13 @@ object Updater {
                 if (oldJarPath != null && Files.exists(oldJarPath)) {
                     // Try to delete immediately — works on Linux/macOS where open files can be unlinked.
                     // On Windows the JVM locks the JAR, so we fall back to a marker for next-launch cleanup.
-                    val deleted = try { Files.deleteIfExists(oldJarPath); true } catch (_: Exception) { false }
+                    val deleted =
+                        try {
+                            Files.deleteIfExists(oldJarPath)
+                            true
+                        } catch (_: Exception) {
+                            false
+                        }
                     if (deleted) {
                         logger.info("Deleted old mod JAR immediately: $oldJarPath")
                         staging.toFile().delete()

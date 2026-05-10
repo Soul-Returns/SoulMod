@@ -7,11 +7,12 @@ import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
 object MojangApi {
-    private val cache = java.util.Collections.synchronizedMap(
-        object : LinkedHashMap<String, UUID>(64, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, UUID>?): Boolean = size > 64
-        }
-    )
+    private val cache =
+        java.util.Collections.synchronizedMap(
+            object : LinkedHashMap<String, UUID>(64, 0.75f, true) {
+                override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, UUID>?): Boolean = size > 64
+            }
+        )
 
     fun resolveUuid(name: String): CompletableFuture<UUID?> =
         CompletableFuture.supplyAsync({
@@ -36,8 +37,12 @@ object MojangApi {
         }, SpvExecutor.executor)
 
     private fun parseUndashedUuid(raw: String): UUID {
-        val s = if (raw.contains('-')) raw else
-            "${raw.substring(0, 8)}-${raw.substring(8, 12)}-${raw.substring(12, 16)}-${raw.substring(16, 20)}-${raw.substring(20)}"
+        val s =
+            if (raw.contains('-')) {
+                raw
+            } else {
+                "${raw.substring(0, 8)}-${raw.substring(8, 12)}-${raw.substring(12, 16)}-${raw.substring(16, 20)}-${raw.substring(20)}"
+            }
         return UUID.fromString(s)
     }
 

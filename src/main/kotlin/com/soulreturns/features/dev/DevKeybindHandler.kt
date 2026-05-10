@@ -28,18 +28,21 @@ import org.lwjgl.glfw.GLFW
 object DevKeybindHandler {
     private val logger = SoulLogger("Soul/DevKeybinds")
     private val gson = GsonBuilder().setPrettyPrinting().create()
+
     /** Keys that were pressed last tick; used to fire on the press *edge*, not while held. */
     private val held = mutableSetOf<String>()
 
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { client ->
-            val k = cfg.dev.keybinds
-            check(client, "copyOpenedGui",          k.copyOpenedGui())          { copyOpenedGui() }
-            check(client, "copyItemUnderCursor",    k.copyItemUnderCursor())    { copyItemUnderCursor() }
-            check(client, "copyHeldItem",           k.copyHeldItem())           { copyHeldItem() }
-            check(client, "copyScoreboard",         k.copyScoreboard())         { copyScoreboard() }
-            check(client, "copyTablist",            k.copyTablist())            { copyTablist() }
-        })
+        ClientTickEvents.END_CLIENT_TICK.register(
+            ClientTickEvents.EndTick { client ->
+                val k = cfg.dev.keybinds
+                check(client, "copyOpenedGui", k.copyOpenedGui()) { copyOpenedGui() }
+                check(client, "copyItemUnderCursor", k.copyItemUnderCursor()) { copyItemUnderCursor() }
+                check(client, "copyHeldItem", k.copyHeldItem()) { copyHeldItem() }
+                check(client, "copyScoreboard", k.copyScoreboard()) { copyScoreboard() }
+                check(client, "copyTablist", k.copyTablist()) { copyTablist() }
+            }
+        )
     }
 
     private inline fun check(
@@ -52,20 +55,30 @@ object DevKeybindHandler {
             held.remove(slot)
             return
         }
-        val key = try { InputConstants.getKey(bindingName) } catch (_: Throwable) {
-            held.remove(slot); return
+        val key =
+            try {
+                InputConstants.getKey(bindingName)
+            } catch (_: Throwable) {
+                held.remove(slot)
+                return
+            }
+        if (key.value < 0) {
+            held.remove(slot)
+            return
         }
-        if (key.value < 0) { held.remove(slot); return }
         val window = client.window
-        val isDown = when (key.type) {
-            InputConstants.Type.KEYSYM -> InputConstants.isKeyDown(window, key.value)
-            InputConstants.Type.MOUSE  -> GLFW.glfwGetMouseButton(window.handle(), key.value) == GLFW.GLFW_PRESS
-            else -> false
-        }
+        val isDown =
+            when (key.type) {
+                InputConstants.Type.KEYSYM -> InputConstants.isKeyDown(window, key.value)
+                InputConstants.Type.MOUSE -> GLFW.glfwGetMouseButton(window.handle(), key.value) == GLFW.GLFW_PRESS
+                else -> false
+            }
         val wasDown = slot in held
         if (isDown && !wasDown) {
             held.add(slot)
-            try { action() } catch (t: Throwable) {
+            try {
+                action()
+            } catch (t: Throwable) {
                 logger.warn("Keybind action '$slot' threw", t)
                 soulChat("§cKeybind '$slot' failed: ${t.message}")
             }
@@ -80,14 +93,16 @@ object DevKeybindHandler {
         val mc = Minecraft.getInstance()
         val screen = mc.screen
         if (screen !is AbstractContainerScreen<*>) {
-            soulChat("§7No container GUI open."); return
+            soulChat("§7No container GUI open.")
+            return
         }
         val menu = screen.menu
-        val obj = JsonObject().apply {
-            addProperty("title", screen.title.string)
-            addProperty("menuClass", menu::class.java.simpleName)
-            addProperty("slotCount", menu.slots.size)
-        }
+        val obj =
+            JsonObject().apply {
+                addProperty("title", screen.title.string)
+                addProperty("menuClass", menu::class.java.simpleName)
+                addProperty("slotCount", menu.slots.size)
+            }
         val slotsArr = JsonArray()
         for ((idx, slot) in menu.slots.withIndex()) {
             val stack = slot.item
@@ -102,11 +117,13 @@ object DevKeybindHandler {
         val mc = Minecraft.getInstance()
         val screen = mc.screen
         if (screen !is AbstractContainerScreen<*>) {
-            soulChat("§7No container GUI open."); return
+            soulChat("§7No container GUI open.")
+            return
         }
         val slot = screen.hoveredSlot
         if (slot == null || slot.item.isEmpty) {
-            soulChat("§7No item under cursor."); return
+            soulChat("§7No item under cursor.")
+            return
         }
         copyToClipboard(itemToJson(slot.item), "item ‘${slot.item.hoverName.string}’")
     }
@@ -114,22 +131,29 @@ object DevKeybindHandler {
     private fun copyHeldItem() {
         val player = Minecraft.getInstance().player
         if (player == null) {
-            soulChat("§7No player."); return
+            soulChat("§7No player.")
+            return
         }
         val stack = player.mainHandItem
         if (stack.isEmpty) {
-            soulChat("§7Hand is empty."); return
+            soulChat("§7Hand is empty.")
+            return
         }
         copyToClipboard(itemToJson(stack), "held ‘${stack.hoverName.string}’")
     }
 
     private fun copyScoreboard() {
         val mc = Minecraft.getInstance()
-        val level = mc.level ?: run { soulChat("§7No world."); return }
+        val level =
+            mc.level ?: run {
+                soulChat("§7No world.")
+                return
+            }
         val scoreboard = level.scoreboard
         val objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR)
         if (objective == null) {
-            soulChat("§7No sidebar scoreboard."); return
+            soulChat("§7No sidebar scoreboard.")
+            return
         }
         val title = objective.displayName.string
         // Hypixel renders SkyBlock scoreboard top-to-bottom: highest score first.
@@ -137,12 +161,13 @@ object DevKeybindHandler {
         val obj = JsonObject().apply { addProperty("title", title) }
         val linesArr = JsonArray()
         for (s in scores) {
-            val line = JsonObject().apply {
-                addProperty("score", s.value())
-                addProperty("owner", s.owner())
-                addProperty("text", renderScoreLine(scoreboard, s))
-                s.display()?.let { addProperty("display", it.string) }
-            }
+            val line =
+                JsonObject().apply {
+                    addProperty("score", s.value())
+                    addProperty("owner", s.owner())
+                    addProperty("text", renderScoreLine(scoreboard, s))
+                    s.display()?.let { addProperty("display", it.string) }
+                }
             linesArr.add(line)
         }
         obj.add("lines", linesArr)
@@ -154,16 +179,26 @@ object DevKeybindHandler {
      * `team.prefix + team-formatted owner + team.suffix`. Hypixel uses placeholder `owner` strings
      * (`§y`, `§x`, ...) and stores the actual line content in the team's prefix/suffix.
      */
-    private fun renderScoreLine(scoreboard: Scoreboard, entry: PlayerScoreEntry): String {
+    private fun renderScoreLine(
+        scoreboard: Scoreboard,
+        entry: PlayerScoreEntry
+    ): String {
         val team = scoreboard.getPlayersTeam(entry.owner())
         val ownerName = entry.ownerName()
-        return if (team == null) ownerName.string
-        else team.getPlayerPrefix().copy().append(ownerName).append(team.getPlayerSuffix()).string
+        return if (team == null) {
+            ownerName.string
+        } else {
+            team.getPlayerPrefix().copy().append(ownerName).append(team.getPlayerSuffix()).string
+        }
     }
 
     private fun copyTablist() {
         val mc = Minecraft.getInstance()
-        val conn = mc.player?.connection ?: run { soulChat("§7Not connected."); return }
+        val conn =
+            mc.player?.connection ?: run {
+                soulChat("§7Not connected.")
+                return
+            }
         val obj = JsonObject()
         mc.gui.tabList.let { tab ->
             // Header / footer aren't directly accessible via public API — use reflection sparingly,
@@ -171,13 +206,14 @@ object DevKeybindHandler {
         }
         val playersArr = JsonArray()
         for (info in conn.listedOnlinePlayers) {
-            val p = JsonObject().apply {
-                addProperty("name", info.profile.name)
-                addProperty("uuid", info.profile.id.toString())
-                info.tabListDisplayName?.let { addProperty("displayName", it.string) }
-                addProperty("latency", info.latency)
-                addProperty("gameMode", info.gameMode.name)
-            }
+            val p =
+                JsonObject().apply {
+                    addProperty("name", info.profile.name)
+                    addProperty("uuid", info.profile.id.toString())
+                    info.tabListDisplayName?.let { addProperty("displayName", it.string) }
+                    addProperty("latency", info.latency)
+                    addProperty("gameMode", info.gameMode.name)
+                }
             playersArr.add(p)
         }
         obj.add("players", playersArr)
@@ -187,11 +223,12 @@ object DevKeybindHandler {
     // ───────────────────── helpers ─────────────────────
 
     private fun itemToJson(stack: ItemStack): JsonObject {
-        val obj = JsonObject().apply {
-            addProperty("displayName", stack.hoverName.string)
-            addProperty("count", stack.count)
-            addProperty("itemId", BuiltInRegistries.ITEM.getKey(stack.item).toString())
-        }
+        val obj =
+            JsonObject().apply {
+                addProperty("displayName", stack.hoverName.string)
+                addProperty("count", stack.count)
+                addProperty("itemId", BuiltInRegistries.ITEM.getKey(stack.item).toString())
+            }
         SkyblockItemUtils.getSkyblockId(stack)?.let { obj.addProperty("skyblockId", it) }
         // Best-effort serialise the full stack (components + item) to NBT for reproducibility.
         try {
@@ -202,11 +239,16 @@ object DevKeybindHandler {
                     obj.addProperty("nbt", tag.toString())
                 }
             }
-        } catch (_: Throwable) { /* component serialisation is version-sensitive — skip on failure */ }
+        } catch (_: Throwable) {
+            // component serialisation is version-sensitive — skip on failure
+        }
         return obj
     }
 
-    private fun copyToClipboard(obj: JsonObject, label: String) {
+    private fun copyToClipboard(
+        obj: JsonObject,
+        label: String
+    ) {
         val mc = Minecraft.getInstance()
         val text = gson.toJson(obj)
         mc.execute { mc.keyboardHandler.setClipboard(text) }

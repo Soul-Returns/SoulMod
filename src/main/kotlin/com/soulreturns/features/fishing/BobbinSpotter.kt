@@ -34,32 +34,39 @@ object BobbinSpotter {
         val player = client.player ?: return
         val world = client.level ?: return
 
-        nearbyBobbers = world.entitiesForRendering()
-            .filterIsInstance<FishingHook>()
-            .count { bobber -> bobber.distanceToSqr(player) <= RADIUS_SQ }
+        nearbyBobbers =
+            world.entitiesForRendering()
+                .filterIsInstance<FishingHook>()
+                .count { bobber -> bobber.distanceToSqr(player) <= RADIUS_SQ }
 
         handleAlert(player, nearbyBobbers, cfg.fishing.bobbinTime)
     }
 
-    private fun handleAlert(player: Player, count: Int, fishingConfig: SoulConfig.BobbinTime) {
+    private fun handleAlert(
+        player: Player,
+        count: Int,
+        fishingConfig: SoulConfig.BobbinTime
+    ) {
         if (!fishingConfig.enableBobbinTimeAlert()) {
             alertTriggered = false
             return
         }
 
-        val filters = fishingConfig.alertItemNameFilter()
-            .split(',')
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
+        val filters =
+            fishingConfig.alertItemNameFilter()
+                .split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
 
         if (filters.isNotEmpty()) {
             val inventory = player.inventory
-            val hasMatchingItem = (0 until inventory.containerSize).any { slot ->
-                val stack = inventory.getItem(slot)
-                if (stack.isEmpty) return@any false
-                val name = stack.hoverName.string
-                filters.any { filter -> name.contains(filter, ignoreCase = true) }
-            }
+            val hasMatchingItem =
+                (0 until inventory.containerSize).any { slot ->
+                    val stack = inventory.getItem(slot)
+                    if (stack.isEmpty) return@any false
+                    val name = stack.hoverName.string
+                    filters.any { filter -> name.contains(filter, ignoreCase = true) }
+                }
             if (!hasMatchingItem) {
                 alertTriggered = false
                 return
@@ -71,11 +78,12 @@ object BobbinSpotter {
         val staticThreshold = fishingConfig.alertBobberCount().coerceIn(1, 5)
         val partySize = PartyManager.getPartySize()
         val partyThreshold = if (partySize > 0) (partySize - 1).coerceIn(1, 5) else null
-        val threshold = if (fishingConfig.syncBobbinAlertWithParty() && partyThreshold != null) {
-            partyThreshold
-        } else {
-            staticThreshold
-        }
+        val threshold =
+            if (fishingConfig.syncBobbinAlertWithParty() && partyThreshold != null) {
+                partyThreshold
+            } else {
+                staticThreshold
+            }
 
         // Fire once when count crosses threshold; cooldown stops re-cast spam.
         val now = System.currentTimeMillis()

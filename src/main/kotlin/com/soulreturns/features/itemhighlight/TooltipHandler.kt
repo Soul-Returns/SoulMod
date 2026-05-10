@@ -3,15 +3,12 @@ package com.soulreturns.features.itemhighlight
 import com.soulreturns.config.cfg
 import com.soulreturns.util.SkyblockItemUtils
 import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback
-import net.minecraft.world.item.Item
-import net.minecraft.world.item.TooltipFlag
 import net.minecraft.network.chat.Component
 
 /**
  * Handles adding Skyblock ID to item tooltips
  */
 object TooltipHandler {
-
     fun register() {
         ItemTooltipCallback.EVENT.register { stack, context, type, lines ->
             // Check if the feature is enabled

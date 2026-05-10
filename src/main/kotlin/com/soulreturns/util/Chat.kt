@@ -7,7 +7,8 @@ import net.minecraft.network.chat.Component
 fun soulChat(message: String) {
     Minecraft.getInstance().execute {
         Minecraft.getInstance().player?.displayClientMessage(
-            Component.literal("§8[§6Soul§8]§r $message"), false
+            Component.literal("§8[§6Soul§8]§r $message"),
+            false
         )
     }
 }

@@ -28,7 +28,6 @@ import com.google.gson.JsonObject
  * }
  */
 class DungeonsView(val raw: JsonObject) {
-
     val catacombsExperience: Double get() = doublePath("dungeon_types/catacombs/experience")
     val masterCatacombsExperience: Double get() = doublePath("dungeon_types/master_catacombs/experience")
 
@@ -38,19 +37,25 @@ class DungeonsView(val raw: JsonObject) {
         get() {
             val pc = raw.getAsJsonObject("player_classes") ?: return emptyMap()
             return pc.entrySet().associate { (k, v) ->
-                val xp = (v as? JsonObject)?.get("experience")?.let { e ->
-                    if (e.isJsonPrimitive) e.asDouble else 0.0
-                } ?: 0.0
+                val xp =
+                    (v as? JsonObject)?.get("experience")?.let { e ->
+                        if (e.isJsonPrimitive) e.asDouble else 0.0
+                    } ?: 0.0
                 k to xp
             }
         }
 
     fun normalFloor(tier: Int): FloorStats = floorStats("catacombs", tier)
+
     fun masterFloor(tier: Int): FloorStats = floorStats("master_catacombs", tier)
 
-    private fun floorStats(branch: String, tier: Int): FloorStats {
-        val node = raw.getAsJsonObject("dungeon_types")?.getAsJsonObject(branch)
-            ?: return FloorStats.EMPTY
+    private fun floorStats(
+        branch: String,
+        tier: Int
+    ): FloorStats {
+        val node =
+            raw.getAsJsonObject("dungeon_types")?.getAsJsonObject(branch)
+                ?: return FloorStats.EMPTY
         val key = tier.toString()
         return FloorStats(
             completions = intFrom(node.getAsJsonObject("tier_completions"), key),
@@ -63,7 +68,8 @@ class DungeonsView(val raw: JsonObject) {
 
     /** Total catacombs runs across all tiers (entrance through F7). */
     val totalCatacombsCompletions: Int
-        get() = (0..7).sumOf { normalFloor(it).completions } +
+        get() =
+            (0..7).sumOf { normalFloor(it).completions } +
                 (1..7).sumOf { masterFloor(it).completions }
 
     /**
@@ -83,12 +89,18 @@ class DungeonsView(val raw: JsonObject) {
         return if (cur != null && cur.isJsonPrimitive && cur.asJsonPrimitive.isNumber) cur.asDouble else 0.0
     }
 
-    private fun intFrom(obj: JsonObject?, key: String): Int {
+    private fun intFrom(
+        obj: JsonObject?,
+        key: String
+    ): Int {
         val v = obj?.get(key) ?: return 0
         return if (v.isJsonPrimitive && v.asJsonPrimitive.isNumber) v.asInt else 0
     }
 
-    private fun longFrom(obj: JsonObject?, key: String): Long {
+    private fun longFrom(
+        obj: JsonObject?,
+        key: String
+    ): Long {
         val v = obj?.get(key) ?: return 0L
         return if (v.isJsonPrimitive && v.asJsonPrimitive.isNumber) v.asLong else 0L
     }

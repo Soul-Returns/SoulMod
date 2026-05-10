@@ -1,10 +1,10 @@
 package com.soulreturns.profileviewer.gui
 
-import com.soulreturns.ui.theme.Theme
 import com.soulreturns.profileviewer.api.MojangApi
 import com.soulreturns.profileviewer.model.SkyblockProfile
 import com.soulreturns.profileviewer.model.SkyblockProfilesResponse
 import com.soulreturns.render.DrawContextRenderer
+import com.soulreturns.ui.theme.Theme
 import io.wispforest.owo.ui.base.BaseOwoScreen
 import io.wispforest.owo.ui.component.ButtonComponent
 import io.wispforest.owo.ui.component.LabelComponent
@@ -27,7 +27,6 @@ class ProfileViewerScreen(
     private val response: SkyblockProfilesResponse,
     initial: SkyblockProfile,
 ) : BaseOwoScreen<FlowLayout>(Component.literal("Soul Profile Viewer — $name")) {
-
     private var current: SkyblockProfile = initial
     private val uuidUndashed = MojangApi.toUndashed(uuid)
     private var activeTab = "dungeons"
@@ -78,8 +77,9 @@ class ProfileViewerScreen(
         if (response.profiles.size > 1) {
             header.child(verticalSeparator())
             header.child(cycleButton("◀") { cycleProfile(-1) })
-            val lbl = UIComponents.label(Component.literal(profileDisplay(current)))
-                .color(Theme.color(Theme.TEXT_DIM))
+            val lbl =
+                UIComponents.label(Component.literal(profileDisplay(current)))
+                    .color(Theme.color(Theme.TEXT_DIM))
             profileNameLabel = lbl
             header.child(lbl)
             header.child(cycleButton("▶") { cycleProfile(1) })
@@ -97,29 +97,50 @@ class ProfileViewerScreen(
         return bar
     }
 
-    private fun tabButton(label: String, id: String): ButtonComponent {
-        val btn = UIComponents.button(Component.empty()) {
-            if (activeTab != id) { activeTab = id; rebuildBody() }
-        }
+    private fun tabButton(
+        label: String,
+        id: String
+    ): ButtonComponent {
+        val btn =
+            UIComponents.button(Component.empty()) {
+                if (activeTab != id) {
+                    activeTab = id
+                    rebuildBody()
+                }
+            }
         btn.horizontalSizing(Sizing.fixed(90))
         btn.verticalSizing(Sizing.fixed(26))
-        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
-            val selected = activeTab == id
-            when {
-                selected -> DrawContextRenderer.roundedFill(
-                    ctx, button.x, button.y, button.x + button.width, button.y + button.height,
-                    Theme.ACCENT, Theme.ITEM_RADIUS
-                )
-                button.isHovered -> DrawContextRenderer.roundedFill(
-                    ctx, button.x, button.y, button.x + button.width, button.y + button.height,
-                    Theme.PANEL_HOVER, Theme.ITEM_RADIUS
-                )
+        btn.renderer(
+            ButtonComponent.Renderer { ctx, button, _ ->
+                val selected = activeTab == id
+                when {
+                    selected ->
+                        DrawContextRenderer.roundedFill(
+                            ctx,
+                            button.x,
+                            button.y,
+                            button.x + button.width,
+                            button.y + button.height,
+                            Theme.ACCENT,
+                            Theme.ITEM_RADIUS
+                        )
+                    button.isHovered ->
+                        DrawContextRenderer.roundedFill(
+                            ctx,
+                            button.x,
+                            button.y,
+                            button.x + button.width,
+                            button.y + button.height,
+                            Theme.PANEL_HOVER,
+                            Theme.ITEM_RADIUS
+                        )
+                }
+                val tr = Minecraft.getInstance().font
+                val tx = button.x + (button.width - tr.width(label)) / 2
+                val ty = button.y + (button.height - tr.lineHeight) / 2
+                ctx.drawString(tr, Component.literal(label), tx, ty, if (selected) Theme.TEXT else Theme.TEXT_DIM, false)
             }
-            val tr = Minecraft.getInstance().font
-            val tx = button.x + (button.width - tr.width(label)) / 2
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            ctx.drawString(tr, Component.literal(label), tx, ty, if (selected) Theme.TEXT else Theme.TEXT_DIM, false)
-        })
+        )
         return btn
     }
 
@@ -151,18 +172,31 @@ class ProfileViewerScreen(
         return "${p.cuteName}$modeTag$active"
     }
 
-    private fun cycleButton(icon: String, action: () -> Unit): ButtonComponent {
+    private fun cycleButton(
+        icon: String,
+        action: () -> Unit
+    ): ButtonComponent {
         val btn = UIComponents.button(Component.empty()) { action() }
         btn.horizontalSizing(Sizing.fixed(20))
         btn.verticalSizing(Sizing.fixed(20))
-        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
-            val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
-            DrawContextRenderer.roundedFill(ctx, button.x, button.y, button.x + button.width, button.y + button.height, bg, Theme.ITEM_RADIUS)
-            val tr = Minecraft.getInstance().font
-            val tx = button.x + (button.width - tr.width(icon)) / 2
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            ctx.drawString(tr, Component.literal(icon), tx, ty, Theme.TEXT_DIM, false)
-        })
+        btn.renderer(
+            ButtonComponent.Renderer { ctx, button, _ ->
+                val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
+                DrawContextRenderer.roundedFill(
+                    ctx,
+                    button.x,
+                    button.y,
+                    button.x + button.width,
+                    button.y + button.height,
+                    bg,
+                    Theme.ITEM_RADIUS
+                )
+                val tr = Minecraft.getInstance().font
+                val tx = button.x + (button.width - tr.width(icon)) / 2
+                val ty = button.y + (button.height - tr.lineHeight) / 2
+                ctx.drawString(tr, Component.literal(icon), tx, ty, Theme.TEXT_DIM, false)
+            }
+        )
         return btn
     }
 

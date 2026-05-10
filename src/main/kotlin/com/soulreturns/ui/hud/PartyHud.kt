@@ -20,11 +20,12 @@ object PartyHud {
 
     private fun tick(client: Minecraft) {
         client.player ?: return
-        val enabled = try {
-            cfg.render.overlays.enablePartyOverlay()
-        } catch (_: Exception) {
-            return
-        }
+        val enabled =
+            try {
+                cfg.render.overlays.enablePartyOverlay()
+            } catch (_: Exception) {
+                return
+            }
 
         if (!enabled) {
             // Hide but keep layout — defaults are not re-applied because layout already exists.
@@ -60,9 +61,10 @@ object PartyHud {
         val members = state.members.values
 
         // Everyone except the leader (members + moderators).
-        val memberNames = members
-            .filter { it.role != PartyRole.LEADER }
-            .joinToString(", ") { it.displayName }
+        val memberNames =
+            members
+                .filter { it.role != PartyRole.LEADER }
+                .joinToString(", ") { it.displayName }
 
         val lines = mutableListOf<String>()
         lines += "Leader: $leaderDisplay"

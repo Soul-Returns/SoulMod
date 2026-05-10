@@ -3,8 +3,8 @@ package com.soulreturns.util
 import com.soulreturns.platform.mixinbridge.RenderHelper
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
-import net.minecraft.sounds.SoundEvents
 import net.minecraft.network.chat.Component
+import net.minecraft.sounds.SoundEvents
 
 object RenderUtils {
     private val alertMessages = mutableListOf<AlertMessage>()
@@ -23,12 +23,18 @@ object RenderUtils {
      * @param textScale The scale factor for the text size (default: 2.0 for double size)
      * @param durationMs How long to show the message in milliseconds (null for permanent until cleared)
      */
-    fun showAlert(text: String, color: Int = 0xFFFF0000.toInt(), textScale: Float = 4.0f, durationMs: Long? = null) {
-        val expiryTime = if (durationMs != null) {
-            System.currentTimeMillis() + durationMs
-        } else {
-            Long.MAX_VALUE
-        }
+    fun showAlert(
+        text: String,
+        color: Int = 0xFFFF0000.toInt(),
+        textScale: Float = 4.0f,
+        durationMs: Long? = null
+    ) {
+        val expiryTime =
+            if (durationMs != null) {
+                System.currentTimeMillis() + durationMs
+            } else {
+                Long.MAX_VALUE
+            }
         alertMessages.add(AlertMessage(text, color, textScale, expiryTime))
 
         val client = Minecraft.getInstance()
@@ -101,4 +107,3 @@ object RenderUtils {
         }
     }
 }
-

@@ -8,7 +8,6 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 
 object CheckForUpdatesSubcommand : SoulSubcommand {
-
     override fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return literal("checkForUpdates") {
             runs { _ ->

@@ -412,4 +412,4 @@ Tick-driven debounced save (max once per second), atomic write (temp file + rena
 - **Theme for all UI**: config screen, SPV, HUDs, update modal must use `ui/theme/Theme.*` constants. Never hardcode ARGB colors in UI code.
 - **Lang key prefix**: `text.config.soul/config.*` — the `/` is intentional, matching `@Config(name = "soul/config")`.
 - **Shared run directory**: `run/` is shared across versions; launch from the IDE via the `:1.21.11` run config.
-- **ktlint warnings on existing files** (`SoulRenderPipelines`, `RoundRectRenderer`, `Chat`) are pre-existing style issues from before the linter was wired in. Don't mass-`ktlintFormat` the codebase — it would create a sweeping diff. Fix files you're already touching for other reasons; leave the rest.
+- **ktlint is clean** — `:check` reports zero warnings as of the last sweep. Keep it that way: run `ktlintFormat` on files you touch. If a manual-fix warning appears (most commonly "comment in `value_parameter_list` / `value_argument_list`" when an inline `// …` comment sits next to a parameter or argument), move the comment onto its own line above the param rather than suppressing the rule.

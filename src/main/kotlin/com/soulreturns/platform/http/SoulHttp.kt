@@ -14,38 +14,45 @@ object SoulHttp {
     const val MOJANG_API = "https://api.mojang.com"
 
     fun userAgent(): String {
-        val mc = try {
-            net.minecraft.SharedConstants.getCurrentVersion().name()
-        } catch (_: Throwable) {
-            "unknown"
-        }
+        val mc =
+            try {
+                net.minecraft.SharedConstants.getCurrentVersion().name()
+            } catch (_: Throwable) {
+                "unknown"
+            }
         return "SoulMod/${Soul.version}/$mc"
     }
 
     fun backendBaseUrl(): String {
         val sysProp = System.getProperty("soul.backendUrl")
         if (!sysProp.isNullOrBlank()) return sysProp.trimEnd('/')
-        val override = try {
-            cfg.dev.backend.backendUrlOverride()
-        } catch (_: Throwable) {
-            ""
-        }
+        val override =
+            try {
+                cfg.dev.backend.backendUrlOverride()
+            } catch (_: Throwable) {
+                ""
+            }
         if (override.isNotBlank()) return override.trimEnd('/')
         return BACKEND_URL
     }
 
-    val client: HttpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(10))
-        .followRedirects(HttpClient.Redirect.NORMAL)
-        .executor(SoulExecutor.executor)
-        .build()
+    val client: HttpClient =
+        HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .executor(SoulExecutor.executor)
+            .build()
 
-    fun get(url: String, headers: Map<String, String> = emptyMap()): HttpResponse<String> {
-        val builder = HttpRequest.newBuilder()
-            .GET()
-            .uri(URI.create(url))
-            .timeout(Duration.ofSeconds(15))
-            .header("User-Agent", userAgent())
+    fun get(
+        url: String,
+        headers: Map<String, String> = emptyMap()
+    ): HttpResponse<String> {
+        val builder =
+            HttpRequest.newBuilder()
+                .GET()
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(15))
+                .header("User-Agent", userAgent())
         headers.forEach { (k, v) -> builder.header(k, v) }
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }

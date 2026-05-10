@@ -15,7 +15,6 @@ class SoulToggle(
     checked: Boolean,
     private val onToggle: (Boolean) -> Unit,
 ) : BaseUIComponent() {
-
     var checked: Boolean = checked
         private set
 
@@ -25,7 +24,13 @@ class SoulToggle(
         verticalSizing(Sizing.fixed(HEIGHT))
     }
 
-    override fun draw(context: OwoUIGraphics, mouseX: Int, mouseY: Int, partialTicks: Float, delta: Float) {
+    override fun draw(
+        context: OwoUIGraphics,
+        mouseX: Int,
+        mouseY: Int,
+        partialTicks: Float,
+        delta: Float
+    ) {
         val trackColor = if (checked) Theme.ACCENT else Theme.PANEL_HOVER
         DrawContextRenderer.roundedFill(context, x, y, x + width, y + height, trackColor, HEIGHT / 2f)
 
@@ -34,13 +39,19 @@ class SoulToggle(
         val knobX = if (checked) x + width - knobPad - knobSize else x + knobPad
         DrawContextRenderer.roundedFill(
             context,
-            knobX, y + knobPad,
-            knobX + knobSize, y + knobPad + knobSize,
-            Theme.TEXT, knobSize / 2f,
+            knobX,
+            y + knobPad,
+            knobX + knobSize,
+            y + knobPad + knobSize,
+            Theme.TEXT,
+            knobSize / 2f,
         )
     }
 
-    override fun onMouseDown(click: MouseButtonEvent, doubled: Boolean): Boolean {
+    override fun onMouseDown(
+        click: MouseButtonEvent,
+        doubled: Boolean
+    ): Boolean {
         if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             checked = !checked
             onToggle(checked)
@@ -49,10 +60,14 @@ class SoulToggle(
         return super.onMouseDown(click, doubled)
     }
 
-    fun setChecked(v: Boolean) { checked = v }
+    fun setChecked(v: Boolean) {
+        checked = v
+    }
 
     override fun determineHorizontalContentSize(sizing: Sizing): Int = WIDTH
+
     override fun determineVerticalContentSize(sizing: Sizing): Int = HEIGHT
+
     override fun canFocus(source: UIComponent.FocusSource): Boolean = false
 
     companion object {

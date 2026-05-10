@@ -14,7 +14,6 @@ import net.minecraft.network.chat.Component
  *  - Names are resolved to translatable [Component]s using `text.config.soul/config.{category,group}.<id>` keys.
  */
 internal object CategoriesCollector {
-
     fun collect(wrapper: ConfigWrapper<*>): List<CategoryEntry> {
         val byCat = LinkedHashMap<String, LinkedHashMap<String, MutableList<Option<*>>>>()
         wrapper.forEachOption { opt ->
@@ -37,14 +36,15 @@ internal object CategoriesCollector {
                 if (idx < 0) maxOrderIdx else idx
             }
             .map { (catId, groups) ->
-                val subs = groups.entries.map { (subId, options) ->
-                    SubcategoryEntry(
-                        catId = catId,
-                        subId = subId,
-                        displayName = Component.translatable("text.config.soul/config.group.$catId.$subId"),
-                        options = options,
-                    )
-                }
+                val subs =
+                    groups.entries.map { (subId, options) ->
+                        SubcategoryEntry(
+                            catId = catId,
+                            subId = subId,
+                            displayName = Component.translatable("text.config.soul/config.group.$catId.$subId"),
+                            options = options,
+                        )
+                    }
                 CategoryEntry(
                     id = catId,
                     displayName = Component.translatable("text.config.soul/config.category.$catId"),

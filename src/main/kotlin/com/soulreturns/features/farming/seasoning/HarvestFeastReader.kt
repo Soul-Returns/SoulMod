@@ -47,7 +47,7 @@ object HarvestFeastReader {
             return
         }
         val pairs = collectMilestonePairs(screen)
-        if (pairs.isEmpty()) return  // menu opened but server hasn't populated slots yet
+        if (pairs.isEmpty()) return // menu opened but server hasn't populated slots yet
 
         val targets = pairs.map { it.second }.distinct().sorted()
         val total = decodeTotal(pairs)

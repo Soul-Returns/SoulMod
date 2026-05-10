@@ -1,7 +1,7 @@
 package com.soulreturns.platform.http
 
-import net.minecraft.client.Minecraft
 import com.soulreturns.util.SoulLogger
+import net.minecraft.client.Minecraft
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
@@ -18,13 +18,13 @@ import java.util.concurrent.TimeUnit
  * All other errors are swallowed — a missed ping is harmless.
  */
 object PresenceService {
-
     private val logger = SoulLogger("Soul/Presence")
     private const val INTERVAL_SEC = 20L
 
-    private val scheduler = Executors.newSingleThreadScheduledExecutor { r ->
-        Thread(r, "soul-presence").also { it.isDaemon = true }
-    }
+    private val scheduler =
+        Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "soul-presence").also { it.isDaemon = true }
+        }
 
     fun start() {
         scheduler.scheduleAtFixedRate(::sendPing, 0, INTERVAL_SEC, TimeUnit.SECONDS)

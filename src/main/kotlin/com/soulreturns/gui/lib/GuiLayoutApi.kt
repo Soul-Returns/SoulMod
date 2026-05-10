@@ -5,7 +5,6 @@ package com.soulreturns.gui.lib
  * without needing to manipulate GuiLayout directly.
  */
 object GuiLayoutApi {
-
     /**
      * Create or update a simple on-screen text block.
      *
@@ -47,30 +46,31 @@ object GuiLayoutApi {
             }
         }
 
-        val updated = if (existing != null) {
-            existing.copy(
-                enabled = enabled,
-                // Only override title/lines when non-null/non-empty so user
-                // edits to layout (position/scale) are preserved cleanly.
-                title = title ?: existing.title,
-                lines = if (lines.isNotEmpty()) lines else existing.lines,
-                color = color,
-            )
-        } else {
-            TextBlockElement(
-                id = id,
-                enabled = enabled,
-                anchorX = defaultAnchorX,
-                anchorY = defaultAnchorY,
-                offsetX = defaultOffsetX,
-                offsetY = defaultOffsetY,
-                scale = defaultScale,
-                textShadow = defaultTextShadow,
-                title = title,
-                lines = lines,
-                color = color,
-            )
-        }
+        val updated =
+            if (existing != null) {
+                existing.copy(
+                    enabled = enabled,
+                    // Only override title/lines when non-null/non-empty so user
+                    // edits to layout (position/scale) are preserved cleanly.
+                    title = title ?: existing.title,
+                    lines = if (lines.isNotEmpty()) lines else existing.lines,
+                    color = color,
+                )
+            } else {
+                TextBlockElement(
+                    id = id,
+                    enabled = enabled,
+                    anchorX = defaultAnchorX,
+                    anchorY = defaultAnchorY,
+                    offsetX = defaultOffsetX,
+                    offsetY = defaultOffsetY,
+                    scale = defaultScale,
+                    textShadow = defaultTextShadow,
+                    title = title,
+                    lines = lines,
+                    color = color,
+                )
+            }
 
         others += updated
         GuiLayoutManager.setLayout(GuiLayout(others))

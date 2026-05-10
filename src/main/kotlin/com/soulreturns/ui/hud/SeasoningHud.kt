@@ -29,13 +29,15 @@ object SeasoningHud {
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { _ -> updateHud() })
 
         // Per-screen mouse listener so the [Reset Session] button is clickable while any screen is open.
-        ScreenEvents.AFTER_INIT.register(ScreenEvents.AfterInit { _, screen, _, _ ->
-            ScreenMouseEvents.beforeMouseClick(screen).register(
-                ScreenMouseEvents.BeforeMouseClick { _, click ->
-                    tryHandleResetClick(click.x().toInt(), click.y().toInt())
-                }
-            )
-        })
+        ScreenEvents.AFTER_INIT.register(
+            ScreenEvents.AfterInit { _, screen, _, _ ->
+                ScreenMouseEvents.beforeMouseClick(screen).register(
+                    ScreenMouseEvents.BeforeMouseClick { _, click ->
+                        tryHandleResetClick(click.x().toInt(), click.y().toInt())
+                    }
+                )
+            }
+        )
     }
 
     private fun updateHud() {
@@ -49,23 +51,31 @@ object SeasoningHud {
         val lines = mutableListOf<String>()
 
         // Total: 64  OR  Total: 64/250
-        lines += if (cfgFlags.showMaxMilestone() && targets.isNotEmpty())
-            "Total: $total/${targets.last()}"
-        else "Total: $total"
+        lines +=
+            if (cfgFlags.showMaxMilestone() && targets.isNotEmpty()) {
+                "Total: $total/${targets.last()}"
+            } else {
+                "Total: $total"
+            }
 
         if (cfgFlags.showNextMilestone()) {
             val next = targets.firstOrNull { it > total }
-            lines += when {
-                targets.isEmpty() -> "Next Milestone: ?"
-                next == null      -> "Next Milestone: §c§lMaxed"
-                else              -> "Next Milestone: $total/$next"
-            }
+            lines +=
+                when {
+                    targets.isEmpty() -> "Next Milestone: ?"
+                    next == null -> "Next Milestone: §c§lMaxed"
+                    else -> "Next Milestone: $total/$next"
+                }
         }
 
         if (cfgFlags.showFarmingTime()) {
             val timeStr = formatDuration(SeasoningState.seasoningFarmingMs())
-            lines += if (FarmingTimer.isPaused) "Farming Time: $timeStr §c(Paused)"
-                     else "Farming Time: $timeStr"
+            lines +=
+                if (FarmingTimer.isPaused) {
+                    "Farming Time: $timeStr §c(Paused)"
+                } else {
+                    "Farming Time: $timeStr"
+                }
         }
 
         if (cfgFlags.showPerHour()) {
@@ -116,9 +126,10 @@ object SeasoningHud {
     private fun updateResetButtonBbox(lineIndex: Int) {
         val mc = Minecraft.getInstance()
         val window = mc.window
-        val element = GuiLayoutManager.getLayout().elements
-            .filterIsInstance<TextBlockElement>()
-            .firstOrNull { it.id == ELEMENT_ID } ?: return
+        val element =
+            GuiLayoutManager.getLayout().elements
+                .filterIsInstance<TextBlockElement>()
+                .firstOrNull { it.id == ELEMENT_ID } ?: return
         if (!element.enabled) return
 
         val baseX = (element.anchorX * window.guiScaledWidth).toInt() + element.offsetX
@@ -134,7 +145,10 @@ object SeasoningHud {
         resetButtonBbox = intArrayOf(baseX, y, width, height)
     }
 
-    private fun tryHandleResetClick(mouseX: Int, mouseY: Int) {
+    private fun tryHandleResetClick(
+        mouseX: Int,
+        mouseY: Int
+    ) {
         val bbox = resetButtonBbox ?: return
         val (x, y, w, h) = listOf(bbox[0], bbox[1], bbox[2], bbox[3])
         if (mouseX in x..(x + w) && mouseY in y..(y + h)) {

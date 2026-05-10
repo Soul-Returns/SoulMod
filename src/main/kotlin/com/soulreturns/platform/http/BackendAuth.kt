@@ -12,12 +12,14 @@ object BackendAuth {
     private data class TokenEntry(val token: String, val expiresAt: Instant)
 
     private val current = AtomicReference<TokenEntry?>(null)
+
     @Volatile private var lastFailureAt: Instant = Instant.EPOCH
+
     @Volatile private var lastRateLimitAt: Instant = Instant.EPOCH
 
-    private const val FAILURE_COOLDOWN_MS    = 30_000L
-    private const val RATE_LIMIT_COOLDOWN_MS = 5 * 60_000L  // 5 minutes
-    private const val TOKEN_TTL_MS           = 23 * 60 * 60_000L  // 23 h (backend TTL is 24 h)
+    private const val FAILURE_COOLDOWN_MS = 30_000L
+    private const val RATE_LIMIT_COOLDOWN_MS = 5 * 60_000L // 5 minutes
+    private const val TOKEN_TTL_MS = 23 * 60 * 60_000L // 23 h (backend TTL is 24 h)
 
     private val cacheFile: File
         get() = FabricLoader.getInstance().configDir.resolve("soul/auth_token.txt").toFile()
@@ -33,7 +35,9 @@ object BackendAuth {
             val expiresAt = Instant.ofEpochMilli(lines[1].trim().toLong())
             if (Instant.now().isBefore(expiresAt)) {
                 current.set(TokenEntry(token, expiresAt))
-                SoulExecutor.log("Loaded cached auth token (expires in ${(expiresAt.toEpochMilli() - System.currentTimeMillis()) / 60_000} min)")
+                SoulExecutor.log(
+                    "Loaded cached auth token (expires in ${(expiresAt.toEpochMilli() - System.currentTimeMillis()) / 60_000} min)"
+                )
             } else {
                 f.delete()
                 SoulExecutor.log("Cached auth token expired, will re-authenticate")
@@ -47,7 +51,10 @@ object BackendAuth {
 
     fun clear() {
         current.set(null)
-        try { cacheFile.delete() } catch (_: Exception) {}
+        try {
+            cacheFile.delete()
+        } catch (_: Exception) {
+        }
     }
 
     fun ensureAuthenticated(forceRefresh: Boolean = false): String? {
@@ -70,7 +77,7 @@ object BackendAuth {
                 val expiresAt = Instant.now().plusMillis(TOKEN_TTL_MS)
                 current.set(TokenEntry(token, expiresAt))
                 persistToken(token, expiresAt)
-                SoulExecutor.log("Authenticated with backend (token cached until ${expiresAt})")
+                SoulExecutor.log("Authenticated with backend (token cached until $expiresAt)")
                 token
             } else {
                 lastFailureAt = Instant.now()
@@ -83,7 +90,10 @@ object BackendAuth {
         }
     }
 
-    private fun persistToken(token: String, expiresAt: Instant) {
+    private fun persistToken(
+        token: String,
+        expiresAt: Instant
+    ) {
         try {
             val f = cacheFile
             f.parentFile?.mkdirs()
@@ -109,13 +119,15 @@ object BackendAuth {
             return null
         }
 
-        val response = SoulHttp.get(
-            "${SoulHttp.backendBaseUrl()}/authenticate",
-            headers = mapOf(
-                "x-minecraft-username" to username,
-                "x-minecraft-server" to serverId,
+        val response =
+            SoulHttp.get(
+                "${SoulHttp.backendBaseUrl()}/authenticate",
+                headers =
+                    mapOf(
+                        "x-minecraft-username" to username,
+                        "x-minecraft-server" to serverId,
+                    )
             )
-        )
 
         return if (response.statusCode() in 200..299 && response.body().isNotBlank()) {
             response.body().trim()

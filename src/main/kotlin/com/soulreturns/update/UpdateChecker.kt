@@ -2,22 +2,22 @@ package com.soulreturns.update
 
 import com.google.gson.JsonParser
 import com.soulreturns.Soul
-import com.soulreturns.platform.http.SoulHttp
 import com.soulreturns.config.cfg
+import com.soulreturns.platform.http.SoulHttp
+import com.soulreturns.util.SoulLogger
 import net.minecraft.SharedConstants
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.TitleScreen
-import com.soulreturns.util.SoulLogger
 import java.util.concurrent.Executors
 
 object UpdateChecker {
-
     private val logger = SoulLogger("Soul/Update")
     private const val RELEASES_URL = "https://api.github.com/repos/Soul-Returns/SoulMod/releases/latest"
 
-    private val executor = Executors.newSingleThreadExecutor { r ->
-        Thread(r, "soul-update-check").also { it.isDaemon = true }
-    }
+    private val executor =
+        Executors.newSingleThreadExecutor { r ->
+            Thread(r, "soul-update-check").also { it.isDaemon = true }
+        }
 
     @Volatile
     var latestUpdate: UpdateInfo? = null
@@ -70,13 +70,14 @@ object UpdateChecker {
         val mcVersion = SharedConstants.getCurrentVersion().name()
         logger.info("Checking for updates... (current: $currentVersion, mc: $mcVersion)")
 
-        val response = SoulHttp.get(
-            RELEASES_URL,
-            mapOf(
-                "Accept" to "application/vnd.github+json",
-                "X-GitHub-Api-Version" to "2022-11-28",
+        val response =
+            SoulHttp.get(
+                RELEASES_URL,
+                mapOf(
+                    "Accept" to "application/vnd.github+json",
+                    "X-GitHub-Api-Version" to "2022-11-28",
+                )
             )
-        )
         logger.debug("GitHub API response: HTTP ${response.statusCode()}")
 
         if (response.statusCode() !in 200..299) {
@@ -85,14 +86,16 @@ object UpdateChecker {
         }
 
         val json = JsonParser.parseString(response.body()).asJsonObject
-        val tagName = json.get("tag_name")?.asString ?: run {
-            logger.warn("Response missing tag_name")
-            return null
-        }
-        val releaseUrl = json.get("html_url")?.asString ?: run {
-            logger.warn("Response missing html_url")
-            return null
-        }
+        val tagName =
+            json.get("tag_name")?.asString ?: run {
+                logger.warn("Response missing tag_name")
+                return null
+            }
+        val releaseUrl =
+            json.get("html_url")?.asString ?: run {
+                logger.warn("Response missing html_url")
+                return null
+            }
 
         val newVersion = tagName.removePrefix("v")
         logger.info("Latest release: $newVersion  |  current: $currentVersion")
@@ -105,28 +108,33 @@ object UpdateChecker {
         val expectedAssetName = "soul-$newVersion+$mcVersion.jar"
         logger.info("Update found: $currentVersion -> $newVersion  |  looking for asset '$expectedAssetName'")
 
-        val assets = json.getAsJsonArray("assets") ?: run {
-            logger.warn("Release $newVersion has no assets array")
-            return null
-        }
+        val assets =
+            json.getAsJsonArray("assets") ?: run {
+                logger.warn("Release $newVersion has no assets array")
+                return null
+            }
         val assetNames = assets.map { it.asJsonObject.get("name")?.asString }
         logger.debug("Assets in release: $assetNames")
 
-        val assetUrl = assets.asSequence()
-            .map { it.asJsonObject }
-            .firstOrNull { it.get("name")?.asString == expectedAssetName }
-            ?.get("browser_download_url")?.asString
-            ?: run {
-                logger.warn("No matching asset '$expectedAssetName' in release $newVersion (available: $assetNames)")
-                return null
-            }
+        val assetUrl =
+            assets.asSequence()
+                .map { it.asJsonObject }
+                .firstOrNull { it.get("name")?.asString == expectedAssetName }
+                ?.get("browser_download_url")?.asString
+                ?: run {
+                    logger.warn("No matching asset '$expectedAssetName' in release $newVersion (available: $assetNames)")
+                    return null
+                }
 
         logger.info("Asset found: $assetUrl")
         return UpdateInfo(newVersion, releaseUrl, assetUrl)
     }
 
     /** Returns true if [candidate] is strictly newer than [current] (both in "x.y.z" form). */
-    private fun isNewer(candidate: String, current: String): Boolean {
+    private fun isNewer(
+        candidate: String,
+        current: String
+    ): Boolean {
         val a = candidate.split(".").map { it.toIntOrNull() ?: 0 }
         val b = current.split(".").map { it.toIntOrNull() ?: 0 }
         val len = maxOf(a.size, b.size)

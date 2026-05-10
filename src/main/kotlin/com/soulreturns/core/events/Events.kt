@@ -1,8 +1,8 @@
 package com.soulreturns.core.events
 
 import com.soulreturns.util.SoulLogger
-import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * In-process pub/sub bus used to decouple data sources from features.
@@ -25,11 +25,13 @@ import java.util.concurrent.ConcurrentHashMap
  */
 object Events {
     private val logger = SoulLogger("Soul/Events")
+
     @PublishedApi
     internal val handlers: ConcurrentHashMap<Class<out Event>, CopyOnWriteArrayList<(Event) -> Unit>> = ConcurrentHashMap()
 
     /** Lambda-style subscription. Returns Unit; no unsubscribe (events live for the session). */
     inline fun <reified T : Event> subscribe(noinline handler: (T) -> Unit) {
+        @Suppress("UNCHECKED_CAST")
         registerHandler(T::class.java, handler as (Event) -> Unit)
     }
 
@@ -80,7 +82,10 @@ object Events {
     }
 
     @PublishedApi
-    internal fun registerHandler(eventClass: Class<out Event>, handler: (Event) -> Unit) {
+    internal fun registerHandler(
+        eventClass: Class<out Event>,
+        handler: (Event) -> Unit
+    ) {
         handlers.computeIfAbsent(eventClass) { CopyOnWriteArrayList() }.add(handler)
     }
 }

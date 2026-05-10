@@ -49,7 +49,10 @@ interface SoulSubcommand {
     /**
      * Helper method to create a literal command node with a cleaner syntax.
      */
-    fun literal(name: String, init: LiteralArgumentBuilder<FabricClientCommandSource>.() -> Unit = {}): LiteralArgumentBuilder<FabricClientCommandSource> {
+    fun literal(
+        name: String,
+        init: LiteralArgumentBuilder<FabricClientCommandSource>.() -> Unit = {}
+    ): LiteralArgumentBuilder<FabricClientCommandSource> {
         return ClientCommandManager.literal(name).apply(init)
     }
 
@@ -84,4 +87,3 @@ interface SoulSubcommand {
         )
     }
 }
-

@@ -29,7 +29,10 @@ object SoulGuiHudAdapter {
     }
 
     /** Handle a mouse click routed from client code or a mixin. */
-    fun handleClick(screenX: Int, screenY: Int): Boolean {
+    fun handleClick(
+        screenX: Int,
+        screenY: Int
+    ): Boolean {
         val snapshot = lastSnapshot ?: return false
         return GuiInteractionHandler.handleClick(screenX, screenY, snapshot)
     }

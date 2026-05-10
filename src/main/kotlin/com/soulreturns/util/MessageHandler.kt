@@ -94,10 +94,12 @@ object MessageHandler {
             lastProcessed = trimmed
             lastProcessedAt = now
 
-            val source = if (MessageDetector.isPlayerMessage(trimmed))
-                ChatMessage.Source.PLAYER
-            else
-                ChatMessage.Source.SERVER
+            val source =
+                if (MessageDetector.isPlayerMessage(trimmed)) {
+                    ChatMessage.Source.PLAYER
+                } else {
+                    ChatMessage.Source.SERVER
+                }
 
             // Publish typed event for new event-driven subscribers.
             Events.publish(ChatMessage(trimmed, source))
@@ -184,7 +186,11 @@ object MessageDetector {
      * @param ignoreCase Whether to ignore case (default: true)
      * @return true if the pattern is found
      */
-    fun containsPattern(message: String, pattern: String, ignoreCase: Boolean = true): Boolean {
+    fun containsPattern(
+        message: String,
+        pattern: String,
+        ignoreCase: Boolean = true
+    ): Boolean {
         val stripped = stripColorCodes(message)
         return stripped.contains(pattern, ignoreCase)
     }
@@ -199,10 +205,11 @@ object MessageDetector {
         val stripped = stripColorCodes(message)
 
         // Try to match patterns like "[RANK] PlayerName:" or "PlayerName:"
-        val patterns = listOf(
-            "(?:Party|Guild|Officer) > (?:\\[.*?] )?([a-zA-Z0-9_]+)\\s*:".toRegex(),
-            "(?:\\[\\d+] )?(?:\\[.*?] )?([a-zA-Z0-9_]+)\\s*:".toRegex()
-        )
+        val patterns =
+            listOf(
+                "(?:Party|Guild|Officer) > (?:\\[.*?] )?([a-zA-Z0-9_]+)\\s*:".toRegex(),
+                "(?:\\[\\d+] )?(?:\\[.*?] )?([a-zA-Z0-9_]+)\\s*:".toRegex()
+            )
 
         for (pattern in patterns) {
             val match = pattern.find(stripped)
@@ -214,4 +221,3 @@ object MessageDetector {
         return null
     }
 }
-

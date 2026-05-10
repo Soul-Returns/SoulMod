@@ -19,8 +19,8 @@ data class SkyblockProfilesResponse(
     val profiles: List<SkyblockProfile>,
 ) {
     fun selected(): SkyblockProfile? = profiles.firstOrNull { it.selected }
-    fun byCuteName(name: String): SkyblockProfile? =
-        profiles.firstOrNull { it.cuteName.equals(name, ignoreCase = true) }
+
+    fun byCuteName(name: String): SkyblockProfile? = profiles.firstOrNull { it.cuteName.equals(name, ignoreCase = true) }
 }
 
 data class SkyblockProfile(

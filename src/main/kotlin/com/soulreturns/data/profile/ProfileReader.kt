@@ -20,9 +20,11 @@ object ProfileReader {
     private val PROFILE_PATTERN = Regex("Profile(?:\\s*\\([^)]+\\))?:\\s*([A-Za-z][A-Za-z0-9_]*)")
 
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { _ ->
-            ProfileApi.updateProfile(readProfile())
-        })
+        ClientTickEvents.END_CLIENT_TICK.register(
+            ClientTickEvents.EndTick { _ ->
+                ProfileApi.updateProfile(readProfile())
+            }
+        )
     }
 
     private fun readProfile(): String? {

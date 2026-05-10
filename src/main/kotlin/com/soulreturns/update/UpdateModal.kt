@@ -1,8 +1,8 @@
 package com.soulreturns.update
 
 import com.soulreturns.Soul
-import com.soulreturns.ui.theme.Theme
 import com.soulreturns.render.DrawContextRenderer
+import com.soulreturns.ui.theme.Theme
 import io.wispforest.owo.ui.base.BaseOwoScreen
 import io.wispforest.owo.ui.component.ButtonComponent
 import io.wispforest.owo.ui.component.LabelComponent
@@ -21,7 +21,6 @@ import net.minecraft.util.Util
 import java.net.URI
 
 class UpdateModal(private val info: UpdateInfo) : BaseOwoScreen<FlowLayout>(Component.literal("Soul Update")) {
-
     companion object {
         /** Set to true for the lifetime of the game session when the player dismisses the modal. */
         var dismissed = false
@@ -77,9 +76,11 @@ class UpdateModal(private val info: UpdateInfo) : BaseOwoScreen<FlowLayout>(Comp
         when (state) {
             State.IDLE -> {
                 buttonsRow.child(ghostButton("Not Now") { dismiss() })
-                buttonsRow.child(ghostButton("View Release") {
-                    Util.getPlatform().openUri(URI.create(info.releaseUrl))
-                })
+                buttonsRow.child(
+                    ghostButton("View Release") {
+                        Util.getPlatform().openUri(URI.create(info.releaseUrl))
+                    }
+                )
                 buttonsRow.child(accentButton("Update") { startDownload() })
             }
             State.DOWNLOADING -> {
@@ -132,44 +133,62 @@ class UpdateModal(private val info: UpdateInfo) : BaseOwoScreen<FlowLayout>(Comp
         super.onClose()
     }
 
-    private fun accentButton(label: String, action: () -> Unit): ButtonComponent {
+    private fun accentButton(
+        label: String,
+        action: () -> Unit
+    ): ButtonComponent {
         val btn = UIComponents.button(Component.empty()) { action() }
         btn.horizontalSizing(Sizing.fixed(100))
         btn.verticalSizing(Sizing.fill(100))
         btn.margins(Insets.none())
-        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
-            val bg = if (button.isHovered) Theme.ACCENT_DIM else Theme.ACCENT
-            DrawContextRenderer.roundedFill(
-                ctx, button.x, button.y,
-                button.x + button.width, button.y + button.height,
-                bg, Theme.ITEM_RADIUS
-            )
-            val tr = Minecraft.getInstance().font
-            val tx = button.x + (button.width - tr.width(label)) / 2
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            ctx.drawString(tr, Component.literal(label), tx, ty, Theme.TEXT, false)
-        })
+        btn.renderer(
+            ButtonComponent.Renderer { ctx, button, _ ->
+                val bg = if (button.isHovered) Theme.ACCENT_DIM else Theme.ACCENT
+                DrawContextRenderer.roundedFill(
+                    ctx,
+                    button.x,
+                    button.y,
+                    button.x + button.width,
+                    button.y + button.height,
+                    bg,
+                    Theme.ITEM_RADIUS
+                )
+                val tr = Minecraft.getInstance().font
+                val tx = button.x + (button.width - tr.width(label)) / 2
+                val ty = button.y + (button.height - tr.lineHeight) / 2
+                ctx.drawString(tr, Component.literal(label), tx, ty, Theme.TEXT, false)
+            }
+        )
         return btn
     }
 
-    private fun ghostButton(label: String, action: () -> Unit): ButtonComponent {
+    private fun ghostButton(
+        label: String,
+        action: () -> Unit
+    ): ButtonComponent {
         val btn = UIComponents.button(Component.empty()) { action() }
         btn.horizontalSizing(Sizing.fixed(80))
         btn.verticalSizing(Sizing.fill(100))
         btn.margins(Insets.none())
-        btn.renderer(ButtonComponent.Renderer { ctx, button, _ ->
-            if (button.isHovered) {
-                DrawContextRenderer.roundedFill(
-                    ctx, button.x, button.y,
-                    button.x + button.width, button.y + button.height,
-                    Theme.PANEL_HOVER, Theme.ITEM_RADIUS
-                )
+        btn.renderer(
+            ButtonComponent.Renderer { ctx, button, _ ->
+                if (button.isHovered) {
+                    DrawContextRenderer.roundedFill(
+                        ctx,
+                        button.x,
+                        button.y,
+                        button.x + button.width,
+                        button.y + button.height,
+                        Theme.PANEL_HOVER,
+                        Theme.ITEM_RADIUS
+                    )
+                }
+                val tr = Minecraft.getInstance().font
+                val tx = button.x + (button.width - tr.width(label)) / 2
+                val ty = button.y + (button.height - tr.lineHeight) / 2
+                ctx.drawString(tr, Component.literal(label), tx, ty, Theme.TEXT_DIM, false)
             }
-            val tr = Minecraft.getInstance().font
-            val tx = button.x + (button.width - tr.width(label)) / 2
-            val ty = button.y + (button.height - tr.lineHeight) / 2
-            ctx.drawString(tr, Component.literal(label), tx, ty, Theme.TEXT_DIM, false)
-        })
+        )
         return btn
     }
 }

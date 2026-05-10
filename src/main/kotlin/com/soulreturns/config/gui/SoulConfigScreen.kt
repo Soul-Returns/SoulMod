@@ -5,7 +5,6 @@ import com.soulreturns.Soul
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.gui.GuiEditScreen
 import com.soulreturns.ui.config.components.ConfigRenderers
-import com.soulreturns.ui.theme.Theme
 import com.soulreturns.ui.config.components.SocialIcons
 import com.soulreturns.ui.config.model.CategoriesCollector
 import com.soulreturns.ui.config.model.CategoryEntry
@@ -14,6 +13,7 @@ import com.soulreturns.ui.config.model.SubcategoryEntry
 import com.soulreturns.ui.config.registry.ConfigSections
 import com.soulreturns.ui.config.rows.RowBuilders
 import com.soulreturns.ui.config.search.ConfigSearchFilter
+import com.soulreturns.ui.theme.Theme
 import io.wispforest.owo.config.ConfigWrapper
 import io.wispforest.owo.config.Option
 import io.wispforest.owo.ui.base.BaseOwoScreen
@@ -34,10 +34,11 @@ import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 import org.lwjgl.glfw.GLFW
 
-class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
-    Component.translatable("text.config.soul/config.title")
-), ConfigScreenContext {
-
+class SoulConfigScreen(initialSearch: String = "") :
+    BaseOwoScreen<FlowLayout>(
+        Component.translatable("text.config.soul/config.title")
+    ),
+    ConfigScreenContext {
     private val wrapper: ConfigWrapper<*> get() = SoulConfigHolder.INSTANCE
 
     /** When non-null, the next key/mouse press binds this option instead of acting on the screen. */
@@ -62,6 +63,7 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
     private val sidebarButtons = mutableMapOf<Pair<String, String>, ButtonComponent>()
     private val categoryHeaderButtons = mutableMapOf<String, ButtonComponent>()
     private val expandedCategories = mutableSetOf<String>()
+
     // Display text for each subcategory — populated on rebuild, never mutated, safe for renderers.
     private val subcategoryDisplayNames = mutableMapOf<Pair<String, String>, String>()
 
@@ -116,9 +118,12 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         sidebarList.gap(2)
         sidebarList.horizontalAlignment(HorizontalAlignment.LEFT)
 
-        val sidebarScrollLocal = UIContainers.verticalScroll(
-            Sizing.fill(100), Sizing.expand(), sidebarList
-        )
+        val sidebarScrollLocal =
+            UIContainers.verticalScroll(
+                Sizing.fill(100),
+                Sizing.expand(),
+                sidebarList
+            )
         sidebarScrollLocal.scrollbarThiccness(4)
         sidebarColumn.child(sidebarScrollLocal)
         sidebarColumn.child(separator())
@@ -141,17 +146,20 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         breadcrumbBar.gap(8)
         headerRow.child(breadcrumbBar)
 
-        val searchLabel = UIComponents.label(Component.translatable("text.config.soul/config.search"))
-            .color(Theme.color(Theme.TEXT_DIM))
+        val searchLabel =
+            UIComponents.label(Component.translatable("text.config.soul/config.search"))
+                .color(Theme.color(Theme.TEXT_DIM))
         headerRow.child(searchLabel)
 
         searchBox = UIComponents.textBox(Sizing.fixed(160), searchQuery)
-        searchBox.onChanged().subscribe(TextBoxComponent.OnChanged { newVal ->
-            if (newVal != searchQuery) {
-                searchQuery = newVal
-                applySearch()
+        searchBox.onChanged().subscribe(
+            TextBoxComponent.OnChanged { newVal ->
+                if (newVal != searchQuery) {
+                    searchQuery = newVal
+                    applySearch()
+                }
             }
-        })
+        )
         headerRow.child(searchBox)
 
         contentColumn.child(headerRow)
@@ -178,9 +186,10 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
 
         val visible = filteredCategories()
         if (visible.isEmpty()) {
-            val empty = UIComponents.label(
-                Component.literal("No results").withStyle { it.withColor(Theme.TEXT_DIM) }
-            )
+            val empty =
+                UIComponents.label(
+                    Component.literal("No results").withStyle { it.withColor(Theme.TEXT_DIM) }
+                )
             empty.margins(Insets.of(6, 0, 12, 0))
             sidebarList.child(empty)
             return
@@ -240,9 +249,10 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
     private fun buildCategoryHeader(cat: CategoryEntry): ButtonComponent {
         val expanded = expandedCategories.contains(cat.id)
         val label = cat.displayName.string.uppercase()
-        val btn = UIComponents.button(Component.empty()) {
-            toggleCategory(cat)
-        }
+        val btn =
+            UIComponents.button(Component.empty()) {
+                toggleCategory(cat)
+            }
         btn.horizontalSizing(Sizing.fill(100))
         btn.verticalSizing(Sizing.fixed(18))
         btn.renderer(ConfigRenderers.categoryHeader(label, expanded))
@@ -250,16 +260,20 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         return btn
     }
 
-    private fun sidebarButton(cat: CategoryEntry, sub: SubcategoryEntry): ButtonComponent {
+    private fun sidebarButton(
+        cat: CategoryEntry,
+        sub: SubcategoryEntry
+    ): ButtonComponent {
         val displayText = sub.displayName.string
-        val btn = UIComponents.button(Component.empty()) {
-            if (activeCategory != cat.id || activeSubcategory != sub.subId) {
-                activeCategory = cat.id
-                activeSubcategory = sub.subId
-                refreshSidebarSelection()
-                rebuildContent()
+        val btn =
+            UIComponents.button(Component.empty()) {
+                if (activeCategory != cat.id || activeSubcategory != sub.subId) {
+                    activeCategory = cat.id
+                    activeSubcategory = sub.subId
+                    refreshSidebarSelection()
+                    rebuildContent()
+                }
             }
-        }
         btn.horizontalSizing(Sizing.fill(100))
         btn.verticalSizing(Sizing.fixed(20))
         btn.renderer(ConfigRenderers.sidebarItem(displayText, cat.id == activeCategory && sub.subId == activeSubcategory))
@@ -288,8 +302,9 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         breadcrumbBar.clearChildren()
         val visible = filteredCategories()
         val cat = visible.firstOrNull { it.id == activeCategory } ?: return
-        val sub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
-            ?: cat.subcategories.firstOrNull() ?: return
+        val sub =
+            cat.subcategories.firstOrNull { it.subId == activeSubcategory }
+                ?: cat.subcategories.firstOrNull() ?: return
         breadcrumbBar.child(
             UIComponents.label(Component.literal(cat.displayName.string))
                 .color(Theme.color(Theme.TEXT_DIM))
@@ -310,21 +325,24 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         val visible = filteredCategories()
         val cat = visible.firstOrNull { it.id == activeCategory }
         if (cat == null) {
-            val empty = UIComponents.label(
-                Component.literal("No matching options.").withStyle { it.withColor(Theme.TEXT_DIM) }
-            )
+            val empty =
+                UIComponents.label(
+                    Component.literal("No matching options.").withStyle { it.withColor(Theme.TEXT_DIM) }
+                )
             empty.margins(Insets.of(20))
             contentBody.child(empty)
             return
         }
-        val rawSub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
-            ?: cat.subcategories.firstOrNull() ?: return
+        val rawSub =
+            cat.subcategories.firstOrNull { it.subId == activeSubcategory }
+                ?: cat.subcategories.firstOrNull() ?: return
         val sub = rawSub.copy(options = rawSub.options.filter { isOptionVisible(it) })
 
         // Persistent banner for the Dev category — sits above the scrolling content.
         if (activeCategory == "dev") {
-            val warning = UIComponents.label(Component.translatable("text.config.soul/config.dev.warning"))
-                .color(Theme.color(Theme.TEXT_DIM))
+            val warning =
+                UIComponents.label(Component.translatable("text.config.soul/config.dev.warning"))
+                    .color(Theme.color(Theme.TEXT_DIM))
             warning.margins(Insets.of(12, 4, 16, 16))
             contentBody.child(warning)
         }
@@ -342,9 +360,10 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
             val byField = sub.options.associateBy { it.key().path().last() }
             val placed = mutableSetOf<String>()
             for ((label, fieldNames) in sections) {
-                val sectionOpts = fieldNames.mapNotNull { byField[it] }.also {
-                    placed.addAll(fieldNames.filter { name -> name in visibleFieldNames })
-                }
+                val sectionOpts =
+                    fieldNames.mapNotNull { byField[it] }.also {
+                        placed.addAll(fieldNames.filter { name -> name in visibleFieldNames })
+                    }
                 if (sectionOpts.isEmpty()) continue
                 rows.addOptionSection(scrollBody, label, sectionOpts)
             }
@@ -362,13 +381,14 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
                 grouped.getOrPut(group) { mutableListOf() }.add(opt)
             }
             for ((groupId, opts) in grouped) {
-                val displayName: String = if (groupId != null) {
-                    val nameKey = "text.config.soul/config.group.${activeCategory}.${activeSubcategory}.$groupId"
-                    val nameText = Component.translatable(nameKey)
-                    if (nameText.string == nameKey) formatGroupId(groupId) else nameText.string
-                } else {
-                    sub.displayName.string
-                }
+                val displayName: String =
+                    if (groupId != null) {
+                        val nameKey = "text.config.soul/config.group.$activeCategory.$activeSubcategory.$groupId"
+                        val nameText = Component.translatable(nameKey)
+                        if (nameText.string == nameKey) formatGroupId(groupId) else nameText.string
+                    } else {
+                        sub.displayName.string
+                    }
                 rows.addOptionSection(scrollBody, displayName, opts)
             }
         }
@@ -406,7 +426,10 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         return super.keyPressed(input)
     }
 
-    override fun mouseClicked(click: MouseButtonEvent, doubled: Boolean): Boolean {
+    override fun mouseClicked(
+        click: MouseButtonEvent,
+        doubled: Boolean
+    ): Boolean {
         val capturing = capturingKeybind
         // The very click that *enters* capture mode is consumed by the button's onClick first; this
         // override only fires for clicks that *aren't* on the button — i.e. the user wants to bind a mouse btn.
@@ -422,11 +445,17 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
     }
 
     override fun save() {
-        try { wrapper.save() } catch (_: Throwable) {}
+        try {
+            wrapper.save()
+        } catch (_: Throwable) {
+        }
     }
 
     override fun reloadConfig() {
-        try { wrapper.load() } catch (_: Throwable) {}
+        try {
+            wrapper.load()
+        } catch (_: Throwable) {
+        }
         rebuildContent()
     }
 
@@ -458,8 +487,9 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         }
         val cat = visible.firstOrNull { it.id == activeCategory } ?: visible.first()
         activeCategory = cat.id
-        val sub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
-            ?: cat.subcategories.firstOrNull()
+        val sub =
+            cat.subcategories.firstOrNull { it.subId == activeSubcategory }
+                ?: cat.subcategories.firstOrNull()
         if (sub != null) activeSubcategory = sub.subId
 
         expandedCategories.clear()
@@ -471,13 +501,15 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
     }
 
     /** Search filtering delegated to [ConfigSearchFilter] — pure function over the categories list. */
-    private fun filteredCategories(): List<CategoryEntry> =
-        ConfigSearchFilter.filter(categories, searchQuery)
+    private fun filteredCategories(): List<CategoryEntry> = ConfigSearchFilter.filter(categories, searchQuery)
 
     /** Visibility predicate delegated to [ConfigSections]; same logic, single source of truth. */
     private fun isOptionVisible(opt: Option<*>): Boolean = ConfigSections.isOptionVisible(opt)
 
-    override fun navigateTo(catId: String, subId: String) {
+    override fun navigateTo(
+        catId: String,
+        subId: String
+    ) {
         activeCategory = catId
         activeSubcategory = subId
         expandedCategories.add(catId)
@@ -509,9 +541,10 @@ class SoulConfigScreen(initialSearch: String = "") : BaseOwoScreen<FlowLayout>(
         container.horizontalAlignment(HorizontalAlignment.CENTER)
         container.margins(Insets.of(2, 0, 0, 0))
 
-        val moveGui = UIComponents.button(Component.literal("Move GUI")) {
-            Minecraft.getInstance().setScreen(GuiEditScreen())
-        }
+        val moveGui =
+            UIComponents.button(Component.literal("Move GUI")) {
+                Minecraft.getInstance().setScreen(GuiEditScreen())
+            }
         moveGui.horizontalSizing(Sizing.fill(100))
         moveGui.verticalSizing(Sizing.fixed(18))
         moveGui.renderer(ConfigRenderers.footerButton(accent = false))

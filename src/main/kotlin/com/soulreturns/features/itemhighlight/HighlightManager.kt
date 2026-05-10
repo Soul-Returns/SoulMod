@@ -11,15 +11,15 @@ import java.io.File
 import java.nio.file.Files
 
 /**
- * Represents a group of items to highlight with a specific color
+ * Represents a group of items to highlight with a specific color.
+ *
+ * `color` is encoded as `"a:r:g:b:chroma"`.
  */
 data class HighlightGroup(
     @SerializedName("name")
     val name: String,
-
     @SerializedName("color")
-    val color: String,  // Format: "a:r:g:b:chroma"
-
+    val color: String,
     @SerializedName("items")
     val items: List<String>
 )
@@ -78,14 +78,19 @@ object HighlightManager {
         Soul.getLogger()?.info("Loaded ${highlightGroups.size} highlight groups with ${itemToColorMap.size} total items")
     }
 
-    private fun loadGroupFromFile(file: File, isCustom: Boolean) {
+    private fun loadGroupFromFile(
+        file: File,
+        isCustom: Boolean
+    ) {
         try {
             val json = Files.readString(file.toPath())
             val group = gson.fromJson(json, HighlightGroup::class.java)
 
             if (group != null && group.items.isNotEmpty()) {
                 highlightGroups.add(group)
-                DebugLogger.logFeatureEvent("Loaded ${if (isCustom) "custom" else "builtin"} highlight group: ${group.name} with ${group.items.size} items")
+                DebugLogger.logFeatureEvent(
+                    "Loaded ${if (isCustom) "custom" else "builtin"} highlight group: ${group.name} with ${group.items.size} items"
+                )
 
                 // Parse color and map each item to it
                 val color = parseColor(group.color)
@@ -102,25 +107,27 @@ object HighlightManager {
     }
 
     // Pest equipment items
-    private val pestEquipment = setOf(
-        "PESTHUNTERS_NECKLACE",
-        "PESTHUNTERS_GLOVES",
-        "PESTHUNTERS_BELT",
-        "PESTHUNTERS_CLOAK"
-    )
+    private val pestEquipment =
+        setOf(
+            "PESTHUNTERS_NECKLACE",
+            "PESTHUNTERS_GLOVES",
+            "PESTHUNTERS_BELT",
+            "PESTHUNTERS_CLOAK"
+        )
 
     // Farming equipment items
-    private val farmingEquipment = setOf(
-        "LOTUS_BRACELET",
-        "LOTUS_NECKLACE",
-        "LOTUS_BELT",
-        "LOTUS_CLOAK",
-        "ZORROS_CAPE",
-        "BLOSSOM_BRACELET",
-        "BLOSSOM_NECKLACE",
-        "BLOSSOM_BELT",
-        "BLOSSOM_CLOAK"
-    )
+    private val farmingEquipment =
+        setOf(
+            "LOTUS_BRACELET",
+            "LOTUS_NECKLACE",
+            "LOTUS_BELT",
+            "LOTUS_CLOAK",
+            "ZORROS_CAPE",
+            "BLOSSOM_BRACELET",
+            "BLOSSOM_NECKLACE",
+            "BLOSSOM_BELT",
+            "BLOSSOM_CLOAK"
+        )
 
     /**
      * Gets the color for a specific Skyblock item ID
@@ -180,34 +187,38 @@ object HighlightManager {
      */
     private fun createBuiltinFiles() {
         // Pest Equipment (orange)
-        val pestGroup = HighlightGroup(
-            name = "Pest Equipment",
-            color = "255:255:165:0:0", // Orange
-            items = listOf(
-                "PESTHUNTERS_NECKLACE",
-                "PESTHUNTERS_GLOVES",
-                "PESTHUNTERS_BELT",
-                "PESTHUNTERS_CLOAK",
-                "PEST_VEST"
+        val pestGroup =
+            HighlightGroup(
+                name = "Pest Equipment",
+                color = "255:255:165:0:0",
+                items =
+                    listOf(
+                        "PESTHUNTERS_NECKLACE",
+                        "PESTHUNTERS_GLOVES",
+                        "PESTHUNTERS_BELT",
+                        "PESTHUNTERS_CLOAK",
+                        "PEST_VEST"
+                    )
             )
-        )
 
         // Farming Equipment (green)
-        val farmingGroup = HighlightGroup(
-            name = "Farming Equipment",
-            color = "255:0:255:0:0", // Green
-            items = listOf(
-                "LOTUS_BRACELET",
-                "LOTUS_NECKLACE",
-                "LOTUS_BELT",
-                "LOTUS_CLOAK",
-                "ZORROS_CAPE",
-                "BLOSSOM_BRACELET",
-                "BLOSSOM_NECKLACE",
-                "BLOSSOM_BELT",
-                "BLOSSOM_CLOAK"
+        val farmingGroup =
+            HighlightGroup(
+                name = "Farming Equipment",
+                color = "255:0:255:0:0",
+                items =
+                    listOf(
+                        "LOTUS_BRACELET",
+                        "LOTUS_NECKLACE",
+                        "LOTUS_BELT",
+                        "LOTUS_CLOAK",
+                        "ZORROS_CAPE",
+                        "BLOSSOM_BRACELET",
+                        "BLOSSOM_NECKLACE",
+                        "BLOSSOM_BELT",
+                        "BLOSSOM_CLOAK"
+                    )
             )
-        )
 
         try {
             File(builtinDir, "pest_equipment.json").writeText(gson.toJson(pestGroup))
@@ -223,11 +234,12 @@ object HighlightManager {
      */
     private fun createExampleCustomFiles() {
         // Example: Combat items (red)
-        val combatGroup = HighlightGroup(
-            name = "Combat Items",
-            color = "255:255:0:0:0", // Red
-            items = listOf("ASPECT_OF_THE_END", "ASPECT_OF_THE_DRAGONS", "HYPERION")
-        )
+        val combatGroup =
+            HighlightGroup(
+                name = "Combat Items",
+                color = "255:255:0:0:0",
+                items = listOf("ASPECT_OF_THE_END", "ASPECT_OF_THE_DRAGONS", "HYPERION")
+            )
 
         try {
             File(customDir, "combat.json").writeText(gson.toJson(combatGroup))

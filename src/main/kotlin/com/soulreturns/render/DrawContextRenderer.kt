@@ -4,10 +4,12 @@ package com.soulreturns.render
 import net.minecraft.client.gui.GuiGraphics
 
 object DrawContextRenderer {
-
     fun roundedFill(
         context: GuiGraphics,
-        x0: Int, y0: Int, x1: Int, y1: Int,
+        x0: Int,
+        y0: Int,
+        x1: Int,
+        y1: Int,
         color: Int,
         radius: Float,
         outlineColor: Int = 0,
@@ -23,9 +25,14 @@ object DrawContextRenderer {
 
     fun roundedFillGradient(
         context: GuiGraphics,
-        x0: Int, y0: Int, x1: Int, y1: Int,
-        topLeftColor: Int, topRightColor: Int,
-        bottomRightColor: Int, bottomLeftColor: Int,
+        x0: Int,
+        y0: Int,
+        x1: Int,
+        y1: Int,
+        topLeftColor: Int,
+        topRightColor: Int,
+        bottomRightColor: Int,
+        bottomLeftColor: Int,
         radius: Float,
         outlineColor: Int = 0,
         outlineWidth: Float = 0f
@@ -40,7 +47,10 @@ object DrawContextRenderer {
 
     fun roundedFillCustomRadii(
         context: GuiGraphics,
-        x0: Int, y0: Int, x1: Int, y1: Int,
+        x0: Int,
+        y0: Int,
+        x1: Int,
+        y1: Int,
         color: Int,
         topLeftRadius: Float,
         topRightRadius: Float,

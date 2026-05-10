@@ -29,10 +29,20 @@ interface GuiRenderContext {
     )
 
     /** Draw a simple background rectangle (ARGB color). */
-    fun fillRect(x: Int, y: Int, width: Int, height: Int, color: Int)
+    fun fillRect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        color: Int
+    )
 
     /** Draw an item icon at the given position using a host-specific key. */
-    fun drawItemIcon(iconKey: String, x: Int, y: Int)
+    fun drawItemIcon(
+        iconKey: String,
+        x: Int,
+        y: Int
+    )
 }
 
 /**
@@ -52,7 +62,10 @@ data class GuiHitRegion(
         ITEM_TRACKER_DECREMENT,
     }
 
-    fun contains(px: Int, py: Int): Boolean {
+    fun contains(
+        px: Int,
+        py: Int
+    ): Boolean {
         return px >= x && px <= x + width && py >= y && py <= y + height
     }
 }
@@ -69,12 +82,14 @@ data class GuiInteractionSnapshot(
  * variants and record interaction hit regions.
  */
 object GuiRenderer {
-
     /**
      * Render the given layout on the HUD and return an interaction snapshot
      * describing any clickable regions.
      */
-    fun renderHud(layout: GuiLayout, ctx: GuiRenderContext): GuiInteractionSnapshot {
+    fun renderHud(
+        layout: GuiLayout,
+        ctx: GuiRenderContext
+    ): GuiInteractionSnapshot {
         val regions = mutableListOf<GuiHitRegion>()
 
         layout.elements.forEach { element ->
@@ -89,13 +104,19 @@ object GuiRenderer {
         return GuiInteractionSnapshot(regions)
     }
 
-    private fun computeBasePosition(element: GuiElement, ctx: GuiRenderContext): Pair<Int, Int> {
+    private fun computeBasePosition(
+        element: GuiElement,
+        ctx: GuiRenderContext
+    ): Pair<Int, Int> {
         val baseX = (element.anchorX * ctx.screenWidth).toInt() + element.offsetX
         val baseY = (element.anchorY * ctx.screenHeight).toInt() + element.offsetY
         return baseX to baseY
     }
 
-    private fun renderTextBlock(element: TextBlockElement, ctx: GuiRenderContext) {
+    private fun renderTextBlock(
+        element: TextBlockElement,
+        ctx: GuiRenderContext
+    ) {
         val (baseX, baseY) = computeBasePosition(element, ctx)
         var y = baseY
         val scale = element.scale.coerceAtLeast(0.25f)
@@ -138,15 +159,16 @@ object GuiRenderer {
             ctx.drawItemIcon(entry.iconKey, baseX, y)
 
             // Text: "name current/target"
-            val text = buildString {
-                append(entry.displayName)
-                append(" ")
-                append(entry.currentCount)
-                if (entry.targetCount > 0) {
-                    append("/")
-                    append(entry.targetCount)
+            val text =
+                buildString {
+                    append(entry.displayName)
+                    append(" ")
+                    append(entry.currentCount)
+                    if (entry.targetCount > 0) {
+                        append("/")
+                        append(entry.targetCount)
+                    }
                 }
-            }
             ctx.drawScaledText(text, baseX + textOffsetX, y + 4, element.textColor, element.textShadow, scale)
 
             // +/- buttons; actual click handling is done via hit regions
@@ -159,25 +181,27 @@ object GuiRenderer {
             ctx.fillRect(minusX, y, buttonWidth, buttonHeight, 0xAAFF0000.toInt())
             ctx.drawText("-", minusX + 1, y, 0xFF000000.toInt(), shadow = false)
 
-            regions += GuiHitRegion(
-                elementId = element.id,
-                kind = GuiHitRegion.Kind.ITEM_TRACKER_INCREMENT,
-                x = plusX,
-                y = y,
-                width = buttonWidth,
-                height = buttonHeight,
-                payload = entry.entryId,
-            )
+            regions +=
+                GuiHitRegion(
+                    elementId = element.id,
+                    kind = GuiHitRegion.Kind.ITEM_TRACKER_INCREMENT,
+                    x = plusX,
+                    y = y,
+                    width = buttonWidth,
+                    height = buttonHeight,
+                    payload = entry.entryId,
+                )
 
-            regions += GuiHitRegion(
-                elementId = element.id,
-                kind = GuiHitRegion.Kind.ITEM_TRACKER_DECREMENT,
-                x = minusX,
-                y = y,
-                width = buttonWidth,
-                height = buttonHeight,
-                payload = entry.entryId,
-            )
+            regions +=
+                GuiHitRegion(
+                    elementId = element.id,
+                    kind = GuiHitRegion.Kind.ITEM_TRACKER_DECREMENT,
+                    x = minusX,
+                    y = y,
+                    width = buttonWidth,
+                    height = buttonHeight,
+                    payload = entry.entryId,
+                )
 
             y += iconSize + element.rowSpacing
         }
@@ -189,7 +213,6 @@ object GuiRenderer {
  * the appropriate layout mutations via GuiLayoutManager.
  */
 object GuiInteractionHandler {
-
     /**
      * Handle a mouse click at the given screen-space coordinates.
      *
@@ -198,7 +221,11 @@ object GuiInteractionHandler {
      * @param snapshot The interaction snapshot from the most recent render.
      * @return true if the click was consumed by the GUI library.
      */
-    fun handleClick(x: Int, y: Int, snapshot: GuiInteractionSnapshot): Boolean {
+    fun handleClick(
+        x: Int,
+        y: Int,
+        snapshot: GuiInteractionSnapshot
+    ): Boolean {
         val region = snapshot.hitRegions.firstOrNull { it.contains(x, y) } ?: return false
 
         when (region.kind) {

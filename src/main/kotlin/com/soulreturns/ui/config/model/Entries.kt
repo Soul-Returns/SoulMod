@@ -54,7 +54,10 @@ internal interface ConfigScreenContext {
     fun rebuildContent()
 
     /** Switch active sub, expanding the parent category and refreshing both sidebar and content. */
-    fun navigateTo(catId: String, subId: String)
+    fun navigateTo(
+        catId: String,
+        subId: String
+    )
 
     /** Reset the wrapper to disk state and rebuild content. Used by the Reload action row. */
     fun reloadConfig()

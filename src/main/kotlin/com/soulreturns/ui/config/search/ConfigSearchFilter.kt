@@ -18,28 +18,40 @@ import net.minecraft.network.chat.Component
  * them is only useful once their gating parent toggle is on.
  */
 internal object ConfigSearchFilter {
-
-    fun filter(all: List<CategoryEntry>, query: String): List<CategoryEntry> {
+    fun filter(
+        all: List<CategoryEntry>,
+        query: String
+    ): List<CategoryEntry> {
         val q = query.trim()
         if (q.isEmpty()) return all
         return all.mapNotNull { cat ->
             val catMatches = cat.displayName.string.contains(q, ignoreCase = true)
-            val filteredSubs = cat.subcategories.mapNotNull { sub ->
-                val subMatches = sub.displayName.string.contains(q, ignoreCase = true)
-                if (catMatches || subMatches) {
-                    sub
-                } else {
-                    val matching = sub.options.filter { matchesOption(it, q) }
-                    if (matching.isEmpty()) null
-                    else SubcategoryEntry(sub.catId, sub.subId, sub.displayName, matching)
+            val filteredSubs =
+                cat.subcategories.mapNotNull { sub ->
+                    val subMatches = sub.displayName.string.contains(q, ignoreCase = true)
+                    if (catMatches || subMatches) {
+                        sub
+                    } else {
+                        val matching = sub.options.filter { matchesOption(it, q) }
+                        if (matching.isEmpty()) {
+                            null
+                        } else {
+                            SubcategoryEntry(sub.catId, sub.subId, sub.displayName, matching)
+                        }
+                    }
                 }
+            if (filteredSubs.isEmpty()) {
+                null
+            } else {
+                CategoryEntry(cat.id, cat.displayName, filteredSubs)
             }
-            if (filteredSubs.isEmpty()) null
-            else CategoryEntry(cat.id, cat.displayName, filteredSubs)
         }
     }
 
-    private fun matchesOption(opt: Option<*>, q: String): Boolean {
+    private fun matchesOption(
+        opt: Option<*>,
+        q: String
+    ): Boolean {
         if (!ConfigSections.isOptionVisible(opt)) return false
         val labelText = Component.translatable(opt.translationKey()).string
         if (labelText.contains(q, ignoreCase = true)) return true

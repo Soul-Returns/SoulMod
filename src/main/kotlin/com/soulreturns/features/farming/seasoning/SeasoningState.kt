@@ -11,7 +11,6 @@ import com.soulreturns.stats.PersistentStats
  * the persistence and session-metric updates stay in sync.
  */
 object SeasoningState {
-
     /** Chat-driven gain since the last [resetSession]. Used by the per-hour rate. */
     @Volatile
     var sessionChatGain: Long = 0L
@@ -41,7 +40,10 @@ object SeasoningState {
      * Apply a Harvest Feast menu read. Always saves [targets]; [total] is only written when
      * non-null (the cumulative-aware decoder returns null for the all-maxed / transitioning state).
      */
-    fun applyMenuSnapshot(total: Long?, targets: List<Long>) {
+    fun applyMenuSnapshot(
+        total: Long?,
+        targets: List<Long>
+    ) {
         PersistentStats.update {
             milestoneTargets = targets
             if (total != null) seasonings = total
@@ -64,6 +66,5 @@ object SeasoningState {
     }
 
     /** Time spent in the global [FarmingTimer]'s ACTIVE state since the last [resetSession]. */
-    fun seasoningFarmingMs(): Long =
-        (FarmingTimer.totalMs - farmingTimerCheckpointMs).coerceAtLeast(0L)
+    fun seasoningFarmingMs(): Long = (FarmingTimer.totalMs - farmingTimerCheckpointMs).coerceAtLeast(0L)
 }

@@ -16,7 +16,6 @@ import com.soulreturns.util.RenderUtils
  * (likely `config/soul/chat-rules.json`) once that lands.
  */
 object ChatNotifications {
-
     /**
      * A single chat→alert mapping.
      *
@@ -33,21 +32,22 @@ object ChatNotifications {
         val durationMs: Long = 4_000L,
     )
 
-    private val rules: List<Rule> = listOf(
-        Rule(
-            id = "garden.pestSpawn",
-            // Raw chat:    "§6§lEWW! §22 §2ൠ Pest §7have spawned in §aPlot §7- §b13§7!"
-            // Stripped:    "EWW! 2 ൠ Pest have spawned in Plot - 13!"
-            // Hypixel uses singular "Pest" even for counts > 1, but the regex tolerates either.
-            pattern = Regex("EWW! (\\d+)\\s*ൠ\\s*Pest(?:s)?\\s*have spawned in Plot\\s*-\\s*\\d+"),
-            format = { match ->
-                val count = match.groupValues[1].toIntOrNull() ?: 0
-                val word = if (count == 1) "Pest" else "Pests"
-                "$count $word spawned"
-            },
-            color = 0xFFFF8800.toInt(),
-        ),
-    )
+    private val rules: List<Rule> =
+        listOf(
+            Rule(
+                id = "garden.pestSpawn",
+                // Raw chat:    "§6§lEWW! §22 §2ൠ Pest §7have spawned in §aPlot §7- §b13§7!"
+                // Stripped:    "EWW! 2 ൠ Pest have spawned in Plot - 13!"
+                // Hypixel uses singular "Pest" even for counts > 1, but the regex tolerates either.
+                pattern = Regex("EWW! (\\d+)\\s*ൠ\\s*Pest(?:s)?\\s*have spawned in Plot\\s*-\\s*\\d+"),
+                format = { match ->
+                    val count = match.groupValues[1].toIntOrNull() ?: 0
+                    val word = if (count == 1) "Pest" else "Pests"
+                    "$count $word spawned"
+                },
+                color = 0xFFFF8800.toInt(),
+            ),
+        )
 
     fun register() {
         Events.subscribe(this)

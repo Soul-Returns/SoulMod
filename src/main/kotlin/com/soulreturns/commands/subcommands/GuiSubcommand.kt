@@ -9,7 +9,6 @@ import net.minecraft.client.Minecraft
  * Opens the GUI edit screen via "/soul gui".
  */
 object GuiSubcommand : SoulSubcommand {
-
     override fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
         return literal("gui") {
             runs { _ ->

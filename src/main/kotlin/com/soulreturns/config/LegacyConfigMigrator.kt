@@ -3,9 +3,8 @@ package com.soulreturns.config
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.google.gson.JsonPrimitive
-import net.fabricmc.loader.api.FabricLoader
 import com.soulreturns.util.SoulLogger
+import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 import java.io.FileReader
 
@@ -31,22 +30,24 @@ object LegacyConfigMigrator {
         val file = File(configDir, "soul/config.json5")
         if (!file.exists()) return
 
-        val root = try {
-            FileReader(file).use { JsonParser.parseReader(it) }.asJsonObject
-        } catch (e: Exception) {
-            logger.warn("Could not parse soul/config.json5 for path migration; skipping", e)
-            return
-        }
+        val root =
+            try {
+                FileReader(file).use { JsonParser.parseReader(it) }.asJsonObject
+            } catch (e: Exception) {
+                logger.warn("Could not parse soul/config.json5 for path migration; skipping", e)
+                return
+            }
 
         var changed = false
 
         // fixes → general.fixes
         if (root.has("fixes") && root.get("fixes").isJsonObject) {
-            val general = if (root.has("general") && root.get("general").isJsonObject) {
-                root.getAsJsonObject("general")
-            } else {
-                JsonObject().also { root.add("general", it) }
-            }
+            val general =
+                if (root.has("general") && root.get("general").isJsonObject) {
+                    root.getAsJsonObject("general")
+                } else {
+                    JsonObject().also { root.add("general", it) }
+                }
             general.add("fixes", root.remove("fixes"))
             changed = true
         }
@@ -54,11 +55,12 @@ object LegacyConfigMigrator {
         // updates / backend / debug → dev.{updates,backend,debug}
         val devKeys = listOf("updates", "backend", "debug")
         if (devKeys.any { root.has(it) && root.get(it).isJsonObject }) {
-            val dev = if (root.has("dev") && root.get("dev").isJsonObject) {
-                root.getAsJsonObject("dev")
-            } else {
-                JsonObject().also { root.add("dev", it) }
-            }
+            val dev =
+                if (root.has("dev") && root.get("dev").isJsonObject) {
+                    root.getAsJsonObject("dev")
+                } else {
+                    JsonObject().also { root.add("dev", it) }
+                }
             for (key in devKeys) {
                 if (root.has(key) && root.get(key).isJsonObject) {
                     dev.add(key, root.remove(key))
@@ -112,10 +114,13 @@ object LegacyConfigMigrator {
             // read it and falls back to defaults. Detect this and re-migrate
             // from the .legacy backup if present.
             if (newFile.exists()) {
-                val hasFlatKeys = try {
-                    val json = FileReader(newFile).use { JsonParser.parseReader(it) }
-                    json.isJsonObject && json.asJsonObject.keySet().any { it.contains('.') }
-                } catch (_: Exception) { false }
+                val hasFlatKeys =
+                    try {
+                        val json = FileReader(newFile).use { JsonParser.parseReader(it) }
+                        json.isJsonObject && json.asJsonObject.keySet().any { it.contains('.') }
+                    } catch (_: Exception) {
+                        false
+                    }
 
                 if (hasFlatKeys) {
                     logger.warn("Existing soul/config.json5 uses flat dotted keys (old format); re-migrating.")
@@ -136,30 +141,26 @@ object LegacyConfigMigrator {
             }
         }
 
-        val root: JsonObject = try {
-            FileReader(legacy).use { JsonParser.parseReader(it) }.asJsonObject
-        } catch (e: Exception) {
-            logger.warn("Failed to parse legacy config; skipping migration", e)
-            return
-        }
+        val root: JsonObject =
+            try {
+                FileReader(legacy).use { JsonParser.parseReader(it) }.asJsonObject
+            } catch (e: Exception) {
+                logger.warn("Failed to parse legacy config; skipping migration", e)
+                return
+            }
 
         // Build a nested JsonObject that matches the owo-config file layout.
         val out = JsonObject()
 
-        fun JsonObject.obj(name: String): JsonObject? =
-            takeIf { has(name) && get(name).isJsonObject }?.getAsJsonObject(name)
+        fun JsonObject.obj(name: String): JsonObject? = takeIf { has(name) && get(name).isJsonObject }?.getAsJsonObject(name)
 
-        fun JsonObject.bool(key: String): Boolean? =
-            takeIf { has(key) && get(key).isJsonPrimitive }?.get(key)?.asBoolean
+        fun JsonObject.bool(key: String): Boolean? = takeIf { has(key) && get(key).isJsonPrimitive }?.get(key)?.asBoolean
 
-        fun JsonObject.str(key: String): String? =
-            takeIf { has(key) && get(key).isJsonPrimitive }?.get(key)?.asString
+        fun JsonObject.str(key: String): String? = takeIf { has(key) && get(key).isJsonPrimitive }?.get(key)?.asString
 
-        fun JsonObject.flt(key: String): Float? =
-            takeIf { has(key) && get(key).isJsonPrimitive }?.get(key)?.asFloat
+        fun JsonObject.flt(key: String): Float? = takeIf { has(key) && get(key).isJsonPrimitive }?.get(key)?.asFloat
 
-        fun JsonObject.int_(key: String): Int? =
-            takeIf { has(key) && get(key).isJsonPrimitive }?.get(key)?.asInt
+        fun JsonObject.int_(key: String): Int? = takeIf { has(key) && get(key).isJsonPrimitive }?.get(key)?.asInt
 
         fun JsonObject.getOrCreate(key: String): JsonObject {
             if (!has(key)) add(key, JsonObject())

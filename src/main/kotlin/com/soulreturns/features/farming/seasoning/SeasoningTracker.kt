@@ -62,9 +62,10 @@ object SeasoningTracker {
         val base = if (match != null) stripped.substring(0, match.range.first) else stripped
 
         val now = System.currentTimeMillis()
-        val isAggregateContinuation = base == lastCompactedBase &&
-            count > lastCompactedCount &&
-            now - lastCompactedAt < COMPACTED_AGGREGATE_WINDOW_MS
+        val isAggregateContinuation =
+            base == lastCompactedBase &&
+                count > lastCompactedCount &&
+                now - lastCompactedAt < COMPACTED_AGGREGATE_WINDOW_MS
 
         val delta = if (isAggregateContinuation) count - lastCompactedCount else 1
 

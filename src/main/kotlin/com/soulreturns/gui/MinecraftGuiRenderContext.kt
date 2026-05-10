@@ -10,14 +10,19 @@ class MinecraftGuiRenderContext(
     private val context: GuiGraphics,
     private val client: Minecraft,
 ) : GuiRenderContext {
-
     override val screenWidth: Int
         get() = client.window.guiScaledWidth
 
     override val screenHeight: Int
         get() = client.window.guiScaledHeight
 
-    override fun drawText(text: String, x: Int, y: Int, color: Int, shadow: Boolean) {
+    override fun drawText(
+        text: String,
+        x: Int,
+        y: Int,
+        color: Int,
+        shadow: Boolean
+    ) {
         val renderer = client.font
         if (shadow) {
             context.drawString(renderer, text, x, y, color)
@@ -57,11 +62,21 @@ class MinecraftGuiRenderContext(
         matrices.popMatrix()
     }
 
-    override fun fillRect(x: Int, y: Int, width: Int, height: Int, color: Int) {
+    override fun fillRect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        color: Int
+    ) {
         context.fill(x, y, x + width, y + height, color)
     }
 
-    override fun drawItemIcon(iconKey: String, x: Int, y: Int) {
+    override fun drawItemIcon(
+        iconKey: String,
+        x: Int,
+        y: Int
+    ) {
         // Falls back to an empty stack when the key isn't registered — keeps the adapter self-contained.
         val stack: ItemStack = GuiIconRegistry.resolve(iconKey)
         context.renderItem(stack, x, y)

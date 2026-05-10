@@ -28,11 +28,12 @@ object LegionHud {
 
         // Hypixel SkyBlock NPCs typically have non-v4 UUIDs; filtering by UUID version
         // gives us a count that closely matches Legion stacks.
-        val count = world.players().count { other ->
-            other !== player &&
-                other.isRealPlayer() &&
-                player.distanceToSqr(other) <= RADIUS_SQ
-        }
+        val count =
+            world.players().count { other ->
+                other !== player &&
+                    other.isRealPlayer() &&
+                    player.distanceToSqr(other) <= RADIUS_SQ
+            }
 
         GuiLayoutApi.updateTextBlock(
             id = ELEMENT_ID,
