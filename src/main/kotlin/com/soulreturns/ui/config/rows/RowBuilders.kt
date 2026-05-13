@@ -2,6 +2,7 @@ package com.soulreturns.ui.config.rows
 
 import com.mojang.blaze3d.platform.InputConstants
 import com.soulreturns.render.DrawContextRenderer
+import com.soulreturns.ui.components.SoulIntSlider
 import com.soulreturns.ui.components.SoulSlider
 import com.soulreturns.ui.components.SoulToggle
 import com.soulreturns.ui.config.components.ConfigRenderers
@@ -139,7 +140,9 @@ internal class RowBuilders(
         when {
             opt.value() is Boolean ->
                 row.child(buildToggle(@Suppress("UNCHECKED_CAST") (opt as Option<Boolean>)))
-            opt.value() is Int || opt.value() is Long || opt.value() is Float || opt.value() is Double ->
+            opt.value() is Int || opt.value() is Long ->
+                row.child(buildIntSlider(opt))
+            opt.value() is Float || opt.value() is Double ->
                 row.child(buildNumericSlider(opt))
             opt.value() is String && pathKey in ConfigSections.keybindOptions ->
                 row.child(buildKeybindButton(@Suppress("UNCHECKED_CAST") (opt as Option<String>)))
@@ -233,10 +236,30 @@ internal class RowBuilders(
         slider.onChanged { v ->
             @Suppress("UNCHECKED_CAST")
             when (opt.value()) {
-                is Int -> (opt as Option<Int>).set(v.toInt())
-                is Long -> (opt as Option<Long>).set(v.toLong())
                 is Float -> (opt as Option<Float>).set(v.toFloat())
                 is Double -> (opt as Option<Double>).set(v)
+                else -> {}
+            }
+        }
+        slider.onSlideEnd {
+            ctx.save()
+            refreshResetSlot(opt)
+        }
+        return slider
+    }
+
+    private fun buildIntSlider(opt: Option<*>): SoulIntSlider {
+        val field = wrapper.fieldForKey(opt.key())
+        val rc = field?.getAnnotation(RangeConstraint::class.java)
+        val min: Int = rc?.min?.toInt() ?: 0
+        val max: Int = rc?.max?.toInt() ?: 100
+
+        val slider = SoulIntSlider(min, max, (opt.value() as Number).toInt())
+        slider.onChanged { v ->
+            @Suppress("UNCHECKED_CAST")
+            when (opt.value()) {
+                is Int -> (opt as Option<Int>).set(v)
+                is Long -> (opt as Option<Long>).set(v.toLong())
                 else -> {}
             }
         }

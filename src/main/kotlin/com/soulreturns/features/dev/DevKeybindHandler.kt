@@ -14,11 +14,15 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.NbtOps
 import net.minecraft.resources.RegistryOps
+import net.minecraft.world.entity.Entity
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.scores.DisplaySlot
 import net.minecraft.world.scores.PlayerScoreEntry
 import net.minecraft.world.scores.Scoreboard
 import org.lwjgl.glfw.GLFW
+import kotlin.math.sqrt
 
 /**
  * Polls global keybinds defined under `dev.keybinds.*` once per client tick and triggers
@@ -26,6 +30,8 @@ import org.lwjgl.glfw.GLFW
  * keys are stored as `key.keyboard.X` strings in the config and resolved here at runtime.
  */
 object DevKeybindHandler {
+    private const val NEARBY_RADIUS = 30.0
+
     private val logger = SoulLogger("Soul/DevKeybinds")
     private val gson = GsonBuilder().setPrettyPrinting().create()
 
@@ -41,6 +47,7 @@ object DevKeybindHandler {
                 check(client, "copyHeldItem", k.copyHeldItem()) { copyHeldItem() }
                 check(client, "copyScoreboard", k.copyScoreboard()) { copyScoreboard() }
                 check(client, "copyTablist", k.copyTablist()) { copyTablist() }
+                check(client, "copyNearbyEntities", k.copyNearbyEntities()) { copyNearbyEntities() }
             }
         )
     }
@@ -218,6 +225,78 @@ object DevKeybindHandler {
         }
         obj.add("players", playersArr)
         copyToClipboard(obj, "tablist (${playersArr.size()} players)")
+    }
+
+    private fun copyNearbyEntities() {
+        val mc = Minecraft.getInstance()
+        val player =
+            mc.player ?: run {
+                soulChat("§7No player.")
+                return
+            }
+        val level =
+            mc.level ?: run {
+                soulChat("§7No world.")
+                return
+            }
+        val radiusSq = NEARBY_RADIUS * NEARBY_RADIUS
+        val arr = JsonArray()
+        for (entity in level.entitiesForRendering()) {
+            if (entity === player) continue
+            if (entity.distanceToSqr(player) > radiusSq) continue
+            arr.add(entityToJson(entity, player))
+        }
+        val obj =
+            JsonObject().apply {
+                addProperty("playerX", player.x)
+                addProperty("playerY", player.y)
+                addProperty("playerZ", player.z)
+                addProperty("radius", NEARBY_RADIUS)
+                addProperty("count", arr.size())
+                add("entities", arr)
+            }
+        copyToClipboard(obj, "nearby entities (${arr.size()} within ${NEARBY_RADIUS.toInt()} blocks)")
+    }
+
+    private fun entityToJson(
+        entity: Entity,
+        player: Player
+    ): JsonObject {
+        val obj =
+            JsonObject().apply {
+                addProperty("type", BuiltInRegistries.ENTITY_TYPE.getKey(entity.type).toString())
+                addProperty("id", entity.id)
+                addProperty("uuid", entity.uuid.toString())
+                addProperty("displayName", entity.name.string)
+                entity.customName?.let { addProperty("customName", it.string) }
+                addProperty("x", entity.x)
+                addProperty("y", entity.y)
+                addProperty("z", entity.z)
+                addProperty("distance", sqrt(entity.distanceToSqr(player)))
+                addProperty("invisible", entity.isInvisible)
+                if (entity is LivingEntity) {
+                    addProperty("health", entity.health)
+                    addProperty("maxHealth", entity.maxHealth)
+                }
+            }
+        // Hypixel SkyBlock mobs typically have an invisible armor stand as passenger holding the nametag.
+        val passengers = entity.passengers
+        if (passengers.isNotEmpty()) {
+            val pa = JsonArray()
+            for (p in passengers) {
+                pa.add(
+                    JsonObject().apply {
+                        addProperty("type", BuiltInRegistries.ENTITY_TYPE.getKey(p.type).toString())
+                        addProperty("uuid", p.uuid.toString())
+                        addProperty("displayName", p.name.string)
+                        p.customName?.let { addProperty("customName", it.string) }
+                    }
+                )
+            }
+            obj.add("passengers", pa)
+        }
+        entity.vehicle?.let { v -> obj.addProperty("vehicleUuid", v.uuid.toString()) }
+        return obj
     }
 
     // ───────────────────── helpers ─────────────────────

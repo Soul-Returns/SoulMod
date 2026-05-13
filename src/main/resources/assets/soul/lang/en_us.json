@@ -30,6 +30,7 @@
   "text.config.soul/config.group.fishing.chat": "Chat",
   "text.config.soul/config.group.fishing.bobbinTime": "Bobbin Time",
   "text.config.soul/config.group.mining.dwarvenMines": "Dwarven Mines",
+  "text.config.soul/config.group.mining.mineshaft": "Mineshaft",
   "text.config.soul/config.group.farming.pestFarming": "Pest Farming",
   "text.config.soul/config.group.farming.seasonings": "Seasonings",
   "text.config.soul/config.option.farming.seasonings.enableTracker": "Seasoning Tracker",
@@ -46,6 +47,7 @@
   "text.config.soul/config.group.dev.updates": "Updates",
   "text.config.soul/config.group.dev.backend": "Backend",
   "text.config.soul/config.group.dev.debug": "Debug",
+  "text.config.soul/config.group.dev.data": "Data",
   "text.config.soul/config.group.dev.config": "Config",
   "text.config.soul/config.group.dev.keybinds": "Keybinds",
 
@@ -59,6 +61,8 @@
   "text.config.soul/config.option.dev.keybinds.copyScoreboard.tooltip": "Copies the scoreboard sidebar lines as text.",
   "text.config.soul/config.option.dev.keybinds.copyTablist": "Copy Tablist",
   "text.config.soul/config.option.dev.keybinds.copyTablist.tooltip": "Copies the tab list (header, footer, players) as JSON.",
+  "text.config.soul/config.option.dev.keybinds.copyNearbyEntities": "Copy Nearby Entities",
+  "text.config.soul/config.option.dev.keybinds.copyNearbyEntities.tooltip": "Copy JSON of entities within 30 blocks.",
   "text.config.soul/config.group.dev.debug.logging": "Logging",
 
   "text.config.soul/config.option.general.fixes.fixDoubleSneak": "Fix Double Sneak",
@@ -100,6 +104,18 @@
   "text.config.soul/config.option.fishing.bobbinTime.alertItemNameFilter": "Held Item Name Contains",
 
   "text.config.soul/config.option.mining.dwarvenMines.donExpressoAlert": "Don Espresso Alert",
+  "text.config.soul/config.option.mining.mineshaft.enableLapisPtme": "!ptme on Lapis Corpses",
+  "text.config.soul/config.option.mining.mineshaft.enableLapisPtme.tooltip": "Send !ptme to party chat when enough Lapis Corpses are in the mineshaft.",
+  "text.config.soul/config.option.mining.mineshaft.lapisCorpseThreshold": "Minimum Lapis Corpses",
+  "text.config.soul/config.option.mining.mineshaft.lapisCorpseThreshold.tooltip": "Minimum Lapis Corpses required to trigger !ptme.",
+  "text.config.soul/config.option.mining.mineshaft.enableVanguardPtme": "!ptme on Vanguard Corpses",
+  "text.config.soul/config.option.mining.mineshaft.enableVanguardPtme.tooltip": "Send !ptme to party chat when a Vanguard Corpse appears.",
+  "text.config.soul/config.option.mining.mineshaft.showCorpsesHud": "Show Corpses Overlay",
+  "text.config.soul/config.option.mining.mineshaft.showCorpsesHud.tooltip": "Overlay with looted / total corpse counts by type. Move with /soul gui.",
+  "text.config.soul/config.option.mining.mineshaft.enableLittlefootPtme": "!ptme on Littlefoot",
+  "text.config.soul/config.option.mining.mineshaft.enableLittlefootPtme.tooltip": "Send !ptme when you first see Littlefoot (line-of-sight required).",
+  "text.config.soul/config.option.mining.mineshaft.autoShareLittlefootWaypoint": "Auto Share Waypoint",
+  "text.config.soul/config.option.mining.mineshaft.autoShareLittlefootWaypoint.tooltip": "After party warp, share Littlefoot coordinates so waypoint mods auto-pin them.",
 
   "text.config.soul/config.group.notifications.misc": "Chat Notifications",
   "text.config.soul/config.option.notifications.chatAlerts": "Chat Alerts",
@@ -118,5 +134,7 @@
   "text.config.soul/config.option.dev.debug.logging.logWidgetInteractions": "Log Widget Interactions",
   "text.config.soul/config.option.dev.debug.logging.logMessageHandler": "Log Message Handler",
   "text.config.soul/config.option.dev.debug.logging.logFeatureEvents": "Log Feature Events",
-  "text.config.soul/config.option.dev.debug.logging.logCommandsAndMessages": "Log Commands & Messages"
+  "text.config.soul/config.option.dev.debug.logging.logCommandsAndMessages": "Log Commands & Messages",
+  "text.config.soul/config.option.dev.data.logMineshaftVisits": "Log Mineshaft Visits to Backend",
+  "text.config.soul/config.option.dev.data.logMineshaftVisits.tooltip": "Send mineshaft visit summary to backend for personal stats."
 }

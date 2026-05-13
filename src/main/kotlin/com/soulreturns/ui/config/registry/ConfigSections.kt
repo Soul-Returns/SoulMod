@@ -104,6 +104,8 @@ internal object ConfigSections {
             "farming.seasonings.showNextMilestone" to { cfg.farming.seasonings.enableTracker() },
             "farming.seasonings.showFarmingTime" to { cfg.farming.seasonings.enableTracker() },
             "farming.seasonings.showPerHour" to { cfg.farming.seasonings.enableTracker() },
+            "mining.mineshaft.lapisCorpseThreshold" to { cfg.mining.mineshaft.enableLapisPtme() },
+            "mining.mineshaft.autoShareLittlefootWaypoint" to { cfg.mining.mineshaft.enableLittlefootPtme() },
         )
 
     /** Boolean toggles whose change should rebuild content (because they gate other options' visibility). */
@@ -111,6 +113,8 @@ internal object ConfigSections {
         setOf(
             "render.highlights.highlightPestEquipment",
             "farming.seasonings.enableTracker",
+            "mining.mineshaft.enableLapisPtme",
+            "mining.mineshaft.enableLittlefootPtme",
         )
 
     /** String fields rendered as keybind pickers (with capture mode) instead of textboxes. */
@@ -121,6 +125,7 @@ internal object ConfigSections {
             "dev.keybinds.copyHeldItem",
             "dev.keybinds.copyScoreboard",
             "dev.keybinds.copyTablist",
+            "dev.keybinds.copyNearbyEntities",
         )
 
     fun isOptionVisible(opt: Option<*>): Boolean {

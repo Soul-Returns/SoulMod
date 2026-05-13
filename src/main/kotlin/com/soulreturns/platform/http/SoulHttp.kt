@@ -56,4 +56,19 @@ object SoulHttp {
         headers.forEach { (k, v) -> builder.header(k, v) }
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
     }
+
+    fun post(
+        url: String,
+        body: String,
+        headers: Map<String, String> = emptyMap()
+    ): HttpResponse<String> {
+        val builder =
+            HttpRequest.newBuilder()
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .uri(URI.create(url))
+                .timeout(Duration.ofSeconds(15))
+                .header("User-Agent", userAgent())
+        headers.forEach { (k, v) -> builder.header(k, v) }
+        return client.send(builder.build(), HttpResponse.BodyHandlers.ofString())
+    }
 }

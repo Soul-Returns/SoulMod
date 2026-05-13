@@ -105,10 +105,21 @@ public class SoulConfigModel {
 
     public static class Mining {
         @Nest public DwarvenMines dwarvenMines = new DwarvenMines();
+        @Nest public Mineshaft mineshaft = new Mineshaft();
     }
 
     public static class DwarvenMines {
         public boolean donExpressoAlert = false;
+    }
+
+    public static class Mineshaft {
+        public boolean enableLapisPtme = false;
+        @RangeConstraint(min = 1, max = 4)
+        public int lapisCorpseThreshold = 2;
+        public boolean enableVanguardPtme = false;
+        public boolean showCorpsesHud = false;
+        public boolean enableLittlefootPtme = false;
+        public boolean autoShareLittlefootWaypoint = true;
     }
 
     public static class Farming {
@@ -140,7 +151,12 @@ public class SoulConfigModel {
         @Nest public Updates updates = new Updates();
         @Nest public Backend backend = new Backend();
         @Nest public Debug debug = new Debug();
+        @Nest public Data data = new Data();
         @Nest public DevKeybinds keybinds = new DevKeybinds();
+    }
+
+    public static class Data {
+        public boolean logMineshaftVisits = true;
     }
 
     public static class DevKeybinds {
@@ -151,6 +167,7 @@ public class SoulConfigModel {
         public String copyHeldItem = "";
         public String copyScoreboard = "";
         public String copyTablist = "";
+        public String copyNearbyEntities = "";
     }
 
     public static class Updates {

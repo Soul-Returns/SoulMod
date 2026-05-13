@@ -12,6 +12,11 @@ import com.soulreturns.features.fishing.BobbinSpotter
 import com.soulreturns.features.itemhighlight.HighlightManager
 import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
+import com.soulreturns.features.mining.mineshaft.LapisCorpseAlert
+import com.soulreturns.features.mining.mineshaft.LittlefootAlert
+import com.soulreturns.features.mining.mineshaft.MineshaftCorpses
+import com.soulreturns.features.mining.mineshaft.MineshaftVisitTracker
+import com.soulreturns.features.mining.mineshaft.VanguardCorpseAlert
 import com.soulreturns.features.notifications.ChatNotifications
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.gui.lib.GuiLayoutManager
@@ -20,6 +25,7 @@ import com.soulreturns.render.RoundRectRenderer
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.hud.BobbinHud
 import com.soulreturns.ui.hud.LegionHud
+import com.soulreturns.ui.hud.MineshaftCorpsesHud
 import com.soulreturns.ui.hud.PartyHud
 import com.soulreturns.ui.hud.SeasoningHud
 import com.soulreturns.update.UpdateChecker
@@ -112,6 +118,14 @@ object Soul : ClientModInitializer {
     fun registerFeatures() {
         DoubleHookResponse.register()
         DonExpresso.register()
+        // Mineshaft — state object must register before consumers (LapisCorpseAlert, MineshaftCorpsesHud)
+        // so the per-tick tab-list scan is fresh when they read it.
+        MineshaftCorpses.register()
+        LapisCorpseAlert.register()
+        VanguardCorpseAlert.register()
+        LittlefootAlert.register()
+        MineshaftVisitTracker.register()
+        MineshaftCorpsesHud.register()
         LegionHud.register()
         // Fishing — spotter must register before HUD so per-tick count is fresh.
         BobbinSpotter.register()

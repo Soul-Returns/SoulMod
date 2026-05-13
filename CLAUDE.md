@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **IMPORTANT — keep this file current.** When you discover a non-obvious Hypixel SkyBlock convention, a project quirk, a new shared utility, an init-order constraint, or anything that future sessions would have to re-derive from scratch, **write it down here before the conversation ends.** A new Claude Code session starts with an empty short-term memory — anything not in `CLAUDE.md` (or in your persistent memory under `~/.claude/projects/.../memory/`) is gone. Prefer adding to an existing section if one fits; otherwise create a new H2/H3 section. If the finding is more user-specific than project-specific (preferences, workflow), save it as a memory instead.
+
 ## Repository overview
 
 Soul is a **client-side Fabric mod** for Minecraft (Hypixel SkyBlock features), written in **Kotlin**. **Java is used only for Mixin classes** and for `SoulConfigModel.java` (consumed by an annotation processor) and `RenderHelper.java` (Java statics callable from Mixins). Mod ID is `soul`, package root is `com.soulreturns`. Stonecutter is used to maintain a single source tree across Minecraft versions; only `1.21.11` is currently active.
@@ -69,7 +71,7 @@ com.soulreturns/
 ├── render/          ← SDF shaders, RoundRectRenderer, SoulRenderPipelines
 ├── stats/           ← PersistentStats (profile-keyed)
 ├── update/          ← UpdateChecker, Updater, UpdateModal
-├── util/            ← logger, chat, message handler, deprecated façades
+├── util/            ← logger, chat, message handler, MobSpotter (LOS-gated mob lookup)
 ├── commands/        ← /soul command + subcommands
 ├── profileviewer/   ← SPV (its own subtree)
 └── Soul.kt          ← entrypoint
@@ -123,7 +125,10 @@ The config wrapper class `SoulConfig` is **generated** from `SoulConfigModel.jav
 11. `registerCommands()`, `registerFeatures()`.
 12. `GuiLayoutManager.loadOrInitialize()` — last, so features have registered their GUI elements.
 
-**Within `registerFeatures()`** the only ordering constraint is **`BobbinSpotter.register()` before `BobbinHud.register()`** so the HUD reads the current tick's count, not the previous one's.
+**Within `registerFeatures()`** two ordering constraints apply, both for the same reason — the consumer reads state owned by the producer on the same tick:
+
+- `BobbinSpotter.register()` before `BobbinHud.register()`.
+- `MineshaftCorpses.register()` before `LapisCorpseAlert.register()`, `VanguardCorpseAlert.register()`, `LittlefootAlert.register()`, `MineshaftVisitTracker.register()`, and `MineshaftCorpsesHud.register()` — all five consume `MineshaftCorpses.byType` / `totalOf(...)`.
 
 ### Event bus (`core/events/`)
 
@@ -155,7 +160,7 @@ Pattern: a `Reader` polls Minecraft state on every client tick and feeds an `Api
 - **`LocationApi.currentArea`** / **`currentSublocation`** — fed by `LocationReader`. Area from tab list `Area:` virtual entry; sublocation from scoreboard sidebar `⏣` line. Restrictive ASCII regex strips lobby state suffixes (e.g. Garden's `ൠ x8` pest indicator).
 - **`ProfileApi.currentProfile`** — fed by `ProfileReader`. Tab-list `Profile:` (or `Profile (Co-op):`, `Profile (Stranded):`) entry. Drives `PersistentStats` slot selection — see "Persistent stats" below.
 
-`util/SkyblockLocation.kt` is a `@Deprecated` façade forwarding to `LocationApi`; new code should depend on the API directly.
+Every consumer goes through `LocationApi` directly — or subscribes to `AreaChanged` / `SublocationChanged` from `data/model`.
 
 ### Feature pattern
 
@@ -229,6 +234,7 @@ All HUDs live under `ui/hud/`. State-vs-view split: anything other code might wa
 | Legion counter | `ui/hud/LegionHud.kt` | None — count recomputed each tick (transient) |
 | Bobbin time | `ui/hud/BobbinHud.kt` | `features/fishing/BobbinSpotter.kt` (count + alert state + alert decision logic) |
 | Party overlay | `ui/hud/PartyHud.kt` | `features/party/PartyManager.kt` (chat-driven party state machine) |
+| Mineshaft corpses | `ui/hud/MineshaftCorpsesHud.kt` | `features/mining/mineshaft/MineshaftCorpses.kt` (tab-list scan, by-type counts) |
 
 HUDs read `cfg.<feature>.<flags>()` directly for enable/visibility flags — no extra `HudConfig` wrapper interface; the generated owo-config nested types already provide a typed surface. Each HUD pushes a text block via `GuiLayoutApi.updateTextBlock(...)` so it's positionable in `/soul gui`.
 
@@ -251,7 +257,7 @@ Opened via `/spv <username>`. Module under `profileviewer/`:
 
 - **`SoulHttp`** — bare `HttpClient` wrapper, sets `User-Agent: SoulMod/<version>/<mcVersion>`. Backend URL priority: system property `soul.backendUrl` → `cfg.dev.backend.backendUrlOverride()` → `https://sky.soulreturns.com`.
 - **`BackendAuth`** — Mojang session-server handshake (`sessionService.joinServer` then `GET /authenticate`). Token cached in memory (`AtomicReference`) AND persisted to `config/soul/auth_token.txt` (token + expiry epoch ms) with a 23-hour client TTL matching the backend's 24-hour TTL — so restarts don't re-authenticate. 429 responses trigger a 5-minute backoff applied even to `forceRefresh = true` calls. `clear()` wipes both in-memory token and the cache file.
-- **`BackendClient`** — authenticated GET with caching (`X-Backend-Expire-In` header sets TTL). 401 triggers single re-auth via `BackendAuth.ensureAuthenticated(forceRefresh = true)`.
+- **`BackendClient`** — authenticated GET with caching (`X-Backend-Expire-In` header sets TTL) and authenticated POST (no caching, JSON body via `JsonElement.toString()`). Both retry once on 401 via `BackendAuth.ensureAuthenticated(forceRefresh = true)`.
 - **`PresenceService`** — sends authenticated `GET /ping?server=<addr>` every 20 s on its own daemon thread so the backend knows who is online.
 
 `platform/concurrent/SoulExecutor` — fixed 2-thread daemon pool used by HTTP, presence, persistent-stats writes, and SPV. `SoulExecutor.log(...)` and `warn(...)` go through `SoulLogger("Soul/Backend")`, gated on `cfg.dev.debug.debugMode()`.
@@ -324,7 +330,7 @@ Chat click hit-testing is fixed in `ChatScreenMixin` via `@WrapOperation` on `Mo
 - `render/DrawContextRenderer` — extension helpers for rounded fills (`roundedFill`, `roundedFillCustomRadii`) using SDF shaders registered via `SoulRenderPipelines`.
 - `render/RoundRectRenderer` — special GUI element registered with `SpecialGuiElementRegistry` for anti-aliased rounded corners.
 - `ui/theme/Theme` — palette + `Surface` lambdas for the UI. **All custom rendering** in config/SPV/HUD code goes through these utilities — do not use raw `fillGradient` or GL calls for rounded shapes, do not hardcode ARGB colors.
-- `ui/components/SoulSlider`, `ui/components/SoulToggle` — generic owo-ui components (modern slider with fill + knob, pill toggle).
+- `ui/components/SoulSlider`, `ui/components/SoulIntSlider`, `ui/components/SoulToggle` — generic owo-ui components. `SoulSlider` is the continuous (Double) slider used for floats; `SoulIntSlider` is the discrete sibling with integer values and visible tick marks at each step. `RowBuilders.buildOptionRow` dispatches by the option's runtime type — `Int`/`Long` → `SoulIntSlider`, `Float`/`Double` → `SoulSlider` — so adding a new int-typed option with `@RangeConstraint` automatically gets the tick-mark slider.
 
 ### Logging & chat
 
@@ -386,7 +392,7 @@ Tick-driven debounced save (max once per second), atomic write (temp file + rena
 - `/soul dev` subcommand bundles all developer-facing diagnostics: `getArea`, `getSubLocation`, `getProfile`, `listStatProfiles`, `resetSeasonings`, `clearAlerts`, `testAlert [<msg>]`, `testMessage <type> <msg>`. All literals are camelCase.
   - `getProfile` shows the active SkyBlock profile name from `ProfileApi`.
   - `listStatProfiles` enumerates every slot in `stats.json`, marking the active one and the `_legacy` bucket.
-- `features/dev/DevKeybindHandler` — bypasses Minecraft's controls menu via tick-based `InputConstants.isKeyDown` polling. Five clipboard data dumps configured under `dev.keybinds.*` String options (path strings store key translation IDs like `key.keyboard.f6`): copy opened container GUI, item under cursor, held item, scoreboard, tab list. Each dump is JSON via Gson. Hover-slot access uses an access widener entry on `AbstractContainerScreen.hoveredSlot`.
+- `features/dev/DevKeybindHandler` — bypasses Minecraft's controls menu via tick-based `InputConstants.isKeyDown` polling. Six clipboard data dumps configured under `dev.keybinds.*` String options (path strings store key translation IDs like `key.keyboard.f6`): copy opened container GUI, item under cursor, held item, scoreboard, tab list, nearby entities (within 30 blocks). Each dump is JSON via Gson. Hover-slot access uses an access widener entry on `AbstractContainerScreen.hoveredSlot`.
 
 ### Farming features
 
@@ -395,6 +401,53 @@ Tick-driven debounced save (max once per second), atomic write (temp file + rena
 - `features/farming/seasoning/SeasoningState` — single owner of seasoning-related mutable state. Funnels writes through `PersistentStats.update`. Exposes `total`, `targets`, `sessionChatGain`, `seasoningFarmingMs()` for the HUD.
 - `features/farming/FarmingTimer` — session-only stopwatch (resets on client launch). Driven by `MultiPlayerGameModeMixin.destroyBlock` against a whitelist of harvestable Garden crop blocks. Pauses 2s after the last break (grace counted in active time). `(Paused)` indicator (`§c`) appended to the time line by SeasoningHud.
 - `ui/hud/SeasoningHud` — Total / Farming Time / Per hour HUD. Gated on `cfg.farming.seasonings.enableTracker()` AND `LocationApi.isInArea("Garden")`. Hosts the `[Reset Session]` click handler.
+
+### Mining / Mineshaft features
+
+- `features/mining/mineshaft/MineshaftCorpses` — single tab-list scan per tick (only while in `Area: Mineshaft`). Parses rows of the form ` <Type>: NOT LOOTED|LOOTED` under the `Frozen Corpses:` header into `byType: Map<String, Counts(looted, unlooted)>`. Both `LapisCorpseAlert` and `MineshaftCorpsesHud` read from this — single source of truth, no duplicate parsing.
+- `features/mining/mineshaft/LapisCorpseAlert` — listens for `Sending to Mineshaft...` chat. Within 10s, if `MineshaftCorpses.totalOf("Lapis") ≥ lapisCorpseThreshold`, fires `/pc !ptme Found N Lapis Corpse(s) in Mineshaft` once.
+- `features/mining/mineshaft/VanguardCorpseAlert` — same trigger and window as Lapis but for `Vanguard`. Hypixel only ever spawns at most one Vanguard Corpse per mineshaft, so there is **no threshold slider and no count in the message** — just fires `/pc !ptme Found Vanguard Corpse in Mineshaft` once per send when `MineshaftCorpses.totalOf("Vanguard") > 0`.
+- `features/mining/mineshaft/LittlefootAlert` — two-phase. (1) Pings `/pc !ptme Found Littlefoot` on the first LOS-confirmed sighting per mineshaft visit (resets on `AreaChanged`). (2) On the `SkyBlock Party Warp` chat, schedules a +2 s waypoint share (`/pc x: X, y: Y, z: Z`), preferring fresh LOS at fire time with the last LOS-confirmed sighting (within 60 s) as fallback. Both phases gate on the main toggle; waypoint phase additionally gates on the `autoShareLittlefootWaypoint` sub.
+- `features/mining/mineshaft/MineshaftScoreboard` — one-shot reader for the top sidebar line. Returns `(type, fullIdentifier)` like `("ONYX", "ONYX_1")` only when `LocationApi.currentSublocation == "Glacite Mineshafts"`; null otherwise. Reused by visit tracking; could be reused by other features that need the active mineshaft instance.
+- `features/mining/mineshaft/MineshaftVisitTracker` — opt-out (`cfg.dev.data.logMineshaftVisits`, default true). Lives under the **Dev → Data** subcategory — the home for backend data-collection toggles, distinct from `Dev → Debug → Logging` which is for client-side console logging gated on `debugMode`. Driven by `AreaChanged`: starts a visit on entry to `Mineshaft`, ticks while inside to (a) capture the scoreboard identifier once `Glacite Mineshafts` sublocation is reported and (b) flip a `littlefootFound` flag the first time `MobSpotter.findVisible("Littlefoot")` returns non-null. On exit, snapshots `MineshaftCorpses.byType` and POSTs `/mineshaft/visit` via `BackendClient.post`. Fire-and-forget — network/4xx/5xx failures are logged and dropped (no client-side queueing).
+
+## Hypixel SkyBlock conventions
+
+Protocol / rendering quirks that recur across features — recorded here so we don't re-derive them per feature.
+
+### Named-mob entity model
+
+Hypixel renders most named mobs as a **`Player`-typed entity** at the mob's feet, plus an **invisible armor stand** ~2 blocks above carrying the level/health nameplate (`[Lv533] ❄✰❃ Littlefoot 50M/50M❤`). For position-sensitive features (waypoints, click targeting), prefer the Player entity — the armor stand reads ~2 blocks too high. `util/MobSpotter.findVisible(name)` already picks the Player variant when both are present.
+
+### Line-of-sight is a ToS requirement
+
+Hypixel forbids wallhack-style features. Any code that *acts* on an entity's presence (alerts, waypoint shares, automated chat) must verify the local player can actually see it — `Entity.hasLineOfSight(target)` must be true at the moment of the action. Scanning the entity list itself is fine; acting on through-wall data is not. `util/MobSpotter.findVisible` is the canonical helper; it returns `null` when LOS fails, and by design there is no "without LOS" variant — the ToS guard is part of the API surface, not opt-in.
+
+### Party-chat `!ptme` protocol
+
+`!ptme` is a community convention, **not** a Hypixel built-in. When `!ptme` appears in party chat, other members' mods (Skytils / SkyHanni / Patcher / etc.) react by running `/party transfer <author>` — making the requester the party leader so they can `/p warp` everyone in. When our mod sends `/pc !ptme Found Littlefoot` we're emitting that chat signal; we never run `/party transfer` ourselves.
+
+**Always gate party-chat sends on `PartyManager.isInParty()`.** Every `!ptme` or `/pc x: y: z:` send site must check membership before calling `player.connection.sendCommand("pc …")`. Hypixel silently drops `/pc` when you're not in a party, so sending blind has no effect — but it also gives no feedback that something's wrong, which is worse for debugging than an explicit `DebugLogger.logFeatureEvent("… skipping !ptme — not in party")`. The gate also prevents the feature from "consuming" its trigger (e.g. marking `fired = true`) without anyone receiving the message; in our current code we still consume the trigger after logging the skip, since the trigger only makes sense for that specific mineshaft entry.
+
+### `/p warp` mechanics
+
+The warper **stays in their current world** — the other party members teleport TO the warper. Practical consequences:
+
+- The finder's client retains the boss entity through and after the warp, so fresh LOS checks at `warp_msg + 2 s` still succeed.
+- Hypixel's `SkyBlock Party Warp` chat message fires when the warp executes; it can take up to ~30 s after `/p warp` is run.
+- Other members need ~1 s after that message to finish loading the destination instance. Coordinates shared at `warp_msg + 2 s` therefore land in everyone's chat *after* their client is ready to render a waypoint.
+
+### Waypoint chat format
+
+`x: N, y: N, z: N` (integer coords, comma-separated) in party chat is the de facto standard parsed by Skytils / SkyHanni / Patcher / similar waypoint mods. They auto-create an in-world waypoint from that string — **no user click required**. Emit exactly that format for waypoint sharing.
+
+### Mineshaft type identifier (top scoreboard line)
+
+In a Glacite Mineshaft, the top sidebar line looks like `§705/12/26 §8m6D§v§8M ONYX_1`. After stripping color codes (`MessageDetector.stripColorCodes`) the **last whitespace-separated token** is the mineshaft identifier — e.g. `ONYX_1`, `RUBY_3`, `JADE_2`. Split on `_`: prefix is the **type** (`ONYX`), suffix is a per-server **instance counter** (`1`). Treat the type list as open-ended — Hypixel can add new ones (Aquamarine, Peridot, etc.).
+
+**Gating**: only treat that last token as a mineshaft identifier when `LocationApi.currentSublocation == "Glacite Mineshafts"`. Without that guard, the same parsing would extract garbage tokens from sidebars in unrelated areas (private island, hub, end, etc.) and the data would be poisoned. The sublocation check is cheap — do it first.
+
+For the scoreboard iteration pattern, reuse the sidebar walk in `LocationReader.readSublocation`, but pick the **highest-score** line instead of the `⏣` line.
 
 ## Conventions that bite if ignored
 
@@ -405,7 +458,7 @@ Tick-driven debounced save (max once per second), atomic write (temp file + rena
 - **owo-config `@Nest` fields are Java fields, not methods**: access the nested object as a property, then call leaf options as methods — `cfg.dev.updates.checkForUpdates()` NOT `cfg.dev().updates().checkForUpdates()`. Nests are properties (no parens), leaves are getter methods (parens).
 - **Config access**: use the `cfg` accessor (e.g. `cfg.render.highlights.usePestVest()`). Never cache config values — always read at point of use so toggles take effect immediately.
 - **Persistent stats access**: `PersistentStats.current.x` / `PersistentStats.update { x = ... }`. Never read `PersistentStats.knownProfiles()` for application logic — that's a debug surface.
-- **SkyBlock location reads**: `LocationApi` (or subscribe to `AreaChanged` / `SublocationChanged`). `SkyblockLocation` is a deprecated façade — fine to call from existing code, don't introduce in new code.
+- **SkyBlock location reads**: `LocationApi` (or subscribe to `AreaChanged` / `SublocationChanged`).
 - **Static methods can't be called as Kotlin properties**: `Util.getPlatform()`, `SharedConstants.getCurrentVersion()` — Kotlin's getter→property syntax does NOT apply to *static* Java methods. Always use the explicit method-call form.
 - **MC version string**: `SharedConstants.getCurrentVersion().name()` (Mojmap renamed `getGameVersion` → `getCurrentVersion`). Never derive the MC version from `Soul.version.substringAfter("+")` — in dev mode the mod version has no `+mcVersion` suffix.
 - **Locale-safe formatting**: `String.format(Locale.ROOT, ...)` wherever floats/doubles are formatted for display or parsing — the system locale may use `,` as a decimal separator.
