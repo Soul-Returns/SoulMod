@@ -103,6 +103,22 @@ object PersistentStats {
     /** Profiles currently in storage. Useful for debug commands. */
     fun knownProfiles(): Set<String> = storage.profiles.keys.toSet()
 
+    /**
+     * Re-read stats.json from disk into [storage], discarding any unsaved in-memory state.
+     * Used by cloud sync after a remote pull writes a new stats file. Active-profile
+     * promotion happens automatically on the next [ProfileChanged] event.
+     */
+    fun reload() {
+        synchronized(this) {
+            dirty = false
+            storage = Storage()
+            load()
+        }
+    }
+
+    /** Absolute path to the stats file. Used by cloud sync to register the artifact. */
+    fun statsFile(): File = file
+
     // ───────────────────── internals ─────────────────────
 
     private fun activeKey(): String {

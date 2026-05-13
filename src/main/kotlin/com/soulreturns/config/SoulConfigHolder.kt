@@ -20,6 +20,17 @@ object SoulConfigHolder {
 
     @JvmStatic
     fun isConfigReady(): Boolean = ::INSTANCE.isInitialized
+
+    /**
+     * Re-read the on-disk config.json5 into the existing wrapper. Used by cloud sync
+     * after a remote pull writes a new config file. Consumers reading `cfg.*` at point
+     * of use will pick up the new values on their next read.
+     */
+    fun reload() {
+        if (::INSTANCE.isInitialized) {
+            INSTANCE.load()
+        }
+    }
 }
 
 /** Convenience accessor; mirrors the previous `config` top-level property. */

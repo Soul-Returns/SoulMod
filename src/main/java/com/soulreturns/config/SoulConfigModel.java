@@ -40,6 +40,9 @@ public class SoulConfigModel {
     @SectionHeader("profileViewer")
     @Nest public ProfileViewer profileViewer = new ProfileViewer();
 
+    @SectionHeader("sync")
+    @Nest public Sync sync = new Sync();
+
     @SectionHeader("dev")
     @Nest public Dev dev = new Dev();
 
@@ -145,6 +148,13 @@ public class SoulConfigModel {
 
     public static class ProfileViewer {
         public boolean enabled = true;
+    }
+
+    public static class Sync {
+        public boolean enabled = true;
+        public boolean syncConfig = true;
+        public boolean syncGuiLayout = true;
+        public boolean syncStats = true;
     }
 
     public static class Dev {

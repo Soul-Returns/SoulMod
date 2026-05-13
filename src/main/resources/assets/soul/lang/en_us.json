@@ -9,6 +9,7 @@
   "text.config.soul/config.category.farming": "Farming",
   "text.config.soul/config.category.notifications": "Notifications",
   "text.config.soul/config.category.profileViewer": "Profile Viewer",
+  "text.config.soul/config.category.sync": "Cloud Sync",
   "text.config.soul/config.category.dev": "Dev",
 
   "text.config.soul/config.dev.warning": "Only change if you know what you're doing.",
@@ -20,6 +21,7 @@
   "text.config.soul/config.section.farming": "Farming",
   "text.config.soul/config.section.notifications": "Notifications",
   "text.config.soul/config.section.profileViewer": "Profile Viewer",
+  "text.config.soul/config.section.sync": "Cloud Sync",
   "text.config.soul/config.section.dev": "Dev",
 
   "text.config.soul/config.group.general.fixes": "Fixes",
@@ -122,6 +124,16 @@
   "text.config.soul/config.option.notifications.chatAlerts.tooltip": "Show on-screen alerts when chat messages match a configured rule. Future: configurable rule list under `/soul chatNotifications`.",
 
   "text.config.soul/config.option.profileViewer.enabled": "Enabled",
+
+  "text.config.soul/config.group.sync.misc": "Cloud Sync",
+  "text.config.soul/config.option.sync.enabled": "Enable Cloud Sync",
+  "text.config.soul/config.option.sync.enabled.tooltip": "Sync mod data with the Soul backend so settings, GUI layouts, and stats follow you between machines. Local files remain the source of truth — if the backend is unreachable, the mod keeps working with local data.",
+  "text.config.soul/config.option.sync.syncConfig": "Sync Config",
+  "text.config.soul/config.option.sync.syncConfig.tooltip": "Sync the contents of config/soul/config.json5.",
+  "text.config.soul/config.option.sync.syncGuiLayout": "Sync GUI Layout",
+  "text.config.soul/config.option.sync.syncGuiLayout.tooltip": "Sync the HUD positions and scales from config/soul/gui_layout.json.",
+  "text.config.soul/config.option.sync.syncStats": "Sync Stats",
+  "text.config.soul/config.option.sync.syncStats.tooltip": "Sync tracked counters (seasonings, milestone targets, etc.) from config/soul/stats.json.",
 
   "text.config.soul/config.option.dev.updates.checkForUpdates": "Check for Updates",
   "text.config.soul/config.option.dev.updates.checkForUpdates.tooltip": "Checks for new Soul versions on startup and shows a notice when an update is available.",

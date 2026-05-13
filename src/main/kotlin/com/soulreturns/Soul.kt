@@ -21,6 +21,9 @@ import com.soulreturns.features.notifications.ChatNotifications
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.platform.http.PresenceService
+import com.soulreturns.platform.sync.SyncEngine
+import com.soulreturns.platform.sync.SyncKind
+import com.soulreturns.platform.sync.SyncedArtifact
 import com.soulreturns.render.RoundRectRenderer
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.hud.BobbinHud
@@ -108,6 +111,45 @@ object Soul : ClientModInitializer {
 
         // Load existing GUI layout, or persist the current defaults if none exist yet.
         GuiLayoutManager.loadOrInitialize()
+
+        // Register sync artifacts AFTER all subsystems have loaded their local state. The
+        // engine reconciles in the background; if a remote pull is fresher than local, the
+        // onAfterPull hook reloads the in-memory representation for that subsystem.
+        registerSyncArtifacts(configDir)
+        SyncEngine.start(masterEnabled = { com.soulreturns.config.cfg.sync.enabled() })
+    }
+
+    private fun registerSyncArtifacts(configDir: File) {
+        SyncEngine.register(
+            SyncedArtifact(
+                kind = SyncKind.CONFIG,
+                file = File(configDir, "soul/config.json5"),
+                enabled = { com.soulreturns.config.cfg.sync.enabled() && com.soulreturns.config.cfg.sync.syncConfig() },
+                onAfterPull = { com.soulreturns.config.SoulConfigHolder.reload() }
+            )
+        )
+        val guiLayoutFile = GuiLayoutManager.layoutFile()
+        if (guiLayoutFile != null) {
+            SyncEngine.register(
+                SyncedArtifact(
+                    kind = SyncKind.GUI_LAYOUT,
+                    file = guiLayoutFile,
+                    enabled = {
+                        com.soulreturns.config.cfg.sync.enabled() &&
+                            com.soulreturns.config.cfg.sync.syncGuiLayout()
+                    },
+                    onAfterPull = { GuiLayoutManager.reload() }
+                )
+            )
+        }
+        SyncEngine.register(
+            SyncedArtifact(
+                kind = SyncKind.STATS,
+                file = PersistentStats.statsFile(),
+                enabled = { com.soulreturns.config.cfg.sync.enabled() && com.soulreturns.config.cfg.sync.syncStats() },
+                onAfterPull = { PersistentStats.reload() }
+            )
+        )
     }
 
     fun registerCommands() {

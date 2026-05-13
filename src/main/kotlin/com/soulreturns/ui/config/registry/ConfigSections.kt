@@ -93,6 +93,7 @@ internal object ConfigSections {
             "farming",
             "notifications",
             "profileViewer",
+            "sync",
             "dev",
         )
 
@@ -106,6 +107,9 @@ internal object ConfigSections {
             "farming.seasonings.showPerHour" to { cfg.farming.seasonings.enableTracker() },
             "mining.mineshaft.lapisCorpseThreshold" to { cfg.mining.mineshaft.enableLapisPtme() },
             "mining.mineshaft.autoShareLittlefootWaypoint" to { cfg.mining.mineshaft.enableLittlefootPtme() },
+            "sync.syncConfig" to { cfg.sync.enabled() },
+            "sync.syncGuiLayout" to { cfg.sync.enabled() },
+            "sync.syncStats" to { cfg.sync.enabled() },
         )
 
     /** Boolean toggles whose change should rebuild content (because they gate other options' visibility). */
@@ -115,6 +119,7 @@ internal object ConfigSections {
             "farming.seasonings.enableTracker",
             "mining.mineshaft.enableLapisPtme",
             "mining.mineshaft.enableLittlefootPtme",
+            "sync.enabled",
         )
 
     /** String fields rendered as keybind pickers (with capture mode) instead of textboxes. */

@@ -192,6 +192,36 @@ object GuiLayoutManager {
     }
 
     /**
+     * The configured layout file. Returns null until [configure] is called.
+     * Used by cloud sync to register the artifact.
+     */
+    fun layoutFile(): File? = layoutFile
+
+    /**
+     * Re-read the layout from disk into the in-memory state. Used by cloud sync
+     * after a remote pull writes a new gui_layout.json. Skips initialization
+     * (does not write defaults) — call [loadOrInitialize] for that.
+     */
+    @Synchronized
+    fun reload() {
+        val file = layoutFile ?: return
+        if (!file.exists()) return
+        try {
+            val json = file.readText()
+            val type = object : TypeToken<GuiLayout>() {}.type
+            val loaded = gson.fromJson<GuiLayout>(json, type) ?: GuiLayout()
+            currentLayout = loaded.copy(elements = loaded.elements.filterNotNull())
+            DebugLogger.logGuiLayout(
+                "Reloaded GUI layout from ${file.absolutePath} (${currentLayout.elements.size} elements)"
+            )
+        } catch (e: Exception) {
+            DebugLogger.logGuiLayout(
+                "Failed to reload GUI layout from ${file.absolutePath}: ${e::class.java.name}: ${e.message}"
+            )
+        }
+    }
+
+    /**
      * Load layout from the configured file if it exists; otherwise, persist the
      * current in-memory layout as the initial default.
      */

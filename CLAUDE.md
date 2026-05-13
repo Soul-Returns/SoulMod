@@ -123,7 +123,8 @@ The config wrapper class `SoulConfig` is **generated** from `SoulConfigModel.jav
 9. Screen event registrations for `UpdateModal` (TitleScreen + world join).
 10. `HighlightManager.loadGroups()`, `TooltipHandler.register()`, `GuiLayoutManager.configure(...)`, `SpecialGuiElementRegistry.register(...)`.
 11. `registerCommands()`, `registerFeatures()`.
-12. `GuiLayoutManager.loadOrInitialize()` — last, so features have registered their GUI elements.
+12. `GuiLayoutManager.loadOrInitialize()` — must come before sync engine starts so all three sync artifacts have loaded their local state.
+13. `registerSyncArtifacts(...)` + `SyncEngine.start(...)` — **last**. Reconciles in the background; if a remote pull is fresher than local, `onAfterPull` hot-reloads the affected subsystem (config / gui_layout / stats).
 
 **Within `registerFeatures()`** two ordering constraints apply, both for the same reason — the consumer reads state owned by the producer on the same tick:
 
@@ -261,6 +262,41 @@ Opened via `/spv <username>`. Module under `profileviewer/`:
 - **`PresenceService`** — sends authenticated `GET /ping?server=<addr>` every 20 s on its own daemon thread so the backend knows who is online.
 
 `platform/concurrent/SoulExecutor` — fixed 2-thread daemon pool used by HTTP, presence, persistent-stats writes, and SPV. `SoulExecutor.log(...)` and `warn(...)` go through `SoulLogger("Soul/Backend")`, gated on `cfg.dev.debug.debugMode()`.
+
+### Cloud sync (`platform/sync/`)
+
+Per-account mirror of three mod data files to the backend (`config.json5`, `gui_layout.json`, `stats.json`). Local files remain the source of truth on disk — the engine is purely a mirror so a fresh install on a different machine can pull state back.
+
+| File | Role |
+|---|---|
+| `SyncKind.kt` | Enum of mirrorable artifacts: `CONFIG`, `GUI_LAYOUT`, `STATS`. The `key` field is the URL suffix (`/sync/{key}`). |
+| `SyncedArtifact.kt` | Data class binding a kind to a local `File`, a per-tick `enabled` predicate, and an `onAfterPull` reload hook called after a successful remote pull writes new bytes to disk. |
+| `SyncMetadata.kt` | Sidecar persistence at `config/soul/sync_meta.json`. Per kind, records `pushedHash` (SHA-256 of bytes last successfully PUT) and `syncedAt` (server `updatedAt` epoch ms at last reconcile). |
+| `SyncEngine.kt` | Orchestrator. `register(artifact)` → `start(masterEnabled)` from `Soul.kt`. Runs initial reconcile in background, then a tick-based change watcher every 200 ticks (~10 s), then a synchronous flush on `CLIENT_STOPPING`. **Owns its own single-thread `syncExecutor`** — never run sync work on `SoulExecutor`. Background: `SoulHttp`'s `HttpClient` uses `SoulExecutor` for async I/O, and `BackendClient.get/post` dispatch the actual HTTP into the same pool. If sync also ran there and called `.join()`, the 2-thread pool would deadlock against itself. Sync work blocks on `BackendClient.*.join()` from the `soul-sync` thread, which lets `SoulExecutor` stay free for the underlying network call. |
+
+**Reconcile logic (per artifact):** GET `/sync/{kind}` returning `{content, updatedAt}`:
+- **404**: no remote yet → push local if present.
+- **5xx / 401 / network**: log + one-shot `soulChat` warning per session ("Cloud sync unavailable — using local files"). No blocking, no command-gating; user keeps working on local state.
+- **200**: three branches — (a) `localHash != meta.pushedHash` AND `meta.pushedHash` is non-empty → local has unpushed changes from the offline-last-session case, push wins; (b) `response.updatedAt > meta.syncedAt` AND hash differs → remote is fresher (admin-edit case, since the user is the only other writer and they aren't running two clients), write to disk and call `onAfterPull` on the client thread; (c) otherwise → in sync, no-op (but seed `pushedHash` if it was empty so we don't push needlessly next session).
+
+The **same** reconcile runs at startup and on every 60 s tick — so admin edits made via the web UI propagate without a game restart. Pulls are **suppressed while `SoulConfigScreen` or `GuiEditScreen` is open** (`SyncEngine.isPullSuppressed()` checks `Minecraft.getInstance().screen`). Without that gate, a pull mid-edit would overwrite in-memory state, then the user's save-on-screen-close would push stale data back over the admin's change. Pushes still run while screens are open so the user's own edits propagate normally.
+
+**Hot-reload hooks** wired by `Soul.registerSyncArtifacts(...)`:
+- `CONFIG` → `SoulConfigHolder.reload()` (calls `wrapper.load()` to re-parse `config.json5`). `cfg.*` is read at point of use throughout the codebase, so most settings take effect immediately; in-flight config screens stay on the old values until reopened.
+- `GUI_LAYOUT` → `GuiLayoutManager.reload()` (re-reads file into `currentLayout`). HUDs reposition next frame.
+- `STATS` → `PersistentStats.reload()` (wipes in-memory storage, re-reads file). The next `ProfileChanged` event promotes the legacy bucket as usual.
+
+**Why no conflict path:** only one client per Mojang account can be online at a time (Hypixel server limitation), so concurrent writes are impossible by construction. The `pushedHash` check covers the only realistic edge case — last session pushed-or-tried-to-push and we don't know if it landed. No version vectors, no 409s, no `.bak` files.
+
+**Toggles** live in `cfg.sync.*`: master `enabled` + per-kind `syncConfig` / `syncGuiLayout` / `syncStats`. Defaults all true. When master is off the engine is fully dormant — no initial reconcile, no tick watcher, no shutdown flush. Per-kind toggles only gate that specific artifact (and are hidden in the config UI when master is off).
+
+**Backend contract** (`/sync/{kind}`):
+- `GET /sync/{kind}` → 200 `{content: string, updatedAt: long}` | 404 (no data yet) | 401 | 429.
+- `PUT /sync/{kind}` body `{content: string}` → 200 `{updatedAt: long}` | 400 | 401 | 413 (too large) | 429.
+- `{kind}` is open-ended on the backend side (allows future splits like `stats_farming` without a contract change) but the client today registers exactly three.
+- 256 KB max content size, enforced client-side as a safety net; backend should also reject larger.
+- `X-Backend-Expire-In: 0` on GET responses — sync must always see fresh remote state.
+- Auth: same `Authorization: <token>` bearer flow as every other endpoint.
 
 ### Auto-update system
 
