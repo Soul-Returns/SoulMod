@@ -155,14 +155,15 @@ Events.publish(AreaChanged(prev, next))
 - Inheritance is **not walked** — subscribe to the concrete subclass you want.
 - Handler lists are `CopyOnWriteArrayList`; the class→handlers map is `ConcurrentHashMap`. Subscribing from inside a handler is safe.
 
-### Read-only state holders (`data/location/`, `data/profile/`)
+### Read-only state holders (`data/location/`, `data/profile/`, `data/skyblock/`)
 
 Pattern: a `Reader` polls Minecraft state on every client tick and feeds an `Api` singleton. The `Api` exposes read-only getters and publishes a `*Changed` event on transition only. **Every feature that needs SkyBlock location or profile info reads from the API; no feature parses the tab list itself.**
 
-- **`LocationApi.currentArea`** / **`currentSublocation`** — fed by `LocationReader`. Area from tab list `Area:` virtual entry; sublocation from scoreboard sidebar `⏣` line. Restrictive ASCII regex strips lobby state suffixes (e.g. Garden's `ൠ x8` pest indicator).
+- **`LocationApi.currentArea`** / **`currentSublocation`** — fed by `LocationReader`. Area from tab list `Area:` virtual entry; sublocation from scoreboard sidebar `⏣` line. Restrictive ASCII regex strips lobby state suffixes (e.g. Garden's `ൠ x8` pest indicator). Both go `null` outside SkyBlock.
+- **`SkyblockApi.isOnSkyblock`** — fed by `SkyblockReader`. Checks whether the scoreboard sidebar's **title** equals `SKYBLOCK` after color-code stripping. Reliable: Hypixel sets this on every SkyBlock world and only there. Publishes `OnSkyblockChanged` on transition. Useful as a guard for features that should run only inside SkyBlock and as the `onSkyblock` field in the presence payload.
 - **`ProfileApi.currentProfile`** — fed by `ProfileReader`. Tab-list `Profile:` (or `Profile (Co-op):`, `Profile (Stranded):`) entry. Drives `PersistentStats` slot selection — see "Persistent stats" below.
 
-Every consumer goes through `LocationApi` directly — or subscribes to `AreaChanged` / `SublocationChanged` from `data/model`.
+Every consumer goes through these APIs directly — or subscribes to `AreaChanged` / `SublocationChanged` / `OnSkyblockChanged` from `data/model`.
 
 ### Feature pattern
 
@@ -261,7 +262,7 @@ Opened via `/spv <username>`. Module under `profileviewer/`:
 - **`SoulHttp`** — bare `HttpClient` wrapper, sets `User-Agent: SoulMod/<version>/<mcVersion>`. Backend URL priority: system property `soul.backendUrl` → `cfg.dev.backend.backendUrlOverride()` → `https://sky.soulreturns.com`. **The `HttpClient` is deliberately NOT bound to `SoulExecutor`** — JDK `HttpClient.send()` dispatches its completion callbacks through the configured executor, and `SoulExecutor`'s 2-thread pool would deadlock the moment two blocking sends ran concurrently (both threads block on `send()`, neither thread can dispatch the inbound response). Letting `HttpClient` use its default internal executor keeps `SoulExecutor` free for the wrapper futures.
 - **`BackendAuth`** — Mojang session-server handshake (`sessionService.joinServer` then `GET /authenticate`). Token cached in memory (`AtomicReference`) AND persisted to `config/soul/auth_token.txt` (token + expiry epoch ms) with a 23-hour client TTL matching the backend's 24-hour TTL — so restarts don't re-authenticate. 429 responses trigger a 5-minute backoff applied even to `forceRefresh = true` calls. `clear()` wipes both in-memory token and the cache file.
 - **`BackendClient`** — authenticated GET with caching (`X-Backend-Expire-In` header sets TTL) and authenticated POST (no caching, JSON body via `JsonElement.toString()`). Both retry once on 401 via `BackendAuth.ensureAuthenticated(forceRefresh = true)`.
-- **`PresenceService`** — sends authenticated `GET /ping?server=<addr>` every 20 s on its own daemon thread so the backend knows who is online. **Still on REST polling** even after Mercure landed — the realtime channel is subscribe-only on the mod side (Mercure doesn't support client publish), and migrating presence would mean using SSE connection-lifetime as the online signal + a tiny `POST /presence/server` only on Hypixel-server change. Pros: instant disconnect detection, one less roundtrip every 20 s, cleaner model. Cons: needs backend-side connection tracking + a new REST endpoint for the server-address piece. Worth doing later; not on the immediate roadmap.
+- **`PresenceService`** — event-driven `POST /presence/state` pushes on transitions. **Online signal is the live Mercure SSE connection itself** (backend updates `last_seen` on hub connect/disconnect); this service only publishes coarse state on changes — Hypixel server address, `isOnSkyblock`, current area, current sublocation. Subscribes to `AreaChanged` / `SublocationChanged` / `OnSkyblockChanged` plus a per-tick poll for server-address. State changes are coalesced with a 2 s debounce, and a `lastSent` snapshot dedupes redundant pushes. No heartbeat, no polling, no `/ping`.
 
 `platform/concurrent/SoulExecutor` — fixed 2-thread daemon pool used by HTTP, presence, persistent-stats writes, and SPV. `SoulExecutor.log(...)` and `warn(...)` go through `SoulLogger("Soul/Backend")`, gated on `cfg.dev.debug.debugMode()`.
 

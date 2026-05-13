@@ -81,6 +81,40 @@ object LegacyConfigMigrator {
             }
         }
 
+        // logMessageHandler / logCommandsAndMessages (removed console toggles) → includeMessagesInLog
+        // (file-only, gated by Log to File). If either was on, the user wanted message traces;
+        // preserve that intent by opting them into the file-side category. Drop the dead keys
+        // either way so the file doesn't carry cruft forward.
+        if (root.has("dev") && root.get("dev").isJsonObject) {
+            val dev = root.getAsJsonObject("dev")
+            if (dev.has("debug") && dev.get("debug").isJsonObject) {
+                val debug = dev.getAsJsonObject("debug")
+                if (debug.has("logging") && debug.get("logging").isJsonObject) {
+                    val logging = debug.getAsJsonObject("logging")
+                    val hadMessages =
+                        (
+                            logging.has("logMessageHandler") && logging.get("logMessageHandler").isJsonPrimitive &&
+                                logging.get("logMessageHandler").asBoolean
+                        ) ||
+                            (
+                                logging.has("logCommandsAndMessages") && logging.get("logCommandsAndMessages").isJsonPrimitive &&
+                                    logging.get("logCommandsAndMessages").asBoolean
+                            )
+                    val hadDeadKeys =
+                        logging.has("logMessageHandler") || logging.has("logCommandsAndMessages")
+                    if (hadMessages && !debug.has("includeMessagesInLog")) {
+                        debug.addProperty("includeMessagesInLog", true)
+                        changed = true
+                    }
+                    if (hadDeadKeys) {
+                        logging.remove("logMessageHandler")
+                        logging.remove("logCommandsAndMessages")
+                        changed = true
+                    }
+                }
+            }
+        }
+
         if (!changed) return
 
         try {

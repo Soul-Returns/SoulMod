@@ -80,6 +80,9 @@ object Soul : ClientModInitializer {
         // Start polling Hypixel SkyBlock location (publishes AreaChanged/SublocationChanged events).
         LocationReader.register()
 
+        // Start polling SkyBlock-presence (sidebar title == "SKYBLOCK"; publishes OnSkyblockChanged).
+        com.soulreturns.data.skyblock.SkyblockReader.register()
+
         // Start polling Hypixel SkyBlock profile (publishes ProfileChanged — drives PersistentStats keying).
         com.soulreturns.data.profile.ProfileReader.register()
 
