@@ -4,6 +4,8 @@ import com.soulreturns.Soul
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.MessageHandler
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.minecraft.client.Minecraft
 import java.util.concurrent.CopyOnWriteArraySet
 
@@ -94,6 +96,34 @@ object PartyManager {
 
     private var isRegistered = false
 
+    // ===== Auto-refresh on Hypixel join =====
+    //
+    // The party-state parser is chat-driven (see handleServerMessage). After a game restart we
+    // start with no state and have no way to learn about an in-progress party until something
+    // in chat tells us (a member joining/leaving, the leader running /p list, etc.). To fix
+    // that we run `/party list` once on the first JOIN per JVM session and silently consume
+    // the response — `MessageHandler` still feeds the lines through `handleServerMessage` as
+    // normal (so parsing works), but a `ChatComponent#addMessage` mixin (see
+    // `ChatComponentAddMessageMixin`) cancels the *display* by calling
+    // [shouldSuppressForDisplay] for the duration of the expect window. The mixin approach is
+    // used in preference to Fabric's `ClientReceiveMessageEvents.ALLOW_*` because the latter
+    // can be bypassed by other mods that hook the chat pipeline earlier, and we want this to
+    // work reliably regardless of what else is installed (SkyHanni, Skytils, etc.).
+
+    /** Ticks to wait after JOIN before sending /party list. Lets initial chat settle. */
+    private const val INITIAL_REFRESH_DELAY_TICKS = 40 // ~2 s at 20 ticks/sec
+
+    /** How long after sending /party list to silently consume response lines. */
+    private const val EXPECT_WINDOW_MS = 5_000L
+
+    @Volatile private var hasAutoRefreshedThisSession: Boolean = false
+
+    @Volatile private var refreshDelayTicks: Int = 0
+
+    @Volatile private var expectingPartyListUntilMs: Long = 0L
+
+    @Volatile private var partyListDashesSeen: Int = 0
+
     // ===== Public API =====
 
     /**
@@ -113,8 +143,109 @@ object PartyManager {
             handleServerMessage(message)
         }
 
+        // Auto-refresh on first Hypixel join per JVM session.
+        ClientPlayConnectionEvents.JOIN.register(
+            ClientPlayConnectionEvents.Join { _, _, _ ->
+                if (!hasAutoRefreshedThisSession) {
+                    hasAutoRefreshedThisSession = true
+                    refreshDelayTicks = INITIAL_REFRESH_DELAY_TICKS
+                }
+            }
+        )
+        ClientPlayConnectionEvents.DISCONNECT.register(
+            ClientPlayConnectionEvents.Disconnect { _, _ ->
+                // Re-arm so the next reconnect within this JVM session also refreshes.
+                hasAutoRefreshedThisSession = false
+                refreshDelayTicks = 0
+                endExpectWindow()
+            }
+        )
+        ClientTickEvents.END_CLIENT_TICK.register(
+            ClientTickEvents.EndTick { _ ->
+                if (refreshDelayTicks > 0) {
+                    refreshDelayTicks--
+                    if (refreshDelayTicks == 0) requestRefresh()
+                }
+            }
+        )
+
+        // (Suppression of the response display is handled by ChatComponentAddMessageMixin,
+        // which calls shouldSuppressForDisplay below. Parsing still happens via the normal
+        // MessageHandler.GAME/CHAT → handleServerMessage path.)
+
         isRegistered = true
         Soul.getLogger()?.info("PartyManager registered for chat messages")
+    }
+
+    /**
+     * Send `/party list` and start silently consuming the response for [EXPECT_WINDOW_MS].
+     * Safe to call any time; if no player connection exists yet (e.g. JOIN hasn't fully landed)
+     * the command is dropped and the expect window is not opened.
+     */
+    fun requestRefresh() {
+        val player = Minecraft.getInstance().player ?: return
+        expectingPartyListUntilMs = System.currentTimeMillis() + EXPECT_WINDOW_MS
+        partyListDashesSeen = 0
+        player.connection.sendCommand("party list")
+        DebugLogger.logFeatureEvent("PartyManager: sent /party list, silently consuming response for ${EXPECT_WINDOW_MS / 1000}s")
+    }
+
+    /**
+     * Called from `ChatComponentAddMessageMixin` for every chat-display attempt. Returns
+     * `true` if the line is a `/party list` response we're silently consuming (display should
+     * be cancelled), `false` otherwise. As a side-effect, counts dashes and closes the expect
+     * window once we've seen the second dashes line (which brackets the populated block) so
+     * subsequent unrelated chat isn't suppressed.
+     *
+     * Recognised shapes (inside the expect window only):
+     * - Run of 5+ dash-family glyphs (ASCII `-` / unicode `‐` `‒` `–` `—` `―`).
+     * - `Party Members (N)` header.
+     * - `Party Leader:`, `Party Members:`, `Party Moderators:` rows.
+     * - Empty lines (the response includes spacing).
+     * - `You are not currently in a party.` / `You are not in a party.`
+     *
+     * **Do not close the window on the "not in a party" line** — Hypixel still emits a
+     * trailing dashes line right after it; closing early would leak that closing dashes into
+     * the user's chat. The 2-dashes counter handles both in-party (`---` / header / leader /
+     * members / `---`) and no-party (`---` / "not in party" / `---`) responses identically.
+     */
+    @JvmStatic
+    fun shouldSuppressForDisplay(rawText: String): Boolean {
+        if (System.currentTimeMillis() > expectingPartyListUntilMs) return false
+        val stripped = MessageDetector.stripColorCodes(rawText).trim()
+        if (!isPartyListLineDuringExpect(stripped)) return false
+
+        if (isDashesLine(stripped)) {
+            partyListDashesSeen++
+            if (partyListDashesSeen >= 2) endExpectWindow()
+        }
+        return true
+    }
+
+    private fun isPartyListLineDuringExpect(stripped: String): Boolean {
+        if (isDashesLine(stripped)) return true
+        if (stripped.isEmpty()) return true
+        return stripped.startsWith("Party Members (") ||
+            stripped.startsWith("Party Leader:") ||
+            stripped.startsWith("Party Members:") ||
+            stripped.startsWith("Party Moderators:") ||
+            stripped.startsWith("You are not currently in a party") ||
+            stripped.startsWith("You are not in a party")
+    }
+
+    /**
+     * Accepts ASCII `-` plus the unicode dash family (`‐..―`: hyphen, NB hyphen,
+     * figure dash, en dash, em dash, horizontal bar) so we don't miss separator lines that use
+     * the prettier variants Hypixel sometimes emits.
+     */
+    private fun isDashesLine(s: String): Boolean {
+        if (s.length < 5) return false
+        return s.all { c -> c == '-' || c.code in 0x2010..0x2015 }
+    }
+
+    private fun endExpectWindow() {
+        expectingPartyListUntilMs = 0L
+        partyListDashesSeen = 0
     }
 
     // Listeners
@@ -237,7 +368,20 @@ object PartyManager {
 
             clean == "The party was disbanded because all invites expired and the party was empty." ->
                 handlePartyDisbandedEmpty()
+
+            // /party list response when the player isn't in one. Handled here (rather than only
+            // in the auto-refresh path) so a manual `/p list` also keeps our state honest.
+            clean.startsWith("You are not currently in a party") ||
+                clean.startsWith("You are not in a party") ->
+                handleNotInParty()
         }
+    }
+
+    private fun handleNotInParty() {
+        val prev = currentState ?: return
+        currentState = null
+        DebugLogger.logFeatureEvent("Server reports we are not in a party — clearing stale state")
+        fire(PartyEvent.PartyDisbanded(prev, PartyDisbandReason.UNKNOWN))
     }
 
     // ===== Parsing helpers =====

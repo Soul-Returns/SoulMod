@@ -116,6 +116,11 @@ object LittlefootAlert {
         lastSightingAtMs = now
 
         if (pingedThisVisit) return
+        if (MineshaftVisitTracker.isWarpedVisit()) {
+            DebugLogger.logFeatureEvent("LittlefootAlert: warped into this mineshaft — skipping !ptme (not our discovery)")
+            pingedThisVisit = true
+            return
+        }
         if (!PartyManager.isInParty()) {
             DebugLogger.logFeatureEvent("LittlefootAlert: Littlefoot in LOS but not in a party — skipping !ptme this visit")
             pingedThisVisit = true
@@ -137,6 +142,10 @@ object LittlefootAlert {
 
         warpSeenAtMs = 0L
         if (!cfg.mining.mineshaft.autoShareLittlefootWaypoint()) return
+        if (MineshaftVisitTracker.isWarpedVisit()) {
+            DebugLogger.logFeatureEvent("LittlefootAlert: warped into this mineshaft — skipping waypoint share")
+            return
+        }
         if (!PartyManager.isInParty()) {
             DebugLogger.logFeatureEvent("LittlefootAlert: warp seen but not in a party — skipping waypoint share")
             return

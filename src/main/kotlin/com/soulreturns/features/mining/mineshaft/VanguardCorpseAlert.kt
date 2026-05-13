@@ -57,6 +57,12 @@ object VanguardCorpseAlert {
             return
         }
         if (MineshaftCorpses.totalOf(TARGET_TYPE) > 0) {
+            if (MineshaftVisitTracker.isWarpedVisit()) {
+                DebugLogger.logFeatureEvent("VanguardCorpseAlert: warped into this mineshaft — skipping !ptme (not our discovery)")
+                fired = true
+                armedAtMs = 0L
+                return
+            }
             if (!PartyManager.isInParty()) {
                 DebugLogger.logFeatureEvent("VanguardCorpseAlert: Vanguard detected but not in a party — skipping !ptme")
                 fired = true

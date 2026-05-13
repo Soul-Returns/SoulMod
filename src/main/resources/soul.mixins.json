@@ -13,6 +13,7 @@
     "render.AbstractContainerScreenMixin",
     "render.ChatScreenMixin",
     "render.ChatComponentMixin",
+    "render.ChatComponentAddMessageMixin",
     "render.PlayerTabOverlayMixin",
     "render.GameRendererMixin"
   ],

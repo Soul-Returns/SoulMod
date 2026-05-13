@@ -409,7 +409,7 @@ Tick-driven debounced save (max once per second), atomic write (temp file + rena
 - `features/mining/mineshaft/VanguardCorpseAlert` — same trigger and window as Lapis but for `Vanguard`. Hypixel only ever spawns at most one Vanguard Corpse per mineshaft, so there is **no threshold slider and no count in the message** — just fires `/pc !ptme Found Vanguard Corpse in Mineshaft` once per send when `MineshaftCorpses.totalOf("Vanguard") > 0`.
 - `features/mining/mineshaft/LittlefootAlert` — two-phase. (1) Pings `/pc !ptme Found Littlefoot` on the first LOS-confirmed sighting per mineshaft visit (resets on `AreaChanged`). (2) On the `SkyBlock Party Warp` chat, schedules a +2 s waypoint share (`/pc x: X, y: Y, z: Z`), preferring fresh LOS at fire time with the last LOS-confirmed sighting (within 60 s) as fallback. Both phases gate on the main toggle; waypoint phase additionally gates on the `autoShareLittlefootWaypoint` sub.
 - `features/mining/mineshaft/MineshaftScoreboard` — one-shot reader for the top sidebar line. Returns `(type, fullIdentifier)` like `("ONYX", "ONYX_1")` only when `LocationApi.currentSublocation == "Glacite Mineshafts"`; null otherwise. Reused by visit tracking; could be reused by other features that need the active mineshaft instance.
-- `features/mining/mineshaft/MineshaftVisitTracker` — opt-out (`cfg.dev.data.logMineshaftVisits`, default true). Lives under the **Dev → Data** subcategory — the home for backend data-collection toggles, distinct from `Dev → Debug → Logging` which is for client-side console logging gated on `debugMode`. Driven by `AreaChanged`: starts a visit on entry to `Mineshaft`, ticks while inside to (a) capture the scoreboard identifier once `Glacite Mineshafts` sublocation is reported and (b) flip a `littlefootFound` flag the first time `MobSpotter.findVisible("Littlefoot")` returns non-null. On exit, snapshots `MineshaftCorpses.byType` and POSTs `/mineshaft/visit` via `BackendClient.post`. Fire-and-forget — network/4xx/5xx failures are logged and dropped (no client-side queueing).
+- `features/mining/mineshaft/MineshaftVisitTracker` — opt-out (`cfg.dev.data.logMineshaftVisits`, default true). Lives under the **Dev → Data** subcategory — the home for backend data-collection toggles, distinct from `Dev → Debug → Logging` which is for client-side console logging gated on `debugMode`. Driven by `AreaChanged` + `ChatMessage`. On entry: classifies `VisitSource` (DISCOVERED / WARPED / UNKNOWN) from pre-entry chat signals (see "Mineshaft entry: discovered vs warped-in" below) and resets per-visit state. While inside: ticks to (a) capture the scoreboard identifier and (b) flip `littlefootFound` on first LOS. On exit: snapshots `MineshaftCorpses.byType` and POSTs `/mineshaft/visit` via `BackendClient.post`. Payload includes `warped: boolean` and `warpedBy: string?` (rank-stripped Mojang username, omitted when not warped). Fire-and-forget — network/4xx/5xx failures are logged and dropped (no client-side queueing). The `VisitSource` classification runs even when the telemetry toggle is off because the `!ptme` alerts depend on it.
 
 ## Hypixel SkyBlock conventions
 
@@ -440,6 +440,38 @@ The warper **stays in their current world** — the other party members teleport
 ### Waypoint chat format
 
 `x: N, y: N, z: N` (integer coords, comma-separated) in party chat is the de facto standard parsed by Skytils / SkyHanni / Patcher / similar waypoint mods. They auto-create an in-world waypoint from that string — **no user click required**. Emit exactly that format for waypoint sharing.
+
+### `/party list` auto-refresh on Hypixel join
+
+`PartyManager`'s state is chat-driven — it learns about a party only by parsing chat messages as they happen. After a game restart we start with no state and would miss any in-progress party until the next chat event mentioned it. To fix this, on the **first** `ClientPlayConnectionEvents.JOIN` per JVM session (and on every reconnect, since `DISCONNECT` re-arms), `PartyManager` waits ~2 s for chat to settle, then sends `/party list` and silently consumes the response:
+
+- **Parsing** happens via the normal `MessageHandler.GAME/CHAT` → `handleServerMessage` path. No special routing.
+- **Display suppression** is done by `ChatComponentAddMessageMixin` (Java mixin on `ChatComponent.addMessage(Component)`). On every chat-display attempt the mixin calls `PartyManager.shouldSuppressForDisplay(text)` and cancels via `ci.cancel()` when it returns `true`.
+- `shouldSuppressForDisplay` is the predicate. It returns `true` only when (a) we're inside the 5 s expect window opened by `requestRefresh`, AND (b) the line matches a `/party list` block shape — dashes (ASCII `-` *or* the unicode dash family `‐..―`), `Party Members (N)`, `Party Leader:`, `Party Members:`, `Party Moderators:`, empty lines, or `You are not currently in a party.`. As a side-effect it counts dashes and closes the window after the **second** dashes line — both the in-party (`---` / header / leader / members / `---`) and no-party (`---` / "not in party" / `---`) responses are bracketed by exactly two dashes lines, so the same counter ends the window cleanly for both. **Do not** close the window on the "not in party" line itself — Hypixel still emits the trailing dashes line afterwards, and closing early would leak it into chat.
+- `You are not currently in a party.` triggers `handleNotInParty()` in the normal parser, clearing any stale `currentState` and firing `PartyEvent.PartyDisbanded(prev, UNKNOWN)`.
+
+**Why a mixin instead of `ClientReceiveMessageEvents.ALLOW_*`?** Other chat-heavy mods (SkyHanni, Skytils, Patcher) intercept chat earlier in the packet pipeline and can prevent our `ALLOW_*` handler from being called at all. Hooking `ChatComponent#addMessage` is the last gate before display, so it works regardless of which packet type or earlier hook the message took.
+
+`PartyManager.requestRefresh()` is public — call it whenever you want to re-sync (e.g. a future `/soul refreshParty` command). It's idempotent and safe to call from any tick.
+
+### Mineshaft entry: discovered vs warped-in
+
+Two chat lines fire **before** `AreaChanged → Mineshaft` and exactly one of them precedes any given entry. They classify why the player ended up in the instance:
+
+| Chat line | Means |
+|---|---|
+| `Sending to Mineshaft...` | Self-discovered — you triggered the mineshaft warp yourself (breaking glacite/ice in Dwarven Mines). |
+| `Party Leader, <display>, summoned you to their server.` | Warped in — the party leader's `/p warp` pulled you into their instance. `<display>` includes the rank prefix; strip the bracketed rank to get the bare username. |
+
+`MineshaftVisitTracker` listens to both, stamps them with timestamps, and resolves the next `AreaChanged → Mineshaft` to `VisitSource.DISCOVERED` / `VisitSource.WARPED` / `VisitSource.UNKNOWN` based on which (if either) is still fresh (10 s TTL). Exposes `isWarpedVisit()` for downstream gates.
+
+**All `!ptme`-style features must skip when `MineshaftVisitTracker.isWarpedVisit()` is true** — the host already knows about the corpses / boss they discovered, re-pinging is noise. This is enforced today in `LapisCorpseAlert`, `VanguardCorpseAlert`, and both phases of `LittlefootAlert`. Source classification runs regardless of the `logMineshaftVisits` telemetry toggle so the gate works even for users who opted out of backend logging.
+
+Other useful entry-confirmation lines (fire **after** `AreaChanged`, not used today but worth knowing):
+
+- `[<rank>] <yourName> entered Glacite Mineshafts!` (inside a `-----` box) — discovery confirmation.
+- ` ⛏ <yourName> entered the mineshaft!` (pickaxe glyph, single line) — warp-in confirmation.
+- `MINESHAFT MODIFIERS!` — fires only for the discoverer; modifiers are determined at instance creation.
 
 ### Mineshaft type identifier (top scoreboard line)
 

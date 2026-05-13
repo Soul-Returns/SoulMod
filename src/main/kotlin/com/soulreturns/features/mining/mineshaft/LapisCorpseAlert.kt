@@ -58,6 +58,12 @@ object LapisCorpseAlert {
         val threshold = cfg.mining.mineshaft.lapisCorpseThreshold()
         val count = MineshaftCorpses.totalOf("Lapis")
         if (count >= threshold) {
+            if (MineshaftVisitTracker.isWarpedVisit()) {
+                DebugLogger.logFeatureEvent("LapisCorpseAlert: warped into this mineshaft — skipping !ptme (not our discovery)")
+                fired = true
+                armedAtMs = 0L
+                return
+            }
             if (!PartyManager.isInParty()) {
                 DebugLogger.logFeatureEvent("LapisCorpseAlert: $count Lapis corpses but not in a party — skipping !ptme")
                 fired = true
