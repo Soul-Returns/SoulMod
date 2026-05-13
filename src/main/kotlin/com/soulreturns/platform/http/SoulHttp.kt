@@ -2,7 +2,6 @@ package com.soulreturns.platform.http
 
 import com.soulreturns.Soul
 import com.soulreturns.config.cfg
-import com.soulreturns.platform.concurrent.SoulExecutor
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -36,11 +35,19 @@ object SoulHttp {
         return BACKEND_URL
     }
 
+    /**
+     * Shared HTTP client. **Do not bind this to [SoulExecutor]** — `HttpClient.send()`
+     * dispatches its internal completion callbacks through the configured executor, and
+     * with `SoulExecutor`'s 2 threads, two concurrent blocking `send()` calls (one from
+     * `BackendClient`'s wrapper task, one from `RealtimeClient`'s token fetch, …) saturate
+     * the pool while both wait for callbacks that need the same pool to run. Letting
+     * `HttpClient` use its default internal executor keeps `SoulExecutor` free for the
+     * `CompletableFuture` wrappers and avoids that deadlock entirely.
+     */
     val client: HttpClient =
         HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
-            .executor(SoulExecutor.executor)
             .build()
 
     fun get(

@@ -1,7 +1,9 @@
 package com.soulreturns.platform.sync
 
 import com.google.gson.JsonObject
+import com.soulreturns.core.events.Events
 import com.soulreturns.platform.http.BackendClient
+import com.soulreturns.platform.realtime.SyncInvalidate
 import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.soulChat
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
@@ -10,8 +12,9 @@ import net.minecraft.client.Minecraft
 import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -73,14 +76,75 @@ object SyncEngine {
      * With our own thread, the .join() blocks here but `SoulExecutor` stays free for the
      * actual network call.
      */
-    private val syncExecutor: ExecutorService =
-        Executors.newSingleThreadExecutor { r ->
+    private val syncExecutor: ScheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor { r ->
             Thread(r, "soul-sync").apply { isDaemon = true }
         }
+
+    /** Coalesce window for [notifyChanged] — multiple rapid saves merge into one push. */
+    private const val NOTIFY_DEBOUNCE_MS = 2_000L
+
+    /** Pending scheduled pushes per kind, used to cancel/replace inside the debounce window. */
+    private val pendingPush = ConcurrentHashMap<SyncKind, ScheduledFuture<*>>()
 
     fun register(artifact: SyncedArtifact) {
         artifacts[artifact.kind] = artifact
         inFlight[artifact.kind] = AtomicBoolean(false)
+    }
+
+    /**
+     * Signal that the local file for [kind] has just been written and should be pushed to
+     * the backend ASAP. Coalesces a burst of changes within [NOTIFY_DEBOUNCE_MS] into a
+     * single push — owo-config saves once per option toggle, so a user changing five
+     * settings in one screen session triggers five `notifyChanged(CONFIG)` calls but only
+     * one PUT.
+     *
+     * Safe to call from any thread; the actual push runs on the sync thread.
+     *
+     * Used by:
+     *   - `SoulConfigScreen.removed()` → [SyncKind.CONFIG]
+     *   - `GuiLayoutManager.save()`    → [SyncKind.GUI_LAYOUT]
+     *
+     * `STATS` deliberately doesn't call this — `PersistentStats` writes every ~1 s during
+     * active gameplay and would generate constant traffic. The 60 s periodic scan plus the
+     * `CLIENT_STOPPING` flush cover stats just fine.
+     */
+    fun notifyChanged(kind: SyncKind) {
+        if (!initialReconcileDone.get()) return
+        val artifact = artifacts[kind] ?: return
+        if (!artifact.enabled()) return
+        pendingPush.remove(kind)?.cancel(false)
+        val future =
+            syncExecutor.schedule(
+                {
+                    pendingPush.remove(kind)
+                    if (!artifact.enabled()) return@schedule
+                    try {
+                        pushIfChangedBlocking(artifact)
+                    } catch (e: Throwable) {
+                        logger.warn("notifyChanged push failed for ${kind.key}", e)
+                    }
+                },
+                NOTIFY_DEBOUNCE_MS,
+                TimeUnit.MILLISECONDS,
+            )
+        pendingPush[kind] = future
+    }
+
+    /**
+     * Trigger an out-of-band reconcile for [kind] right now (used by realtime sync-invalidate).
+     * Skipped if the user has an editing screen open — see [isPullSuppressed] for rationale.
+     * Returns immediately; the actual work runs on the sync thread.
+     */
+    fun reconcileNow(kind: SyncKind) {
+        if (!initialReconcileDone.get()) return
+        if (isPullSuppressed()) {
+            logger.info("Realtime invalidate for ${kind.key}: skipped (editing screen open).")
+            return
+        }
+        val artifact = artifacts[kind] ?: return
+        if (!artifact.enabled()) return
+        reconcileAsync(artifact)
     }
 
     /**
@@ -100,17 +164,7 @@ object SyncEngine {
 
         syncExecutor.submit {
             try {
-                // Reconcile sequentially on this dedicated thread. BackendClient.get().join()
-                // inside reconcile blocks here but SoulExecutor (which runs the HTTP I/O) stays free.
-                for (artifact in artifacts.values) {
-                    if (!artifact.enabled()) continue
-                    try {
-                        reconcile(artifact)
-                    } catch (e: Throwable) {
-                        logger.warn("Reconcile failed for ${artifact.kind.key}", e)
-                        warnUserOnce()
-                    }
-                }
+                reconcileAllViaStatus()
             } finally {
                 initialReconcileDone.set(true)
                 SyncMetadata.save()
@@ -124,18 +178,34 @@ object SyncEngine {
                 tickCounter++
                 if (tickCounter < SCAN_INTERVAL_TICKS) return@EndTick
                 tickCounter = 0
-                val skipPulls = isPullSuppressed()
-                for (artifact in artifacts.values) {
-                    if (!artifact.enabled()) continue
-                    if (skipPulls) {
-                        // Pushes still run while editing — that's how user-side changes propagate.
-                        pushIfChanged(artifact)
-                    } else {
-                        reconcileAsync(artifact)
+                if (isPullSuppressed()) {
+                    // Pushes still run while an editing screen is open — that's how the user's
+                    // own changes propagate. We just skip pulls to avoid mid-edit overwrites.
+                    for (artifact in artifacts.values) {
+                        if (artifact.enabled()) pushIfChanged(artifact)
+                    }
+                } else {
+                    syncExecutor.submit {
+                        try {
+                            reconcileAllViaStatus()
+                        } catch (e: Throwable) {
+                            logger.warn("Periodic reconcile failed", e)
+                        }
                     }
                 }
             }
         )
+
+        // Realtime sync-invalidate: backend tells us a blob changed → reconcile that kind now,
+        // out of band with the 60 s polling cycle.
+        Events.subscribe<SyncInvalidate> { event ->
+            val kind = SyncKind.entries.firstOrNull { it.key == event.kind }
+            if (kind == null) {
+                logger.info("Realtime invalidate for unknown kind '${event.kind}'; ignored.")
+                return@subscribe
+            }
+            reconcileNow(kind)
+        }
 
         registerShutdown()
     }
@@ -213,6 +283,110 @@ object SyncEngine {
 
     // ───────────────────── reconcile ─────────────────────
 
+    /**
+     * Batched reconcile: one `GET /sync/status` returning per-kind `updatedAt`, then decide
+     * per artifact whether anything actually needs a full content fetch.
+     *
+     * Wire shape:
+     * ```
+     * { "kinds": { "<key>": { "updatedAt": <long> } } }
+     * ```
+     * Kinds the player has never pushed are **omitted** from the response — absence means
+     * "no remote, push if you have local."
+     *
+     * Used by startup and periodic reconcile. `reconcileNow(kind)` (the realtime invalidate
+     * path) stays single-kind: we already know which kind changed, no point status-checking.
+     *
+     * Runs on the sync thread. Acquires each per-kind gate as it processes that kind, so a
+     * concurrent `notifyChanged`-driven push gets to keep its slot.
+     */
+    private fun reconcileAllViaStatus() {
+        val status = fetchStatus() ?: return
+        for (artifact in artifacts.values) {
+            if (!artifact.enabled()) continue
+            val gate = inFlight[artifact.kind] ?: continue
+            if (!gate.compareAndSet(false, true)) continue
+            try {
+                reconcileOneAgainstStatus(artifact, status[artifact.kind.key])
+            } catch (e: Throwable) {
+                logger.warn("Reconcile failed for ${artifact.kind.key}", e)
+                warnUserOnce()
+            } finally {
+                gate.set(false)
+            }
+        }
+    }
+
+    /**
+     * Apply the same decision tree as [reconcile], but with the remote `updatedAt` already
+     * in hand from `/sync/status`. The win is in the "remote not fresher" branch — the
+     * common case — which now needs no content GET at all.
+     *
+     * @param remoteUpdatedAt the value from `/sync/status`, or null if the kind is absent
+     *                        (= "no remote yet").
+     */
+    private fun reconcileOneAgainstStatus(
+        artifact: SyncedArtifact,
+        remoteUpdatedAt: Long?,
+    ) {
+        val localBytes = readLocalOrNull(artifact.file)
+        val localHash = localBytes?.let { sha256Hex(it) } ?: ""
+        val meta = SyncMetadata.get(artifact.kind)
+
+        // 1. Unpushed local changes — push wins. No GET needed.
+        if (localBytes != null && localHash != meta.pushedHash && meta.pushedHash.isNotEmpty()) {
+            logger.info("${artifact.kind.key}: local has unpushed changes — pushing.")
+            pushIfChangedOnSyncThread(artifact)
+            return
+        }
+
+        // 2. No remote — push local if we have it.
+        if (remoteUpdatedAt == null) {
+            if (localBytes != null) pushIfChangedOnSyncThread(artifact)
+            return
+        }
+
+        // 3. Remote not fresher — in sync. Seed the sidecar if we never recorded a hash
+        //    (e.g. fresh install picked up matching remote on a previous session).
+        if (remoteUpdatedAt <= meta.syncedAt) {
+            if (meta.pushedHash.isEmpty() && localBytes != null) {
+                SyncMetadata.update(artifact.kind) {
+                    pushedHash = localHash
+                    syncedAt = remoteUpdatedAt
+                }
+            }
+            return
+        }
+
+        // 4. Remote IS fresher — fall through to the full per-kind reconcile which fetches
+        //    content and runs handleRemote.
+        reconcile(artifact)
+    }
+
+    /** GET `/sync/status` and parse into a `kind → updatedAt` map. Returns null on failure. */
+    private fun fetchStatus(): Map<String, Long>? {
+        val result = BackendClient.get("/sync/status", intent = "sync-status").join()
+        return when (result) {
+            is BackendClient.Result.Ok -> {
+                val obj = result.json.asJsonObject
+                val kindsObj = obj.getAsJsonObject("kinds") ?: return emptyMap()
+                val map = mutableMapOf<String, Long>()
+                for ((key, value) in kindsObj.entrySet()) {
+                    if (!value.isJsonObject) continue
+                    val updatedAt = value.asJsonObject.get("updatedAt")?.takeIf { !it.isJsonNull }?.asLong
+                    if (updatedAt != null) map[key] = updatedAt
+                }
+                map
+            }
+
+            is BackendClient.Result.Error -> {
+                logger.warn("Sync status fetch failed: HTTP ${result.statusCode} ${result.message}")
+                warnUserOnce()
+                null
+            }
+        }
+    }
+
     private fun reconcile(artifact: SyncedArtifact) {
         val localBytes = readLocalOrNull(artifact.file)
         val localHash = localBytes?.let { sha256Hex(it) } ?: ""
@@ -232,8 +406,9 @@ object SyncEngine {
 
             is BackendClient.Result.Error -> {
                 if (result.statusCode == 404) {
-                    // No remote yet — push local if we have anything. We're already on the
-                    // sync thread inside a held gate; call the gate-free variant.
+                    // No remote yet — push local if we have anything. Admin "reset"
+                    // workflow no longer produces a 404: admin edits push defaults back
+                    // via a normal PUT instead of deleting the blob.
                     if (localBytes != null) pushIfChangedOnSyncThread(artifact)
                 } else {
                     logger.warn("Sync pull for ${artifact.kind.key} failed: HTTP ${result.statusCode} ${result.message}")
@@ -344,7 +519,14 @@ object SyncEngine {
             logger.warn("${artifact.kind.key}: file exceeds $MAX_BYTES bytes (${bytes.size}); skipping push.")
             return
         }
-        val body = JsonObject().apply { addProperty("content", bytes.toString(Charsets.UTF_8)) }
+        val body =
+            JsonObject().apply {
+                addProperty("content", bytes.toString(Charsets.UTF_8))
+                // Attach defaults if the artifact provides them — this is how the backend
+                // learns what the mod considers the default state, so the admin UI can render
+                // per-row "reset to default" buttons without ever tracking defaults itself.
+                artifact.defaultsJson.invoke()?.let { add("defaults", it) }
+            }
         val result =
             try {
                 BackendClient.post("/sync/${artifact.kind.key}", body, intent = "sync-push").join()

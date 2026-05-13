@@ -272,19 +272,31 @@ object GuiLayoutManager {
     @Synchronized
     fun save() {
         val file = layoutFile ?: return
-        try {
-            val parent = file.parentFile
-            if (parent != null && !parent.exists()) {
-                parent.mkdirs()
+        val saved =
+            try {
+                val parent = file.parentFile
+                if (parent != null && !parent.exists()) {
+                    parent.mkdirs()
+                }
+                val json = gson.toJson(currentLayout)
+                file.writeText(json)
+                DebugLogger.logGuiLayout("Saved GUI layout to ${file.absolutePath} with ${currentLayout.elements.size} elements")
+                true
+            } catch (e: Exception) {
+                DebugLogger.logGuiLayout(
+                    "Failed to save GUI layout to ${file.absolutePath}: ${e::class.java.name}: ${e.message}"
+                )
+                false
             }
-            val json = gson.toJson(currentLayout)
-            file.writeText(json)
-            DebugLogger.logGuiLayout("Saved GUI layout to ${file.absolutePath} with ${currentLayout.elements.size} elements")
-        } catch (e: Exception) {
-            // Log failure reason for debugging
-            DebugLogger.logGuiLayout(
-                "Failed to save GUI layout to ${file.absolutePath}: ${e::class.java.name}: ${e.message}"
-            )
+        if (saved) {
+            // Push the new layout to the backend (debounced ~2 s, so multiple saves coalesce).
+            try {
+                com.soulreturns.platform.sync.SyncEngine.notifyChanged(
+                    com.soulreturns.platform.sync.SyncKind.GUI_LAYOUT
+                )
+            } catch (_: Throwable) {
+                // SyncEngine not initialised yet (early bootstrap) — periodic scan will catch up.
+            }
         }
     }
 }

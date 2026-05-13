@@ -117,13 +117,19 @@ internal class RowBuilders(
         row.verticalAlignment(VerticalAlignment.CENTER)
         row.margins(Insets.of(1))
 
-        // Visual hint that this option is gated by another option above (e.g. usePestVest under highlightPestEquipment).
-        val isDependent = opt.key().path().joinToString(".") in ConfigSections.optionVisibility
+        // Visual hint that this option is gated by another option above (e.g. usePestVest under
+        // highlightPestEquipment). Depth comes from [ConfigSections.optionDepth] — default 1 for
+        // anything in [optionVisibility]; chained dependents (logRealtime → logBackend → debugMode)
+        // get a higher value so the renderer can nest them visually with extra left indent.
+        val rowPathKey = opt.key().path().joinToString(".")
+        val isDependent = rowPathKey in ConfigSections.optionVisibility
         if (isDependent) {
+            val depth = ConfigSections.optionDepth[rowPathKey] ?: 1
+            val extraLeft = (depth - 1) * 16
             val arrow =
                 UIComponents.label(Component.literal("↳"))
                     .color(Theme.color(Theme.TEXT_DIM))
-            arrow.margins(Insets.of(0, 0, 8, 0))
+            arrow.margins(Insets.of(0, 0, 8 + extraLeft, 0))
             row.child(arrow)
         }
 

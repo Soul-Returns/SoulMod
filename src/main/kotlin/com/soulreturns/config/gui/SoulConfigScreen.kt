@@ -459,6 +459,23 @@ class SoulConfigScreen(initialSearch: String = "") :
         rebuildContent()
     }
 
+    /**
+     * Called when the screen is closed / replaced. owo-config writes each option change to
+     * disk immediately as the user toggles, so by the time we get here the file is up to date.
+     * Signal the cloud sync engine so the new state pushes to the backend within ~2 s
+     * instead of waiting for the next periodic 60 s reconcile.
+     */
+    override fun removed() {
+        super.removed()
+        try {
+            com.soulreturns.platform.sync.SyncEngine.notifyChanged(
+                com.soulreturns.platform.sync.SyncKind.CONFIG
+            )
+        } catch (_: Throwable) {
+            // SyncEngine not initialised / disabled — periodic scan will pick it up.
+        }
+    }
+
     private fun formatGroupId(id: String): String =
         // "playerRendering" → "Player Rendering", "tooltips" → "Tooltips"
         id.replace(Regex("([A-Z])"), " $1")

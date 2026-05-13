@@ -124,7 +124,8 @@ The config wrapper class `SoulConfig` is **generated** from `SoulConfigModel.jav
 10. `HighlightManager.loadGroups()`, `TooltipHandler.register()`, `GuiLayoutManager.configure(...)`, `SpecialGuiElementRegistry.register(...)`.
 11. `registerCommands()`, `registerFeatures()`.
 12. `GuiLayoutManager.loadOrInitialize()` — must come before sync engine starts so all three sync artifacts have loaded their local state.
-13. `registerSyncArtifacts(...)` + `SyncEngine.start(...)` — **last**. Reconciles in the background; if a remote pull is fresher than local, `onAfterPull` hot-reloads the affected subsystem (config / gui_layout / stats).
+13. `registerSyncArtifacts(...)` + `SyncEngine.start(...)` — reconciles in the background; if a remote pull is fresher than local, `onAfterPull` hot-reloads the affected subsystem (config / gui_layout / stats).
+14. `BackendNotificationCenter.register()` + `BackendNotificationHud.register()` + `RealtimeClient.start(...)` — **last**. The notification center must be wired before the realtime client connects so it doesn't miss events that fire during the first message dispatch.
 
 **Within `registerFeatures()`** two ordering constraints apply, both for the same reason — the consumer reads state owned by the producer on the same tick:
 
@@ -214,6 +215,7 @@ The config screen has been split into a thin orchestrator + several focused help
 | `virtualSubs` | Subcategories with no backing config fields | `"farming" → ["pestFarming"]` |
 | `categoryOrder` | Explicit sidebar order; unlisted cats fall to the end | `["general", "render", "fishing", "mining", "farming", "profileViewer", "dev"]` |
 | `optionVisibility` | Conditional visibility (parent toggle gates child) | `"render.highlights.usePestVest" → { cfg.render.highlights.highlightPestEquipment() }` |
+| `optionDepth` | Visual indent depth for chained dependents (default 1). Set ≥ 2 when an option's gate depends on another already-gated option, so the UI shows the nesting | `"dev.debug.logging.logRealtime" → 2` (gated by `logBackend`, which is itself gated by `debugMode`) |
 | `rebuildOnChange` | Boolean toggles whose change rebuilds content (so visibility-dependent rows update live) | `setOf("render.highlights.highlightPestEquipment")` |
 | `keybindOptions` | String fields rendered as keybind pickers (capture mode) | `setOf("dev.keybinds.copyOpenedGui", …)` |
 
@@ -256,10 +258,10 @@ Opened via `/spv <username>`. Module under `profileviewer/`:
 
 ### Backend HTTP & auth (`platform/http/`)
 
-- **`SoulHttp`** — bare `HttpClient` wrapper, sets `User-Agent: SoulMod/<version>/<mcVersion>`. Backend URL priority: system property `soul.backendUrl` → `cfg.dev.backend.backendUrlOverride()` → `https://sky.soulreturns.com`.
+- **`SoulHttp`** — bare `HttpClient` wrapper, sets `User-Agent: SoulMod/<version>/<mcVersion>`. Backend URL priority: system property `soul.backendUrl` → `cfg.dev.backend.backendUrlOverride()` → `https://sky.soulreturns.com`. **The `HttpClient` is deliberately NOT bound to `SoulExecutor`** — JDK `HttpClient.send()` dispatches its completion callbacks through the configured executor, and `SoulExecutor`'s 2-thread pool would deadlock the moment two blocking sends ran concurrently (both threads block on `send()`, neither thread can dispatch the inbound response). Letting `HttpClient` use its default internal executor keeps `SoulExecutor` free for the wrapper futures.
 - **`BackendAuth`** — Mojang session-server handshake (`sessionService.joinServer` then `GET /authenticate`). Token cached in memory (`AtomicReference`) AND persisted to `config/soul/auth_token.txt` (token + expiry epoch ms) with a 23-hour client TTL matching the backend's 24-hour TTL — so restarts don't re-authenticate. 429 responses trigger a 5-minute backoff applied even to `forceRefresh = true` calls. `clear()` wipes both in-memory token and the cache file.
 - **`BackendClient`** — authenticated GET with caching (`X-Backend-Expire-In` header sets TTL) and authenticated POST (no caching, JSON body via `JsonElement.toString()`). Both retry once on 401 via `BackendAuth.ensureAuthenticated(forceRefresh = true)`.
-- **`PresenceService`** — sends authenticated `GET /ping?server=<addr>` every 20 s on its own daemon thread so the backend knows who is online.
+- **`PresenceService`** — sends authenticated `GET /ping?server=<addr>` every 20 s on its own daemon thread so the backend knows who is online. **Still on REST polling** even after Mercure landed — the realtime channel is subscribe-only on the mod side (Mercure doesn't support client publish), and migrating presence would mean using SSE connection-lifetime as the online signal + a tiny `POST /presence/server` only on Hypixel-server change. Pros: instant disconnect detection, one less roundtrip every 20 s, cleaner model. Cons: needs backend-side connection tracking + a new REST endpoint for the server-address piece. Worth doing later; not on the immediate roadmap.
 
 `platform/concurrent/SoulExecutor` — fixed 2-thread daemon pool used by HTTP, presence, persistent-stats writes, and SPV. `SoulExecutor.log(...)` and `warn(...)` go through `SoulLogger("Soul/Backend")`, gated on `cfg.dev.debug.debugMode()`.
 
@@ -274,17 +276,21 @@ Per-account mirror of three mod data files to the backend (`config.json5`, `gui_
 | `SyncMetadata.kt` | Sidecar persistence at `config/soul/sync_meta.json`. Per kind, records `pushedHash` (SHA-256 of bytes last successfully PUT) and `syncedAt` (server `updatedAt` epoch ms at last reconcile). |
 | `SyncEngine.kt` | Orchestrator. `register(artifact)` → `start(masterEnabled)` from `Soul.kt`. Runs initial reconcile in background, then a tick-based change watcher every 200 ticks (~10 s), then a synchronous flush on `CLIENT_STOPPING`. **Owns its own single-thread `syncExecutor`** — never run sync work on `SoulExecutor`. Background: `SoulHttp`'s `HttpClient` uses `SoulExecutor` for async I/O, and `BackendClient.get/post` dispatch the actual HTTP into the same pool. If sync also ran there and called `.join()`, the 2-thread pool would deadlock against itself. Sync work blocks on `BackendClient.*.join()` from the `soul-sync` thread, which lets `SoulExecutor` stay free for the underlying network call. |
 
-**Reconcile logic (per artifact):** GET `/sync/{kind}` returning `{content, updatedAt}`:
+**Reconcile flow:** every 60 s tick the engine calls `GET /sync/status` once — returns `{kinds: {<key>: {updatedAt}}}` for kinds the player has pushed at least once (absent = "no remote"). For each artifact the engine then decides locally: (a) `localHash != meta.pushedHash` → push (no content GET); (b) status absent → push local if any (no content GET); (c) `status.updatedAt <= meta.syncedAt` → in sync, no-op (no content GET); (d) `status.updatedAt > meta.syncedAt` → fall through to a per-kind `GET /sync/{kind}` for the actual payload. Steady-state — when nothing changed and the realtime invalidate channel has been handling actual edits — every 60 s tick is one ~80-byte status GET and zero content GETs. `reconcileNow(kind)` (the realtime invalidate path) skips status and goes straight to per-kind `GET /sync/{kind}`, since we already know which kind changed.
+
+**Per-kind GET `/sync/{kind}`** returns `{content, updatedAt}`:
 - **404**: no remote yet → push local if present.
 - **5xx / 401 / network**: log + one-shot `soulChat` warning per session ("Cloud sync unavailable — using local files"). No blocking, no command-gating; user keeps working on local state.
 - **200**: three branches — (a) `localHash != meta.pushedHash` AND `meta.pushedHash` is non-empty → local has unpushed changes from the offline-last-session case, push wins; (b) `response.updatedAt > meta.syncedAt` AND hash differs → remote is fresher (admin-edit case, since the user is the only other writer and they aren't running two clients), write to disk and call `onAfterPull` on the client thread; (c) otherwise → in sync, no-op (but seed `pushedHash` if it was empty so we don't push needlessly next session).
 
-The **same** reconcile runs at startup and on every 60 s tick — so admin edits made via the web UI propagate without a game restart. Pulls are **suppressed while `SoulConfigScreen` or `GuiEditScreen` is open** (`SyncEngine.isPullSuppressed()` checks `Minecraft.getInstance().screen`). Without that gate, a pull mid-edit would overwrite in-memory state, then the user's save-on-screen-close would push stale data back over the admin's change. Pushes still run while screens are open so the user's own edits propagate normally.
+The **same** reconcile runs at startup and on every 60 s tick — so admin edits made via the web UI propagate without a game restart. Local-side, **config and gui_layout don't wait for the next tick**: `SoulConfigScreen.removed()` and `GuiLayoutManager.save()` call `SyncEngine.notifyChanged(kind)`, which schedules a push ~2 s out (debounced — a burst of saves coalesces into one PUT). `STATS` deliberately doesn't call `notifyChanged` because `PersistentStats` writes every ~1 s during active gameplay; the 60 s scan plus `CLIENT_STOPPING` flush cover it. Pulls are **suppressed while `SoulConfigScreen` or `GuiEditScreen` is open** (`SyncEngine.isPullSuppressed()` checks `Minecraft.getInstance().screen`). Without that gate, a pull mid-edit would overwrite in-memory state, then the user's save-on-screen-close would push stale data back over the admin's change. Pushes still run while screens are open so the user's own edits propagate normally.
 
 **Hot-reload hooks** wired by `Soul.registerSyncArtifacts(...)`:
-- `CONFIG` → `SoulConfigHolder.reload()` (calls `wrapper.load()` to re-parse `config.json5`). `cfg.*` is read at point of use throughout the codebase, so most settings take effect immediately; in-flight config screens stay on the old values until reopened.
-- `GUI_LAYOUT` → `GuiLayoutManager.reload()` (re-reads file into `currentLayout`). HUDs reposition next frame.
-- `STATS` → `PersistentStats.reload()` (wipes in-memory storage, re-reads file). The next `ProfileChanged` event promotes the legacy bucket as usual.
+- `CONFIG` → `SoulConfigHolder.reload()` **replaces** `INSTANCE` with a freshly-built wrapper (`SoulConfig.createAndLoad()`), not `INSTANCE.load()`. The model is reinstantiated so every field starts at its Java declared default; JSON is then deserialized on top. **Keys missing from JSON keep the model default** — which is what makes admin "reset one setting" work: stripping a key from the stored blob actually resets that field. `cfg.*` is read at point of use throughout the codebase so consumers pick up the new wrapper transparently.
+- `GUI_LAYOUT` → `GuiLayoutManager.reload()`. **If the file is missing**, the in-memory layout is cleared so features re-seed via `updateTextBlock` next tick — same effect as the admin-reset path. If the file exists, it's parsed normally.
+- `STATS` → `PersistentStats.reload()` (wipes in-memory storage, re-reads file; handles missing file as "start empty"). The next `ProfileChanged` event promotes the legacy bucket as usual.
+
+**Admin "reset to defaults" propagation:** the mod publishes its declared defaults alongside every config push — `SyncedArtifact.defaultsJson` (implemented for `CONFIG` via `SoulConfigHolder.defaultsJson()`, walks every owo-config `Option` and builds a JSON tree matching `config.json5`'s structure). PUT body shape is `{content: "...", defaults: {...}}`. The backend stores both, and the admin web UI renders per-row "reset to default" buttons (visible when current ≠ default) plus a "reset all" button (fills the form with defaults; admin clicks Save to commit). When the admin clicks Save the backend writes the modified `content` and publishes a sync-invalidate — same path as any other admin edit, no special "reset" code path on either side. There is intentionally **no whole-blob delete / reset endpoint** — non-breaking changes don't need a blob wipe and tracking defaults at the field level keeps the UX better.
 
 **Why no conflict path:** only one client per Mojang account can be online at a time (Hypixel server limitation), so concurrent writes are impossible by construction. The `pushedHash` check covers the only realistic edge case — last session pushed-or-tried-to-push and we don't know if it landed. No version vectors, no 409s, no `.bak` files.
 
@@ -297,6 +303,30 @@ The **same** reconcile runs at startup and on every 60 s tick — so admin edits
 - 256 KB max content size, enforced client-side as a safety net; backend should also reject larger.
 - `X-Backend-Expire-In: 0` on GET responses — sync must always see fresh remote state.
 - Auth: same `Authorization: <token>` bearer flow as every other endpoint.
+
+### Realtime (`platform/realtime/`)
+
+Long-lived Server-Sent Events subscriber to a Mercure hub, used for server-pushed signals: backend notifications, sync invalidation, and (planned) cross-user features like waypoint sharing and dungeon secret sync.
+
+| File | Role |
+|---|---|
+| `RealtimeAuth.kt` | Calls `GET /realtime/token`, returns `{jwt, hubUrl, topics}`. Mercure uses a JWT bound to a topic allow-list; backend mints it from the bearer-token identity. |
+| `MercureSseReader.kt` | SSE line-protocol parser (`data:`, `event:`, `id:`; ignores `retry:` and `:` comments). Reads until EOF; caller treats EOF as "reconnect". |
+| `RealtimeClient.kt` | Single daemon thread (`soul-realtime`). Loop: fetch token → open SSE → read events → dispatch onto `Events` bus → on disconnect, exponential backoff and retry. **Owns its own thread, never on `SoulExecutor`** — same lesson as `SyncEngine` (the JDK `HttpClient` shares the executor for selector dispatch; long-lived reads would starve it). The HttpClient's selector threads do the actual I/O; our thread just drains the InputStream. |
+| `RealtimeEvents.kt` | Typed `Event` subclasses published from `RealtimeClient.dispatch`: `SyncInvalidate(kind)`, `BackendNotification(message, severity)`. Add new event types here and a new `when` branch in `dispatch`. |
+
+**Wire envelope** (per SSE `data:` line):
+```json
+{ "type": "sync-invalidate" | "notification", "data": { ... } }
+```
+
+Unknown `type` is logged and dropped, so the backend can introduce new message types without a coordinated mod release. The mod handles missing keys gracefully.
+
+**Subscribers wired today:**
+- `SyncEngine` subscribes to `SyncInvalidate` and calls `reconcileNow(kind)` — admin edits land immediately instead of waiting for the 60 s poll. Skipped while `SoulConfigScreen` / `GuiEditScreen` is open (same gate as periodic reconcile).
+- `BackendNotificationCenter` (in `features/notifications/`) subscribes to `BackendNotification`, queues entries with a 6 s TTL and a 4-entry cap, exposes a thread-safe snapshot. `BackendNotificationHud` (in `ui/hud/`) renders the snapshot as a top-center toast strip via Fabric's `HudElementRegistry.addLast(...)`. Severity styling: `error` red, `warning` yellow, `info`/default white.
+
+**Connection lifecycle:** started in `Soul.onInitializeClient()` as the final step (after `SyncEngine.start`). Gated by `cfg.sync.enabled()` — same master toggle as sync. Stopped on `CLIENT_STOPPING`. Reconnect backoff: 1 s → 2 s → 4 s → … capped at 60 s, resets on a clean disconnect (server-initiated close).
 
 ### Auto-update system
 
@@ -370,7 +400,11 @@ Chat click hit-testing is fixed in `ChatScreenMixin` via `@WrapOperation` on `Mo
 
 ### Logging & chat
 
-Use `SoulLogger` for all console output — it prepends `[tag]` to every message so output is identifiable in launchers that hide the logger name:
+Use `SoulLogger` for all console output. **Console `info`/`debug` are gated on the `dev.debug.debugMode` master toggle** — when it's off (the default), the mod is silent in the console except for `warn`/`error` lines. **Every call is still teed to the file log unconditionally**, so support reports can ship a complete `soul-latest.log` regardless of the user's debug state. Logger prepends `[tag]` to every message so it shows in launchers that hide the logger name. Sub-toggles under `dev.debug.logging.*` filter by category and **are hidden in the config UI when `debugMode` is off** (they have no effect there). All sub-toggles default `true` — flipping `debugMode` on gives you everything by default; trim from there. Log file lives at `config/soul/logs/soul-latest.log`.
+
+`DebugLogger.logX(...)` calls follow the same split: the console side is gated on `debugMode` AND the per-category predicate, but the file side **always fires**. The rule is "the file is complete; the console is filtered." If you're adding a debug helper, write the file via `SoulFileLog.offer(...)` regardless of any toggle and only branch on the toggles for the console. `dev.debug.logToFile = false` is the one toggle that does silence the file side (checked inside `SoulFileLog` itself).
+
+**Exception — message-category logs.** `DebugLogger.logMessageHandler / logCommandExecution / logSentMessage / logChatInput` are file-only (never reach the console) and gated on `dev.debug.includeMessagesInLog` — a sub-option of `logToFile`, **default off**. Active gameplay produces hundreds of these lines per minute, so they're opt-in. There's intentionally no console toggle for this category — there's no scenario where you want chat traffic in the in-game console. The on-startup `SoulFileLog.init()` rotates the previous session's file to `soul-YYYY-MM-DD-HHMMSS.log` and keeps the 10 most recent. A single daemon thread (`soul-log-writer`) drains a `LinkedBlockingQueue`, so log calls from any thread never block on I/O. Skip the tee with `cfg.dev.debug.logToFile = false` (default `true`). Lines look like `[2026-05-13 13:34:00.123] [soul-sync/INFO] [Soul/Sync] config: pushed` — bracketed columns mirror Minecraft's `latest.log` style and survive thread names with internal spaces (`Render thread`). Throwables get an inline stack trace.
 
 ```kotlin
 private val logger = SoulLogger("Soul/MyFeature")

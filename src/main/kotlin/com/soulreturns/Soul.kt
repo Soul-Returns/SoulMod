@@ -17,15 +17,18 @@ import com.soulreturns.features.mining.mineshaft.LittlefootAlert
 import com.soulreturns.features.mining.mineshaft.MineshaftCorpses
 import com.soulreturns.features.mining.mineshaft.MineshaftVisitTracker
 import com.soulreturns.features.mining.mineshaft.VanguardCorpseAlert
+import com.soulreturns.features.notifications.BackendNotificationCenter
 import com.soulreturns.features.notifications.ChatNotifications
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.platform.http.PresenceService
+import com.soulreturns.platform.realtime.RealtimeClient
 import com.soulreturns.platform.sync.SyncEngine
 import com.soulreturns.platform.sync.SyncKind
 import com.soulreturns.platform.sync.SyncedArtifact
 import com.soulreturns.render.RoundRectRenderer
 import com.soulreturns.stats.PersistentStats
+import com.soulreturns.ui.hud.BackendNotificationHud
 import com.soulreturns.ui.hud.BobbinHud
 import com.soulreturns.ui.hud.LegionHud
 import com.soulreturns.ui.hud.MineshaftCorpsesHud
@@ -35,6 +38,7 @@ import com.soulreturns.update.UpdateChecker
 import com.soulreturns.update.UpdateModal
 import com.soulreturns.update.Updater
 import com.soulreturns.util.MessageHandler
+import com.soulreturns.util.SoulFileLog
 import com.soulreturns.util.SoulLogger
 import net.fabricmc.api.ClientModInitializer
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
@@ -54,10 +58,18 @@ object Soul : ClientModInitializer {
     }
 
     override fun onInitializeClient() {
+        // Open the Soul-only log file first so we capture every startup line. Init is safe
+        // before config is loaded — the toggle defaults to "on" until config tells us otherwise.
+        SoulFileLog.init()
+
         logger.info("Soul mod initialized!")
 
         // Migrate any legacy config, then load the owo-config wrapper.
         SoulConfigHolder.init()
+
+        // One-shot startup line — always present (not debug-gated) so support reports
+        // immediately show which backend the mod is talking to.
+        logger.info("Backend: ${com.soulreturns.platform.http.SoulHttp.backendBaseUrl()}")
 
         // Register message handler before features so they can use it.
         MessageHandler.register()
@@ -117,6 +129,13 @@ object Soul : ClientModInitializer {
         // onAfterPull hook reloads the in-memory representation for that subsystem.
         registerSyncArtifacts(configDir)
         SyncEngine.start(masterEnabled = { com.soulreturns.config.cfg.sync.enabled() })
+
+        // Realtime: receive admin notifications + sync-invalidate signals over Mercure SSE.
+        // The notification center must be wired before RealtimeClient.start so it doesn't
+        // miss an event that arrives between connection-open and Events.subscribe.
+        BackendNotificationCenter.register()
+        BackendNotificationHud.register()
+        RealtimeClient.start(enabled = { com.soulreturns.config.cfg.sync.enabled() })
     }
 
     private fun registerSyncArtifacts(configDir: File) {
@@ -125,7 +144,8 @@ object Soul : ClientModInitializer {
                 kind = SyncKind.CONFIG,
                 file = File(configDir, "soul/config.json5"),
                 enabled = { com.soulreturns.config.cfg.sync.enabled() && com.soulreturns.config.cfg.sync.syncConfig() },
-                onAfterPull = { com.soulreturns.config.SoulConfigHolder.reload() }
+                onAfterPull = { com.soulreturns.config.SoulConfigHolder.reload() },
+                defaultsJson = { com.soulreturns.config.SoulConfigHolder.defaultsJson() }
             )
         )
         val guiLayoutFile = GuiLayoutManager.layoutFile()

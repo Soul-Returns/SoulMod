@@ -190,15 +190,23 @@ public class SoulConfigModel {
 
     public static class Debug {
         public boolean debugMode = false;
+        public boolean logToFile = true;
+        // Sub-option of logToFile: when true, every parsed chat message + command execution
+        // is teed into soul-latest.log. Default off because it spams the file with hundreds
+        // of lines per minute when actively playing. Never reaches the console regardless.
+        public boolean includeMessagesInLog = false;
         @Nest public Logging logging = new Logging();
     }
 
+    // All sub-toggles default true and are gated by Debug.debugMode at the call sites.
+    // Master switch off ⇒ no console output regardless of these values (and they're hidden
+    // in the config UI). Master on ⇒ each toggle picks which category gets logged.
     public static class Logging {
-        public boolean logConfigChanges = false;
-        public boolean logGuiLayout = false;
-        public boolean logWidgetInteractions = false;
-        public boolean logMessageHandler = false;
-        public boolean logFeatureEvents = false;
-        public boolean logCommandsAndMessages = false;
+        public boolean logConfigChanges = true;
+        public boolean logGuiLayout = true;
+        public boolean logWidgetInteractions = true;
+        public boolean logFeatureEvents = true;
+        public boolean logBackend = true;
+        public boolean logRealtime = true;
     }
 }

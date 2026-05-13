@@ -43,6 +43,29 @@ internal object ConfigSections {
                                 ),
                         ),
                 ),
+            "dev" to
+                mapOf(
+                    "debug" to
+                        listOf(
+                            // File Logging: master + sub-option. Hidden children are filtered
+                            // by [optionVisibility] (includeMessagesInLog hides when logToFile off).
+                            "File Logging" to setOf("logToFile", "includeMessagesInLog"),
+                            // Console Logging: master (debugMode = "Log to Console") + per-category
+                            // sub-toggles. Sub-toggles auto-hide when debugMode is off via
+                            // [optionVisibility]; the section header stays so users see where the
+                            // master toggle lives.
+                            "Console Logging" to
+                                setOf(
+                                    "debugMode",
+                                    "logConfigChanges",
+                                    "logGuiLayout",
+                                    "logWidgetInteractions",
+                                    "logFeatureEvents",
+                                    "logBackend",
+                                    "logRealtime",
+                                ),
+                        ),
+                ),
         )
 
     /** Cross-navigation buttons rendered inside specific subcategories. */
@@ -97,6 +120,22 @@ internal object ConfigSections {
             "dev",
         )
 
+    /**
+     * Visual indent depth for nested-dependent options. Defaults to 1 for anything in
+     * [optionVisibility] (one `↳` worth of left spacing). Bump to 2+ when an option is
+     * gated by another option that is itself gated — e.g. `logRealtime` depends on
+     * `logBackend`, which depends on `debugMode`. Without this hint the renderer can't tell
+     * the chain depth (predicates are opaque lambdas), so the parent-child relationship in
+     * the UI collapses into "everything has one ↳."
+     *
+     * Keep this in sync with [optionVisibility]: every key here must also be a key in
+     * [optionVisibility]; keys absent here default to depth 1.
+     */
+    val optionDepth: Map<String, Int> =
+        mapOf(
+            "dev.debug.logging.logRealtime" to 2,
+        )
+
     /** Option full-path → predicate. Option is hidden when the predicate returns false. */
     val optionVisibility: Map<String, () -> Boolean> =
         mapOf(
@@ -110,6 +149,19 @@ internal object ConfigSections {
             "sync.syncConfig" to { cfg.sync.enabled() },
             "sync.syncGuiLayout" to { cfg.sync.enabled() },
             "sync.syncStats" to { cfg.sync.enabled() },
+            // dev.debug.logging.* — hidden when the master Debug Mode toggle is off,
+            // since they only have any effect when debug logging is enabled overall.
+            "dev.debug.logging.logConfigChanges" to { cfg.dev.debug.debugMode() },
+            "dev.debug.logging.logGuiLayout" to { cfg.dev.debug.debugMode() },
+            "dev.debug.logging.logWidgetInteractions" to { cfg.dev.debug.debugMode() },
+            "dev.debug.logging.logFeatureEvents" to { cfg.dev.debug.debugMode() },
+            "dev.debug.logging.logBackend" to { cfg.dev.debug.debugMode() },
+            // Realtime is also gated by logBackend (parent toggle).
+            "dev.debug.logging.logRealtime" to {
+                cfg.dev.debug.debugMode() && cfg.dev.debug.logging.logBackend()
+            },
+            // Sub-option of Log to File, file-only (never reaches console).
+            "dev.debug.includeMessagesInLog" to { cfg.dev.debug.logToFile() },
         )
 
     /** Boolean toggles whose change should rebuild content (because they gate other options' visibility). */
@@ -120,6 +172,9 @@ internal object ConfigSections {
             "mining.mineshaft.enableLapisPtme",
             "mining.mineshaft.enableLittlefootPtme",
             "sync.enabled",
+            "dev.debug.debugMode",
+            "dev.debug.logToFile",
+            "dev.debug.logging.logBackend",
         )
 
     /** String fields rendered as keybind pickers (with capture mode) instead of textboxes. */
