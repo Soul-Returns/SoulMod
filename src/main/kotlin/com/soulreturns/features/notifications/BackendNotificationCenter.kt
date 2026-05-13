@@ -2,16 +2,14 @@ package com.soulreturns.features.notifications
 
 import com.soulreturns.core.events.Events
 import com.soulreturns.platform.realtime.BackendNotification
+import com.soulreturns.util.RenderUtils
 import com.soulreturns.util.SoulLogger
-import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Backing queue for [BackendNotification][com.soulreturns.platform.realtime.BackendNotification]
- * events: receives them off the realtime thread, tracks each one's expiry, and exposes a
- * thread-safe snapshot for the renderer.
- *
- * Pure state holder — the rendering side lives in
- * [BackendNotificationHud][com.soulreturns.ui.hud.BackendNotificationHud].
+ * Receives [BackendNotification][com.soulreturns.platform.realtime.BackendNotification]
+ * events off the realtime thread and forwards them to [RenderUtils.showAlert] — the same
+ * full-screen, scaled, sound-equipped alert system used by `/soul dev testAlert`. The alert
+ * system handles rendering (via `GuiMixin`), queueing, expiry, and the bell chime.
  */
 object BackendNotificationCenter {
     private val logger = SoulLogger("Soul/Notify")
@@ -19,38 +17,27 @@ object BackendNotificationCenter {
     /** How long each notification stays on screen. */
     private const val DISPLAY_MS = 6_000L
 
-    /** Hard cap on simultaneous notifications. Older entries fall off the top. */
-    private const val MAX_VISIBLE = 4
-
-    data class Entry(
-        val message: String,
-        val severity: String,
-        val expiresAt: Long,
-    )
-
-    private val active = CopyOnWriteArrayList<Entry>()
+    /** Text scale handed to RenderUtils — matches the testAlert default. */
+    private const val SCALE = 4.0f
 
     fun register() {
         Events.subscribe<BackendNotification> { event -> onNotification(event) }
     }
 
     private fun onNotification(event: BackendNotification) {
-        val entry =
-            Entry(
-                message = event.message,
-                severity = event.severity,
-                expiresAt = System.currentTimeMillis() + DISPLAY_MS,
-            )
-        active.add(entry)
-        while (active.size > MAX_VISIBLE) active.removeAt(0)
         logger.info("Backend notification: [${event.severity}] ${event.message}")
+        RenderUtils.showAlert(
+            text = event.message,
+            color = severityColor(event.severity),
+            textScale = SCALE,
+            durationMs = DISPLAY_MS,
+        )
     }
 
-    /** Snapshot of currently-visible entries. Caller may treat it as immutable. */
-    fun visible(): List<Entry> {
-        val now = System.currentTimeMillis()
-        // Lazy expiry: prune as the renderer asks for the list.
-        active.removeIf { it.expiresAt <= now }
-        return active.toList()
-    }
+    private fun severityColor(severity: String): Int =
+        when (severity.lowercase()) {
+            "error" -> 0xFFFF5555.toInt()
+            "warning", "warn" -> 0xFFFFD744.toInt()
+            else -> 0xFFFFFFFF.toInt()
+        }
 }

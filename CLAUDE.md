@@ -125,7 +125,7 @@ The config wrapper class `SoulConfig` is **generated** from `SoulConfigModel.jav
 11. `registerCommands()`, `registerFeatures()`.
 12. `GuiLayoutManager.loadOrInitialize()` — must come before sync engine starts so all three sync artifacts have loaded their local state.
 13. `registerSyncArtifacts(...)` + `SyncEngine.start(...)` — reconciles in the background; if a remote pull is fresher than local, `onAfterPull` hot-reloads the affected subsystem (config / gui_layout / stats).
-14. `BackendNotificationCenter.register()` + `BackendNotificationHud.register()` + `RealtimeClient.start(...)` — **last**. The notification center must be wired before the realtime client connects so it doesn't miss events that fire during the first message dispatch.
+14. `BackendNotificationCenter.register()` + `RealtimeClient.start(...)` — **last**. The notification center must be wired before the realtime client connects so it doesn't miss events that fire during the first message dispatch. Notification rendering rides on `RenderUtils.showAlert` (same path as `/soul dev testAlert`), so there's no HUD element to register here.
 
 **Within `registerFeatures()`** two ordering constraints apply, both for the same reason — the consumer reads state owned by the producer on the same tick:
 
@@ -325,7 +325,7 @@ Unknown `type` is logged and dropped, so the backend can introduce new message t
 
 **Subscribers wired today:**
 - `SyncEngine` subscribes to `SyncInvalidate` and calls `reconcileNow(kind)` — admin edits land immediately instead of waiting for the 60 s poll. Skipped while `SoulConfigScreen` / `GuiEditScreen` is open (same gate as periodic reconcile).
-- `BackendNotificationCenter` (in `features/notifications/`) subscribes to `BackendNotification`, queues entries with a 6 s TTL and a 4-entry cap, exposes a thread-safe snapshot. `BackendNotificationHud` (in `ui/hud/`) renders the snapshot as a top-center toast strip via Fabric's `HudElementRegistry.addLast(...)`. Severity styling: `error` red, `warning` yellow, `info`/default white.
+- `BackendNotificationCenter` (in `features/notifications/`) subscribes to `BackendNotification` and forwards each one to `RenderUtils.showAlert(text, color, scale=4.0f, durationMs=6_000)` — the same big-centered-text + bell-chime alert path used by `/soul dev testAlert`. Rendering is via `GuiMixin → RenderUtils.renderAlerts(context)`; no separate HUD element registration. Severity → color: `error` red, `warning` yellow, `info`/default white.
 
 **Connection lifecycle:** started in `Soul.onInitializeClient()` as the final step (after `SyncEngine.start`). Gated by `cfg.sync.enabled()` — same master toggle as sync. Stopped on `CLIENT_STOPPING`. Reconnect backoff: 1 s → 2 s → 4 s → … capped at 60 s, resets on a clean disconnect (server-initiated close).
 

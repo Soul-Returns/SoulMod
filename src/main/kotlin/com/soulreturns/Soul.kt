@@ -28,7 +28,6 @@ import com.soulreturns.platform.sync.SyncKind
 import com.soulreturns.platform.sync.SyncedArtifact
 import com.soulreturns.render.RoundRectRenderer
 import com.soulreturns.stats.PersistentStats
-import com.soulreturns.ui.hud.BackendNotificationHud
 import com.soulreturns.ui.hud.BobbinHud
 import com.soulreturns.ui.hud.LegionHud
 import com.soulreturns.ui.hud.MineshaftCorpsesHud
@@ -135,9 +134,10 @@ object Soul : ClientModInitializer {
 
         // Realtime: receive admin notifications + sync-invalidate signals over Mercure SSE.
         // The notification center must be wired before RealtimeClient.start so it doesn't
-        // miss an event that arrives between connection-open and Events.subscribe.
+        // miss an event that arrives between connection-open and Events.subscribe. Rendering
+        // + sound for the notification toast lives in `RenderUtils.showAlert` (the same path
+        // `/soul dev testAlert` uses) — wired via `GuiMixin`, no separate registration here.
         BackendNotificationCenter.register()
-        BackendNotificationHud.register()
         RealtimeClient.start(enabled = { com.soulreturns.config.cfg.sync.enabled() })
     }
 
