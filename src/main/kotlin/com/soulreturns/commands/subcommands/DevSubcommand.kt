@@ -3,6 +3,7 @@ package com.soulreturns.commands.subcommands
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.soulreturns.data.location.LocationApi
 import com.soulreturns.data.profile.ProfileApi
+import com.soulreturns.data.skyblock.SkyblockApi
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.util.DebugLogger
@@ -18,6 +19,7 @@ import net.minecraft.network.chat.Component
  *
  *  - `/soul dev getArea`                                  → SkyBlock island from the tab list
  *  - `/soul dev getSubLocation`                           → sublocation from the scoreboard sidebar
+ *  - `/soul dev getSkyblock`                              → SkyblockApi.isOnSkyblock + raw sidebar title (debug detection misses)
  *  - `/soul dev getProfile`                               → active SkyBlock profile from the tab list
  *  - `/soul dev listStatProfiles`                         → all profile slots in stats.json, marking the active one
  *  - `/soul dev resetSeasonings`                          → reset seasoning total to 0 (persisted)
@@ -43,6 +45,29 @@ object DevSubcommand : SoulSubcommand {
                     runs { _ ->
                         val sub = LocationApi.currentSublocation
                         soulChat(if (sub == null) "§7Sublocation: §c<unknown>" else "§7Sublocation: §a$sub")
+                    }
+                }
+            )
+            then(
+                literal("getSkyblock") {
+                    runs { _ ->
+                        val onSb = SkyblockApi.isOnSkyblock
+                        // Raw scoreboard title for diagnosing detection misses (resource packs,
+                        // sub-game scoreboards, etc.).
+                        val rawTitle =
+                            try {
+                                val level = Minecraft.getInstance().level
+                                val objective =
+                                    level?.scoreboard
+                                        ?.getDisplayObjective(net.minecraft.world.scores.DisplaySlot.SIDEBAR)
+                                objective?.displayName?.string ?: "<none>"
+                            } catch (e: Throwable) {
+                                "<error: ${e.message}>"
+                            }
+                        soulChat(
+                            "§7On SkyBlock: ${if (onSb) "§atrue" else "§cfalse"} " +
+                                "§7(sidebar title: §f${rawTitle.take(64)}§7)"
+                        )
                     }
                 }
             )

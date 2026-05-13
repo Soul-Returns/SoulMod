@@ -9,12 +9,22 @@ import net.minecraft.world.scores.DisplaySlot
  * Polls Minecraft state every client tick to determine whether the player is on Hypixel
  * SkyBlock, and feeds [SkyblockApi].
  *
- * Detection rule: the **scoreboard sidebar's displayed title** equals `SKYBLOCK` (case
- * insensitive after color-code stripping). Hypixel sets this for every SkyBlock world but
- * not for lobbies, Bedwars, etc., so it's a reliable signal that doesn't depend on the tab
- * list or chat parsing.
+ * Detection rule: the **scoreboard sidebar's displayed title** (after color-code stripping)
+ * matches the [TITLE_PATTERN] regex. Hypixel uses several variants of the SKYBLOCK title:
+ *  - `SKYBLOCK`                — baseline
+ *  - `SKYBLOCK CO-OP`          — co-op profile
+ *  - `SKYBLOCK GUEST`          — visiting another player's island
+ *  - `SKYBLOCK ♲` / `SKYBLOCK ☀` / `SKYBLOCK Ⓑ`
+ *                              — Stranded / Ironman-like / Bingo suffixes (one-char marker)
+ *
+ * Pattern lifted from SkyHanni's `SkyBlockLocationData.scoreboardTitlePattern` — they've
+ * encountered every variant in production. Also tolerant of the `SKIBLOCK` typo seen on
+ * Hypixel Alpha. An exact-equality check was too strict and missed Co-op / Bingo / Stranded
+ * profiles entirely.
  */
 object SkyblockReader {
+    private val TITLE_PATTERN = Regex("SK[YI]BLOCK(?: CO-OP| GUEST)?(?: [♲☀Ⓑ])?")
+
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register(
             ClientTickEvents.EndTick { _ ->
@@ -27,6 +37,6 @@ object SkyblockReader {
         val level = Minecraft.getInstance().level ?: return false
         val objective = level.scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR) ?: return false
         val title = MessageDetector.stripColorCodes(objective.displayName.string).trim()
-        return title.equals("SKYBLOCK", ignoreCase = true)
+        return TITLE_PATTERN.matches(title)
     }
 }
