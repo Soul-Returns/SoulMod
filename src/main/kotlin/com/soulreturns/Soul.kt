@@ -128,6 +128,13 @@ object Soul : ClientModInitializer {
         // Register round-rect PIP renderer for anti-aliased rounded corners.
         SpecialGuiElementRegistry.register { context -> RoundRectRenderer(context.vertexConsumers()) }
 
+        // Register the NanoVG PIP renderer — Mojang invokes it for every state submitted
+        // via NvgFrame.submit. This is the only render path that lets NanoVG output reach
+        // the visible swapchain in 1.21.11 (the legacy raw-FBO-bind API was removed).
+        SpecialGuiElementRegistry.register { context ->
+            com.soulreturns.platform.render.nvg.NvgPipRenderer(context.vertexConsumers())
+        }
+
         // Re-render Soul HUDs on top of every open screen. Without this hook the inventory's
         // dim/blur background overlays the HUD; see SoulGuiHudAdapter.registerScreenOverlay.
         com.soulreturns.platform.mixinbridge.SoulGuiHudAdapter.registerScreenOverlay()

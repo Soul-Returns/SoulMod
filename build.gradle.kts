@@ -94,10 +94,24 @@ dependencies {
 
 	modImplementation("net.fabricmc:fabric-language-kotlin:${project.property("fabric_kotlin_version")}")
 
-    // owo-lib (config + UI framework)
+    // owo-lib (config + UI framework). The UI half is being phased out in favor of the
+    // Soul NVG framework (see `platform/render/nvg/` + `ui/`); owo-config's annotation
+    // processor for SoulConfigModel stays.
     modImplementation("io.wispforest:owo-lib:${project.property("deps.owo")}")
     annotationProcessor("io.wispforest:owo-lib:${project.property("deps.owo")}")
     include("io.wispforest:owo-lib:${project.property("deps.owo")}")
+
+    // LWJGL NanoVG — vector UI rendering used by the Soul UI framework. Minecraft ships
+    // the lwjgl core but does NOT depend on lwjgl-nanovg, so we declare it explicitly here
+    // and bundle the four-platform natives into the released jar via Loom's `include`.
+    project.property("deps.lwjgl").toString().let { lwjglVersion ->
+        modImplementation("org.lwjgl:lwjgl-nanovg:$lwjglVersion")
+        include("org.lwjgl:lwjgl-nanovg:$lwjglVersion")
+        listOf("windows", "linux", "macos", "macos-arm64").forEach { os ->
+            modImplementation("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-$os")
+            include("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-$os")
+        }
+    }
 
     modRuntimeOnly("me.djtheredstoner:${project.property("deps.devauth")}")
 

@@ -6,6 +6,7 @@ import com.soulreturns.gui.lib.GuiInteractionSnapshot
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.gui.lib.GuiRenderer
 import com.soulreturns.gui.lib.tracker.TrackerInputHandler
+import com.soulreturns.platform.render.nvg.NvgSmokeTest
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents
 import net.minecraft.client.Minecraft
@@ -30,6 +31,9 @@ object SoulGuiHudAdapter {
         val layout = GuiLayoutManager.getLayout()
         val guiCtx = MinecraftGuiRenderContext(context, client)
         lastSnapshot = GuiRenderer.renderHud(layout, guiCtx)
+        // Temporary: validate the NanoVG PIP pipeline by drawing a debug panel when
+        // dev.debugMode is on. Remove once real consumers (HUD migrations in P3) are wired up.
+        NvgSmokeTest.render(context)
     }
 
     /**
