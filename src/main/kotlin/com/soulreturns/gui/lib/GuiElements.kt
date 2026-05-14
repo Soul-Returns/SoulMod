@@ -109,3 +109,21 @@ data class TrackerOverlayElement(
     override val scale: Float = 1.0f,
     override val textShadow: Boolean = true,
 ) : GuiElement(id, enabled, anchorX, anchorY, offsetX, offsetY, scale, textShadow)
+
+/**
+ * Position/scale shell for a Soul UI framework HUD (see `ui.runtime.SoulHud`).
+ *
+ * The composable content lambda lives in `SoulHudRegistry` at runtime — only positioning
+ * persists in `gui_layout.json`. Features register one of these via `SoulHud.register(...)`
+ * which calls `GuiLayoutApi.updateSoulHud(...)` internally.
+ */
+data class SoulHudElement(
+    override val id: GuiElementId,
+    override val enabled: Boolean = true,
+    override val anchorX: Double = 0.02,
+    override val anchorY: Double = 0.02,
+    override val offsetX: Int = 0,
+    override val offsetY: Int = 0,
+    override val scale: Float = 1.0f,
+    override val textShadow: Boolean = true,
+) : GuiElement(id, enabled, anchorX, anchorY, offsetX, offsetY, scale, textShadow)

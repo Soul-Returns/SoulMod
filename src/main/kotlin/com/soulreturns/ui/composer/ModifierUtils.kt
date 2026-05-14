@@ -34,17 +34,36 @@ internal fun SoulModifier.contentOffset(): SoulMeasured.Position {
 }
 
 /**
- * Apply [SizeElement] overrides (if any) by clamping both min and max to the explicit values.
- * Width/height with no [SizeElement] are passed through unchanged.
+ * Apply [SizeElement] and [FillElement] overrides to a constraint set.
+ *
+ *  - [SizeElement]: forces both min and max of an axis to the given value (overrides parent).
+ *  - [FillElement]: when the parent supplies a bounded max on the axis, raises the min to
+ *    that max so the child measures itself at the full available size. If the axis is
+ *    unbounded, fill is a no-op (no "available" to fill).
+ *
+ * Chain order matters — later elements override earlier ones, mirroring CSS-style cascading.
  */
 internal fun SoulModifier.applySizeOverride(c: SoulConstraints): SoulConstraints {
     var out = c
-    elements().filterIsInstance<SizeElement>().forEach { size ->
-        if (size.width != null) {
-            out = out.copy(minWidth = size.width, maxWidth = size.width)
-        }
-        if (size.height != null) {
-            out = out.copy(minHeight = size.height, maxHeight = size.height)
+    for (el in elements()) {
+        when (el) {
+            is SizeElement -> {
+                if (el.width != null) {
+                    out = out.copy(minWidth = el.width, maxWidth = el.width)
+                }
+                if (el.height != null) {
+                    out = out.copy(minHeight = el.height, maxHeight = el.height)
+                }
+            }
+            is FillElement -> {
+                if (el.width && out.hasBoundedWidth()) {
+                    out = out.copy(minWidth = out.maxWidth)
+                }
+                if (el.height && out.hasBoundedHeight()) {
+                    out = out.copy(minHeight = out.maxHeight)
+                }
+            }
+            else -> {} // padding + background handled elsewhere
         }
     }
     return out

@@ -135,6 +135,10 @@ object Soul : ClientModInitializer {
             com.soulreturns.platform.render.nvg.NvgPipRenderer(context.vertexConsumers())
         }
 
+        // Register the Soul UI framework's smoke-test HUD (toggled by dev.debugMode).
+        // Remove this once real consumers (HUD migrations in P3) exercise the framework.
+        com.soulreturns.platform.render.nvg.NvgSmokeTest.register()
+
         // Re-render Soul HUDs on top of every open screen. Without this hook the inventory's
         // dim/blur background overlays the HUD; see SoulGuiHudAdapter.registerScreenOverlay.
         com.soulreturns.platform.mixinbridge.SoulGuiHudAdapter.registerScreenOverlay()

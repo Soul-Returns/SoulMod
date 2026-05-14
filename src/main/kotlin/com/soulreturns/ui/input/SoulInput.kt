@@ -1,0 +1,237 @@
+package com.soulreturns.ui.input
+
+/**
+ * Frame-scoped pointer state + hit-region dispatch for the Soul UI framework.
+ *
+ * **Lifecycle (per frame):**
+ * 1. [startFrame] — host (e.g. `NvgFrame.submit`) sets the cursor coords + clears recorded
+ *    regions before composing/drawing.
+ * 2. Layout nodes call [recordRegion] from their `drawSelf` when a `clickable` /
+ *    `scrollable` element is in their modifier chain.
+ * 3. [flush] — after draw, walks recorded regions:
+ *    - Computes the new [hoveredKeys] set (read by composables next frame).
+ *    - Dispatches any [queueClick] / [queueScroll] events to the deepest matching region.
+ *
+ * **Event arrival timing:** mouse click + scroll events come from Fabric's
+ * `ScreenMouseEvents` callbacks which fire on the main thread BEFORE the render frame. The
+ * host enqueues them via [queueClick] / [queueScroll]; they're consumed in [flush] *after*
+ * draw so handlers see fresh hit regions. Events with no matching region are silently
+ * dropped — they bubble up to Minecraft via the screen-event return contract handled by
+ * `SoulGuiHudAdapter`.
+ *
+ * **Key stability:** [hoveredKeys] persists across frames using `equals()`-based identity.
+ * Composables use the composer's `nextAutoKey()` for stable per-frame IDs; dynamic lists
+ * should pass explicit content-derived keys.
+ *
+ * Single-threaded — all calls must happen on Minecraft's render thread.
+ */
+object SoulInput {
+    private val regions: MutableList<HitRegion> = mutableListOf()
+    private var pendingClick: PendingClick? = null
+    private var pendingScroll: PendingScroll? = null
+    private var pendingRelease: Boolean = false
+
+    /** Latest cursor logical-pixel position. Defaults to off-screen until [startFrame] runs. */
+    var cursorX: Float = -1f
+        private set
+
+    var cursorY: Float = -1f
+        private set
+
+    /**
+     * Origin of the panel currently being rendered, in absolute GUI-scaled coords. Used to
+     * translate event coordinates (which arrive in absolute space) into panel-local space
+     * for hit-testing against [HitRegion]s, which are themselves panel-local.
+     */
+    private var panelOriginX: Float = 0f
+    private var panelOriginY: Float = 0f
+
+    /**
+     * Scale factor applied to the current panel's NanoVG content (`nvgScale(s, s)` inside
+     * the render block). Hit regions get recorded in **unscaled content coords** because
+     * the layout system measures at intrinsic sizes; the cursor (and click coords) arrive
+     * in **scaled screen coords**. Hit-testing therefore divides cursor by [panelScale] to
+     * line them up.
+     */
+    private var panelScale: Float = 1f
+
+    /** Set of region keys under the cursor at end of the previous frame's [flush]. */
+    var hoveredKeys: Set<Any> = emptySet()
+        private set
+
+    /**
+     * Key of the region currently being "pressed" — mouse button is held down after a click
+     * that landed inside the region. Cleared on mouse-up. Survives the cursor leaving the
+     * region's bounds, which is what makes drag interactions (sliders, drag-and-drop) work.
+     *
+     * Read this from a composable's body to drive continuous-update widgets (e.g. a slider
+     * reading [cursorX] each frame while [isPressed] returns true).
+     */
+    var pressedKey: Any? = null
+        private set
+
+    /** Returns true if [key] was hovered as of the most recent [flush]. */
+    fun isHovered(key: Any): Boolean = hoveredKeys.contains(key)
+
+    /** Returns true if [key] is the currently-pressed key. See [pressedKey] for semantics. */
+    fun isPressed(key: Any): Boolean = pressedKey == key
+
+    /**
+     * Reset frame state. Call from the host at the very start of a frame's compose / draw
+     * cycle.
+     *
+     * @param cursorX Panel-local cursor X, i.e. `absoluteCursor.x - panelOriginX`.
+     * @param cursorY Panel-local cursor Y. `(-1f, -1f)` means the cursor is unavailable
+     *   (no screen open, mouse hidden) — hit testing skips.
+     * @param panelOriginX X offset of the panel within the GUI-scaled coordinate system.
+     *   Used to convert absolute event coords (clicks, scrolls) into panel-local space at
+     *   [flush] time.
+     * @param panelOriginY See [panelOriginX].
+     */
+    fun startFrame(
+        cursorX: Float,
+        cursorY: Float,
+        panelOriginX: Float = 0f,
+        panelOriginY: Float = 0f,
+        panelScale: Float = 1f,
+    ) {
+        val safeScale = panelScale.coerceAtLeast(0.001f)
+        // Convert panel-local SCALED cursor → unscaled content coords so widgets reading
+        // [cursorX] / [cursorY] see coordinates that match their layout-time rect.
+        this.cursorX = cursorX / safeScale
+        this.cursorY = cursorY / safeScale
+        this.panelOriginX = panelOriginX
+        this.panelOriginY = panelOriginY
+        this.panelScale = safeScale
+        regions.clear()
+    }
+
+    /** Record a hit region during the draw pass. */
+    fun recordRegion(region: HitRegion) {
+        regions.add(region)
+    }
+
+    /** Enqueue a click event to be matched against regions during the next [flush]. */
+    fun queueClick(
+        x: Float,
+        y: Float,
+    ) {
+        pendingClick = PendingClick(x, y)
+    }
+
+    /**
+     * Enqueue a scroll event. [vsd] is the vertical scroll delta in wheel notches (positive
+     * = up, negative = down) as supplied by Fabric.
+     */
+    fun queueScroll(
+        x: Float,
+        y: Float,
+        vsd: Float,
+    ) {
+        pendingScroll = PendingScroll(x, y, vsd)
+    }
+
+    /** Enqueue a mouse-up event. Cleared press state lands in the next [flush]. */
+    fun queueRelease() {
+        pendingRelease = true
+    }
+
+    /**
+     * End-of-frame: dispatch any queued click / scroll events, then compute hover set for
+     * next frame from the cursor's current position. Returns true if any event was
+     * consumed (used by the bridge to cancel the underlying Minecraft event).
+     */
+    fun flush(): FlushResult {
+        var clickConsumed = false
+        var scrollConsumed = false
+
+        pendingClick?.let { c ->
+            // Click coords arrive in absolute GUI-scaled space. Translate into panel-local
+            // (subtract origin) then unscale (divide by [panelScale]) to get content coords
+            // matching where hit regions were recorded.
+            val localX = (c.x - panelOriginX) / panelScale
+            val localY = (c.y - panelOriginY) / panelScale
+            val hit = deepestRegionAt(localX, localY) { it.onClick != null }
+            if (hit != null) {
+                hit.onClick?.invoke()
+                pressedKey = hit.key
+                clickConsumed = true
+            }
+            pendingClick = null
+        }
+        if (pendingRelease) {
+            pressedKey = null
+            pendingRelease = false
+        }
+
+        pendingScroll?.let { s ->
+            val localX = (s.x - panelOriginX) / panelScale
+            val localY = (s.y - panelOriginY) / panelScale
+            val hit = deepestRegionAt(localX, localY) { it.onScroll != null }
+            if (hit != null) {
+                hit.onScroll?.invoke(s.vsd)
+                scrollConsumed = true
+            }
+            pendingScroll = null
+        }
+
+        // Update hover set from the current cursor position.
+        val cx = cursorX
+        val cy = cursorY
+        hoveredKeys =
+            if (cx < 0f || cy < 0f) {
+                emptySet()
+            } else {
+                regions
+                    .asSequence()
+                    .filter { it.contains(cx, cy) }
+                    .map { it.key }
+                    .toSet()
+            }
+
+        return FlushResult(clickConsumed = clickConsumed, scrollConsumed = scrollConsumed)
+    }
+
+    private inline fun deepestRegionAt(
+        x: Float,
+        y: Float,
+        predicate: (HitRegion) -> Boolean,
+    ): HitRegion? {
+        var best: HitRegion? = null
+        for (r in regions) {
+            if (!predicate(r)) continue
+            if (!r.contains(x, y)) continue
+            if (best == null || r.depth >= best.depth) best = r
+        }
+        return best
+    }
+
+    /** Reset all state. Used in tests; not needed in normal operation. */
+    internal fun reset() {
+        regions.clear()
+        pendingClick = null
+        pendingScroll = null
+        pendingRelease = false
+        cursorX = -1f
+        cursorY = -1f
+        hoveredKeys = emptySet()
+        pressedKey = null
+        panelOriginX = 0f
+        panelOriginY = 0f
+        panelScale = 1f
+    }
+
+    private data class PendingClick(val x: Float, val y: Float)
+
+    private data class PendingScroll(val x: Float, val y: Float, val vsd: Float)
+}
+
+/**
+ * Result of a [SoulInput.flush] — used by the host (e.g. `SoulGuiHudAdapter`) to decide
+ * whether to cancel the underlying Minecraft mouse event so it doesn't double-fire as a
+ * vanilla inventory slot click.
+ */
+data class FlushResult(
+    val clickConsumed: Boolean = false,
+    val scrollConsumed: Boolean = false,
+)

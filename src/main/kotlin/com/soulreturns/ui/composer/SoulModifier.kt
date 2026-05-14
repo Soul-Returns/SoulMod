@@ -103,3 +103,27 @@ fun SoulModifier.size(
 
 /** Convenience: square size (both axes set to the same value). */
 fun SoulModifier.size(size: Float): SoulModifier = size(width = size, height = size)
+
+/** Force the width axis only. */
+fun SoulModifier.width(width: Float): SoulModifier = then(SizeElement(width = width))
+
+/** Force the height axis only. */
+fun SoulModifier.height(height: Float): SoulModifier = then(SizeElement(height = height))
+
+/**
+ * Marker element instructing the parent layout that this node should expand to fill all
+ * available space along the named axis. Interpreted by [com.soulreturns.ui.foundation.Box],
+ * [com.soulreturns.ui.foundation.Column] and [com.soulreturns.ui.foundation.Row]'s measure
+ * passes — they pass the unbounded constraints down with min = max for the affected axis so
+ * the child sizes itself to fill.
+ */
+data class FillElement(val width: Boolean, val height: Boolean) : SoulModifier.Element
+
+/** Make the node fill all available width (`maxWidth` of the parent's constraints). */
+fun SoulModifier.fillMaxWidth(): SoulModifier = then(FillElement(width = true, height = false))
+
+/** Make the node fill all available height (`maxHeight` of the parent's constraints). */
+fun SoulModifier.fillMaxHeight(): SoulModifier = then(FillElement(width = false, height = true))
+
+/** Make the node fill all available space on both axes. */
+fun SoulModifier.fillMaxSize(): SoulModifier = then(FillElement(width = true, height = true))

@@ -10,6 +10,7 @@ import com.soulreturns.ui.composer.SoulModifier
 import com.soulreturns.ui.composer.applySizeOverride
 import com.soulreturns.ui.composer.composable
 import com.soulreturns.ui.composer.drawBackgrounds
+import com.soulreturns.ui.composer.recordHitRegions
 
 /**
  * Single-line text. Width = `nvgTextBounds`; height = font size (rounded up).
@@ -52,9 +53,11 @@ internal class TextNode(
     override fun drawSelf(
         x: Float,
         y: Float,
+        depth: Int,
     ) {
         val m = measured ?: return
         modifier.drawBackgrounds(x, y, m.width, m.height)
+        modifier.recordHitRegions(x, y, m.width, m.height, depth)
         NvgRenderer.text(text, x, y, size, color, font)
     }
 }

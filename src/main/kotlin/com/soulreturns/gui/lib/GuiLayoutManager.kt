@@ -117,6 +117,13 @@ object GuiLayoutManager {
                                     offsetX = offsetX,
                                     offsetY = offsetY,
                                 )
+                            is SoulHudElement ->
+                                element.copy(
+                                    anchorX = anchorX,
+                                    anchorY = anchorY,
+                                    offsetX = offsetX,
+                                    offsetY = offsetY,
+                                )
                         }
                     },
             )
@@ -137,6 +144,7 @@ object GuiLayoutManager {
                             is TextBlockElement -> element.copy(scale = clamped)
                             is ItemTrackerElement -> element.copy(scale = clamped)
                             is TrackerOverlayElement -> element.copy(scale = clamped)
+                            is SoulHudElement -> element.copy(scale = clamped)
                         }
                     },
             )
@@ -340,6 +348,7 @@ class GuiRuntimeTypeAdapterFactory : com.google.gson.TypeAdapterFactory {
                         is TextBlockElement -> "text_block"
                         is ItemTrackerElement -> "item_tracker"
                         is TrackerOverlayElement -> "tracker_overlay"
+                        is SoulHudElement -> "soul_hud"
                     }
                 out.name("type").value(kind)
                 out.name("data")
@@ -347,6 +356,7 @@ class GuiRuntimeTypeAdapterFactory : com.google.gson.TypeAdapterFactory {
                     is TextBlockElement -> gson.toJson(element, TextBlockElement::class.java, out)
                     is ItemTrackerElement -> gson.toJson(element, ItemTrackerElement::class.java, out)
                     is TrackerOverlayElement -> gson.toJson(element, TrackerOverlayElement::class.java, out)
+                    is SoulHudElement -> gson.toJson(element, SoulHudElement::class.java, out)
                 }
                 out.endObject()
             }
@@ -361,6 +371,7 @@ class GuiRuntimeTypeAdapterFactory : com.google.gson.TypeAdapterFactory {
                         "text_block" -> TextBlockElement::class.java
                         "item_tracker" -> ItemTrackerElement::class.java
                         "tracker_overlay" -> TrackerOverlayElement::class.java
+                        "soul_hud" -> SoulHudElement::class.java
                         else -> return null
                     }
                 // The Gson call returns a concrete GuiElement subtype; we

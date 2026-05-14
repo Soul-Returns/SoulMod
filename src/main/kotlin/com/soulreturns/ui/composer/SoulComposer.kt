@@ -22,6 +22,18 @@ package com.soulreturns.ui.composer
 class SoulComposer internal constructor() {
     private val stack: ArrayDeque<SoulNode> = ArrayDeque()
     private var root: SoulNode? = null
+    private var nextId: Long = 0L
+
+    /**
+     * Sequential per-composition key generator. Used by composables that need a stable
+     * identity across frames (e.g. for hover-state tracking) but don't have a natural key.
+     *
+     * As long as the composable tree is deterministic frame-to-frame, every call site sees
+     * the same key in successive frames. Conditional sub-trees, list rendering with
+     * variable item counts, and other dynamic structures **break this invariant** — pass an
+     * explicit content-derived `key` in those cases.
+     */
+    fun nextAutoKey(): Long = nextId++
 
     /** Push [node] onto the parent stack; attach it to the current top as a child (or root). */
     fun startNode(node: SoulNode) {
@@ -45,6 +57,7 @@ class SoulComposer internal constructor() {
     private fun reset() {
         stack.clear()
         root = null
+        nextId = 0L
     }
 
     /**

@@ -10,6 +10,7 @@ import com.soulreturns.ui.composer.applySizeOverride
 import com.soulreturns.ui.composer.composable
 import com.soulreturns.ui.composer.contentOffset
 import com.soulreturns.ui.composer.drawBackgrounds
+import com.soulreturns.ui.composer.recordHitRegions
 import com.soulreturns.ui.composer.totalPaddingHorizontal
 import com.soulreturns.ui.composer.totalPaddingVertical
 
@@ -57,8 +58,10 @@ internal class BoxNode(override val modifier: SoulModifier) : SoulNode() {
     override fun drawSelf(
         x: Float,
         y: Float,
+        depth: Int,
     ) {
         val m = measured ?: return
         modifier.drawBackgrounds(x, y, m.width, m.height)
+        modifier.recordHitRegions(x, y, m.width, m.height, depth)
     }
 }

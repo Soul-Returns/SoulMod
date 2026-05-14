@@ -7,6 +7,8 @@ import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.gui.lib.GuiRenderer
 import com.soulreturns.gui.lib.tracker.TrackerInputHandler
 import com.soulreturns.platform.render.nvg.NvgSmokeTest
+import com.soulreturns.ui.input.SoulInput
+import com.soulreturns.ui.runtime.SoulHud
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents
 import net.minecraft.client.Minecraft
@@ -31,8 +33,12 @@ object SoulGuiHudAdapter {
         val layout = GuiLayoutManager.getLayout()
         val guiCtx = MinecraftGuiRenderContext(context, client)
         lastSnapshot = GuiRenderer.renderHud(layout, guiCtx)
-        // Temporary: validate the NanoVG PIP pipeline by drawing a debug panel when
-        // dev.debugMode is on. Remove once real consumers (HUD migrations in P3) are wired up.
+        // Dispatch every registered Soul UI HUD via NanoVG. The legacy HUD path above
+        // (text blocks, item trackers, tracker overlays) continues to run in parallel
+        // during P3 migration; once all HUDs are on Soul UI the legacy path retires.
+        SoulHud.dispatchAll(context)
+        // Temporary smoke-test panel (toggled by dev.debugMode). Remove once real consumers
+        // exercise the framework (HUD migrations in P3).
         NvgSmokeTest.render(context)
     }
 
@@ -63,16 +69,32 @@ object SoulGuiHudAdapter {
                 )
                 ScreenMouseEvents.allowMouseClick(screen).register(
                     ScreenMouseEvents.AllowMouseClick { _, click ->
-                        // Consume + cancel propagation when the click lands on a Soul HUD region
-                        // so the click doesn't double-fire as an inventory slot interaction.
-                        !handleClick(click.x().toInt(), click.y().toInt())
+                        // Route to the legacy GuiInteractionSnapshot (item-tracker, etc.) AND the
+                        // new Soul UI framework's hit-region pipeline. Either system consuming the
+                        // click cancels the underlying inventory-slot interaction.
+                        val legacy = handleClick(click.x().toInt(), click.y().toInt())
+                        if (!legacy) {
+                            SoulInput.queueClick(click.x().toFloat(), click.y().toFloat())
+                        }
+                        !legacy
                     }
                 )
                 ScreenMouseEvents.allowMouseScroll(screen).register(
                     ScreenMouseEvents.AllowMouseScroll { _, mx, my, _, vsd ->
                         val snapshot = lastSnapshot ?: return@AllowMouseScroll true
-                        // Return false to cancel default scroll behavior when we consume the event.
-                        !TrackerInputHandler.handleScroll(snapshot, mx.toInt(), my.toInt(), vsd)
+                        val legacy = TrackerInputHandler.handleScroll(snapshot, mx.toInt(), my.toInt(), vsd)
+                        if (!legacy) {
+                            SoulInput.queueScroll(mx.toFloat(), my.toFloat(), vsd.toFloat())
+                        }
+                        !legacy
+                    }
+                )
+                ScreenMouseEvents.allowMouseRelease(screen).register(
+                    ScreenMouseEvents.AllowMouseRelease { _, _ ->
+                        // Always notify Soul UI of the release so drag captures (e.g. sliders)
+                        // clear cleanly. Return true so Minecraft's own release handling runs too.
+                        SoulInput.queueRelease()
+                        true
                     }
                 )
             }

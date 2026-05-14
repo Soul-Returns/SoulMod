@@ -232,6 +232,147 @@ The config screen has been split into a thin orchestrator + several focused help
 
 **Keybind capture flow:** `RowBuilders.buildKeybindButton` doesn't directly mutate any state — it calls `ctx.requestKeybindCapture(opt)`. The screen owns the `capturingKeybind` field privately and exposes `isCapturing(opt)` for the renderer's display. One-way data flow.
 
+## Soul UI framework
+
+> **Roadmap.** See `docs/ui-framework-roadmap.md` for the live tracker of what's shipped (P1+P2 = NVG runtime + composer + foundation widgets + Minecraft integration) and what's next (P3 HUD migrations, P4 screen migrations + owo-ui retirement, P5 polish). Update it after each sub-phase.
+
+### NanoVG runtime (`platform/render/nvg/`)
+
+> **Origin.** Lifted from [Odin](https://github.com/odtheking/Odin) — BSD 3-Clause. Original backend by Aton; design by Stivais. Every file under `platform/render/nvg/` carries the attribution header. Don't remove the credit when refactoring.
+
+The mod uses LWJGL's NanoVG bindings for crisp vector rendering of the Soul UI framework (font glyphs, rounded rects, anti-aliased curves, etc.). NanoVG is a raw OpenGL library; **Minecraft 1.21.11's `RenderDevice` removed the legacy `GlStateManager._glBindFramebuffer` API Odin's PIP code relied on**, so the integration here is novel — not a 1:1 port.
+
+**Files (5):**
+
+- **`NvgRenderer.kt`** — singleton wrapping `nvgCreate`/`nvgBegin/EndFrame`. Public API: `beginFrame(logicalW, logicalH, dpr)` / `endFrame()`, transform stack (`push`/`pop`/`scale`/`translate`/`rotate`/`globalAlpha`), intersection-aware scissor stack, primitives (`rect`/`hollowRect`/`gradientRect`/`circle`/`line`/`dropShadow`/`halfRoundedRect`), text (`text`/`textShadow`/`textWidth`/`drawWrappedString`/`wrappedTextBounds`). Image/SVG support skipped for v1.
+- **`NvgFont.kt`** — TTF wrapper, holds bytes in a `cachedBytes: ByteArray`. Each `buffer()` call returns a fresh direct `ByteBuffer` — NanoVG retains the pointer in `nvgCreateFontMem`, so the buffer must outlive the font; `NvgRenderer.fontMap` keeps it referenced.
+- **`NvgFrame.kt`** — entry point for feature code. `submit(context, x, y, w, h, scale, block)` queues a PIP state; `submitFullScreen(context, block)` is the convenience for screen-wide rendering. Brackets the block with `SoulInput.startFrame/flush` for input dispatch, and with `nvgScale(scale, scale)` for the per-panel transform.
+- **`NvgPipState.kt`** + **`NvgPipRenderer.kt`** — Mojang `PictureInPictureRenderer` integration. `NvgPipRenderer` extends Mojang's PIP base class; its `renderToTexture(state, poseStack)` opens a `RenderSystem.getDevice().createCommandEncoder().createRenderPass(...)` block (same pattern as `RoundRectRenderer`) on `RenderSystem.outputColorTextureOverride`, calls `GL33C.glBindSampler(0, 0)` (**critical** — without it Mojang's sampler overrides NanoVG's per-texture parameters and text renders invisible), then runs `nvgBeginFrame` → state lambda → `nvgEndFrame`. Mojang composites the resulting PIP texture into the main scene at the state's screen rect.
+- **DPR computation in `NvgPipRenderer`.** Mojang allocates the PIP texture at viewport-dimensions chosen by its own oversampling rule (typically `2× requested size` at standard GUI scale). We **must** pass the actual ratio (`viewport.width / state.contentWidth`) to `nvgBeginFrame` as DPR — otherwise NanoVG rasterizes glyphs at 1× and the projection stretches them, producing blurry text. The diagnostic log line `PIP renderToTexture: drawFBO=N viewport=... dpr=N` fires on first PIP submission so the ratio is visible in `logs/latest.log`.
+
+**Fonts bundled** at `src/main/resources/assets/soul/fonts/` (SIL OFL 1.1; license at `LICENSE-Inter.txt`): `Inter-Regular.ttf`, `Inter-Medium.ttf`, `Inter-SemiBold.ttf`. Loaded lazily via classpath on first font usage.
+
+**LWJGL dependency.** `lwjgl-nanovg:3.3.3` (matches Minecraft's bundled lwjgl) + four-platform natives (`windows`, `linux`, `macos`, `macos-arm64`) declared in `build.gradle.kts` via `modImplementation` + `include` so natives bundle into the released jar.
+
+**GL debug noise filter.** `mixin/render/GlDebugMixin` intercepts `com.mojang.blaze3d.opengl.GlDebug.printDebugLog(IIIIIJJ)V` at HEAD; reads the message C-string via `MemoryUtil.memUTF8`; cancels for known-benign patterns (currently `"No active program"` — emitted hundreds-of-times-per-second by Mojang's PIP composite validation after NanoVG zeros `glUseProgram(0)` in `nvgEndFrame`). Real GL errors still bubble. Add to `SUPPRESSED_PATTERNS` only after investigating.
+
+### Soul UI framework (`ui/`)
+
+Declarative Compose-style UI framework that produces a `SoulNode` tree → measures → draws via the NanoVG runtime. Replaces ad-hoc `GuiRenderContext`-based HUDs and (eventually, in P4) replaces owo-ui for screens.
+
+**Conceptual model.** Stateless composables; per-frame full rebuild (no slot table, no incremental composition); state lives in feature singletons that composables read at compose time. State changes auto-show next frame because the tree rebuilds.
+
+**Packages:**
+
+```
+ui/composer/                 runtime + modifier system
+  SoulComposable.kt          @SoulComposable annotation (intent marker, not compile-enforced)
+  SoulComposer.kt            thread-local tree builder; SoulComposer.current.composable(...)
+                             helper; nextAutoKey() for stable per-frame keys
+  SoulNode.kt                base node + SoulConstraints + SoulMeasured; measure/draw protocol;
+                             open `draw(...)` so ScrollableList can wrap children w/ scissor
+  SoulModifier.kt            chain interface + PaddingElement / BackgroundElement /
+                             SizeElement / FillElement + extension API
+                             (.padding/.background/.size/.width/.height/.fillMaxWidth/...)
+  ModifierUtils.kt           internal helpers: totalPaddingHorizontal/Vertical, contentOffset,
+                             applySizeOverride (handles SizeElement AND FillElement),
+                             drawBackgrounds
+  Alignment.kt               HorizontalAlignment / VerticalAlignment / Arrangement enums +
+                             alignHorizontal / alignVertical / arrangeAlong helpers
+  InputModifiers.kt          ClickableElement + ScrollableElement + recordHitRegions helper
+
+ui/foundation/               composable primitives
+  Text.kt                    single-line glyph rendering
+  Box.kt                     stacked-children container
+  Column.kt / Row.kt         arrangement + cross-axis alignment + gap (size-to-content unless
+                             fillMaxX overrides constraints; arrangement uses post-constraint
+                             size so SpaceBetween / SpaceAround / SpaceEvenly are meaningful
+                             only when there's bounded extra space)
+  Spacer.kt                  sized-from-modifier empty box
+  Surface.kt                 themed rounded background (Box + Theme.colors.panel + radius + padding)
+  Button.kt                  hover-aware clickable surface; `accent` boolean → accent/accentDim
+                             hover state
+  Toggle.kt                  pill switch; off=panelInset, on=accent, hover variants
+  Tabs.kt                    segmented selector; per-tab key = `TabKey(prefix, index)` for
+                             stable hover state; each tab records its own hit region at
+                             `depth+1` so the strip's hit region doesn't shadow individual tabs
+  Slider.kt                  draggable; press captures slider's key; while pressed each frame
+                             reads SoulInput.cursorX and emits onChange; click also jumps value
+  ScrollableList.kt          scissor-clipped vertical list with mouse wheel; **self-clamping**:
+                             widget computes maxScroll = contentHeight - viewportHeight, clamps
+                             internally, passes new offset (not delta) to onScroll callback;
+                             onScroll signature: `(newOffset: Float) -> Unit`
+
+ui/input/
+  HitRegion.kt               { key, x, y, w, h, depth, onClick?, onScroll? }
+  SoulInput.kt               singleton frame state. Per frame:
+                             - startFrame(cursorX, cursorY, panelOriginX, panelOriginY, panelScale)
+                               sets state, clears regions; **cursor is divided by panelScale** so
+                               widgets reading SoulInput.cursorX get content coords matching their
+                               unscaled hit regions
+                             - recordRegion called by layout drawSelf
+                             - queueClick/queueScroll/queueRelease called by SoulGuiHudAdapter
+                               from Fabric mouse events; coords arrive in absolute GUI-scaled
+                               space
+                             - flush() at end of block: hit-test queued events
+                               (`(event.x - panelOriginX) / panelScale` → content coords) →
+                               invoke handlers, set pressedKey on click; clear pressedKey on
+                               release; update hoveredKeys from cursorX/Y vs regions
+                             - hover state is **one-frame delayed** (recorded post-draw; next
+                               compose reads). Imperceptible.
+                             - pressedKey survives the cursor leaving the region's bounds —
+                               that's what makes Slider drag work outside the track
+
+ui/theme/
+  SoulTheme.kt               colors / dimens / typography tokens. SoulColors mirrors legacy
+                             `Theme.kt` (dark palette w/ accent blue); SoulDimens has radius +
+                             padding scales; SoulTypography has title/heading/body/caption/mono
+                             roles each w/ a `SoulTextStyle(font, size)`. Full theme system
+                             (light/dark/high-contrast variants) is P5 polish.
+
+ui/runtime/                  Minecraft integration
+  SoulHudRegistry.kt         id → (width, height, defaults, content) map; ConcurrentHashMap
+  SoulHud.kt                 register API + per-frame dispatchAll. Features call
+                             `SoulHud.register(id, w, h, defaultAnchorX, ..., content)` once
+                             during Soul.registerFeatures(). dispatchAll runs each frame
+                             (from SoulGuiHudAdapter.renderHud); per registered HUD it
+                             self-heals the layout element via ensureLayoutElement
+                             (matches the per-tick upsert pattern of TrackerOverlay /
+                             TextBlock features — survives gui_layout.json reload).
+                             effectiveScaleFor(scale) is the canonical scale computation:
+                               element.scale × cfg.general.ui.globalScale ×
+                               (respectMinecraftGuiScale ? 1 : 1/window.guiScale)
+                             — used by renderOne AND by GuiEditScreen/GuiEdit for matching
+                             selection-box bounds.
+  SoulScreen.kt              abstract Minecraft Screen subclass hosting a Soul composition.
+                             Subclass it, override @SoulComposable Content(). Render +
+                             mouseClicked (MouseButtonEvent in 1.21.11) / mouseReleased /
+                             mouseScrolled wire automatically into SoulInput. P2.5 built;
+                             no concrete subclass yet (P4 work).
+```
+
+**Scale model (this took a few iterations to get right):**
+
+A HUD's `element.scale` no longer grows the PIP region with empty space — it's now an `nvgScale(scale, scale)` transform applied inside the block. The PIP texture is allocated at `(width × scale, height × scale)` so the scaled content fits; the composable composes at intrinsic `(width, height)`; NanoVG scales it visually on draw. Hit regions stay in unscaled content coords; cursor + click coords are divided by `panelScale` in `SoulInput` so the comparison aligns.
+
+`cfg.general.ui.respectMinecraftGuiScale` (**default false**) toggles whether Soul HUDs scale with Minecraft's GUI Scale. When off (default), the panel renders at a fixed physical-pixel size regardless of the user's GUI Scale setting — the Soul-framework convention is "consistent sizing across setups." When on, behaves like vanilla HUDs.
+
+`cfg.general.ui.globalScale` (slider 0.5–2.0) is a per-user multiplier on top of every individual element's scale.
+
+**SoulHud lifecycle for new features:**
+
+1. Define a `@SoulComposable fun MyHud()` containing the composable tree.
+2. From `Soul.registerFeatures()` call `SoulHud.register(id = "my_hud", width = 220, height = 160, content = ::MyHud)`.
+3. That's it. The HUD is positioned via `/soul gui` (`SoulHudElement` is a `GuiElement` subclass — persists in `gui_layout.json`), scaled via per-element wheel + global slider, and survives layout-file reloads via the per-frame self-heal in `dispatchAll`.
+
+**`/soul gui` z-order fix for SoulHud.** `GuiEditScreen.render` calls `SoulHud.dispatchAll(context)` right after `renderTransparentBackground(context)` so HUDs re-render on top of the screen's blur layer. Without this they're visible but blurred during edit mode. Selection outline + label render afterward, on top of the now-crisp HUD.
+
+**Adding a new `GuiElement` subclass.** Layout machinery has three `when` switches that need extending — failing to update one breaks `/soul gui` for that element type:
+- `GuiLayoutManager.updateElementPosition` + `updateElementScale`
+- `GuiLayoutManager.GuiRuntimeTypeAdapterFactory` (writer + reader — the `"type"` tag + class mapping in both directions)
+- `GuiEdit.kt :: findHitElement` (selection hit-test) + `GuiEditScreen.render`'s element-bounds switch
+- `GuiRendering.kt :: GuiRenderer.renderHud` dispatch (legacy `GuiRenderContext` path; new element types that render via NanoVG can be a no-op here, like `SoulHudElement`)
+
 ### Tracker overlay framework (`gui/lib/tracker/`)
 
 Generic list-style HUD with tabs, sortable rows, paginated row-limit, and scroll-wheel support — designed for "show me a per-creature breakdown" / "show me sessions vs totals" features. First user is the Fishing HUD (`features/fishing/FishingTrackerOverlay`); other list-shaped HUDs (mineshaft corpses-by-type, future per-crop seasonings) should migrate here over time.

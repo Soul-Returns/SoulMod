@@ -24,6 +24,12 @@
   "text.config.soul/config.section.sync": "Cloud Sync",
   "text.config.soul/config.section.dev": "Dev",
 
+  "text.config.soul/config.group.general.ui": "UI",
+  "text.config.soul/config.option.general.ui.respectMinecraftGuiScale": "Respect Minecraft GUI Scale",
+  "text.config.soul/config.option.general.ui.respectMinecraftGuiScale.tooltip": "When on, Soul HUDs scale with Minecraft's GUI Scale setting (vanilla behavior). When off (default), they render at a fixed on-screen pixel size regardless of the GUI Scale slider.",
+  "text.config.soul/config.option.general.ui.globalScale": "Global Scale",
+  "text.config.soul/config.option.general.ui.globalScale.tooltip": "Global scale multiplier applied to every Soul HUD element, on top of each element's individual scale (adjusted via /soul gui mouse-wheel). 1.0 = no change.",
+
   "text.config.soul/config.group.general.fixes": "Fixes",
   "text.config.soul/config.group.render.hudScale": "HUD Scale",
   "text.config.soul/config.group.render.highlights": "Item Highlights",

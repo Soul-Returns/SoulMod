@@ -2,6 +2,7 @@
 // Original backend by Aton; design by Stivais.
 package com.soulreturns.platform.render.nvg
 
+import com.soulreturns.ui.input.SoulInput
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 
@@ -34,11 +35,46 @@ object NvgFrame {
         y: Int,
         w: Int,
         h: Int,
+        scale: Float = 1f,
         block: () -> Unit,
     ) {
         if (w <= 0 || h <= 0) return
+        val effectiveScale = scale.coerceAtLeast(0.05f)
+        // PIP texture allocated to fit scaled content. NanoVG content composes at unscaled
+        // (w, h) bounds; an `nvgScale(s, s)` transform inside the block visually scales it
+        // up to fill the scaled-size PIP texture.
+        val scaledW = (w * effectiveScale).toInt().coerceAtLeast(1)
+        val scaledH = (h * effectiveScale).toInt().coerceAtLeast(1)
+
+        // Bracket the block with SoulInput frame setup so layout nodes' hit regions get
+        // recorded into the right cursor frame. Cursor coords are converted from physical
+        // mouse coords into the panel-local screen-coord system; SoulInput then divides
+        // by [effectiveScale] to get content coords matching hit regions.
+        val mc = Minecraft.getInstance()
+        val mh = mc.mouseHandler
+        val window = mc.window
+        val mxScale = window.guiScaledWidth.toDouble() / window.screenWidth.coerceAtLeast(1)
+        val myScale = window.guiScaledHeight.toDouble() / window.screenHeight.coerceAtLeast(1)
+        val cursorScreenX = mh.xpos() * mxScale
+        val cursorScreenY = mh.ypos() * myScale
+        val cursorLocalX = (cursorScreenX - x).toFloat()
+        val cursorLocalY = (cursorScreenY - y).toFloat()
+        SoulInput.startFrame(cursorLocalX, cursorLocalY, x.toFloat(), y.toFloat(), effectiveScale)
+
         val scissor = context.scissorStack.peek()
-        val state = NvgPipState(x, y, w, h, null, scissor, block)
+        val state =
+            NvgPipState(x, y, scaledW, scaledH, null, scissor) {
+                if (effectiveScale != 1f) {
+                    com.soulreturns.platform.render.nvg.NvgRenderer.push()
+                    com.soulreturns.platform.render.nvg.NvgRenderer.scale(effectiveScale, effectiveScale)
+                }
+                try {
+                    block()
+                } finally {
+                    if (effectiveScale != 1f) com.soulreturns.platform.render.nvg.NvgRenderer.pop()
+                    SoulInput.flush()
+                }
+            }
         context.guiRenderState.submitPicturesInPictureState(state)
     }
 
@@ -52,6 +88,6 @@ object NvgFrame {
         block: () -> Unit,
     ) {
         val window = Minecraft.getInstance().window
-        submit(context, 0, 0, window.guiScaledWidth, window.guiScaledHeight, block)
+        submit(context, 0, 0, window.guiScaledWidth, window.guiScaledHeight, scale = 1f, block = block)
     }
 }

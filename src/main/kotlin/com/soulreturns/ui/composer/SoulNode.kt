@@ -92,27 +92,42 @@ abstract class SoulNode {
      */
     abstract fun measure(constraints: SoulConstraints): SoulMeasured
 
-    /** Render the node's own visual at logical screen position `(x, y)`. Called by [draw]. */
+    /**
+     * Render the node's own visual at logical screen position `(x, y)`. [depth] is the
+     * tree depth — used by clickable/scrollable modifiers to break ties when multiple
+     * nested regions match a cursor position (the deepest wins).
+     */
     abstract fun drawSelf(
         x: Float,
         y: Float,
+        depth: Int,
     )
 
     /**
      * Public entry point: measure (if not already) and draw the node + all children
      * recursively. The runtime calls this on the root node once per frame.
+     *
+     * [depth] starts at 0 at the root and increments by 1 for each level deeper. Used by
+     * input-modifier hit-region recording so click events route to the deepest matching
+     * node (e.g. a button inside a card claims the click, not the card).
      */
-    fun draw(
+    open fun draw(
         x: Float,
         y: Float,
         constraints: SoulConstraints,
+        depth: Int = 0,
     ) {
         if (measured == null) measure(constraints)
         val m = measured!!
-        drawSelf(x, y)
+        drawSelf(x, y, depth)
         children.forEachIndexed { i, child ->
             val pos = m.childPositions.getOrNull(i) ?: SoulMeasured.Position(0f, 0f)
-            child.draw(x + pos.x, y + pos.y, SoulConstraints.fixed(child.measured?.width ?: 0f, child.measured?.height ?: 0f))
+            child.draw(
+                x + pos.x,
+                y + pos.y,
+                SoulConstraints.fixed(child.measured?.width ?: 0f, child.measured?.height ?: 0f),
+                depth + 1,
+            )
         }
     }
 }

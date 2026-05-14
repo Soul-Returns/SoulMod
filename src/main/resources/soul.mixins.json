@@ -14,6 +14,7 @@
     "render.ChatScreenMixin",
     "render.ChatComponentMixin",
     "render.ChatComponentAddMessageMixin",
+    "render.GlDebugMixin",
     "render.PlayerTabOverlayMixin",
     "render.GameRendererMixin"
   ],

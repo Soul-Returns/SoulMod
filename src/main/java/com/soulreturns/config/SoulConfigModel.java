@@ -47,6 +47,7 @@ public class SoulConfigModel {
     @Nest public Dev dev = new Dev();
 
     public static class General {
+        @Nest public Ui ui = new Ui();
         @Nest public Fixes fixes = new Fixes();
     }
 
@@ -85,6 +86,18 @@ public class SoulConfigModel {
     public static class Overlays {
         public boolean enableLegionCounter = false;
         public boolean enablePartyOverlay = false;
+    }
+
+    public static class Ui {
+        // When true, Soul HUDs scale with Minecraft's GUI Scale setting (vanilla-like).
+        // When false (default), they render at a fixed on-screen pixel size regardless of
+        // the user's GUI Scale option — the Soul-framework convention is "consistent
+        // sizing across all setups" by default.
+        public boolean respectMinecraftGuiScale = false;
+        // Global scale multiplier applied to every Soul HUD element, layered on top of each
+        // element's individual `scale` (set via /soul gui mouse-wheel). 1.0 = no change.
+        @RangeConstraint(min = 0.5f, max = 2.0f, decimalPlaces = 2)
+        public float globalScale = 1.0f;
     }
 
     public static class Fishing {

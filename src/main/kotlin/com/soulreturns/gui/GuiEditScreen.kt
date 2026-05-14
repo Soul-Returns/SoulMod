@@ -125,6 +125,13 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         // previous semi-transparent blue overlay.
         renderTransparentBackground(context)
 
+        // Re-render Soul UI HUDs on top of the blur. The `Gui.render` TAIL hook already
+        // painted them, but Minecraft 1.21's screen-open blur pass runs over the main
+        // framebuffer including any previously-composited NanoVG PIPs — so they end up
+        // blurred. Re-dispatching here puts them back on top, crisp, so the user can see
+        // what they're positioning.
+        com.soulreturns.ui.runtime.SoulHud.dispatchAll(context)
+
         val client = Minecraft.getInstance()
         val layout = GuiLayoutManager.getLayout()
         val guiCtx = MinecraftGuiRenderContext(context, client)
@@ -185,6 +192,24 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
                     val scale = element.scale.coerceAtLeast(0.25f)
                     val approxWidth = (200 * scale).toInt()
                     val approxHeight = (160 * scale).toInt()
+                    bounds +=
+                        ElementBounds(
+                            id = element.id,
+                            x = baseX - 4,
+                            y = baseY - 4,
+                            width = approxWidth + 8,
+                            height = approxHeight + 8,
+                        )
+                }
+                is com.soulreturns.gui.lib.SoulHudElement -> {
+                    // Soul UI framework HUDs declare their max bounds at registration time —
+                    // ask the registry. Effective on-screen size includes the per-element
+                    // scale + global scale + optional GUI-scale compensation, so compute the
+                    // same effective scale the render path uses.
+                    val entry = com.soulreturns.ui.runtime.SoulHudRegistry.get(element.id)
+                    val effectiveScale = com.soulreturns.ui.runtime.SoulHud.effectiveScaleFor(element.scale)
+                    val approxWidth = ((entry?.width ?: 200) * effectiveScale).toInt()
+                    val approxHeight = ((entry?.height ?: 100) * effectiveScale).toInt()
                     bounds +=
                         ElementBounds(
                             id = element.id,

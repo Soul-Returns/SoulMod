@@ -144,6 +144,10 @@ object GuiRenderer {
                 is TextBlockElement -> renderTextBlock(element, ctx)
                 is ItemTrackerElement -> renderItemTracker(element, ctx, regions)
                 is TrackerOverlayElement -> renderTrackerOverlay(element, ctx, regions)
+                // SoulHudElements have their own NVG-based render path via `SoulHud.dispatchAll`
+                // invoked separately from `SoulGuiHudAdapter.renderHud`. The legacy
+                // `GuiRenderContext`-based path is a no-op for them.
+                is SoulHudElement -> Unit
             }
         }
 
