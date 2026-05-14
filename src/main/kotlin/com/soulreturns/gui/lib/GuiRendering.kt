@@ -37,6 +37,36 @@ interface GuiRenderContext {
         color: Int
     )
 
+    /** Draw a rounded-corner rectangle (ARGB color). Implementations may fall back to [fillRect]. */
+    fun fillRoundedRect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        color: Int,
+        radius: Float,
+    )
+
+    /** Measure the rendered width of [text] in pixels at scale=1. */
+    fun textWidth(text: String): Int
+
+    /** Default text line height in pixels at scale=1. */
+    val textLineHeight: Int
+
+    /**
+     * Constrain subsequent draw calls to the given rectangle. Must be paired with [popScissor];
+     * pairs may nest. Implementations may use a hardware scissor box (`glScissor` via
+     * `GuiGraphics.enableScissor`) so coordinates are in scaled-GUI space.
+     */
+    fun pushScissor(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    )
+
+    fun popScissor()
+
     /** Draw an item icon at the given position using a host-specific key. */
     fun drawItemIcon(
         iconKey: String,
@@ -60,6 +90,21 @@ data class GuiHitRegion(
     enum class Kind {
         ITEM_TRACKER_INCREMENT,
         ITEM_TRACKER_DECREMENT,
+
+        /** Tracker overlay: switch to the tab named in [payload]. */
+        TRACKER_OVERLAY_TAB,
+
+        /** Tracker overlay: cycle to the next sort option. Payload unused. */
+        TRACKER_OVERLAY_CYCLE_SORT,
+
+        /** Tracker overlay: cycle to the next row-limit option. Payload unused. */
+        TRACKER_OVERLAY_CYCLE_LIMIT,
+
+        /** Tracker overlay: reset the tracker's session counters. Payload unused. */
+        TRACKER_OVERLAY_RESET,
+
+        /** Tracker overlay: scroll region — payload unused. Used for scroll-wheel hit-testing only. */
+        TRACKER_OVERLAY_SCROLL_REGION,
     }
 
     fun contains(
@@ -98,6 +143,7 @@ object GuiRenderer {
             when (element) {
                 is TextBlockElement -> renderTextBlock(element, ctx)
                 is ItemTrackerElement -> renderItemTracker(element, ctx, regions)
+                is TrackerOverlayElement -> renderTrackerOverlay(element, ctx, regions)
             }
         }
 
@@ -131,6 +177,16 @@ object GuiRenderer {
             ctx.drawScaledText(line, baseX, y, element.color, element.textShadow, scale)
             y += lineStep
         }
+    }
+
+    private fun renderTrackerOverlay(
+        element: TrackerOverlayElement,
+        ctx: GuiRenderContext,
+        regions: MutableList<GuiHitRegion>,
+    ) {
+        val overlay = com.soulreturns.gui.lib.tracker.TrackerOverlayRegistry.get(element.id) ?: return
+        val settings = com.soulreturns.gui.lib.tracker.TrackerSettingsStore.getOrCreate(overlay.id, overlay.defaults)
+        com.soulreturns.gui.lib.tracker.TrackerOverlayRenderer.render(element, overlay, settings, ctx, regions)
     }
 
     private fun renderItemTracker(
@@ -228,17 +284,23 @@ object GuiInteractionHandler {
     ): Boolean {
         val region = snapshot.hitRegions.firstOrNull { it.contains(x, y) } ?: return false
 
-        when (region.kind) {
+        return when (region.kind) {
             GuiHitRegion.Kind.ITEM_TRACKER_INCREMENT -> {
                 val entryId = region.payload ?: return false
                 GuiLayoutManager.updateTrackerCounts(region.elementId, entryId, delta = 1)
-                return true
+                true
             }
             GuiHitRegion.Kind.ITEM_TRACKER_DECREMENT -> {
                 val entryId = region.payload ?: return false
                 GuiLayoutManager.updateTrackerCounts(region.elementId, entryId, delta = -1)
-                return true
+                true
             }
+            GuiHitRegion.Kind.TRACKER_OVERLAY_TAB,
+            GuiHitRegion.Kind.TRACKER_OVERLAY_CYCLE_SORT,
+            GuiHitRegion.Kind.TRACKER_OVERLAY_CYCLE_LIMIT,
+            GuiHitRegion.Kind.TRACKER_OVERLAY_RESET,
+            GuiHitRegion.Kind.TRACKER_OVERLAY_SCROLL_REGION,
+            -> com.soulreturns.gui.lib.tracker.TrackerInputHandler.handleClick(region)
         }
     }
 }

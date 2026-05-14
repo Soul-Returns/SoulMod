@@ -76,6 +76,35 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
             // no-op for hit testing
         }
 
+        override fun fillRoundedRect(
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+            color: Int,
+            radius: Float,
+        ) {
+            // no-op for hit testing
+        }
+
+        override fun textWidth(text: String): Int = client.font.width(text)
+
+        override val textLineHeight: Int
+            get() = client.font.lineHeight
+
+        override fun pushScissor(
+            x: Int,
+            y: Int,
+            width: Int,
+            height: Int,
+        ) {
+            // no-op for hit testing
+        }
+
+        override fun popScissor() {
+            // no-op for hit testing
+        }
+
         override fun drawItemIcon(
             iconKey: String,
             x: Int,
@@ -148,6 +177,21 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
                             y = baseY - 4,
                             width = approxWidth,
                             height = totalHeight + 8,
+                        )
+                }
+                is com.soulreturns.gui.lib.TrackerOverlayElement -> {
+                    // Approximate the panel's bounding box so /soul gui can drag it. The
+                    // TrackerOverlayRenderer uses scale-relative sizing similar to these constants.
+                    val scale = element.scale.coerceAtLeast(0.25f)
+                    val approxWidth = (200 * scale).toInt()
+                    val approxHeight = (160 * scale).toInt()
+                    bounds +=
+                        ElementBounds(
+                            id = element.id,
+                            x = baseX - 4,
+                            y = baseY - 4,
+                            width = approxWidth + 8,
+                            height = approxHeight + 8,
                         )
                 }
             }

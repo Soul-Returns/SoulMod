@@ -3,19 +3,23 @@ package com.soulreturns.gui.lib
 /**
  * Convenience API for feature modules to work with the GUI layout library
  * without needing to manipulate GuiLayout directly.
+ *
+ * **Element id is identity.** The upsert helpers below treat the [GuiElementId] as the unique
+ * key, regardless of element subtype. If the saved layout contains an element with the same
+ * id but a different runtime type — e.g. a stale [TextBlockElement] left over from a previous
+ * mod version that's been replaced by a [TrackerOverlayElement] — it is dropped, not preserved.
+ * Without that rule, a type swap would leave a ghost element of the old type rendering forever.
  */
 object GuiLayoutApi {
     /**
      * Create or update a simple on-screen text block.
      *
      * Behavior:
-     * - If no TextBlockElement with the given [id] exists, a new one is
-     *   created using the provided default anchor/scale values.
-     * - If one exists, its position and scale are preserved; only its
-     *   enabled flag, title, lines, and color are updated.
-     *
-     * This is intended to make simple HUD features (like the Legion counter)
-     * easy to implement with a single call per tick.
+     * - If a [TextBlockElement] with the given [id] exists, its position and scale are
+     *   preserved; only its enabled flag, title, lines, and color are updated.
+     * - If an element of a **different** type with the same id exists, it is dropped and
+     *   replaced by a fresh [TextBlockElement] at the default position.
+     * - Otherwise a new [TextBlockElement] is created at the default position.
      */
     @JvmStatic
     fun updateTextBlock(
@@ -37,13 +41,13 @@ object GuiLayoutApi {
         var existing: TextBlockElement? = null
         val others = mutableListOf<GuiElement>()
         for (element in current.elements) {
-            if (element is TextBlockElement && element.id == id) {
-                existing = element
-            } else {
-                // All elements in the layout are non-null by construction; we
-                // simply keep everything else as-is.
-                others += element
+            if (element.id == id) {
+                // Same id → either the matching-type element to preserve, or a stale element
+                // of a different type to drop. Either way, do not keep it in [others].
+                if (element is TextBlockElement) existing = element
+                continue
             }
+            others += element
         }
 
         val updated =
@@ -72,6 +76,52 @@ object GuiLayoutApi {
                 )
             }
 
+        others += updated
+        GuiLayoutManager.setLayout(GuiLayout(others))
+    }
+
+    /**
+     * Create or update the layout shell for a tracker overlay (see
+     * [com.soulreturns.gui.lib.tracker.TrackerOverlay]).
+     *
+     * Only positioning fields are persisted in `gui_layout.json` — the overlay descriptor
+     * itself lives in [com.soulreturns.gui.lib.tracker.TrackerOverlayRegistry] and UI state
+     * (active tab / sort / limit) lives in `tracker_settings.json`. Re-calling this with the
+     * same id preserves the user's positioning; only the [enabled] flag is updated. Stale
+     * elements of a different type sharing this id are dropped — see the class-level note on
+     * element id as identity.
+     */
+    @JvmStatic
+    fun updateTrackerOverlay(
+        id: GuiElementId,
+        enabled: Boolean = true,
+        defaultAnchorX: Double = 0.02,
+        defaultAnchorY: Double = 0.5,
+        defaultOffsetX: Int = 0,
+        defaultOffsetY: Int = 0,
+        defaultScale: Float = 1.0f,
+    ) {
+        val current = GuiLayoutManager.getLayout()
+        var existing: TrackerOverlayElement? = null
+        val others = mutableListOf<GuiElement>()
+        for (element in current.elements) {
+            if (element.id == id) {
+                if (element is TrackerOverlayElement) existing = element
+                continue
+            }
+            others += element
+        }
+        val updated =
+            existing?.copy(enabled = enabled)
+                ?: TrackerOverlayElement(
+                    id = id,
+                    enabled = enabled,
+                    anchorX = defaultAnchorX,
+                    anchorY = defaultAnchorY,
+                    offsetX = defaultOffsetX,
+                    offsetY = defaultOffsetY,
+                    scale = defaultScale,
+                )
         others += updated
         GuiLayoutManager.setLayout(GuiLayout(others))
     }

@@ -90,11 +90,23 @@ public class SoulConfigModel {
     public static class Fishing {
         @Nest public FishingChat chat = new FishingChat();
         @Nest public BobbinTime bobbinTime = new BobbinTime();
+        @Nest public FishingTracker fishingTracker = new FishingTracker();
+        @Nest public FishingHud fishingHud = new FishingHud();
     }
 
     public static class FishingChat {
         public boolean doubleHookMessageToggle = false;
         public String doubleHookMessageText = "Woot Woot!";
+    }
+
+    public static class FishingTracker {
+        public boolean enableTracker = true;
+    }
+
+    public static class FishingHud {
+        public boolean showHud = true;
+        public boolean showFestivalTimer = true;
+        public boolean showCounters = true;
     }
 
     public static class BobbinTime {

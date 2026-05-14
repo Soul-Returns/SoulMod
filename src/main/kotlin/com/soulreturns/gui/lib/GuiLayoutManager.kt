@@ -110,6 +110,13 @@ object GuiLayoutManager {
                                     offsetX = offsetX,
                                     offsetY = offsetY,
                                 )
+                            is TrackerOverlayElement ->
+                                element.copy(
+                                    anchorX = anchorX,
+                                    anchorY = anchorY,
+                                    offsetX = offsetX,
+                                    offsetY = offsetY,
+                                )
                         }
                     },
             )
@@ -129,6 +136,7 @@ object GuiLayoutManager {
                         when (element) {
                             is TextBlockElement -> element.copy(scale = clamped)
                             is ItemTrackerElement -> element.copy(scale = clamped)
+                            is TrackerOverlayElement -> element.copy(scale = clamped)
                         }
                     },
             )
@@ -331,12 +339,14 @@ class GuiRuntimeTypeAdapterFactory : com.google.gson.TypeAdapterFactory {
                     when (element) {
                         is TextBlockElement -> "text_block"
                         is ItemTrackerElement -> "item_tracker"
+                        is TrackerOverlayElement -> "tracker_overlay"
                     }
                 out.name("type").value(kind)
                 out.name("data")
                 when (element) {
                     is TextBlockElement -> gson.toJson(element, TextBlockElement::class.java, out)
                     is ItemTrackerElement -> gson.toJson(element, ItemTrackerElement::class.java, out)
+                    is TrackerOverlayElement -> gson.toJson(element, TrackerOverlayElement::class.java, out)
                 }
                 out.endObject()
             }
@@ -350,6 +360,7 @@ class GuiRuntimeTypeAdapterFactory : com.google.gson.TypeAdapterFactory {
                     when (typeName) {
                         "text_block" -> TextBlockElement::class.java
                         "item_tracker" -> ItemTrackerElement::class.java
+                        "tracker_overlay" -> TrackerOverlayElement::class.java
                         else -> return null
                     }
                 // The Gson call returns a concrete GuiElement subtype; we

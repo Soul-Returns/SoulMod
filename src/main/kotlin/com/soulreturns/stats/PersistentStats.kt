@@ -47,6 +47,21 @@ object PersistentStats {
         var seasonings: Long = 0L,
         /** Sorted ascending Y values from the Harvest Feast milestones (e.g. `[5, 25, 75, 150, 250]`). */
         var milestoneTargets: List<Long> = emptyList(),
+        // Fishing — all-time counters across every fishing session on this profile.
+        var doubleHooksAllTime: Long = 0L,
+        var catchesAllTime: Long = 0L,
+        // Per-creature breakdowns. Stored as immutable [Map] so the data-class copy() used in
+        // [saveAsync] is safe — replaced via `m + (k to v)` in update blocks rather than mutated.
+        var doubleHooksByCreature: Map<String, Long> = emptyMap(),
+        var catchesByCreature: Map<String, Long> = emptyMap(),
+        // Fishing festival — `festivalStartAt` is epoch ms of the first underway message we saw for
+        // the currently-active festival; 0L means no festival is active. Survives client restarts
+        // so a mid-festival relaunch keeps writing to the same bucket.
+        var festivalStartAt: Long = 0L,
+        var festivalDoubleHooks: Long = 0L,
+        var festivalCatches: Long = 0L,
+        var festivalDoubleHooksByCreature: Map<String, Long> = emptyMap(),
+        var festivalCatchesByCreature: Map<String, Long> = emptyMap(),
     )
 
     /** Top-level v2 storage shape: schema version + per-profile slots. */

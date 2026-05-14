@@ -2,13 +2,17 @@ package com.soulreturns
 
 import com.soulreturns.commands.SoulCommand
 import com.soulreturns.config.SoulConfigHolder
+import com.soulreturns.data.fishing.SeaCreatureCatalog
 import com.soulreturns.data.location.LocationReader
+import com.soulreturns.data.skyblock.FishingFestivalState
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.dev.DevKeybindHandler
 import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.seasoning.HarvestFeastReader
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
 import com.soulreturns.features.fishing.BobbinSpotter
+import com.soulreturns.features.fishing.FishingTracker
+import com.soulreturns.features.fishing.FishingTrackerOverlay
 import com.soulreturns.features.itemhighlight.HighlightManager
 import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
@@ -76,6 +80,10 @@ object Soul : ClientModInitializer {
         // Load persisted stats (tracked counters like seasonings) before features may read them.
         PersistentStats.init()
 
+        // Load tracker overlay UI state (active tab, sort key, row limit) before features
+        // register their overlays — the registry queries this on first read.
+        com.soulreturns.gui.lib.tracker.TrackerSettingsStore.init()
+
         // Start polling Hypixel SkyBlock location (publishes AreaChanged/SublocationChanged events).
         LocationReader.register()
 
@@ -119,6 +127,10 @@ object Soul : ClientModInitializer {
 
         // Register round-rect PIP renderer for anti-aliased rounded corners.
         SpecialGuiElementRegistry.register { context -> RoundRectRenderer(context.vertexConsumers()) }
+
+        // Re-render Soul HUDs on top of every open screen. Without this hook the inventory's
+        // dim/blur background overlays the HUD; see SoulGuiHudAdapter.registerScreenOverlay.
+        com.soulreturns.platform.mixinbridge.SoulGuiHudAdapter.registerScreenOverlay()
 
         registerCommands()
         registerFeatures()
@@ -195,6 +207,12 @@ object Soul : ClientModInitializer {
         // Fishing — spotter must register before HUD so per-tick count is fresh.
         BobbinSpotter.register()
         BobbinHud.register()
+        // Fishing tracker stack: catalog (lookup table) → festival state (publishes Started/Ended)
+        // → tracker (subscribes to both ChatMessage + festival events) → overlay (renders panel).
+        SeaCreatureCatalog.init()
+        FishingFestivalState.register()
+        FishingTracker.register()
+        FishingTrackerOverlay.register()
 
         // Party tracking and HUD overlay
         PartyManager.register()

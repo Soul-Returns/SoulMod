@@ -1,6 +1,7 @@
 package com.soulreturns.gui
 
 import com.soulreturns.gui.lib.GuiRenderContext
+import com.soulreturns.render.DrawContextRenderer
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.world.item.ItemStack
@@ -70,6 +71,35 @@ class MinecraftGuiRenderContext(
         color: Int
     ) {
         context.fill(x, y, x + width, y + height, color)
+    }
+
+    override fun fillRoundedRect(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+        color: Int,
+        radius: Float,
+    ) {
+        DrawContextRenderer.roundedFill(context, x, y, x + width, y + height, color, radius)
+    }
+
+    override fun textWidth(text: String): Int = client.font.width(text)
+
+    override val textLineHeight: Int
+        get() = client.font.lineHeight
+
+    override fun pushScissor(
+        x: Int,
+        y: Int,
+        width: Int,
+        height: Int,
+    ) {
+        context.enableScissor(x, y, x + width, y + height)
+    }
+
+    override fun popScissor() {
+        context.disableScissor()
     }
 
     override fun drawItemIcon(

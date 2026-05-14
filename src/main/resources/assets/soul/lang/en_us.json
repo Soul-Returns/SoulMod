@@ -105,6 +105,18 @@
   "text.config.soul/config.option.fishing.bobbinTime.syncBobbinAlertWithParty": "Sync Alert with Party",
   "text.config.soul/config.option.fishing.bobbinTime.alertItemNameFilter": "Held Item Name Contains",
 
+  "text.config.soul/config.group.fishing.fishingTracker": "Fishing Tracker",
+  "text.config.soul/config.option.fishing.fishingTracker.enableTracker": "Enable Tracker",
+  "text.config.soul/config.option.fishing.fishingTracker.enableTracker.tooltip": "Track sea-creature catches and double-hooks for all-time, session, and current Fishing Festival counters. Per-creature breakdown is collected for future statistics.",
+
+  "text.config.soul/config.group.fishing.fishingHud": "Fishing HUD",
+  "text.config.soul/config.option.fishing.fishingHud.showHud": "Show HUD",
+  "text.config.soul/config.option.fishing.fishingHud.showHud.tooltip": "Show the Fishing HUD overlay. Position with /soul gui. Tracking always runs regardless of this toggle.",
+  "text.config.soul/config.option.fishing.fishingHud.showFestivalTimer": "Show Festival Timer",
+  "text.config.soul/config.option.fishing.fishingHud.showFestivalTimer.tooltip": "Show a countdown line while a Fishing Festival is active.",
+  "text.config.soul/config.option.fishing.fishingHud.showCounters": "Show Counters",
+  "text.config.soul/config.option.fishing.fishingHud.showCounters.tooltip": "Show Double Hooks / Catches lines with All-time, Session, and Festival columns.",
+
   "text.config.soul/config.option.mining.dwarvenMines.donExpressoAlert": "Don Espresso Alert",
   "text.config.soul/config.option.mining.mineshaft.enableLapisPtme": "!ptme on Lapis Corpses",
   "text.config.soul/config.option.mining.mineshaft.enableLapisPtme.tooltip": "Send !ptme to party chat when enough Lapis Corpses are in the mineshaft.",
