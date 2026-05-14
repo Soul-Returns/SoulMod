@@ -90,21 +90,6 @@ data class GuiHitRegion(
     enum class Kind {
         ITEM_TRACKER_INCREMENT,
         ITEM_TRACKER_DECREMENT,
-
-        /** Tracker overlay: switch to the tab named in [payload]. */
-        TRACKER_OVERLAY_TAB,
-
-        /** Tracker overlay: cycle to the next sort option. Payload unused. */
-        TRACKER_OVERLAY_CYCLE_SORT,
-
-        /** Tracker overlay: cycle to the next row-limit option. Payload unused. */
-        TRACKER_OVERLAY_CYCLE_LIMIT,
-
-        /** Tracker overlay: reset the tracker's session counters. Payload unused. */
-        TRACKER_OVERLAY_RESET,
-
-        /** Tracker overlay: scroll region — payload unused. Used for scroll-wheel hit-testing only. */
-        TRACKER_OVERLAY_SCROLL_REGION,
     }
 
     fun contains(
@@ -143,7 +128,6 @@ object GuiRenderer {
             when (element) {
                 is TextBlockElement -> renderTextBlock(element, ctx)
                 is ItemTrackerElement -> renderItemTracker(element, ctx, regions)
-                is TrackerOverlayElement -> renderTrackerOverlay(element, ctx, regions)
                 // SoulHudElements have their own NVG-based render path via `SoulHud.dispatchAll`
                 // invoked separately from `SoulGuiHudAdapter.renderHud`. The legacy
                 // `GuiRenderContext`-based path is a no-op for them.
@@ -181,16 +165,6 @@ object GuiRenderer {
             ctx.drawScaledText(line, baseX, y, element.color, element.textShadow, scale)
             y += lineStep
         }
-    }
-
-    private fun renderTrackerOverlay(
-        element: TrackerOverlayElement,
-        ctx: GuiRenderContext,
-        regions: MutableList<GuiHitRegion>,
-    ) {
-        val overlay = com.soulreturns.gui.lib.tracker.TrackerOverlayRegistry.get(element.id) ?: return
-        val settings = com.soulreturns.gui.lib.tracker.TrackerSettingsStore.getOrCreate(overlay.id, overlay.defaults)
-        com.soulreturns.gui.lib.tracker.TrackerOverlayRenderer.render(element, overlay, settings, ctx, regions)
     }
 
     private fun renderItemTracker(
@@ -299,12 +273,6 @@ object GuiInteractionHandler {
                 GuiLayoutManager.updateTrackerCounts(region.elementId, entryId, delta = -1)
                 true
             }
-            GuiHitRegion.Kind.TRACKER_OVERLAY_TAB,
-            GuiHitRegion.Kind.TRACKER_OVERLAY_CYCLE_SORT,
-            GuiHitRegion.Kind.TRACKER_OVERLAY_CYCLE_LIMIT,
-            GuiHitRegion.Kind.TRACKER_OVERLAY_RESET,
-            GuiHitRegion.Kind.TRACKER_OVERLAY_SCROLL_REGION,
-            -> com.soulreturns.gui.lib.tracker.TrackerInputHandler.handleClick(region)
         }
     }
 }

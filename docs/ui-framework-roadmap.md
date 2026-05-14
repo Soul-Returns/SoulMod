@@ -14,9 +14,28 @@ sub-phase commit.
 | **P2.3** | Input system (HitRegion, SoulInput, clickable/scrollable modifiers, Button, hover) | ✅ shipped |
 | **P2.4** | Toggle, Slider (drag), Tabs, ScrollableList (self-clamping), Theme | ✅ shipped |
 | **P2.5** | SoulHud register API + SoulHudElement + SoulHudRegistry + SoulScreen + GuiEditScreen overlay fix | ✅ shipped |
-| **P3** | Migrate every HUD to the new framework | ⏳ next up |
-| **P4** | Migrate every Screen, retire owo-ui dependency | not started |
+| **P3** | Migrate every HUD to the new framework | ✅ shipped |
+| **P4** | Migrate every Screen, retire owo-ui dependency | ⏳ next up |
 | **P5** | Polish: animations, theming variants, a11y, docs | not started |
+
+## P3 outcome
+
+All 7 HUDs migrated to `SoulHud.register` + composables. Legacy `gui/lib/tracker/` package
+deleted entirely (TrackerOverlay, TrackerOverlayRegistry, TrackerOverlayRenderer,
+TrackerOverlayElement, TrackerSettings, TrackerSettingsStore, TrackerInputHandler — gone).
+`GuiLayoutApi.updateTrackerOverlay`, `TrackerOverlayElement` GuiElement subclass,
+`TRACKER_OVERLAY_*` hit-region kinds, and the `NvgSmokeTest` scaffolding all removed.
+`GuiRenderer.renderHud` still handles `ItemTrackerElement` for non-Soul features that may
+still need it; that path retires in P4 once nothing references it.
+
+Files in the new state:
+- `ui/hud/LegionHud.kt`, `BobbinHud.kt`, `PartyHud.kt`, `MineshaftCorpsesHud.kt`,
+  `SeasoningHud.kt`, `FishingHud.kt`, `FishingFestivalHud.kt` — all `SoulHud.register`-based
+- `features/fishing/FishingHudSettings.kt` — tab/sort/limit/scroll persistence at
+  `config/soul/fishing_hud.json`
+- Cloud sync still mirrors `gui_layout.json` + `stats.json` + `config.json5` as before. The
+  `fishing_hud.json` is **not** synced — UI preferences are user-local. Reassess in P4 if
+  the user wants them synced.
 
 ---
 

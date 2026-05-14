@@ -42,7 +42,6 @@ object GuiEditSession {
                 when (element) {
                     is TextBlockElement -> 20 + element.lines.size * 10
                     is ItemTrackerElement -> 20 + element.entries.size * 18
-                    is TrackerOverlayElement -> (160 * element.scale.coerceAtLeast(0.25f)).toInt()
                     is SoulHudElement -> {
                         val entry = com.soulreturns.ui.runtime.SoulHudRegistry.get(element.id)
                         val effectiveScale = com.soulreturns.ui.runtime.SoulHud.effectiveScaleFor(element.scale)

@@ -3,98 +3,124 @@ package com.soulreturns.ui.hud
 import com.soulreturns.config.cfg
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.features.party.PartyManager.PartyRole
-import com.soulreturns.gui.lib.GuiLayoutApi
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.minecraft.client.Minecraft
+import com.soulreturns.ui.composer.SoulComposable
+import com.soulreturns.ui.foundation.Box
+import com.soulreturns.ui.foundation.Column
+import com.soulreturns.ui.foundation.Surface
+import com.soulreturns.ui.foundation.Text
+import com.soulreturns.ui.runtime.SoulHud
+import com.soulreturns.ui.theme.SoulTheme
 
 /**
- * Party HUD — pure view. Reads state directly from [PartyManager] (which owns party
- * tracking via chat parsing) and pushes a text block into [GuiLayoutApi].
+ * Party HUD — reads state directly from [PartyManager] (which owns party tracking via chat
+ * parsing) and renders the leader / size / members / pending invites as a Soul UI panel.
+ *
+ * Migrated from legacy `GuiLayoutApi.updateTextBlock` to [SoulHud.register] per the P3
+ * framework migration (`docs/ui-framework-roadmap.md`).
  */
 object PartyHud {
-    private const val ELEMENT_ID = "party_info"
+    private const val HUD_ID = "party_info"
 
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register { client -> tick(client) }
+        SoulHud.register(
+            id = HUD_ID,
+            width = 260,
+            height = 200,
+            defaultAnchorX = 0.02,
+            defaultAnchorY = 0.40,
+        ) {
+            Content()
+        }
     }
 
-    private fun tick(client: Minecraft) {
-        client.player ?: return
+    @SoulComposable
+    private fun Content() {
         val enabled =
             try {
                 cfg.render.overlays.enablePartyOverlay()
             } catch (_: Exception) {
-                return
+                false
             }
-
         if (!enabled) {
-            // Hide but keep layout — defaults are not re-applied because layout already exists.
-            GuiLayoutApi.updateTextBlock(
-                id = ELEMENT_ID,
-                enabled = false,
-                title = "Party",
-                lines = emptyList(),
-                defaultAnchorX = 0.02,
-                defaultAnchorY = 0.40,
-                defaultScale = 1.0f,
-            )
+            Box {}
             return
         }
 
         val state = PartyManager.getPartyState()
+        Surface {
+            Column(gap = 4f) {
+                Text(
+                    text = "Party",
+                    size = SoulTheme.typography.heading.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.heading.font,
+                )
 
-        if (state == null) {
-            GuiLayoutApi.updateTextBlock(
-                id = ELEMENT_ID,
-                enabled = true,
-                title = "Party",
-                lines = listOf("Not in a party"),
-                color = 0xFFFFFFFF.toInt(),
-                defaultAnchorX = 0.02,
-                defaultAnchorY = 0.40,
-                defaultScale = 1.0f,
-            )
-            return
-        }
+                if (state == null) {
+                    Text(
+                        text = "Not in a party",
+                        size = SoulTheme.typography.body.size,
+                        color = SoulTheme.colors.textDim,
+                        font = SoulTheme.typography.body.font,
+                    )
+                    return@Column
+                }
 
-        val leaderDisplay = state.leader?.displayName ?: state.leader?.name ?: "Unknown"
-        val members = state.members.values
+                val leaderDisplay = state.leader?.displayName ?: state.leader?.name ?: "Unknown"
+                Text(
+                    text = "Leader: $leaderDisplay",
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.body.font,
+                )
+                Text(
+                    text = "Size: ${state.size}",
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.textDim,
+                    font = SoulTheme.typography.body.font,
+                )
 
-        // Everyone except the leader (members + moderators).
-        val memberNames =
-            members
-                .filter { it.role != PartyRole.LEADER }
-                .joinToString(", ") { it.displayName }
+                val memberNames =
+                    state.members.values
+                        .filter { it.role != PartyRole.LEADER }
+                        .joinToString(", ") { it.displayName }
+                if (memberNames.isNotBlank()) {
+                    Text(
+                        text = "Members:",
+                        size = SoulTheme.typography.body.size,
+                        color = SoulTheme.colors.textDim,
+                        font = SoulTheme.typography.body.font,
+                    )
+                    Text(
+                        text = memberNames,
+                        size = SoulTheme.typography.body.size,
+                        color = SoulTheme.colors.text,
+                        font = SoulTheme.typography.body.font,
+                    )
+                }
 
-        val lines = mutableListOf<String>()
-        lines += "Leader: $leaderDisplay"
-        lines += "Size: ${state.size}"
-        if (memberNames.isNotBlank()) {
-            lines += "Members:"
-            lines += memberNames
-        }
-
-        val invites = PartyManager.getPendingInvites()
-        val now = System.currentTimeMillis()
-        if (invites.isNotEmpty()) {
-            lines += "Invites:"
-            invites.take(3).forEach { invite ->
-                val secondsLeft = ((invite.expiresAt - now) / 1000L).coerceAtLeast(0)
-                val dir = if (invite.outgoing) "->" else "<-"
-                val other = if (invite.outgoing) invite.to else invite.from
-                lines += "$dir $other (${secondsLeft}s)"
+                val invites = PartyManager.getPendingInvites()
+                if (invites.isNotEmpty()) {
+                    val now = System.currentTimeMillis()
+                    Text(
+                        text = "Invites:",
+                        size = SoulTheme.typography.body.size,
+                        color = SoulTheme.colors.textDim,
+                        font = SoulTheme.typography.body.font,
+                    )
+                    invites.take(3).forEach { invite ->
+                        val secondsLeft = ((invite.expiresAt - now) / 1000L).coerceAtLeast(0)
+                        val dir = if (invite.outgoing) "->" else "<-"
+                        val other = if (invite.outgoing) invite.to else invite.from
+                        Text(
+                            text = "$dir $other (${secondsLeft}s)",
+                            size = SoulTheme.typography.body.size,
+                            color = SoulTheme.colors.text,
+                            font = SoulTheme.typography.body.font,
+                        )
+                    }
+                }
             }
         }
-
-        GuiLayoutApi.updateTextBlock(
-            id = ELEMENT_ID,
-            enabled = true,
-            title = "Party",
-            lines = lines,
-            color = 0xFFFFFFFF.toInt(),
-            defaultAnchorX = 0.02,
-            defaultAnchorY = 0.40,
-            defaultScale = 1.0f,
-        )
     }
 }

@@ -46,10 +46,11 @@ object NvgFrame {
         val scaledW = (w * effectiveScale).toInt().coerceAtLeast(1)
         val scaledH = (h * effectiveScale).toInt().coerceAtLeast(1)
 
-        // Bracket the block with SoulInput frame setup so layout nodes' hit regions get
-        // recorded into the right cursor frame. Cursor coords are converted from physical
-        // mouse coords into the panel-local screen-coord system; SoulInput then divides
-        // by [effectiveScale] to get content coords matching hit regions.
+        // Capture cursor + origin **eagerly** at submit time so they reflect THIS panel's
+        // position even if other panels are queued after us. The values are then used
+        // **inside** the deferred lambda — `SoulInput.startFrame` is called from there,
+        // not here, otherwise the last panel to submit would clobber the global state
+        // before any panel's lambda gets to flush.
         val mc = Minecraft.getInstance()
         val mh = mc.mouseHandler
         val window = mc.window
@@ -59,11 +60,18 @@ object NvgFrame {
         val cursorScreenY = mh.ypos() * myScale
         val cursorLocalX = (cursorScreenX - x).toFloat()
         val cursorLocalY = (cursorScreenY - y).toFloat()
-        SoulInput.startFrame(cursorLocalX, cursorLocalY, x.toFloat(), y.toFloat(), effectiveScale)
+        val originX = x.toFloat()
+        val originY = y.toFloat()
+
+        // Tell SoulInput about an in-flight panel so the last-flush coordinator can commit
+        // aggregated hover state at the right boundary. Must happen eagerly so the counter
+        // reflects every submission BEFORE any lambda runs.
+        SoulInput.beginPanel()
 
         val scissor = context.scissorStack.peek()
         val state =
             NvgPipState(x, y, scaledW, scaledH, null, scissor) {
+                SoulInput.startFrame(cursorLocalX, cursorLocalY, originX, originY, effectiveScale)
                 if (effectiveScale != 1f) {
                     com.soulreturns.platform.render.nvg.NvgRenderer.push()
                     com.soulreturns.platform.render.nvg.NvgRenderer.scale(effectiveScale, effectiveScale)

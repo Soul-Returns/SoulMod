@@ -4,109 +4,165 @@ import com.soulreturns.config.cfg
 import com.soulreturns.data.location.LocationApi
 import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.seasoning.SeasoningState
-import com.soulreturns.gui.lib.GuiLayoutApi
-import com.soulreturns.gui.lib.GuiLayoutManager
-import com.soulreturns.gui.lib.TextBlockElement
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
-import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents
+import com.soulreturns.ui.composer.SoulComposable
+import com.soulreturns.ui.composer.SoulModifier
+import com.soulreturns.ui.composer.fillMaxWidth
+import com.soulreturns.ui.foundation.Box
+import com.soulreturns.ui.foundation.Button
+import com.soulreturns.ui.foundation.Column
+import com.soulreturns.ui.foundation.Row
+import com.soulreturns.ui.foundation.Surface
+import com.soulreturns.ui.foundation.Text
+import com.soulreturns.ui.runtime.SoulHud
+import com.soulreturns.ui.theme.SoulTheme
 import net.minecraft.client.Minecraft
 
 /**
- * The Seasoning HUD overlay — purely presentational, reads from [SeasoningState] /
- * [FarmingTimer] / [LocationApi] / [cfg]. Click handling for the `[Reset Session]` line
- * lives here too because it's a UI affordance, not application logic.
+ * Seasoning HUD overlay — reads from [SeasoningState] / [FarmingTimer] / [LocationApi] / [cfg]
+ * and renders Total / Next Milestone / Farming Time / Per Hour lines plus a `Reset Session`
+ * button (only clickable while a screen is open — keeps it out of the way during play).
+ *
+ * Migrated from legacy `GuiLayoutApi.updateTextBlock` + manual hit-region tracking to
+ * [SoulHud.register] + the framework's [Button] composable per the P3 framework migration.
  */
 object SeasoningHud {
-    private const val ELEMENT_ID = "seasoning_tracker"
-    private const val RESET_BUTTON_TEXT = "[Reset Session]"
-
-    /** Bbox of the [Reset Session] button on screen, set during HUD render, cleared when the line isn't shown. */
-    @Volatile
-    private var resetButtonBbox: IntArray? = null
+    private const val HUD_ID = "seasoning_tracker"
+    private const val COLOR_TITLE_GREEN = 0xFF55FF55.toInt() // §a
+    private const val COLOR_PAUSED_RED = 0xFFFF5555.toInt() // §c
+    private const val COLOR_MAXED_RED = 0xFFFF5555.toInt() // §c §l
 
     fun register() {
-        ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { _ -> updateHud() })
-
-        // Per-screen mouse listener so the [Reset Session] button is clickable while any screen is open.
-        ScreenEvents.AFTER_INIT.register(
-            ScreenEvents.AfterInit { _, screen, _, _ ->
-                ScreenMouseEvents.beforeMouseClick(screen).register(
-                    ScreenMouseEvents.BeforeMouseClick { _, click ->
-                        tryHandleResetClick(click.x().toInt(), click.y().toInt())
-                    }
-                )
-            }
-        )
-    }
-
-    private fun updateHud() {
-        val total = SeasoningState.total
-        val targets = SeasoningState.targets
-        val cfgFlags = cfg.farming.seasonings
-
-        val showHud = cfgFlags.enableTracker() && LocationApi.isInArea("Garden")
-        val anyScreenOpen = Minecraft.getInstance().screen != null
-
-        val lines = mutableListOf<String>()
-
-        // Total: 64  OR  Total: 64/250
-        lines +=
-            if (cfgFlags.showMaxMilestone() && targets.isNotEmpty()) {
-                "Total: $total/${targets.last()}"
-            } else {
-                "Total: $total"
-            }
-
-        if (cfgFlags.showNextMilestone()) {
-            val next = targets.firstOrNull { it > total }
-            lines +=
-                when {
-                    targets.isEmpty() -> "Next Milestone: ?"
-                    next == null -> "Next Milestone: §c§lMaxed"
-                    else -> "Next Milestone: $total/$next"
-                }
-        }
-
-        if (cfgFlags.showFarmingTime()) {
-            val timeStr = formatDuration(SeasoningState.seasoningFarmingMs())
-            lines +=
-                if (FarmingTimer.isPaused) {
-                    "Farming Time: $timeStr §c(Paused)"
-                } else {
-                    "Farming Time: $timeStr"
-                }
-        }
-
-        if (cfgFlags.showPerHour()) {
-            val perHour = computePerHour()
-            lines += "Per hour: ${if (perHour == null) "—" else "%,d".format(perHour)}"
-        }
-
-        // Reset session button — only while a screen is open (so it doesn't clutter normal play).
-        if (showHud && anyScreenOpen) {
-            lines += "§b§n$RESET_BUTTON_TEXT"
-            updateResetButtonBbox(lineIndex = lines.size - 1)
-        } else {
-            resetButtonBbox = null
-        }
-
-        GuiLayoutApi.updateTextBlock(
-            id = ELEMENT_ID,
-            title = "§aSeasonings",
-            lines = lines,
-            color = 0xFFFFFFFF.toInt(),
-            enabled = showHud,
+        SoulHud.register(
+            id = HUD_ID,
+            width = 220,
+            height = 160,
             defaultAnchorX = 0.02,
             defaultAnchorY = 0.4,
-            defaultScale = 1.0f,
-        )
+        ) {
+            Content()
+        }
+    }
+
+    @SoulComposable
+    private fun Content() {
+        val cfgFlags = cfg.farming.seasonings
+        val showHud = cfgFlags.enableTracker() && LocationApi.isInArea("Garden")
+        if (!showHud) {
+            Box {}
+            return
+        }
+        val anyScreenOpen = Minecraft.getInstance().screen != null
+        val total = SeasoningState.total
+        val targets = SeasoningState.targets
+
+        Surface {
+            Column(gap = 4f) {
+                Text(
+                    text = "Seasonings",
+                    size = SoulTheme.typography.heading.size,
+                    color = COLOR_TITLE_GREEN,
+                    font = SoulTheme.typography.heading.font,
+                )
+
+                val totalLabel =
+                    if (cfgFlags.showMaxMilestone() && targets.isNotEmpty()) {
+                        "Total: $total/${targets.last()}"
+                    } else {
+                        "Total: $total"
+                    }
+                Text(
+                    text = totalLabel,
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.body.font,
+                )
+
+                if (cfgFlags.showNextMilestone()) {
+                    val next = targets.firstOrNull { it > total }
+                    when {
+                        targets.isEmpty() ->
+                            Text(
+                                text = "Next Milestone: ?",
+                                size = SoulTheme.typography.body.size,
+                                color = SoulTheme.colors.textDim,
+                                font = SoulTheme.typography.body.font,
+                            )
+                        next == null ->
+                            Row(gap = 4f) {
+                                Text(
+                                    text = "Next Milestone:",
+                                    size = SoulTheme.typography.body.size,
+                                    color = SoulTheme.colors.textDim,
+                                    font = SoulTheme.typography.body.font,
+                                )
+                                Text(
+                                    text = "Maxed",
+                                    size = SoulTheme.typography.body.size,
+                                    color = COLOR_MAXED_RED,
+                                    font = SoulTheme.typography.heading.font,
+                                )
+                            }
+                        else ->
+                            Text(
+                                text = "Next Milestone: $total/$next",
+                                size = SoulTheme.typography.body.size,
+                                color = SoulTheme.colors.text,
+                                font = SoulTheme.typography.body.font,
+                            )
+                    }
+                }
+
+                if (cfgFlags.showFarmingTime()) {
+                    val timeStr = formatDuration(SeasoningState.seasoningFarmingMs())
+                    Row(gap = 4f) {
+                        Text(
+                            text = "Farming Time: $timeStr",
+                            size = SoulTheme.typography.body.size,
+                            color = SoulTheme.colors.text,
+                            font = SoulTheme.typography.body.font,
+                        )
+                        if (FarmingTimer.isPaused) {
+                            Text(
+                                text = "(Paused)",
+                                size = SoulTheme.typography.body.size,
+                                color = COLOR_PAUSED_RED,
+                                font = SoulTheme.typography.body.font,
+                            )
+                        }
+                    }
+                }
+
+                if (cfgFlags.showPerHour()) {
+                    val perHour = computePerHour()
+                    Text(
+                        text = "Per hour: ${if (perHour == null) "—" else "%,d".format(perHour)}",
+                        size = SoulTheme.typography.body.size,
+                        color = SoulTheme.colors.text,
+                        font = SoulTheme.typography.body.font,
+                    )
+                }
+
+                // Reset session button — only while a screen is open so it doesn't get
+                // mis-clicked during play. Hit-testing only fires inside container screens
+                // anyway (see SoulGuiHudAdapter.registerScreenOverlay), but the button is
+                // hidden unconditionally outside any screen for visual cleanliness.
+                if (anyScreenOpen) {
+                    Row(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 4f) {
+                        Button(
+                            label = "Reset Session",
+                            onClick = { SeasoningState.resetSession() },
+                            key = "$HUD_ID.reset",
+                        )
+                    }
+                }
+            }
+        }
     }
 
     /**
      * Per-hour rate based on [SeasoningState.sessionChatGain] divided by active farming time.
      * Returns null until we have ≥5 s of active farming AND ≥1 chat-counted seasoning (avoids
-     * "0 per hour" flicker).
+     * a "0 per hour" flicker right after entering the Garden).
      */
     private fun computePerHour(): Long? {
         val farmingMs = SeasoningState.seasoningFarmingMs()
@@ -121,38 +177,5 @@ object SeasoningHud {
         val m = (totalSec % 3600) / 60
         val s = totalSec % 60
         return "%02d:%02d:%02d".format(h, m, s)
-    }
-
-    private fun updateResetButtonBbox(lineIndex: Int) {
-        val mc = Minecraft.getInstance()
-        val window = mc.window
-        val element =
-            GuiLayoutManager.getLayout().elements
-                .filterIsInstance<TextBlockElement>()
-                .firstOrNull { it.id == ELEMENT_ID } ?: return
-        if (!element.enabled) return
-
-        val baseX = (element.anchorX * window.guiScaledWidth).toInt() + element.offsetX
-        val baseY = (element.anchorY * window.guiScaledHeight).toInt() + element.offsetY
-        val scale = element.scale.coerceAtLeast(0.25f)
-        val lineStep = (10f * scale).toInt().coerceAtLeast(4)
-
-        val titleOffset = if (element.title != null) lineStep else 0
-        val y = baseY + titleOffset + lineIndex * lineStep
-
-        val width = (mc.font.width(RESET_BUTTON_TEXT) * scale).toInt()
-        val height = (mc.font.lineHeight * scale).toInt()
-        resetButtonBbox = intArrayOf(baseX, y, width, height)
-    }
-
-    private fun tryHandleResetClick(
-        mouseX: Int,
-        mouseY: Int
-    ) {
-        val bbox = resetButtonBbox ?: return
-        val (x, y, w, h) = listOf(bbox[0], bbox[1], bbox[2], bbox[3])
-        if (mouseX in x..(x + w) && mouseY in y..(y + h)) {
-            SeasoningState.resetSession()
-        }
     }
 }

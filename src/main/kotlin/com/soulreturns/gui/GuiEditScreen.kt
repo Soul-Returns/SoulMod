@@ -186,21 +186,6 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
                             height = totalHeight + 8,
                         )
                 }
-                is com.soulreturns.gui.lib.TrackerOverlayElement -> {
-                    // Approximate the panel's bounding box so /soul gui can drag it. The
-                    // TrackerOverlayRenderer uses scale-relative sizing similar to these constants.
-                    val scale = element.scale.coerceAtLeast(0.25f)
-                    val approxWidth = (200 * scale).toInt()
-                    val approxHeight = (160 * scale).toInt()
-                    bounds +=
-                        ElementBounds(
-                            id = element.id,
-                            x = baseX - 4,
-                            y = baseY - 4,
-                            width = approxWidth + 8,
-                            height = approxHeight + 8,
-                        )
-                }
                 is com.soulreturns.gui.lib.SoulHudElement -> {
                     // Soul UI framework HUDs declare their max bounds at registration time —
                     // ask the registry. Effective on-screen size includes the per-element

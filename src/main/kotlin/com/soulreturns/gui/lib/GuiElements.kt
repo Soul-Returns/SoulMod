@@ -91,26 +91,6 @@ data class ItemTrackerElement(
 ) : GuiElement(id, enabled, anchorX, anchorY, offsetX, offsetY, scale, textShadow)
 
 /**
- * Position/scale shell for a [com.soulreturns.gui.lib.tracker.TrackerOverlay] HUD.
- *
- * Only the layout fields are serialized to `gui_layout.json`; the overlay's tabs/data are
- * provided at runtime by the owning feature via
- * [com.soulreturns.gui.lib.GuiLayoutApi.updateTrackerOverlay]. UI state (active tab, sort key,
- * row limit) lives in `tracker_settings.json` via
- * [com.soulreturns.gui.lib.tracker.TrackerSettingsStore].
- */
-data class TrackerOverlayElement(
-    override val id: GuiElementId,
-    override val enabled: Boolean = true,
-    override val anchorX: Double = 0.02,
-    override val anchorY: Double = 0.5,
-    override val offsetX: Int = 0,
-    override val offsetY: Int = 0,
-    override val scale: Float = 1.0f,
-    override val textShadow: Boolean = true,
-) : GuiElement(id, enabled, anchorX, anchorY, offsetX, offsetY, scale, textShadow)
-
-/**
  * Position/scale shell for a Soul UI framework HUD (see `ui.runtime.SoulHud`).
  *
  * The composable content lambda lives in `SoulHudRegistry` at runtime — only positioning

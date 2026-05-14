@@ -31,6 +31,19 @@ object SoulInput {
     private var pendingScroll: PendingScroll? = null
     private var pendingRelease: Boolean = false
 
+    /**
+     * Number of panels that have called [beginPanel] but not yet [flush]. Used to coordinate
+     * frame-boundary state — the last panel's flush commits the accumulated hover set and
+     * clears any unconsumed pending events.
+     */
+    private var pendingPanels: Int = 0
+
+    /**
+     * Hover matches accumulated across every panel rendered in the current frame. Flushed
+     * into [hoveredKeys] when the last panel finishes.
+     */
+    private val frameHoverAccumulator: MutableSet<Any> = mutableSetOf()
+
     /** Latest cursor logical-pixel position. Defaults to off-screen until [startFrame] runs. */
     var cursorX: Float = -1f
         private set
@@ -72,6 +85,18 @@ object SoulInput {
 
     /** Returns true if [key] was hovered as of the most recent [flush]. */
     fun isHovered(key: Any): Boolean = hoveredKeys.contains(key)
+
+    /**
+     * Announce that a panel is about to start rendering. Must be paired with a [flush] call
+     * from the same panel. Increments [pendingPanels] so [flush] knows when it's the last
+     * panel of a frame and can commit aggregated state.
+     *
+     * Call this **eagerly** (at `NvgFrame.submit` time, not inside the deferred lambda) so
+     * the counter reflects all queued panels before any of them actually flushes.
+     */
+    fun beginPanel() {
+        pendingPanels++
+    }
 
     /** Returns true if [key] is the currently-pressed key. See [pressedKey] for semantics. */
     fun isPressed(key: Any): Boolean = pressedKey == key
@@ -145,10 +170,11 @@ object SoulInput {
         var clickConsumed = false
         var scrollConsumed = false
 
+        // Click + scroll consumption: only clear the pending event if it hit one of THIS
+        // panel's regions. If it misses, leave it for the next panel's flush — multi-panel
+        // layouts depend on this so a click in panel B isn't swallowed by panel A's earlier
+        // flush. The last panel's flush below clears any unmatched leftovers.
         pendingClick?.let { c ->
-            // Click coords arrive in absolute GUI-scaled space. Translate into panel-local
-            // (subtract origin) then unscale (divide by [panelScale]) to get content coords
-            // matching where hit regions were recorded.
             val localX = (c.x - panelOriginX) / panelScale
             val localY = (c.y - panelOriginY) / panelScale
             val hit = deepestRegionAt(localX, localY) { it.onClick != null }
@@ -156,14 +182,9 @@ object SoulInput {
                 hit.onClick?.invoke()
                 pressedKey = hit.key
                 clickConsumed = true
+                pendingClick = null
             }
-            pendingClick = null
         }
-        if (pendingRelease) {
-            pressedKey = null
-            pendingRelease = false
-        }
-
         pendingScroll?.let { s ->
             val localX = (s.x - panelOriginX) / panelScale
             val localY = (s.y - panelOriginY) / panelScale
@@ -171,23 +192,32 @@ object SoulInput {
             if (hit != null) {
                 hit.onScroll?.invoke(s.vsd)
                 scrollConsumed = true
+                pendingScroll = null
             }
-            pendingScroll = null
+        }
+        if (pendingRelease) {
+            pressedKey = null
+            pendingRelease = false
         }
 
-        // Update hover set from the current cursor position.
+        // Accumulate hover matches from THIS panel's regions into the frame-wide set.
         val cx = cursorX
         val cy = cursorY
-        hoveredKeys =
-            if (cx < 0f || cy < 0f) {
-                emptySet()
-            } else {
-                regions
-                    .asSequence()
-                    .filter { it.contains(cx, cy) }
-                    .map { it.key }
-                    .toSet()
+        if (cx >= 0f && cy >= 0f) {
+            for (r in regions) {
+                if (r.contains(cx, cy)) frameHoverAccumulator.add(r.key)
             }
+        }
+
+        // Last panel of the frame? Commit accumulated hover state, drop any unmatched
+        // pending events (no more panels will try them).
+        pendingPanels = (pendingPanels - 1).coerceAtLeast(0)
+        if (pendingPanels == 0) {
+            hoveredKeys = frameHoverAccumulator.toSet()
+            frameHoverAccumulator.clear()
+            pendingClick = null
+            pendingScroll = null
+        }
 
         return FlushResult(clickConsumed = clickConsumed, scrollConsumed = scrollConsumed)
     }
@@ -219,6 +249,8 @@ object SoulInput {
         panelOriginX = 0f
         panelOriginY = 0f
         panelScale = 1f
+        pendingPanels = 0
+        frameHoverAccumulator.clear()
     }
 
     private data class PendingClick(val x: Float, val y: Float)

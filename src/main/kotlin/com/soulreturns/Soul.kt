@@ -12,7 +12,6 @@ import com.soulreturns.features.farming.seasoning.HarvestFeastReader
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
 import com.soulreturns.features.fishing.BobbinSpotter
 import com.soulreturns.features.fishing.FishingTracker
-import com.soulreturns.features.fishing.FishingTrackerOverlay
 import com.soulreturns.features.itemhighlight.HighlightManager
 import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
@@ -33,6 +32,8 @@ import com.soulreturns.platform.sync.SyncedArtifact
 import com.soulreturns.render.RoundRectRenderer
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.hud.BobbinHud
+import com.soulreturns.ui.hud.FishingFestivalHud
+import com.soulreturns.ui.hud.FishingHud
 import com.soulreturns.ui.hud.LegionHud
 import com.soulreturns.ui.hud.MineshaftCorpsesHud
 import com.soulreturns.ui.hud.PartyHud
@@ -80,9 +81,8 @@ object Soul : ClientModInitializer {
         // Load persisted stats (tracked counters like seasonings) before features may read them.
         PersistentStats.init()
 
-        // Load tracker overlay UI state (active tab, sort key, row limit) before features
-        // register their overlays — the registry queries this on first read.
-        com.soulreturns.gui.lib.tracker.TrackerSettingsStore.init()
+        // (The legacy TrackerSettingsStore.init was here. Per-feature HUD settings now
+        // initialize from their own register() functions — see e.g. FishingHud.register.)
 
         // Start polling Hypixel SkyBlock location (publishes AreaChanged/SublocationChanged events).
         LocationReader.register()
@@ -134,10 +134,6 @@ object Soul : ClientModInitializer {
         SpecialGuiElementRegistry.register { context ->
             com.soulreturns.platform.render.nvg.NvgPipRenderer(context.vertexConsumers())
         }
-
-        // Register the Soul UI framework's smoke-test HUD (toggled by dev.debugMode).
-        // Remove this once real consumers (HUD migrations in P3) exercise the framework.
-        com.soulreturns.platform.render.nvg.NvgSmokeTest.register()
 
         // Re-render Soul HUDs on top of every open screen. Without this hook the inventory's
         // dim/blur background overlays the HUD; see SoulGuiHudAdapter.registerScreenOverlay.
@@ -223,7 +219,8 @@ object Soul : ClientModInitializer {
         SeaCreatureCatalog.init()
         FishingFestivalState.register()
         FishingTracker.register()
-        FishingTrackerOverlay.register()
+        FishingHud.register()
+        FishingFestivalHud.register()
 
         // Party tracking and HUD overlay
         PartyManager.register()
