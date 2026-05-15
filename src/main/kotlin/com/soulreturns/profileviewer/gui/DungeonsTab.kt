@@ -8,200 +8,236 @@ import com.soulreturns.profileviewer.service.DungeonsCalculator
 import com.soulreturns.profileviewer.service.LevelInfo
 import com.soulreturns.profileviewer.service.masterFloorName
 import com.soulreturns.profileviewer.service.normalFloorName
-import com.soulreturns.render.DrawContextRenderer
-import com.soulreturns.ui.theme.Theme
-import io.wispforest.owo.ui.component.UIComponents
-import io.wispforest.owo.ui.container.FlowLayout
-import io.wispforest.owo.ui.container.UIContainers
-import io.wispforest.owo.ui.core.Insets
-import io.wispforest.owo.ui.core.Sizing
-import io.wispforest.owo.ui.core.Surface
-import io.wispforest.owo.ui.core.VerticalAlignment
-import net.minecraft.network.chat.Component
+import com.soulreturns.ui.composer.SoulComposable
+import com.soulreturns.ui.composer.SoulModifier
+import com.soulreturns.ui.composer.VerticalAlignment
+import com.soulreturns.ui.composer.background
+import com.soulreturns.ui.composer.fillMaxWidth
+import com.soulreturns.ui.composer.height
+import com.soulreturns.ui.composer.padding
+import com.soulreturns.ui.composer.width
+import com.soulreturns.ui.foundation.Box
+import com.soulreturns.ui.foundation.Column
+import com.soulreturns.ui.foundation.ProgressBar
+import com.soulreturns.ui.foundation.Row
+import com.soulreturns.ui.foundation.Spacer
+import com.soulreturns.ui.foundation.Surface
+import com.soulreturns.ui.foundation.Text
+import com.soulreturns.ui.theme.SoulTheme
 
-object DungeonsTab {
-    fun build(member: JsonObject): FlowLayout {
-        val container = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
-        container.gap(8)
+/**
+ * Dungeons tab content for the Profile Viewer. Pure presentation — all parsing /
+ * level / time math lives in [DungeonsView], [DungeonsCalculator] and the floor-name
+ * helpers under `profileviewer/service/`. This composable just builds the layout.
+ */
+@SoulComposable
+fun DungeonsTabContent(member: JsonObject) {
+    val dungeons = member.getAsJsonObject("dungeons")
+    if (dungeons == null) {
+        Text(
+            text = "This profile has no dungeon data.",
+            size = SoulTheme.typography.body.size,
+            color = SoulTheme.colors.textDim,
+            font = SoulTheme.typography.body.font,
+        )
+        return
+    }
+    val view = DungeonsView(dungeons)
 
-        val dungeonsObj = member.getAsJsonObject("dungeons")
-        if (dungeonsObj == null) {
-            container.child(
-                UIComponents.label(Component.literal("This profile has no dungeon data."))
-                    .color(Theme.color(Theme.TEXT_DIM))
+    Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 8f) {
+        Section("Catacombs") {
+            LevelRow(
+                label = "Catacombs",
+                info = DungeonsCalculator.catacombsLevel(view.catacombsExperience),
+                xp = view.catacombsExperience,
+                cap = 50,
             )
-            return container
-        }
-
-        val view = DungeonsView(dungeonsObj)
-
-        section(container, "Catacombs") {
-            it.child(levelRow("Catacombs", DungeonsCalculator.catacombsLevel(view.catacombsExperience), view.catacombsExperience, cap = 50))
-            it.child(
-                levelRow(
-                    "Master Catacombs",
-                    DungeonsCalculator.masterCatacombsLevel(view.masterCatacombsExperience),
-                    view.masterCatacombsExperience,
-                    cap = 7
-                )
+            LevelRow(
+                label = "Master Catacombs",
+                info = DungeonsCalculator.masterCatacombsLevel(view.masterCatacombsExperience),
+                xp = view.masterCatacombsExperience,
+                cap = 7,
             )
         }
-
-        section(container, "Classes") {
+        Section("Classes") {
             val selected = view.selectedClass?.let { c -> DungeonClassNames.displayName(c) } ?: "—"
-            val selRow = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-            selRow.gap(8)
-            selRow.child(
-                UIComponents.label(
-                    Component.literal("Selected")
-                ).color(Theme.color(Theme.TEXT_DIM)).sizing(Sizing.fixed(130), Sizing.content())
-            )
-            selRow.child(UIComponents.label(Component.literal(selected)).color(Theme.color(Theme.TEXT)))
-            it.child(selRow)
-            it.child(rowDivider())
+            Row(
+                modifier = SoulModifier.Empty.fillMaxWidth(),
+                gap = 10f,
+                verticalAlignment = VerticalAlignment.Center,
+            ) {
+                LabelCell("Selected", widthPx = 130f, color = SoulTheme.colors.textDim)
+                Text(
+                    text = selected,
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.body.font,
+                )
+            }
+            RowDivider()
             for (cls in DungeonClassNames.ORDER) {
                 val xp = view.classExperience[cls] ?: 0.0
-                it.child(levelRow(DungeonClassNames.displayName(cls), DungeonsCalculator.classLevel(xp), xp, cap = 50))
+                LevelRow(
+                    label = DungeonClassNames.displayName(cls),
+                    info = DungeonsCalculator.classLevel(xp),
+                    xp = xp,
+                    cap = 50,
+                )
             }
         }
-
-        section(container, "Catacombs Floors") {
-            it.child(floorTable((0..7).map { i -> i to view.normalFloor(i) }) { i -> normalFloorName(i) })
+        Section("Catacombs Floors") {
+            FloorTable((0..7).map { i -> i to view.normalFloor(i) }) { i -> normalFloorName(i) }
         }
-
-        section(container, "Master Catacombs Floors") {
-            it.child(floorTable((1..7).map { i -> i to view.masterFloor(i) }) { i -> masterFloorName(i) })
+        Section("Master Catacombs Floors") {
+            FloorTable((1..7).map { i -> i to view.masterFloor(i) }) { i -> masterFloorName(i) }
         }
-
-        section(container, "Totals") {
-            statRow(it, "Total runs", view.totalCatacombsCompletions.toString())
-            view.totalSecrets?.let { s -> statRow(it, "Total secrets", s.toString()) }
+        Section("Totals") {
+            StatRow("Total runs", view.totalCatacombsCompletions.toString())
+            view.totalSecrets?.let { StatRow("Total secrets", it.toString()) }
         }
-
-        return container
     }
+}
 
-    private fun section(
-        parent: FlowLayout,
-        label: String,
-        block: (FlowLayout) -> Unit
+@SoulComposable
+private fun Section(
+    label: String,
+    content: @SoulComposable () -> Unit,
+) {
+    Text(
+        text = label,
+        size = SoulTheme.typography.body.size,
+        color = SoulTheme.colors.textDim,
+        font = SoulTheme.typography.body.font,
+        modifier = SoulModifier.Empty.padding(left = 4f, bottom = 6f),
+    )
+    Surface(
+        modifier = SoulModifier.Empty.fillMaxWidth(),
+        color = SoulTheme.colors.panelInset,
+        radius = SoulTheme.dimens.radiusMedium,
+        padding = 10f,
     ) {
-        val lbl = UIComponents.label(Component.literal(label)).color(Theme.color(Theme.TEXT_DIM))
-        lbl.margins(Insets.of(4, 0, 0, 6))
-        parent.child(lbl)
-
-        val card = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
-        card.surface(Theme.panelInsetSurface)
-        card.padding(Insets.of(10))
-        card.gap(6)
-        block(card)
-        parent.child(card)
+        Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f) {
+            content()
+        }
     }
+}
 
-    private fun levelRow(
-        label: String,
-        info: LevelInfo,
-        xp: Double,
-        cap: Int
-    ): FlowLayout {
-        val row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        row.gap(10)
-        row.verticalAlignment(VerticalAlignment.CENTER)
-
-        val lvlText = if (info.level >= cap) "MAX" else info.level.toString()
-        row.child(UIComponents.label(Component.literal(label)).color(Theme.color(Theme.TEXT)).sizing(Sizing.fixed(140), Sizing.content()))
-        row.child(
-            UIComponents.label(Component.literal("Lv $lvlText")).color(Theme.color(Theme.ACCENT)).sizing(Sizing.fixed(52), Sizing.content())
-        )
-        row.child(xpBar(info.progress))
-        row.child(UIComponents.label(Component.literal(DungeonsCalculator.formatXp(xp))).color(Theme.color(Theme.TEXT_DIM)))
-
-        return row
-    }
-
-    private fun statRow(
-        parent: FlowLayout,
-        label: String,
-        value: String
+@SoulComposable
+private fun LevelRow(
+    label: String,
+    info: LevelInfo,
+    xp: Double,
+    cap: Int,
+) {
+    val lvlText = if (info.level >= cap) "MAX" else info.level.toString()
+    Row(
+        modifier = SoulModifier.Empty.fillMaxWidth(),
+        gap = 10f,
+        verticalAlignment = VerticalAlignment.Center,
     ) {
-        val row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        row.gap(10)
-        row.child(
-            UIComponents.label(Component.literal(label)).color(Theme.color(Theme.TEXT_DIM)).sizing(Sizing.fixed(130), Sizing.content())
-        )
-        row.child(UIComponents.label(Component.literal(value)).color(Theme.color(Theme.TEXT)))
-        parent.child(row)
-    }
-
-    private fun floorTable(
-        floors: List<Pair<Int, FloorStats>>,
-        nameFor: (Int) -> String
-    ): FlowLayout {
-        val table = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
-        table.gap(3)
-        table.child(floorRow("Floor", "Runs", "Best", "Fastest", "S", "S+", isHeader = true))
-        for ((tier, stats) in floors) {
-            table.child(
-                floorRow(
-                    nameFor(tier),
-                    if (stats.completions > 0) stats.completions.toString() else "—",
-                    if (stats.bestScore > 0) stats.bestScore.toString() else "—",
-                    DungeonsCalculator.formatTime(stats.fastestTimeMs),
-                    DungeonsCalculator.formatTime(stats.fastestSMs),
-                    DungeonsCalculator.formatTime(stats.fastestSPlusMs),
-                    isHeader = false,
-                )
+        LabelCell(label, widthPx = 140f, color = SoulTheme.colors.text)
+        LabelCell("Lv $lvlText", widthPx = 52f, color = SoulTheme.colors.accent)
+        Box(modifier = SoulModifier.Empty.width(130f).height(6f)) {
+            ProgressBar(
+                progress = info.progress.toFloat(),
+                modifier = SoulModifier.Empty.fillMaxWidth(),
+                height = 6f,
             )
         }
-        return table
-    }
-
-    private fun floorRow(
-        c0: String,
-        c1: String,
-        c2: String,
-        c3: String,
-        c4: String,
-        c5: String,
-        isHeader: Boolean
-    ): FlowLayout {
-        val row = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        row.gap(4)
-        row.verticalAlignment(VerticalAlignment.CENTER)
-        val color = if (isHeader) Theme.TEXT_DIM else Theme.TEXT
-
-        fun cell(
-            text: String,
-            w: Int
-        ) = UIComponents.label(
-            Component.literal(text)
-        ).color(Theme.color(color)).sizing(Sizing.fixed(w), Sizing.content())
-        row.child(cell(c0, 32))
-        row.child(cell(c1, 42))
-        row.child(cell(c2, 46))
-        row.child(cell(c3, 62))
-        row.child(cell(c4, 62))
-        row.child(cell(c5, 62))
-        return row
-    }
-
-    private fun xpBar(progress: Double): FlowLayout {
-        val p = progress.coerceIn(0.0, 1.0)
-        val bar = UIContainers.horizontalFlow(Sizing.fixed(130), Sizing.fixed(6))
-        bar.surface(
-            Surface { ctx, c ->
-                DrawContextRenderer.roundedFill(ctx, c.x(), c.y(), c.x() + c.width(), c.y() + c.height(), Theme.PANEL_HOVER, 3f)
-                val fillW = (c.width() * p).toInt().coerceAtLeast(if (p > 0.01) 6 else 0)
-                if (fillW > 0) DrawContextRenderer.roundedFill(ctx, c.x(), c.y(), c.x() + fillW, c.y() + c.height(), Theme.ACCENT, 3f)
-            }
+        Text(
+            text = DungeonsCalculator.formatXp(xp),
+            size = SoulTheme.typography.body.size,
+            color = SoulTheme.colors.textDim,
+            font = SoulTheme.typography.body.font,
         )
-        return bar
     }
+}
 
-    private fun rowDivider(): FlowLayout {
-        val d = UIContainers.verticalFlow(Sizing.fill(100), Sizing.fixed(1))
-        d.surface(Surface.flat(Theme.SEPARATOR))
-        d.margins(Insets.vertical(2))
-        return d
+@SoulComposable
+private fun StatRow(
+    label: String,
+    value: String,
+) {
+    Row(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 10f) {
+        LabelCell(label, widthPx = 130f, color = SoulTheme.colors.textDim)
+        Text(
+            text = value,
+            size = SoulTheme.typography.body.size,
+            color = SoulTheme.colors.text,
+            font = SoulTheme.typography.body.font,
+        )
     }
+}
+
+@SoulComposable
+private fun FloorTable(
+    floors: List<Pair<Int, FloorStats>>,
+    nameFor: (Int) -> String,
+) {
+    Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 3f) {
+        FloorRow("Floor", "Runs", "Best", "Fastest", "S", "S+", isHeader = true)
+        for ((tier, stats) in floors) {
+            FloorRow(
+                c0 = nameFor(tier),
+                c1 = if (stats.completions > 0) stats.completions.toString() else "—",
+                c2 = if (stats.bestScore > 0) stats.bestScore.toString() else "—",
+                c3 = DungeonsCalculator.formatTime(stats.fastestTimeMs),
+                c4 = DungeonsCalculator.formatTime(stats.fastestSMs),
+                c5 = DungeonsCalculator.formatTime(stats.fastestSPlusMs),
+                isHeader = false,
+            )
+        }
+    }
+}
+
+@SoulComposable
+private fun FloorRow(
+    c0: String,
+    c1: String,
+    c2: String,
+    c3: String,
+    c4: String,
+    c5: String,
+    isHeader: Boolean,
+) {
+    val color = if (isHeader) SoulTheme.colors.textDim else SoulTheme.colors.text
+    Row(
+        modifier = SoulModifier.Empty.fillMaxWidth(),
+        gap = 4f,
+        verticalAlignment = VerticalAlignment.Center,
+    ) {
+        LabelCell(c0, widthPx = 32f, color = color)
+        LabelCell(c1, widthPx = 42f, color = color)
+        LabelCell(c2, widthPx = 46f, color = color)
+        LabelCell(c3, widthPx = 62f, color = color)
+        LabelCell(c4, widthPx = 62f, color = color)
+        LabelCell(c5, widthPx = 62f, color = color)
+    }
+}
+
+@SoulComposable
+private fun LabelCell(
+    text: String,
+    widthPx: Float,
+    color: Int,
+) {
+    Box(modifier = SoulModifier.Empty.width(widthPx)) {
+        Text(
+            text = text,
+            size = SoulTheme.typography.body.size,
+            color = color,
+            font = SoulTheme.typography.body.font,
+        )
+    }
+}
+
+@SoulComposable
+private fun RowDivider() {
+    Box(
+        modifier =
+            SoulModifier.Empty
+                .fillMaxWidth()
+                .height(1f)
+                .background(color = SoulTheme.colors.separator, radius = 0f),
+    ) { Spacer() }
 }

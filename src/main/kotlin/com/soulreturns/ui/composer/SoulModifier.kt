@@ -59,8 +59,74 @@ data class PaddingElement(
     val bottom: Float,
 ) : SoulModifier.Element
 
-/** Solid (rounded) background painted before children. Color is ARGB packed. */
-data class BackgroundElement(val color: Int, val radius: Float = 0f) : SoulModifier.Element
+/**
+ * Which corners participate in a [BackgroundElement]'s radius. Used to round only the
+ * corners of a child panel that touch the parent's outer rounded edge — e.g. a top-nav
+ * inside a rounded card rounds only its top corners; its bottom edge stays square because
+ * it meets the body content along a flat boundary.
+ *
+ * Single-corner variants (`TopLeft` etc.) are used when an inner panel touches only one
+ * outer corner of the card — e.g. a sidebar that sits below a top nav touches only the
+ * card's bottom-left corner.
+ */
+enum class CornerRounding {
+    Full,
+    Top,
+    Bottom,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+}
+
+/**
+ * Solid background painted before children. Color is ARGB packed; [radius] applies only to
+ * the corners selected by [rounding] (default: all four). When [rounding] is `Top` / `Bottom`
+ * the renderer uses `NvgRenderer.halfRoundedRect` so the unrounded edge is straight.
+ */
+data class BackgroundElement(
+    val color: Int,
+    val radius: Float = 0f,
+    val rounding: CornerRounding = CornerRounding.Full,
+) : SoulModifier.Element
+
+/**
+ * Linear-gradient background painted before children. Both colors are ARGB; the gradient
+ * interpolates from [color1] (at the start edge of [direction]) to [color2] (at the end).
+ * Use a fully-transparent color at one end (`0x00000000`) to fade into whatever's behind.
+ */
+data class GradientBackgroundElement(
+    val color1: Int,
+    val color2: Int,
+    val direction: com.soulreturns.platform.render.nvg.NvgGradient,
+    val radius: Float = 0f,
+) : SoulModifier.Element
+
+/** Which side(s) a [BoxShadowElement] projects its shadow onto. */
+enum class ShadowSide { Top, Right, Bottom, Left, All }
+
+/**
+ * CSS-style outer box-shadow — a soft dark zone painted **outside** the node's bounds.
+ * Use [side] to project the shadow only onto a specific neighbour (`Right` for a sidebar
+ * that should fade into the body, `Bottom` for a top nav that should fade downward, etc).
+ *
+ * For `side = All` the implementation uses `NvgRenderer.dropShadow` (a four-sided ring).
+ * For a specific side, it paints a directional gradient strip adjacent to that edge.
+ *
+ * [blur] is the falloff radius; [spread] expands the inner edge outward before the blur.
+ */
+data class BoxShadowElement(
+    val blur: Float,
+    val spread: Float = 0f,
+    val side: ShadowSide = ShadowSide.All,
+    /**
+     * Color at the source-adjacent edge for directional shadows. Default is the same
+     * translucent black `dropShadow` uses internally. Pass the panel's bg color (fully
+     * opaque) for a "panel extends and fades" effect — the gradient begins seamlessly
+     * adjacent to the panel and fades to transparent.
+     */
+    val color: Int = 0x80000000.toInt(),
+) : SoulModifier.Element
 
 /**
  * Fixed (or minimum) size override.
@@ -93,7 +159,33 @@ fun SoulModifier.padding(
 fun SoulModifier.background(
     color: Int,
     radius: Float = 0f,
-): SoulModifier = then(BackgroundElement(color, radius))
+    rounding: CornerRounding = CornerRounding.Full,
+): SoulModifier = then(BackgroundElement(color, radius, rounding))
+
+/**
+ * Paint a (rounded) linear-gradient background under the node's content. The gradient runs
+ * from [color1] at the start of [direction] to [color2] at the end — use a transparent color
+ * at one end to fade into whatever's behind (e.g. for a soft sidebar edge that bleeds into
+ * the content panel).
+ */
+fun SoulModifier.gradientBackground(
+    color1: Int,
+    color2: Int,
+    direction: com.soulreturns.platform.render.nvg.NvgGradient,
+    radius: Float = 0f,
+): SoulModifier = then(GradientBackgroundElement(color1, color2, direction, radius))
+
+/**
+ * Add a CSS-style outer box-shadow. Paints a soft dark ring outside the node's bounds; pair
+ * with a `.background(...)` modifier on the same node so the shadow has a visible "from"
+ * shape. The shadow uses the background's radius (if any) so rounded panels look right.
+ */
+fun SoulModifier.boxShadow(
+    blur: Float,
+    spread: Float = 0f,
+    side: ShadowSide = ShadowSide.All,
+    color: Int = 0x80000000.toInt(),
+): SoulModifier = then(BoxShadowElement(blur, spread, side, color))
 
 /** Force exact size on one or both axes. Null = no override. */
 fun SoulModifier.size(

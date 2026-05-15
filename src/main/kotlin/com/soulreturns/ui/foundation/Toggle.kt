@@ -69,12 +69,15 @@ internal class ToggleNode(
     ) {
         val m = measured ?: return
         val hovered = SoulInput.isHovered(ownerKey)
+        // Off-state track uses `panelHover` (not `panelInset`) so the track stays visible
+        // when the toggle sits inside a `panelInset` row / section — otherwise the entire
+        // pill blends into its container and only the knob is visible.
         val trackColor =
             when {
                 value && hovered -> SoulTheme.colors.accentDim
                 value -> SoulTheme.colors.accent
-                hovered -> SoulTheme.colors.panelHover
-                else -> SoulTheme.colors.panelInset
+                hovered -> 0xFF2F2F2F.toInt()
+                else -> SoulTheme.colors.panelHover
             }
         val knobColor = if (value) 0xFFFFFFFFu.toInt() else SoulTheme.colors.textDim
 

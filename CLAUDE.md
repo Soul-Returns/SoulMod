@@ -197,18 +197,22 @@ Never use classes for features. State (if any) lives on the singleton itself. Fe
 
 ### Config UI architecture
 
-The config screen has been split into a thin orchestrator + several focused helpers under `ui/config/`. Editing the screen usually means editing one of the helpers, not `SoulConfigScreen.kt`.
+Post-P4.3 the config screen is a single `SoulScreen` (`config/gui/SoulConfigScreen.kt`) built on the Soul UI framework — declarative composables, per-frame rebuild, no manual `rebuildContent` calls. The pure-data helpers under `ui/config/` survive; the owo-ui based renderers / row builders / social icons were deleted in P4.4.
 
 | File | Responsibility |
 |---|---|
-| `config/gui/SoulConfigScreen.kt` | Lifecycle (`build`/`rebuildContent`), sidebar list management, breadcrumb, search, capture-keybind input. Implements `ConfigScreenContext` so helpers can call back into screen-only operations. |
+| `config/gui/SoulConfigScreen.kt` | The whole screen: top nav (Soul + version + breadcrumb + search), collapsible sidebar, scrollable body with `OptionSection` / `ActionSection` / `LinkSection`, Move GUI footer, Done button. State (active cat/sub, search query, scroll offsets, expanded categories, keybind capture target) lives as `@Volatile` fields and the composer re-reads them every frame. Implements `ConfigScreenContext` for action callbacks. |
 | `ui/config/registry/ConfigSections.kt` | **All declarative extension maps** (see table below) + the `isOptionVisible` predicate. Edit this to add new sections, links, action rows, or visibility rules. |
-| `ui/config/rows/RowBuilders.kt` | Builds option rows, action rows, link rows, labeled-card sections. Owns the per-rebuild reset-button slot tracking. |
-| `ui/config/components/ConfigRenderers.kt` | Stateless `ButtonComponent.Renderer` factories: category header, sidebar item, footer button, action button. |
-| `ui/config/components/SocialIcons.kt` | Discord + GitHub icon buttons in the title bar. |
 | `ui/config/model/CategoriesCollector.kt` | Walks the owo-config wrapper into a normalized `List<CategoryEntry>`. |
 | `ui/config/search/ConfigSearchFilter.kt` | Pure search filter over the categories list. |
 | `ui/config/model/Entries.kt` | Data classes (`CategoryEntry`, `SubcategoryEntry`, `LinkTarget`, `ActionRowSpec`) + the `ConfigScreenContext` interface. |
+
+**Visual structure inside the card** (`panel` color, `radiusMedium` rounded corners):
+- **Top nav** (full card width, half-rounded top, dark `0xFF111111` + bottom box-shadow): `Soul` title + version label on the left (sidebar width), vertical line splitter, breadcrumb + search field on the right.
+- **Sidebar** (left column under top nav, half-rounded **only on the bottom-left** so the card's other corners stay clean): one uniform `0xFF161616` bg, right-side directional shadow bleeding into the body. Inside: the categories ScrollableList and a separate footer Box containing the Move GUI button (the inner Box isolates the button's hit region from the scroll list's items — without it, items scrolled below the viewport extended their click regions into the footer area).
+- **Body** (right of sidebar): scrollable column of section cards (`panelInset` Surfaces). Option / Action / Link rows are all pinned to `ROW_HEIGHT = 32f` so toggles (18), sliders (14), text fields (18), and buttons (27) all center inside the same vertical slot.
+
+**Option rows** use SpaceBetween: label cluster on the left (optional `↳` glyph + label), control cluster on the right (slider/toggle/text field + per-option ↺ reset chip when value ≠ default).
 
 **Extension points (all in `ConfigSections.kt`):**
 
@@ -230,7 +234,7 @@ The config screen has been split into a thin orchestrator + several focused help
 - **Sidebar text colors:** category headers white (`Theme.TEXT`), subcategories gray (`Theme.TEXT_DIM`) → white when selected (selection is also indicated by the accent background).
 - **Dev category banner:** when `activeCategory == "dev"`, a translatable warning label (`text.config.soul/config.dev.warning`) is rendered above the scroll area.
 
-**Keybind capture flow:** `RowBuilders.buildKeybindButton` doesn't directly mutate any state — it calls `ctx.requestKeybindCapture(opt)`. The screen owns the `capturingKeybind` field privately and exposes `isCapturing(opt)` for the renderer's display. One-way data flow.
+**Keybind capture flow:** keybind buttons (paths in `ConfigSections.keybindOptions`) call `requestKeybindCapture(opt)` on the screen. The screen's `keyPressed` / `mouseClicked` overrides intercept the next input while `capturingKeybind` is non-null, set the option, save, and clear the capture state. Esc clears the binding.
 
 ## Soul UI framework
 
@@ -252,6 +256,8 @@ The mod uses LWJGL's NanoVG bindings for crisp vector rendering of the Soul UI f
 
 **Fonts bundled** at `src/main/resources/assets/soul/fonts/` (SIL OFL 1.1; license at `LICENSE-Inter.txt`): `Inter-Regular.ttf`, `Inter-Medium.ttf`, `Inter-SemiBold.ttf`. Loaded lazily via classpath on first font usage.
 
+**Inter glyph coverage gotcha.** Inter covers Basic Latin + Latin-1 + Latin Extended A/B + common punctuation (including guillemets like `›`), but **not the Unicode Geometric Shapes block** (U+25xx — triangles `▾ ▸ ▼ ▶ ◀ ▲`) nor Miscellaneous Symbols. Those render as the tofu "missing glyph" box. Stick to basic ASCII + Latin Extended punctuation for any UI character — e.g. `+` / `−` for tree-view expand/collapse, `›` for breadcrumb separators, `↺` (which happens to be present) for the reset icon. When introducing a new glyph, smoke-test it in `/soul config` before assuming it works.
+
 **LWJGL dependency.** `lwjgl-nanovg:3.3.3` (matches Minecraft's bundled lwjgl) + four-platform natives (`windows`, `linux`, `macos`, `macos-arm64`) declared in `build.gradle.kts` via `modImplementation` + `include` so natives bundle into the released jar.
 
 **GL debug noise filter.** `mixin/render/GlDebugMixin` intercepts `com.mojang.blaze3d.opengl.GlDebug.printDebugLog(IIIIIJJ)V` at HEAD; reads the message C-string via `MemoryUtil.memUTF8`; cancels for known-benign patterns (currently `"No active program"` — emitted hundreds-of-times-per-second by Mojang's PIP composite validation after NanoVG zeros `glUseProgram(0)` in `nvgEndFrame`). Real GL errors still bubble. Add to `SUPPRESSED_PATTERNS` only after investigating.
@@ -271,12 +277,23 @@ ui/composer/                 runtime + modifier system
                              helper; nextAutoKey() for stable per-frame keys
   SoulNode.kt                base node + SoulConstraints + SoulMeasured; measure/draw protocol;
                              open `draw(...)` so ScrollableList can wrap children w/ scissor
-  SoulModifier.kt            chain interface + PaddingElement / BackgroundElement /
+  SoulModifier.kt            chain interface + PaddingElement / BackgroundElement (with
+                             `CornerRounding`: Full/Top/Bottom/TopLeft/TopRight/BottomLeft/
+                             BottomRight via halfRoundedRect / cornerRoundedRect) /
+                             GradientBackgroundElement (linear gradient bg) /
+                             BoxShadowElement (with `ShadowSide`: All uses
+                             NvgRenderer.dropShadow ring; directional uses a gradient strip
+                             on one side, `color` defaults to translucent black but should
+                             be set to the panel's bg color for a "panel extends + fades"
+                             bleed instead of a dark patch) /
                              SizeElement / FillElement + extension API
-                             (.padding/.background/.size/.width/.height/.fillMaxWidth/...)
+                             (.padding/.background/.gradientBackground/.boxShadow/.size/
+                             .width/.height/.fillMaxWidth/...)
   ModifierUtils.kt           internal helpers: totalPaddingHorizontal/Vertical, contentOffset,
                              applySizeOverride (handles SizeElement AND FillElement),
-                             drawBackgrounds
+                             drawBackgrounds (paints BoxShadow first so the bg covers its
+                             hollow interior, then BackgroundElement / GradientBackgroundElement
+                             in chain order)
   Alignment.kt               HorizontalAlignment / VerticalAlignment / Arrangement enums +
                              alignHorizontal / alignVertical / arrangeAlong helpers
   InputModifiers.kt          ClickableElement + ScrollableElement + recordHitRegions helper
@@ -292,7 +309,9 @@ ui/foundation/               composable primitives
   Surface.kt                 themed rounded background (Box + Theme.colors.panel + radius + padding)
   Button.kt                  hover-aware clickable surface; `accent` boolean → accent/accentDim
                              hover state
-  Toggle.kt                  pill switch; off=panelInset, on=accent, hover variants
+  Toggle.kt                  pill switch; off=panelHover (visible against `panelInset` row
+                             cards — using `panelInset` would make the track blend in),
+                             on=accent, hover variants
   Tabs.kt                    segmented selector; per-tab key = `TabKey(prefix, index)` for
                              stable hover state; each tab records its own hit region at
                              `depth+1` so the strip's hit region doesn't shadow individual tabs
@@ -310,7 +329,13 @@ ui/input/
                                sets state, clears regions; **cursor is divided by panelScale** so
                                widgets reading SoulInput.cursorX get content coords matching their
                                unscaled hit regions
-                             - recordRegion called by layout drawSelf
+                             - recordRegion called by layout drawSelf; **clips against the
+                               active NanoVG scissor** (`NvgRenderer.currentScissorBounds`) —
+                               regions entirely outside are dropped, partially-inside regions
+                               have their rect shrunk to the visible portion. This is what
+                               keeps `ScrollableList` items that scrolled out of the viewport
+                               from intercepting clicks meant for siblings rendered after the
+                               scrollable (e.g. a footer button below the list).
                              - queueClick/queueScroll/queueRelease called by SoulGuiHudAdapter
                                from Fabric mouse events; coords arrive in absolute GUI-scaled
                                space
@@ -415,8 +440,8 @@ Opened via `/spv <username>`. Module under `profileviewer/`:
 - **`ProfileViewerService`** — resolves UUID via `MojangApi`, fetches profiles from the backend via `BackendClient`, opens `ProfileViewerScreen`.
 - **`MojangApi`** (under `profileviewer/api/`) — UUID resolution + cache.
 - **`SpvExecutor`** — SPV-specific logging wrapper around `platform/concurrent/SoulExecutor`.
-- **`ProfileViewerScreen`** — owo-ui screen with a top tab bar (currently: Dungeons). Uses `Theme.*` for all styling.
-- **`DungeonsTab`** — renders dungeons stats with XP progress bars and floor completion tables.
+- **`ProfileViewerScreen`** — Soul UI `SoulScreen` subclass (post-P4.2 migration; was previously owo-ui). Centered card on an opaque page backdrop with a header (name + profile pager), `Tabs` strip, and `ScrollableList` body. State (current profile, active tab, scroll offset) lives as `@Volatile` fields and the composer re-reads them every frame — no manual rebuild.
+- **`DungeonsTab`** — top-level `@SoulComposable fun DungeonsTabContent(member: JsonObject)`. Sections (`Catacombs` / `Classes` / `Catacombs Floors` / `Master Catacombs Floors` / `Totals`) are built from `Surface` cards containing `LevelRow` / `StatRow` / `FloorTable` composables; XP bars use the framework `ProgressBar`. All pure presentation — math and parsing remain in `service/DungeonsCalculator.kt` + `model/DungeonsView.kt`.
 
 (There is no separate `SpvHttp`; SPV uses `BackendClient` from `platform/http/`.)
 

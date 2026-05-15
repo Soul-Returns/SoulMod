@@ -155,14 +155,24 @@ internal class ScrollableListNode(
         val maxScroll = (contentHeight - viewportHeight).coerceAtLeast(0f)
         val clampedScroll = scrollOffset.coerceIn(0f, maxScroll)
 
+        val viewportTop = y
+        val viewportBottom = y + viewportHeight
         NvgRenderer.pushScissor(x, y, m.width, m.height)
         try {
             children.forEachIndexed { i, child ->
                 val pos = m.childPositions.getOrNull(i) ?: SoulMeasured.Position(0f, 0f)
+                val childTop = y + pos.y - clampedScroll
+                val childH = child.measured?.height ?: 0f
+                val childBottom = childTop + childH
+                // Skip entirely off-screen children. The scissor would clip them visually,
+                // but their `draw()` still records hit regions — leading to click-through
+                // bugs where an off-screen sidebar item steals clicks meant for a sibling
+                // composable below the scroll list (e.g. a "Move GUI" footer button).
+                if (childBottom < viewportTop || childTop > viewportBottom) return@forEachIndexed
                 child.draw(
                     x + pos.x,
-                    y + pos.y - clampedScroll,
-                    SoulConstraints.fixed(child.measured?.width ?: 0f, child.measured?.height ?: 0f),
+                    childTop,
+                    SoulConstraints.fixed(child.measured?.width ?: 0f, childH),
                     depth + 1,
                 )
             }

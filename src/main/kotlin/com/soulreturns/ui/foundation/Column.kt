@@ -78,11 +78,16 @@ internal class ColumnNode(
         val totalH = contentSumH + padV
         val (w, h) = outer.constrain(totalW, totalH)
 
+        // Cross-axis (horizontal) alignment is computed against the column's **own** content
+        // width — when `fillMaxWidth`/`fillMaxSize` expands the column past its content, the
+        // children align inside the wider area. Using `maxChildW` here would make
+        // `HorizontalAlignment.Center` a no-op for single-child columns.
+        val crossAxisSize = (w - padH).coerceAtLeast(maxChildW)
         val arrangementSpace = (h - padV).coerceAtLeast(0f)
         val mainPositions = arrangeAlong(arrangement, childHeights, arrangementSpace, gap)
         val positions =
             childMeasured.mapIndexed { i, m ->
-                val xOffset = offset.x + alignHorizontal(horizontalAlignment, m.width, maxChildW)
+                val xOffset = offset.x + alignHorizontal(horizontalAlignment, m.width, crossAxisSize)
                 val yOffset = offset.y + mainPositions[i]
                 SoulMeasured.Position(xOffset, yOffset)
             }

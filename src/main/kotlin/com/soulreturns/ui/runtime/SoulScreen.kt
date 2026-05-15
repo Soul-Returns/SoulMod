@@ -5,8 +5,11 @@ import com.soulreturns.ui.composer.SoulComposable
 import com.soulreturns.ui.composer.SoulComposer
 import com.soulreturns.ui.composer.SoulConstraints
 import com.soulreturns.ui.input.SoulInput
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
+import net.minecraft.client.input.CharacterEvent
+import net.minecraft.client.input.KeyEvent
 import net.minecraft.client.input.MouseButtonEvent
 import net.minecraft.network.chat.Component
 
@@ -45,11 +48,19 @@ abstract class SoulScreen(title: Component) : Screen(title) {
     abstract fun Content()
 
     /**
-     * Whether to draw the standard Minecraft dimmed background behind our content. Subclasses
-     * can override to `false` to paint over a transparent screen (e.g. a full-bleed
-     * hand-drawn background).
+     * Whether this screen wants Minecraft's vanilla blurred background painted **behind** the
+     * Soul UI content. Subclasses override + return true to opt in (default `false`).
+     *
+     * **Caveats** — 1.21.11's `GuiRenderState` enforces one blur per frame. If Minecraft's
+     * `LoadingOverlay` is active (e.g. during the initial resource-pack reload, or during a
+     * resource-pack swap), it has already consumed the frame's blur slot and our call would
+     * crash. The [render] dispatch below checks `Minecraft.overlay == null` first and skips
+     * the blur in that case, also wrapped in try/catch in case another mod or vanilla layer
+     * adds its own blur path. When blur is skipped the screen's own [Content]-painted dim
+     * (e.g. a `Column.background(0xA0000000)`) carries the visual; combined with blur the
+     * result is moderately darker but still readable.
      */
-    protected open fun renderDimBackground(): Boolean = true
+    protected open fun blurBackground(): Boolean = false
 
     override fun render(
         context: GuiGraphics,
@@ -57,7 +68,14 @@ abstract class SoulScreen(title: Component) : Screen(title) {
         mouseY: Int,
         partialTick: Float,
     ) {
-        if (renderDimBackground()) renderBackground(context, mouseX, mouseY, partialTick)
+        if (blurBackground() && Minecraft.getInstance().overlay == null) {
+            try {
+                renderBackground(context, mouseX, mouseY, partialTick)
+            } catch (_: IllegalStateException) {
+                // Another component already requested blur this frame — silently skip.
+                // Visuals fall back to whatever dim layer [Content] paints itself.
+            }
+        }
         NvgFrame.submit(context, x = 0, y = 0, w = width, h = height) {
             val root =
                 SoulComposer.create().build {
@@ -93,6 +111,40 @@ abstract class SoulScreen(title: Component) : Screen(title) {
     ): Boolean {
         SoulInput.queueScroll(mouseX.toFloat(), mouseY.toFloat(), verticalAmount.toFloat())
         return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
+    }
+
+    override fun charTyped(characterEvent: CharacterEvent): Boolean {
+        SoulInput.queueChar(characterEvent.codepoint())
+        return super.charTyped(characterEvent)
+    }
+
+    override fun keyPressed(keyEvent: KeyEvent): Boolean {
+        val editKey =
+            when (keyEvent.key()) {
+                org.lwjgl.glfw.GLFW.GLFW_KEY_BACKSPACE -> SoulInput.EditKey.Backspace
+                org.lwjgl.glfw.GLFW.GLFW_KEY_DELETE -> SoulInput.EditKey.Delete
+                org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT -> SoulInput.EditKey.Left
+                org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT -> SoulInput.EditKey.Right
+                org.lwjgl.glfw.GLFW.GLFW_KEY_HOME -> SoulInput.EditKey.Home
+                org.lwjgl.glfw.GLFW.GLFW_KEY_END -> SoulInput.EditKey.End
+                org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER, org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER ->
+                    SoulInput.EditKey.Enter
+                org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE -> {
+                    // Esc: clear focus first; if no focused element, fall through to super
+                    // (which closes the screen via shouldCloseOnEsc).
+                    if (SoulInput.focusedKey != null) {
+                        SoulInput.setFocus(null)
+                        return true
+                    }
+                    null
+                }
+                else -> null
+            }
+        if (editKey != null) {
+            SoulInput.queueEditKey(editKey)
+            return true
+        }
+        return super.keyPressed(keyEvent)
     }
 
     override fun isPauseScreen(): Boolean = false

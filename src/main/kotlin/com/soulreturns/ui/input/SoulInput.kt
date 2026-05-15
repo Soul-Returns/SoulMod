@@ -44,6 +44,31 @@ object SoulInput {
      */
     private val frameHoverAccumulator: MutableSet<Any> = mutableSetOf()
 
+    /**
+     * Key of the currently-focused element — typically the [com.soulreturns.ui.foundation
+     * .TextField] that has the keyboard. Mouse clicks landing inside a region with a
+     * `focusKey` set focus to that key; clicking outside any focusable region (or pressing
+     * Escape) clears focus to `null`.
+     */
+    @Volatile
+    var focusedKey: Any? = null
+        private set
+
+    /**
+     * Per-frame queue of typed characters from `Screen.charTyped(codepoint, mods)`. The
+     * focused composable drains these during its compose. Cleared on each [flush] at the
+     * last-panel boundary so unconsumed typing doesn't leak into the next frame.
+     */
+    private val pendingChars: ArrayDeque<Int> = ArrayDeque()
+
+    /**
+     * Per-frame queue of "edit keys" (backspace, delete, arrows, etc.) from
+     * `Screen.keyPressed`. Same lifecycle as [pendingChars].
+     */
+    private val pendingEditKeys: ArrayDeque<EditKey> = ArrayDeque()
+
+    enum class EditKey { Backspace, Delete, Left, Right, Home, End, Enter, Escape }
+
     /** Latest cursor logical-pixel position. Defaults to off-screen until [startFrame] runs. */
     var cursorX: Float = -1f
         private set
@@ -131,9 +156,37 @@ object SoulInput {
         regions.clear()
     }
 
-    /** Record a hit region during the draw pass. */
+    /**
+     * Record a hit region during the draw pass. The region is clipped to the active NanoVG
+     * scissor — entirely-outside regions are dropped, partially-inside regions have their
+     * bounds shrunk to the visible portion. Without the clip step, a sub-item at the very
+     * bottom of a [com.soulreturns.ui.foundation.ScrollableList] whose region extends past
+     * the viewport edge would intercept clicks landing in the area just below the scrollable
+     * (e.g. a footer button's padding zone).
+     */
     fun recordRegion(region: HitRegion) {
-        regions.add(region)
+        val s = com.soulreturns.platform.render.nvg.NvgRenderer.currentScissorBounds()
+        if (s == null) {
+            regions.add(region)
+            return
+        }
+        val rx1 = region.x
+        val ry1 = region.y
+        val rx2 = rx1 + region.width
+        val ry2 = ry1 + region.height
+        if (rx1 >= s.maxX || rx2 <= s.x || ry1 >= s.maxY || ry2 <= s.y) {
+            return
+        }
+        val clipX = rx1.coerceAtLeast(s.x)
+        val clipY = ry1.coerceAtLeast(s.y)
+        val clipW = (rx2.coerceAtMost(s.maxX) - clipX).coerceAtLeast(0f)
+        val clipH = (ry2.coerceAtMost(s.maxY) - clipY).coerceAtLeast(0f)
+        if (clipW <= 0f || clipH <= 0f) return
+        if (clipX == rx1 && clipY == ry1 && clipW == region.width && clipH == region.height) {
+            regions.add(region)
+        } else {
+            regions.add(region.copy(x = clipX, y = clipY, width = clipW, height = clipH))
+        }
     }
 
     /** Enqueue a click event to be matched against regions during the next [flush]. */
@@ -159,6 +212,46 @@ object SoulInput {
     /** Enqueue a mouse-up event. Cleared press state lands in the next [flush]. */
     fun queueRelease() {
         pendingRelease = true
+    }
+
+    /**
+     * Set focus. Called by clickable elements on press, or programmatically (e.g. when a
+     * screen first opens and wants a particular field focused).
+     *
+     * Pass `null` to clear focus.
+     */
+    fun setFocus(key: Any?) {
+        focusedKey = key
+    }
+
+    /** Enqueue a Unicode codepoint from `Screen.charTyped(...)`. */
+    fun queueChar(codepoint: Int) {
+        pendingChars.addLast(codepoint)
+    }
+
+    /** Enqueue an edit key from `Screen.keyPressed(...)`. */
+    fun queueEditKey(key: EditKey) {
+        pendingEditKeys.addLast(key)
+    }
+
+    /**
+     * Drain typed-character events queued since the last frame. Each call returns the chars
+     * queued and removes them so the next composable doesn't double-process. Focused-element
+     * composables call this during their compose to update internal text state.
+     */
+    fun drainChars(): List<Int> {
+        if (pendingChars.isEmpty()) return emptyList()
+        val copy = pendingChars.toList()
+        pendingChars.clear()
+        return copy
+    }
+
+    /** Drain edit-key events. Same semantics as [drainChars]. */
+    fun drainEditKeys(): List<EditKey> {
+        if (pendingEditKeys.isEmpty()) return emptyList()
+        val copy = pendingEditKeys.toList()
+        pendingEditKeys.clear()
+        return copy
     }
 
     /**

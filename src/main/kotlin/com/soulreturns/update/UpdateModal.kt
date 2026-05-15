@@ -1,194 +1,168 @@
 package com.soulreturns.update
 
 import com.soulreturns.Soul
-import com.soulreturns.render.DrawContextRenderer
-import com.soulreturns.ui.theme.Theme
-import io.wispforest.owo.ui.base.BaseOwoScreen
-import io.wispforest.owo.ui.component.ButtonComponent
-import io.wispforest.owo.ui.component.LabelComponent
-import io.wispforest.owo.ui.component.UIComponents
-import io.wispforest.owo.ui.container.FlowLayout
-import io.wispforest.owo.ui.container.UIContainers
-import io.wispforest.owo.ui.core.HorizontalAlignment
-import io.wispforest.owo.ui.core.Insets
-import io.wispforest.owo.ui.core.OwoUIAdapter
-import io.wispforest.owo.ui.core.Sizing
-import io.wispforest.owo.ui.core.Surface
-import io.wispforest.owo.ui.core.VerticalAlignment
+import com.soulreturns.ui.composer.Arrangement
+import com.soulreturns.ui.composer.HorizontalAlignment
+import com.soulreturns.ui.composer.SoulComposable
+import com.soulreturns.ui.composer.SoulModifier
+import com.soulreturns.ui.composer.background
+import com.soulreturns.ui.composer.fillMaxSize
+import com.soulreturns.ui.composer.fillMaxWidth
+import com.soulreturns.ui.composer.width
+import com.soulreturns.ui.foundation.Button
+import com.soulreturns.ui.foundation.Column
+import com.soulreturns.ui.foundation.Row
+import com.soulreturns.ui.foundation.Surface
+import com.soulreturns.ui.foundation.Text
+import com.soulreturns.ui.runtime.SoulScreen
+import com.soulreturns.ui.theme.SoulTheme
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
 import net.minecraft.util.Util
 import java.net.URI
 
-class UpdateModal(private val info: UpdateInfo) : BaseOwoScreen<FlowLayout>(Component.literal("Soul Update")) {
+/**
+ * Update-available modal — rebuilt on the Soul UI framework (P4.1 migration).
+ *
+ * State lives on the screen object as `@Volatile` fields; the composable re-reads them
+ * each frame, so the async-callback path from [Updater.downloadAndSchedule] just mutates
+ * state and the visual updates on the next frame. No manual `rebuildButtons()` needed.
+ */
+class UpdateModal(private val info: UpdateInfo) : SoulScreen(Component.literal("Soul Update")) {
     companion object {
         /** Set to true for the lifetime of the game session when the player dismisses the modal. */
-        var dismissed = false
+        var dismissed: Boolean = false
     }
 
     private enum class State { IDLE, DOWNLOADING, DONE, ERROR }
 
-    private var state = State.IDLE
-    private var errorMessage = ""
-    private lateinit var buttonsRow: FlowLayout
-    private lateinit var statusLabel: LabelComponent
+    @Volatile private var state: State = State.IDLE
 
-    override fun createAdapter(): OwoUIAdapter<FlowLayout> =
-        OwoUIAdapter.create(this) { hSize, vSize -> UIContainers.verticalFlow(hSize, vSize) }
+    @Volatile private var statusText: String = ""
 
-    override fun build(root: FlowLayout) {
-        root.surface(Surface.BLANK)
-        root.horizontalAlignment(HorizontalAlignment.CENTER)
-        root.verticalAlignment(VerticalAlignment.CENTER)
+    override fun shouldCloseOnEsc(): Boolean = true
 
-        val card = UIContainers.verticalFlow(Sizing.fixed(340), Sizing.content())
-        card.surface(Theme.panelSurface)
-        card.padding(Insets.of(22))
-        card.gap(10)
-
-        card.child(
-            UIComponents.label(Component.literal("Soul Update Available"))
-                .color(Theme.color(Theme.TEXT))
-        )
-
-        val currentVer = Soul.version.substringBefore("+")
-        card.child(
-            UIComponents.label(Component.literal("$currentVer  →  ${info.version}"))
-                .color(Theme.color(Theme.ACCENT))
-        )
-
-        statusLabel = UIComponents.label(Component.empty())
-        statusLabel.color(Theme.color(Theme.TEXT_DIM))
-        statusLabel.horizontalSizing(Sizing.fill(100))
-        card.child(statusLabel)
-
-        buttonsRow = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.fixed(20))
-        buttonsRow.horizontalAlignment(HorizontalAlignment.RIGHT)
-        buttonsRow.gap(8)
-        card.child(buttonsRow)
-
-        rebuildButtons()
-        root.child(card)
-    }
-
-    private fun rebuildButtons() {
-        buttonsRow.clearChildren()
-        when (state) {
-            State.IDLE -> {
-                buttonsRow.child(ghostButton("Not Now") { dismiss() })
-                buttonsRow.child(
-                    ghostButton("View Release") {
-                        Util.getPlatform().openUri(URI.create(info.releaseUrl))
-                    }
-                )
-                buttonsRow.child(accentButton("Update") { startDownload() })
-            }
-            State.DOWNLOADING -> {
-                buttonsRow.child(
-                    UIComponents.label(Component.literal("Downloading…"))
-                        .color(Theme.color(Theme.TEXT_DIM))
-                )
-            }
-            State.DONE -> {
-                buttonsRow.child(ghostButton("Later") { dismiss() })
-                buttonsRow.child(accentButton("Restart Now") { System.exit(0) })
-            }
-            State.ERROR -> {
-                buttonsRow.child(ghostButton("Close") { dismiss() })
-            }
-        }
-    }
-
-    private fun startDownload() {
-        state = State.DOWNLOADING
-        rebuildButtons()
-        Updater.downloadAndSchedule(
-            info,
-            onProgress = { p ->
-                statusLabel.text(Component.literal("Downloading… ${(p * 100).toInt()}%"))
-            },
-            onDone = {
-                state = State.DONE
-                statusLabel.text(Component.literal("Download complete. Restart to apply the update."))
-                rebuildButtons()
-            },
-            onError = { msg ->
-                state = State.ERROR
-                errorMessage = msg
-                statusLabel.text(Component.literal("Error: $errorMessage"))
-                rebuildButtons()
-            }
-        )
-    }
-
-    private fun dismiss() {
-        dismissed = true
-        Minecraft.getInstance().setScreen(null)
-    }
-
-    override fun shouldCloseOnEsc() = true
+    // Temporarily disabled — testing how the dim alone looks. Restore by returning `true`
+    // (or just delete this override; the SoulScreen default is `false`).
+    override fun blurBackground(): Boolean = false
 
     override fun onClose() {
         dismissed = true
         super.onClose()
     }
 
-    private fun accentButton(
-        label: String,
-        action: () -> Unit
-    ): ButtonComponent {
-        val btn = UIComponents.button(Component.empty()) { action() }
-        btn.horizontalSizing(Sizing.fixed(100))
-        btn.verticalSizing(Sizing.fill(100))
-        btn.margins(Insets.none())
-        btn.renderer(
-            ButtonComponent.Renderer { ctx, button, _ ->
-                val bg = if (button.isHovered) Theme.ACCENT_DIM else Theme.ACCENT
-                DrawContextRenderer.roundedFill(
-                    ctx,
-                    button.x,
-                    button.y,
-                    button.x + button.width,
-                    button.y + button.height,
-                    bg,
-                    Theme.ITEM_RADIUS
-                )
-                val tr = Minecraft.getInstance().font
-                val tx = button.x + (button.width - tr.width(label)) / 2
-                val ty = button.y + (button.height - tr.lineHeight) / 2
-                ctx.drawString(tr, Component.literal(label), tx, ty, Theme.TEXT, false)
+    @SoulComposable
+    override fun Content() {
+        // Full-screen opaque backdrop. The title-screen panorama is brighter than typical
+        // game backgrounds (HDR-ish sunlit skybox) — any translucent dim leaves the bright
+        // sand / sky bleeding through unpleasantly. Solid `Theme.colors.background` keeps the
+        // modal readable. Users still see the spinning panorama briefly before the modal
+        // opens (the 1.2 s opening delay in `Soul.onInitializeClient`) and after it closes.
+        Column(
+            modifier = SoulModifier.Empty.fillMaxSize().background(SoulTheme.colors.background),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = HorizontalAlignment.Center,
+        ) {
+            Surface(
+                modifier = SoulModifier.Empty.width(340f),
+                padding = 22f,
+            ) {
+                Column(gap = 10f, modifier = SoulModifier.Empty.fillMaxWidth()) {
+                    Text(
+                        text = "Soul Update Available",
+                        size = SoulTheme.typography.title.size,
+                        color = SoulTheme.colors.text,
+                        font = SoulTheme.typography.title.font,
+                    )
+
+                    val currentVer = Soul.version.substringBefore("+")
+                    Text(
+                        text = "$currentVer  →  ${info.version}",
+                        size = SoulTheme.typography.heading.size,
+                        color = SoulTheme.colors.accent,
+                        font = SoulTheme.typography.heading.font,
+                    )
+
+                    if (statusText.isNotEmpty()) {
+                        Text(
+                            text = statusText,
+                            size = SoulTheme.typography.body.size,
+                            color = SoulTheme.colors.textDim,
+                            font = SoulTheme.typography.body.font,
+                        )
+                    }
+
+                    ButtonsRow()
+                }
             }
-        )
-        return btn
+        }
     }
 
-    private fun ghostButton(
-        label: String,
-        action: () -> Unit
-    ): ButtonComponent {
-        val btn = UIComponents.button(Component.empty()) { action() }
-        btn.horizontalSizing(Sizing.fixed(80))
-        btn.verticalSizing(Sizing.fill(100))
-        btn.margins(Insets.none())
-        btn.renderer(
-            ButtonComponent.Renderer { ctx, button, _ ->
-                if (button.isHovered) {
-                    DrawContextRenderer.roundedFill(
-                        ctx,
-                        button.x,
-                        button.y,
-                        button.x + button.width,
-                        button.y + button.height,
-                        Theme.PANEL_HOVER,
-                        Theme.ITEM_RADIUS
+    @SoulComposable
+    private fun ButtonsRow() {
+        Row(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            gap = 8f,
+        ) {
+            when (state) {
+                State.IDLE -> {
+                    Button(label = "Not Now", onClick = { dismiss() }, key = "update.notnow")
+                    Button(
+                        label = "View Release",
+                        onClick = { Util.getPlatform().openUri(URI.create(info.releaseUrl)) },
+                        key = "update.release",
+                    )
+                    Button(
+                        label = "Update",
+                        onClick = { startDownload() },
+                        key = "update.start",
+                        accent = true,
                     )
                 }
-                val tr = Minecraft.getInstance().font
-                val tx = button.x + (button.width - tr.width(label)) / 2
-                val ty = button.y + (button.height - tr.lineHeight) / 2
-                ctx.drawString(tr, Component.literal(label), tx, ty, Theme.TEXT_DIM, false)
+                State.DOWNLOADING -> {
+                    Text(
+                        text = "Downloading…",
+                        size = SoulTheme.typography.body.size,
+                        color = SoulTheme.colors.textDim,
+                        font = SoulTheme.typography.body.font,
+                    )
+                }
+                State.DONE -> {
+                    Button(label = "Later", onClick = { dismiss() }, key = "update.later")
+                    Button(
+                        label = "Restart Now",
+                        onClick = { System.exit(0) },
+                        key = "update.restart",
+                        accent = true,
+                    )
+                }
+                State.ERROR -> {
+                    Button(label = "Close", onClick = { dismiss() }, key = "update.close")
+                }
             }
+        }
+    }
+
+    private fun startDownload() {
+        state = State.DOWNLOADING
+        statusText = "Downloading… 0%"
+        Updater.downloadAndSchedule(
+            info,
+            onProgress = { p -> statusText = "Downloading… ${(p * 100).toInt()}%" },
+            onDone = {
+                state = State.DONE
+                statusText = "Download complete. Restart to apply the update."
+            },
+            onError = { msg ->
+                state = State.ERROR
+                statusText = "Error: $msg"
+            },
         )
-        return btn
+    }
+
+    private fun dismiss() {
+        dismissed = true
+        Minecraft.getInstance().setScreen(null)
     }
 }

@@ -57,13 +57,19 @@ internal class TabsNode(
     override val modifier: SoulModifier,
 ) : SoulNode() {
     companion object {
-        private const val TAB_H = 14f
-        private const val TAB_PAD_X = 8f
+        // Match `Button`'s overall geometry exactly: `Surface(padding = paddingSmall = 8f)`
+        // wraps `Box(padding(horizontal = 2f))` wraps body-text. So total height = font + 16,
+        // total width per label = text + 20. Matching values keeps a Tabs strip vertically
+        // aligned with adjacent Button chips in mixed Rows (HUD footer, screen toolbars, etc).
+        private const val TAB_PAD_V = 8f
+        private const val TAB_PAD_X = 10f
         private const val TAB_GAP = 4f
         private val FONT
             get() = SoulTheme.typography.body.font
         private val FONT_SIZE
             get() = SoulTheme.typography.body.size
+        private val TAB_HEIGHT
+            get() = FONT_SIZE + TAB_PAD_V * 2f
     }
 
     // Computed in measure, consumed in drawSelf.
@@ -74,7 +80,7 @@ internal class TabsNode(
 
         val widths = options.map { NvgRenderer.textWidth(it, FONT_SIZE, FONT) + TAB_PAD_X * 2f }
         val contentW = widths.sum() + TAB_GAP * (options.size - 1).coerceAtLeast(0)
-        val (w, h) = c.constrain(contentW, TAB_H)
+        val (w, h) = c.constrain(contentW, TAB_HEIGHT)
 
         // Hug content even if parent says "fill" — but if fillMaxWidth forced us wider,
         // distribute the extra space as gap between tabs (centered).
@@ -106,16 +112,25 @@ internal class TabsNode(
             val selected = i == selectedIndex
             val tabKey = TabKey(keyPrefix, i)
             val hovered = SoulInput.isHovered(tabKey)
+            // "Tab navigation" look — unselected tabs render without a fill so the bar reads
+            // as a navigation strip, not a stack of clickable chips. Hover gives a subtle
+            // panelHover; selection gets the accent fill. This is what visually distinguishes
+            // Tabs from Button despite the matching geometry — Buttons are always filled.
             val bg =
                 when {
                     selected && hovered -> SoulTheme.colors.accentDim
                     selected -> SoulTheme.colors.accent
                     hovered -> SoulTheme.colors.panelHover
-                    else -> SoulTheme.colors.panel
+                    else -> 0
                 }
-            val textColor = if (selected) 0xFFFFFFFFu.toInt() else SoulTheme.colors.text
+            val textColor =
+                when {
+                    selected -> 0xFFFFFFFFu.toInt()
+                    hovered -> SoulTheme.colors.text
+                    else -> SoulTheme.colors.textDim
+                }
             val absX = x + relX
-            NvgRenderer.rect(absX, y, width, m.height, bg, SoulTheme.dimens.radiusSmall)
+            if (bg != 0) NvgRenderer.rect(absX, y, width, m.height, bg, SoulTheme.dimens.radiusSmall)
 
             val labelW = NvgRenderer.textWidth(label, FONT_SIZE, FONT)
             val textX = absX + (width - labelW) / 2f

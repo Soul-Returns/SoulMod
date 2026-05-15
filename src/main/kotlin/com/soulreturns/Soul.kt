@@ -106,7 +106,20 @@ object Soul : ClientModInitializer {
             if (screen !is TitleScreen) return@register
             val update = UpdateChecker.latestUpdate ?: return@register
             if (UpdateModal.dismissed) return@register
-            client.execute { client.setScreen(UpdateModal(update)) }
+            // Defer ~1.2 s so the title screen panorama visibly opens first — otherwise the
+            // modal pops up before the screen has finished its fade-in and feels jarring.
+            // CompletableFuture.delayedExecutor runs on a shared scheduler; we hop back to
+            // the render thread via client.execute and re-check state in case the user
+            // dismissed mid-delay or navigated away from TitleScreen.
+            java.util.concurrent.CompletableFuture
+                .delayedExecutor(1200, java.util.concurrent.TimeUnit.MILLISECONDS)
+                .execute {
+                    client.execute {
+                        if (client.screen is TitleScreen && !UpdateModal.dismissed) {
+                            client.setScreen(UpdateModal(update))
+                        }
+                    }
+                }
         }
         ClientPlayConnectionEvents.JOIN.register { _, _, client ->
             val update = UpdateChecker.latestUpdate ?: return@register

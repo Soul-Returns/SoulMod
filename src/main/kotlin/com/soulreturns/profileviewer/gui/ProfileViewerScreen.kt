@@ -3,166 +3,251 @@ package com.soulreturns.profileviewer.gui
 import com.soulreturns.profileviewer.api.MojangApi
 import com.soulreturns.profileviewer.model.SkyblockProfile
 import com.soulreturns.profileviewer.model.SkyblockProfilesResponse
-import com.soulreturns.render.DrawContextRenderer
-import com.soulreturns.ui.theme.Theme
-import io.wispforest.owo.ui.base.BaseOwoScreen
-import io.wispforest.owo.ui.component.ButtonComponent
-import io.wispforest.owo.ui.component.LabelComponent
-import io.wispforest.owo.ui.component.UIComponents
-import io.wispforest.owo.ui.container.FlowLayout
-import io.wispforest.owo.ui.container.UIContainers
-import io.wispforest.owo.ui.core.HorizontalAlignment
-import io.wispforest.owo.ui.core.Insets
-import io.wispforest.owo.ui.core.OwoUIAdapter
-import io.wispforest.owo.ui.core.Sizing
-import io.wispforest.owo.ui.core.Surface
-import io.wispforest.owo.ui.core.VerticalAlignment
-import net.minecraft.client.Minecraft
+import com.soulreturns.ui.composer.Arrangement
+import com.soulreturns.ui.composer.HorizontalAlignment
+import com.soulreturns.ui.composer.SoulComposable
+import com.soulreturns.ui.composer.SoulModifier
+import com.soulreturns.ui.composer.VerticalAlignment
+import com.soulreturns.ui.composer.background
+import com.soulreturns.ui.composer.clickable
+import com.soulreturns.ui.composer.fillMaxSize
+import com.soulreturns.ui.composer.fillMaxWidth
+import com.soulreturns.ui.composer.height
+import com.soulreturns.ui.composer.padding
+import com.soulreturns.ui.composer.width
+import com.soulreturns.ui.foundation.Box
+import com.soulreturns.ui.foundation.Column
+import com.soulreturns.ui.foundation.Row
+import com.soulreturns.ui.foundation.ScrollableList
+import com.soulreturns.ui.foundation.Spacer
+import com.soulreturns.ui.foundation.Surface
+import com.soulreturns.ui.foundation.Tabs
+import com.soulreturns.ui.foundation.Text
+import com.soulreturns.ui.input.SoulInput
+import com.soulreturns.ui.runtime.SoulScreen
+import com.soulreturns.ui.theme.SoulTheme
 import net.minecraft.network.chat.Component
 import java.util.UUID
 
+/**
+ * Profile viewer screen — rebuilt on the Soul UI framework (P4.2 migration).
+ *
+ * Layout: centered card on a dark page backdrop. The card holds, top-to-bottom:
+ *   - Header: player name + (when there are multiple profiles) ◀ / current-profile / ▶ pager.
+ *   - Tab strip — currently a single tab (Dungeons) so the bar is functional but minimal.
+ *   - Scrollable body — the active tab's content. Internal padding handled by [ScrollableList].
+ *
+ * State is held as `@Volatile` fields and re-read every frame by [Content] — no manual
+ * `rebuildBody()` call needed; switching profiles or tabs just mutates state and the next
+ * frame picks up the new composition.
+ */
 class ProfileViewerScreen(
     private val name: String,
     uuid: UUID,
     private val response: SkyblockProfilesResponse,
     initial: SkyblockProfile,
-) : BaseOwoScreen<FlowLayout>(Component.literal("Soul Profile Viewer — $name")) {
-    private var current: SkyblockProfile = initial
+) : SoulScreen(Component.literal("Soul Profile Viewer — $name")) {
     private val uuidUndashed = MojangApi.toUndashed(uuid)
-    private var activeTab = "dungeons"
-    private lateinit var bodyContainer: FlowLayout
-    private var profileNameLabel: LabelComponent? = null
 
-    override fun createAdapter(): OwoUIAdapter<FlowLayout> =
-        OwoUIAdapter.create(this) { hSize, vSize -> UIContainers.verticalFlow(hSize, vSize) }
+    @Volatile private var current: SkyblockProfile = initial
 
-    override fun build(root: FlowLayout) {
-        root.surface(Theme.backgroundSurface)
-        root.horizontalAlignment(HorizontalAlignment.CENTER)
-        root.verticalAlignment(VerticalAlignment.CENTER)
+    @Volatile private var activeTabIndex: Int = 0
 
-        val card = UIContainers.verticalFlow(Sizing.fill(85), Sizing.fill(90))
-        card.surface(Theme.panelSurface)
-        card.padding(Insets.of(0))
+    @Volatile private var bodyScrollOffset: Float = 0f
 
-        card.child(buildHeader())
-        card.child(horizontalDivider())
-        card.child(buildTabBar())
-        card.child(horizontalDivider())
+    private val tabLabels = listOf("Dungeons")
 
-        val scrollBody = UIContainers.verticalFlow(Sizing.fill(100), Sizing.content())
-        scrollBody.padding(Insets.of(12, 16, 16, 16))
-        scrollBody.gap(8)
-        bodyContainer = scrollBody
+    override fun shouldCloseOnEsc(): Boolean = true
 
-        val scroll = UIContainers.verticalScroll(Sizing.fill(100), Sizing.fill(100), scrollBody)
-        scroll.scrollbarThiccness(4)
-        card.child(scroll)
+    override fun blurBackground(): Boolean = true
 
-        root.child(card)
-        rebuildBody()
-    }
+    @SoulComposable
+    override fun Content() {
+        // Card sizing — clamp to a readable band so the UI doesn't stretch to absurd widths
+        // on ultrawide screens or collapse on tiny ones. Heights are similarly capped so the
+        // scrollable body always has a sensible viewport.
+        val cardW = (width * 0.85f).coerceIn(360f, 760f)
+        val cardH = (height * 0.9f).coerceIn(320f, 560f)
+        val headerH = 40f
+        val tabBarH = 32f
+        val dividerH = 1f
+        val bodyH = (cardH - headerH - tabBarH - dividerH * 2f).coerceAtLeast(120f)
 
-    private fun buildHeader(): FlowLayout {
-        val header = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        header.padding(Insets.of(14, 16, 14, 20))
-        header.verticalAlignment(VerticalAlignment.CENTER)
-        header.gap(8)
-
-        header.child(
-            UIComponents.label(Component.literal(name))
-                .color(Theme.color(Theme.TEXT))
-        )
-
-        if (response.profiles.size > 1) {
-            header.child(verticalSeparator())
-            header.child(cycleButton("◀") { cycleProfile(-1) })
-            val lbl =
-                UIComponents.label(Component.literal(profileDisplay(current)))
-                    .color(Theme.color(Theme.TEXT_DIM))
-            profileNameLabel = lbl
-            header.child(lbl)
-            header.child(cycleButton("▶") { cycleProfile(1) })
+        Column(
+            modifier = SoulModifier.Empty.fillMaxSize().background(SoulTheme.colors.background),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = HorizontalAlignment.Center,
+        ) {
+            Box(
+                modifier =
+                    SoulModifier.Empty
+                        .width(cardW)
+                        .height(cardH)
+                        .background(color = SoulTheme.colors.panel, radius = SoulTheme.dimens.radiusMedium),
+            ) {
+                Column(modifier = SoulModifier.Empty.fillMaxSize()) {
+                    Header(headerH)
+                    HDivider()
+                    TabBar(tabBarH)
+                    HDivider()
+                    ScrollableList(
+                        scrollOffset = bodyScrollOffset,
+                        onScroll = { bodyScrollOffset = it },
+                        modifier =
+                            SoulModifier.Empty
+                                .fillMaxWidth()
+                                .height(bodyH)
+                                .padding(top = 12f, right = 16f, bottom = 16f, left = 16f),
+                        gap = 8f,
+                        key = "spv.body",
+                    ) {
+                        Body()
+                    }
+                }
+            }
         }
-
-        return header
     }
 
-    private fun buildTabBar(): FlowLayout {
-        val bar = UIContainers.horizontalFlow(Sizing.fill(100), Sizing.content())
-        bar.padding(Insets.of(6, 16, 4, 16))
-        bar.gap(4)
-        bar.verticalAlignment(VerticalAlignment.CENTER)
-        bar.child(tabButton("Dungeons", "dungeons"))
-        return bar
+    @SoulComposable
+    private fun Header(h: Float) {
+        Row(
+            modifier =
+                SoulModifier.Empty
+                    .fillMaxWidth()
+                    .height(h)
+                    .padding(top = 14f, right = 16f, bottom = 14f, left = 20f),
+            verticalAlignment = VerticalAlignment.Center,
+            gap = 8f,
+        ) {
+            Text(
+                text = name,
+                size = SoulTheme.typography.heading.size,
+                color = SoulTheme.colors.text,
+                font = SoulTheme.typography.heading.font,
+            )
+            if (response.profiles.size > 1) {
+                VSeparator()
+                IconButton(label = "<", key = "spv.prev") { cycleProfile(-1) }
+                Text(
+                    text = profileDisplay(current),
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.textDim,
+                    font = SoulTheme.typography.body.font,
+                )
+                IconButton(label = ">", key = "spv.next") { cycleProfile(1) }
+            }
+        }
     }
 
-    private fun tabButton(
+    @SoulComposable
+    private fun TabBar(h: Float) {
+        Row(
+            modifier =
+                SoulModifier.Empty
+                    .fillMaxWidth()
+                    .height(h)
+                    .padding(top = 6f, right = 16f, bottom = 4f, left = 16f),
+            verticalAlignment = VerticalAlignment.Center,
+            gap = 4f,
+        ) {
+            Tabs(
+                options = tabLabels,
+                selectedIndex = activeTabIndex,
+                onSelect = { idx ->
+                    if (idx != activeTabIndex) {
+                        activeTabIndex = idx
+                        bodyScrollOffset = 0f
+                    }
+                },
+                keyPrefix = "spv.tabs",
+            )
+        }
+    }
+
+    @SoulComposable
+    private fun Body() {
+        val member = current.memberFor(uuidUndashed)
+        if (member == null) {
+            Text(
+                text = "No data for this player on profile ${current.cuteName}.",
+                size = SoulTheme.typography.body.size,
+                color = SoulTheme.colors.textDim,
+                font = SoulTheme.typography.body.font,
+            )
+            return
+        }
+        when (activeTabIndex) {
+            0 -> DungeonsTabContent(member)
+            else -> Text(
+                text = "Unknown tab",
+                size = SoulTheme.typography.body.size,
+                color = SoulTheme.colors.textDim,
+                font = SoulTheme.typography.body.font,
+            )
+        }
+    }
+
+    @SoulComposable
+    private fun IconButton(
         label: String,
-        id: String
-    ): ButtonComponent {
-        val btn =
-            UIComponents.button(Component.empty()) {
-                if (activeTab != id) {
-                    activeTab = id
-                    rebuildBody()
-                }
+        key: Any,
+        onClick: () -> Unit,
+    ) {
+        // Card background uses `panel`; the regular Button does too, so cycle arrows would
+        // blend in. Use `panelInset` (darker) for resting state + `panelHover` on hover so
+        // the chip stands out against the card.
+        val hovered = SoulInput.isHovered(key)
+        val bg = if (hovered) SoulTheme.colors.panelHover else SoulTheme.colors.panelInset
+        Box(
+            modifier =
+                SoulModifier.Empty
+                    .width(22f)
+                    .height(20f)
+                    .background(color = bg, radius = SoulTheme.dimens.radiusSmall)
+                    .clickable(key, onClick),
+        ) {
+            Column(
+                modifier = SoulModifier.Empty.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = HorizontalAlignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    size = SoulTheme.typography.heading.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.heading.font,
+                )
             }
-        btn.horizontalSizing(Sizing.fixed(90))
-        btn.verticalSizing(Sizing.fixed(26))
-        btn.renderer(
-            ButtonComponent.Renderer { ctx, button, _ ->
-                val selected = activeTab == id
-                when {
-                    selected ->
-                        DrawContextRenderer.roundedFill(
-                            ctx,
-                            button.x,
-                            button.y,
-                            button.x + button.width,
-                            button.y + button.height,
-                            Theme.ACCENT,
-                            Theme.ITEM_RADIUS
-                        )
-                    button.isHovered ->
-                        DrawContextRenderer.roundedFill(
-                            ctx,
-                            button.x,
-                            button.y,
-                            button.x + button.width,
-                            button.y + button.height,
-                            Theme.PANEL_HOVER,
-                            Theme.ITEM_RADIUS
-                        )
-                }
-                val tr = Minecraft.getInstance().font
-                val tx = button.x + (button.width - tr.width(label)) / 2
-                val ty = button.y + (button.height - tr.lineHeight) / 2
-                ctx.drawString(tr, Component.literal(label), tx, ty, if (selected) Theme.TEXT else Theme.TEXT_DIM, false)
-            }
-        )
-        return btn
+        }
+    }
+
+    @SoulComposable
+    private fun VSeparator() {
+        Box(
+            modifier =
+                SoulModifier.Empty
+                    .width(1f)
+                    .height(14f)
+                    .background(color = SoulTheme.colors.separator, radius = 0f),
+        ) { Spacer() }
+    }
+
+    @SoulComposable
+    private fun HDivider() {
+        Box(
+            modifier =
+                SoulModifier.Empty
+                    .fillMaxWidth()
+                    .height(1f)
+                    .background(color = SoulTheme.colors.separator, radius = 0f),
+        ) { Spacer() }
     }
 
     private fun cycleProfile(delta: Int) {
         val idx = response.profiles.indexOf(current).coerceAtLeast(0)
         val size = response.profiles.size
         current = response.profiles[((idx + delta) % size + size) % size]
-        profileNameLabel?.text(Component.literal(profileDisplay(current)))
-        rebuildBody()
-    }
-
-    private fun rebuildBody() {
-        bodyContainer.clearChildren()
-        val member = current.memberFor(uuidUndashed)
-        if (member == null) {
-            bodyContainer.child(
-                UIComponents.label(Component.literal("No data for this player on profile ${current.cuteName}."))
-                    .color(Theme.color(Theme.TEXT_DIM))
-            )
-            return
-        }
-        bodyContainer.child(DungeonsTab.build(member))
+        bodyScrollOffset = 0f
     }
 
     private fun profileDisplay(p: SkyblockProfile): String {
@@ -170,46 +255,5 @@ class ProfileViewerScreen(
         val active = if (p.selected) " (active)" else ""
         val modeTag = mode?.let { " [$it]" } ?: ""
         return "${p.cuteName}$modeTag$active"
-    }
-
-    private fun cycleButton(
-        icon: String,
-        action: () -> Unit
-    ): ButtonComponent {
-        val btn = UIComponents.button(Component.empty()) { action() }
-        btn.horizontalSizing(Sizing.fixed(20))
-        btn.verticalSizing(Sizing.fixed(20))
-        btn.renderer(
-            ButtonComponent.Renderer { ctx, button, _ ->
-                val bg = if (button.isHovered) Theme.PANEL_HOVER else Theme.PANEL_INSET
-                DrawContextRenderer.roundedFill(
-                    ctx,
-                    button.x,
-                    button.y,
-                    button.x + button.width,
-                    button.y + button.height,
-                    bg,
-                    Theme.ITEM_RADIUS
-                )
-                val tr = Minecraft.getInstance().font
-                val tx = button.x + (button.width - tr.width(icon)) / 2
-                val ty = button.y + (button.height - tr.lineHeight) / 2
-                ctx.drawString(tr, Component.literal(icon), tx, ty, Theme.TEXT_DIM, false)
-            }
-        )
-        return btn
-    }
-
-    private fun verticalSeparator(): FlowLayout {
-        val s = UIContainers.verticalFlow(Sizing.fixed(1), Sizing.fixed(14))
-        s.surface(Surface.flat(Theme.SEPARATOR))
-        s.margins(Insets.horizontal(4))
-        return s
-    }
-
-    private fun horizontalDivider(): FlowLayout {
-        val d = UIContainers.verticalFlow(Sizing.fill(100), Sizing.fixed(1))
-        d.surface(Surface.flat(Theme.SEPARATOR))
-        return d
     }
 }

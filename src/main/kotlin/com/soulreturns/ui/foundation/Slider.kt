@@ -106,8 +106,10 @@ internal class SliderNode(
         val clampedValue = value.coerceIn(min, max)
         val t = if (max > min) (clampedValue - min) / (max - min) else 0f
 
-        // Draw track: filled portion in accent, remainder in panelInset.
-        NvgRenderer.rect(trackX, trackY, trackW, TRACK_H, SoulTheme.colors.panelInset, TRACK_H / 2f)
+        // Track: inactive portion uses `panelHover` (not `panelInset`) so the track stays
+        // visible when the slider sits inside a `panelInset` row / section — same rationale
+        // as `Toggle`'s off track.
+        NvgRenderer.rect(trackX, trackY, trackW, TRACK_H, SoulTheme.colors.panelHover, TRACK_H / 2f)
         if (t > 0f) {
             NvgRenderer.rect(trackX, trackY, trackW * t, TRACK_H, SoulTheme.colors.accent, TRACK_H / 2f)
         }

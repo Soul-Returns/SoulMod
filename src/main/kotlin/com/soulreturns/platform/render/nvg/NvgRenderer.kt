@@ -213,6 +213,31 @@ object NvgRenderer {
         scissor?.applyScissor(vg)
     }
 
+    /**
+     * Intersected bounds of the active scissor stack, or `null` when nothing has pushed.
+     * Used by input plumbing to clip hit-region records to the visible viewport — without
+     * this, an off-screen child of a [com.soulreturns.ui.foundation.ScrollableList] would
+     * register a clickable region that intercepts clicks meant for siblings rendered below
+     * (or above) the scrollable. The intersection is computed once per call by walking the
+     * stack; cheap because the stack is shallow in practice.
+     */
+    fun currentScissorBounds(): ScissorBounds? {
+        val top = scissor ?: return null
+        var x = top.x
+        var y = top.y
+        var maxX = top.maxX
+        var maxY = top.maxY
+        var p = top.previous
+        while (p != null) {
+            x = max(x, p.x)
+            y = max(y, p.y)
+            maxX = min(maxX, p.maxX)
+            maxY = min(maxY, p.maxY)
+            p = p.previous
+        }
+        return ScissorBounds(x, y, maxX, maxY)
+    }
+
     // ─────────────────────────── paths ───────────────────────────
     fun line(
         x1: Float,
@@ -346,6 +371,55 @@ object NvgRenderer {
         nvgRoundedRect(vg, x, y, width, height, radius)
         nvgPathWinding(vg, NVG_HOLE)
         nvgFillPaint(vg, nvgPaint)
+        nvgFill(vg)
+    }
+
+    /**
+     * Per-corner rounded rect. Any radius of `0f` produces a square corner. Used to round
+     * just the corners of an inner panel that meet a parent's outer rounded edge (e.g. a
+     * sidebar's bottom-left rounded to match the card's bottom-left, but bottom-right
+     * square because it meets the body across a vertical edge).
+     */
+    fun cornerRoundedRect(
+        x: Float,
+        y: Float,
+        w: Float,
+        h: Float,
+        color: Int,
+        topLeft: Float = 0f,
+        topRight: Float = 0f,
+        bottomRight: Float = 0f,
+        bottomLeft: Float = 0f,
+    ) {
+        nvgBeginPath(vg)
+        // Start at the top edge, just after the top-left corner.
+        nvgMoveTo(vg, x + topLeft, y)
+        nvgLineTo(vg, x + w - topRight, y)
+        if (topRight > 0f) {
+            nvgArcTo(vg, x + w, y, x + w, y + topRight, topRight)
+        } else {
+            nvgLineTo(vg, x + w, y)
+        }
+        nvgLineTo(vg, x + w, y + h - bottomRight)
+        if (bottomRight > 0f) {
+            nvgArcTo(vg, x + w, y + h, x + w - bottomRight, y + h, bottomRight)
+        } else {
+            nvgLineTo(vg, x + w, y + h)
+        }
+        nvgLineTo(vg, x + bottomLeft, y + h)
+        if (bottomLeft > 0f) {
+            nvgArcTo(vg, x, y + h, x, y + h - bottomLeft, bottomLeft)
+        } else {
+            nvgLineTo(vg, x, y + h)
+        }
+        nvgLineTo(vg, x, y + topLeft)
+        if (topLeft > 0f) {
+            nvgArcTo(vg, x, y, x + topLeft, y, topLeft)
+        } else {
+            nvgLineTo(vg, x, y)
+        }
+        nvgClosePath(vg)
+        setFillColor(color)
         nvgFill(vg)
     }
 
@@ -558,3 +632,6 @@ enum class NvgGradient {
     LeftToRight,
     TopToBottom,
 }
+
+/** Intersected scissor rectangle in logical units (matches [NvgRenderer.currentScissorBounds]). */
+data class ScissorBounds(val x: Float, val y: Float, val maxX: Float, val maxY: Float)

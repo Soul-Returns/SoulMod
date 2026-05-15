@@ -1,5 +1,6 @@
 package com.soulreturns.ui.composer
 
+import com.soulreturns.platform.render.nvg.NvgGradient
 import com.soulreturns.platform.render.nvg.NvgRenderer
 
 /**
@@ -85,11 +86,131 @@ internal fun SoulModifier.drawBackgrounds(
     width: Float,
     height: Float,
 ) {
-    elements().filterIsInstance<BackgroundElement>().forEach { bg ->
-        if (bg.radius > 0f) {
-            NvgRenderer.rect(x, y, width, height, bg.color, bg.radius)
-        } else {
-            NvgRenderer.rect(x, y, width, height, bg.color)
+    // BoxShadow always paints first so the BackgroundElement / GradientBackgroundElement
+    // can cover the hollow interior of the shadow ring. Without this ordering the bg would
+    // paint first and then the shadow would draw a dark ring *over* the bg edges.
+    val all = elements()
+    val shadow = all.filterIsInstance<BoxShadowElement>().firstOrNull()
+    if (shadow != null) {
+        val bgRadius = all.filterIsInstance<BackgroundElement>().firstOrNull()?.radius ?: 0f
+        when (shadow.side) {
+            ShadowSide.All ->
+                NvgRenderer.dropShadow(x, y, width, height, shadow.blur, shadow.spread, bgRadius)
+            else -> drawDirectionalShadow(x, y, width, height, shadow)
         }
+    }
+    for (el in all) {
+        when (el) {
+            is BackgroundElement -> {
+                if (el.radius <= 0f) {
+                    NvgRenderer.rect(x, y, width, height, el.color)
+                } else {
+                    val r = el.radius
+                    when (el.rounding) {
+                        CornerRounding.Full -> NvgRenderer.rect(x, y, width, height, el.color, r)
+                        CornerRounding.Top ->
+                            NvgRenderer.halfRoundedRect(x, y, width, height, el.color, r, roundTop = true)
+                        CornerRounding.Bottom ->
+                            NvgRenderer.halfRoundedRect(x, y, width, height, el.color, r, roundTop = false)
+                        CornerRounding.TopLeft ->
+                            NvgRenderer.cornerRoundedRect(x, y, width, height, el.color, topLeft = r)
+                        CornerRounding.TopRight ->
+                            NvgRenderer.cornerRoundedRect(x, y, width, height, el.color, topRight = r)
+                        CornerRounding.BottomLeft ->
+                            NvgRenderer.cornerRoundedRect(x, y, width, height, el.color, bottomLeft = r)
+                        CornerRounding.BottomRight ->
+                            NvgRenderer.cornerRoundedRect(x, y, width, height, el.color, bottomRight = r)
+                    }
+                }
+            }
+            is GradientBackgroundElement -> {
+                NvgRenderer.gradientRect(
+                    x = x,
+                    y = y,
+                    w = width,
+                    h = height,
+                    color1 = el.color1,
+                    color2 = el.color2,
+                    gradient = el.direction,
+                    radius = el.radius,
+                )
+            }
+            else -> {}
+        }
+    }
+}
+
+/**
+ * Paint a soft directional shadow on one side of the rect by drawing an external linear-
+ * gradient strip from `0x80000000` (the "source-adjacent" edge) to fully transparent.
+ *
+ * For `Bottom`: a strip at `(x, y+height, width, blur+spread)` with top-to-bottom gradient.
+ * For `Right`:  a strip at `(x+width, y, blur+spread, height)` with left-to-right gradient.
+ * For `Top`/`Left`: mirror images of the above.
+ *
+ * Doesn't draw a "ring" around the rect — that's what [NvgRenderer.dropShadow] is for. This
+ * is the "shadow only on one neighbour" variant, used when the panel's other sides face
+ * the card edge (no neighbour to bleed into).
+ */
+private fun drawDirectionalShadow(
+    x: Float,
+    y: Float,
+    width: Float,
+    height: Float,
+    shadow: BoxShadowElement,
+) {
+    val depth = shadow.blur + shadow.spread
+    if (depth <= 0f) return
+    val solid = shadow.color
+    // Transparent end of the gradient — preserve the solid's RGB so the linear interpolation
+    // stays in the same hue (otherwise an opaque grey would fade through black to clear and
+    // briefly look darker partway through).
+    val clear = solid and 0x00FFFFFF
+    when (shadow.side) {
+        ShadowSide.Right ->
+            NvgRenderer.gradientRect(
+                x = x + width,
+                y = y,
+                w = depth,
+                h = height,
+                color1 = solid,
+                color2 = clear,
+                gradient = NvgGradient.LeftToRight,
+                radius = 0f,
+            )
+        ShadowSide.Left ->
+            NvgRenderer.gradientRect(
+                x = x - depth,
+                y = y,
+                w = depth,
+                h = height,
+                color1 = clear,
+                color2 = solid,
+                gradient = NvgGradient.LeftToRight,
+                radius = 0f,
+            )
+        ShadowSide.Bottom ->
+            NvgRenderer.gradientRect(
+                x = x,
+                y = y + height,
+                w = width,
+                h = depth,
+                color1 = solid,
+                color2 = clear,
+                gradient = NvgGradient.TopToBottom,
+                radius = 0f,
+            )
+        ShadowSide.Top ->
+            NvgRenderer.gradientRect(
+                x = x,
+                y = y - depth,
+                w = width,
+                h = depth,
+                color1 = clear,
+                color2 = solid,
+                gradient = NvgGradient.TopToBottom,
+                radius = 0f,
+            )
+        ShadowSide.All -> Unit // handled in drawBackgrounds via NvgRenderer.dropShadow
     }
 }

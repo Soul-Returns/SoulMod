@@ -82,12 +82,16 @@ internal class RowNode(
         val totalH = maxChildH + padV
         val (w, h) = outer.constrain(totalW, totalH)
 
+        // Cross-axis (vertical) alignment is computed against the row's **own** content
+        // height — when the row expands taller than its tallest child (e.g. `fillMaxHeight`
+        // or a forced `height(...)`), children align inside that larger area.
+        val crossAxisSize = (h - padV).coerceAtLeast(maxChildH)
         val arrangementSpace = (w - padH).coerceAtLeast(0f)
         val mainPositions = arrangeAlong(arrangement, childWidths, arrangementSpace, gap)
         val positions =
             childMeasured.mapIndexed { i, m ->
                 val xOffset = offset.x + mainPositions[i]
-                val yOffset = offset.y + alignVertical(verticalAlignment, m.height, maxChildH)
+                val yOffset = offset.y + alignVertical(verticalAlignment, m.height, crossAxisSize)
                 SoulMeasured.Position(xOffset, yOffset)
             }
 
