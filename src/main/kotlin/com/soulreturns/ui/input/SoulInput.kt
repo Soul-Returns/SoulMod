@@ -35,6 +35,34 @@ object SoulInput {
      */
     private val tooltipRegions: MutableList<TooltipRegion> = mutableListOf()
 
+    /**
+     * Per-frame deferred draw queue. Composables that need to paint **over** their later
+     * siblings — e.g. dropdown popups, tooltips with custom backgrounds — register a lambda
+     * via [queueOverlay] during their normal `drawSelf`; the host (`SoulHud.renderOne`)
+     * drains the queue via [flushOverlays] *after* the main tree finishes drawing, so the
+     * deferred paint lands on top of everything else.
+     *
+     * The lambda is free to record hit regions inside itself; those still happen before
+     * [flush] dispatches clicks, so click routing keeps working.
+     */
+    private val deferredOverlays: MutableList<() -> Unit> = mutableListOf()
+
+    /**
+     * Modal mode — set by an open popup (dropdown / context menu) during its deferred draw.
+     * While active, **only** regions recorded after the modal opens are consulted for click /
+     * scroll / hover dispatch. Regions recorded earlier in the frame (sibling widgets, the
+     * popup's own trigger button, etc.) are ignored so they can't steal clicks meant for the
+     * popup or its dismiss-scrim.
+     *
+     * Without this, two sibling dropdowns at the same tree depth share the same
+     * `INTERACTIVE_DEPTH_BOOST` offset; clicking dropdown B's trigger area while dropdown A
+     * is open would route to B (open B) instead of A's scrim (close A). Modal mode side-
+     * steps the depth comparison entirely.
+     */
+    @Volatile var modalActive: Boolean = false
+        private set
+    private val modalRegions: MutableList<HitRegion> = mutableListOf()
+
     private var pendingClick: PendingClick? = null
     private var pendingScroll: PendingScroll? = null
     private var pendingRelease: Boolean = false
@@ -103,8 +131,11 @@ object SoulInput {
      * translate event coordinates (which arrive in absolute space) into panel-local space
      * for hit-testing against [HitRegion]s, which are themselves panel-local.
      */
-    private var panelOriginX: Float = 0f
-    private var panelOriginY: Float = 0f
+    var panelOriginX: Float = 0f
+        private set
+
+    var panelOriginY: Float = 0f
+        private set
 
     /**
      * Scale factor applied to the current panel's NanoVG content (`nvgScale(s, s)` inside
@@ -113,7 +144,20 @@ object SoulInput {
      * in **scaled screen coords**. Hit-testing therefore divides cursor by [panelScale] to
      * line them up.
      */
-    private var panelScale: Float = 1f
+    var panelScale: Float = 1f
+        private set
+
+    /**
+     * Logical (unscaled) dimensions of the current panel's PIP texture. Set by
+     * `NvgFrame.submit` at frame start. Used by widgets that need to know the panel's
+     * bounds — e.g. dropdown popups picking which direction to open based on which side
+     * has the most panel-local room.
+     */
+    var panelWidth: Float = 0f
+        private set
+
+    var panelHeight: Float = 0f
+        private set
 
     /** Set of region keys under the cursor at end of the previous frame's [flush]. */
     var hoveredKeys: Set<Any> = emptySet()
@@ -166,6 +210,8 @@ object SoulInput {
         panelOriginX: Float = 0f,
         panelOriginY: Float = 0f,
         panelScale: Float = 1f,
+        panelWidth: Float = 0f,
+        panelHeight: Float = 0f,
     ) {
         val safeScale = panelScale.coerceAtLeast(0.001f)
         // Convert panel-local SCALED cursor → unscaled content coords so widgets reading
@@ -175,8 +221,52 @@ object SoulInput {
         this.panelOriginX = panelOriginX
         this.panelOriginY = panelOriginY
         this.panelScale = safeScale
+        this.panelWidth = panelWidth
+        this.panelHeight = panelHeight
         regions.clear()
         tooltipRegions.clear()
+        deferredOverlays.clear()
+        modalActive = false
+        modalRegions.clear()
+    }
+
+    /**
+     * Begin modal mode. Any [recordRegion] call after this routes the region into a
+     * separate "modal" list that supersedes the normal one for click / scroll / hover
+     * dispatch. Called from a popup's deferred overlay block so the popup's own scrim +
+     * options become the only clickable regions in the panel until the next frame.
+     *
+     * Modal mode auto-resets on [startFrame] (next frame). Calling [beginModal] a second
+     * time within the same frame clears any previously recorded modal regions — the latest
+     * popup wins (matters only if nested popups are ever introduced).
+     */
+    fun beginModal() {
+        modalActive = true
+        modalRegions.clear()
+    }
+
+    /**
+     * Queue a draw lambda to run after the main tree's `drawSelf` walk finishes. Used by
+     * popup widgets (e.g. [com.soulreturns.ui.foundation.Dropdown]) that must paint over
+     * their later siblings — the deferred pass guarantees they're the last thing drawn
+     * inside the current frame's NanoVG block.
+     */
+    fun queueOverlay(action: () -> Unit) {
+        deferredOverlays.add(action)
+    }
+
+    /**
+     * Drain and run all queued overlay actions. Called by the host (`SoulHud.renderOne`)
+     * after the root node's `draw(...)` returns but before [flush] dispatches click events,
+     * so any hit regions the overlays record during their own paint are still picked up.
+     * Re-drains in a loop in case an overlay's action queues another overlay (nested popups).
+     */
+    fun flushOverlays() {
+        while (deferredOverlays.isNotEmpty()) {
+            val snapshot = deferredOverlays.toList()
+            deferredOverlays.clear()
+            for (action in snapshot) action()
+        }
     }
 
     /**
@@ -230,9 +320,12 @@ object SoulInput {
      * (e.g. a footer button's padding zone).
      */
     fun recordRegion(region: HitRegion) {
+        // Pick the list the region lands in: modal regions take over while a popup is
+        // active, hiding earlier-recorded siblings from click dispatch.
+        val sink = if (modalActive) modalRegions else regions
         val s = com.soulreturns.platform.render.nvg.NvgRenderer.currentScissorBounds()
         if (s == null) {
-            regions.add(region)
+            sink.add(region)
             return
         }
         val rx1 = region.x
@@ -248,9 +341,9 @@ object SoulInput {
         val clipH = (ry2.coerceAtMost(s.maxY) - clipY).coerceAtLeast(0f)
         if (clipW <= 0f || clipH <= 0f) return
         if (clipX == rx1 && clipY == ry1 && clipW == region.width && clipH == region.height) {
-            regions.add(region)
+            sink.add(region)
         } else {
-            regions.add(region.copy(x = clipX, y = clipY, width = clipW, height = clipH))
+            sink.add(region.copy(x = clipX, y = clipY, width = clipW, height = clipH))
         }
     }
 
@@ -359,10 +452,12 @@ object SoulInput {
         }
 
         // Accumulate hover matches from THIS panel's regions into the frame-wide set.
+        // While modal mode is active, only the modal regions count — the trigger and other
+        // sibling widgets shouldn't show hover state behind the open popup.
         val cx = cursorX
         val cy = cursorY
         if (cx >= 0f && cy >= 0f) {
-            for (r in regions) {
+            for (r in activeRegions()) {
                 if (r.contains(cx, cy)) frameHoverAccumulator.add(r.key)
             }
         }
@@ -386,13 +481,19 @@ object SoulInput {
         predicate: (HitRegion) -> Boolean,
     ): HitRegion? {
         var best: HitRegion? = null
-        for (r in regions) {
+        for (r in activeRegions()) {
             if (!predicate(r)) continue
             if (!r.contains(x, y)) continue
             if (best == null || r.depth >= best.depth) best = r
         }
         return best
     }
+
+    /**
+     * Region list consulted by the current dispatch — modal regions while a popup is open,
+     * else the normal regions. Centralised so click / scroll / hover all see the same view.
+     */
+    private fun activeRegions(): List<HitRegion> = if (modalActive) modalRegions else regions
 
     /** Reset all state. Used in tests; not needed in normal operation. */
     internal fun reset() {
@@ -409,6 +510,9 @@ object SoulInput {
         panelScale = 1f
         pendingPanels = 0
         frameHoverAccumulator.clear()
+        modalActive = false
+        modalRegions.clear()
+        deferredOverlays.clear()
     }
 
     private data class PendingClick(val x: Float, val y: Float)

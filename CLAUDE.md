@@ -319,7 +319,9 @@ ui/foundation/               composable primitives
   Spacer.kt                  sized-from-modifier empty box
   Surface.kt                 themed rounded background (Box + Theme.colors.panel + radius + padding)
   Button.kt                  hover-aware clickable surface; `accent` boolean → accent/accentDim
-                             hover state
+                             hover state; `centerLabel: Boolean = false` wraps the label in
+                             `Row(fillMaxWidth, Center)` so a `fillMaxWidth()` button centers
+                             its text instead of pinning to the left
   Toggle.kt                  pill switch; off=panelHover (visible against `panelInset` row
                              cards — using `panelInset` would make the track blend in),
                              on=accent, hover variants
@@ -340,18 +342,46 @@ ui/foundation/               composable primitives
                                left-edge accent bar.
                              - `MultiSelectDropdown(...)` checkbox-per-row; click row →
                                onToggle, popup STAYS open so the user can flip several.
-                             **Popup is an overlay**, not part of layout flow: the node's own
-                             measured size is just the trigger button; the popup paints during
-                             drawSelf at `(triggerX, triggerY - popupHeight - gap)` so it grows
-                             upward without pushing siblings. Panels must have room above the
-                             trigger or the popup paints outside the visible HUD bounds.
-                             **Click routing.** Trigger + option rows recorded at
-                             `depth+200`; a panel-wide dismiss scrim at `depth+100`. Picking
-                             the highest-depth region in `SoulInput.deepestRegionAt` makes the
-                             popup absorb clicks on its own rows AND consume any other click
-                             in the panel as a "close the popup" gesture. Caller owns the
-                             `expanded: Boolean` flag — keep it on the feature singleton
-                             (transient, not persisted) alongside other UI state.
+                             Both take `popupMaxHeight: Float? = null`. When set, the popup
+                             clamps to that height, scissor-clips the option list, and a
+                             mouse-wheel scroll region is recorded — used by the fishing
+                             tracker's 19-variant Category dropdown. Scroll state lives in a
+                             module-scoped `popupScrollOffsets: ConcurrentHashMap<Any, Float>`
+                             keyed by trigger key, persisting across close/reopen within a
+                             session. Both use a triangle caret (`NvgRenderer.filledTriangle`)
+                             since Inter doesn't cover ▾/▴.
+
+                             **Popup as deferred overlay.** Each open popup wraps its draw
+                             block in `SoulInput.queueOverlay { ... }` so the host
+                             (`SoulHud.renderOne`) drains it AFTER the main tree's
+                             `root.draw`. That puts the popup visually on top of later
+                             siblings (the rest of the footer column, the reset button,
+                             etc.).
+
+                             **Direction picker.** `computePopupY` reads
+                             `SoulInput.panelHeight` (the PIP texture height set by
+                             `NvgFrame.submit`) and picks the side of the trigger with the
+                             most panel-local room. Falls back to the bigger side when
+                             neither fits the popup whole. Earlier draft used screen-relative
+                             math; broke for HUDs near the screen edge with a popup that
+                             still overflowed the PIP texture. Panel-local math matches what
+                             actually clips.
+
+                             **Click routing.** `SoulInput.beginModal()` fires at the top
+                             of each overlay block. While modal mode is active, hit regions
+                             land in a separate `modalRegions` list and ALL click / scroll /
+                             hover dispatch consults only that list. Sibling triggers (other
+                             dropdowns, buttons in the same panel) recorded earlier in the
+                             frame become inert until the popup closes, so they can't steal
+                             clicks meant for the open popup. A panel-wide dismiss scrim is
+                             recorded inside the modal so anywhere outside the option rows
+                             closes the popup.
+
+                             **State ownership.** Caller owns the `expanded: Boolean` flag
+                             (keep it on the feature singleton — transient, not persisted;
+                             `FishingHudSettings.{sortDropdownOpen, columnDropdownOpen,
+                             categoryDropdownOpen}` is the model). Scroll offset is internal
+                             to the framework via the module-scoped map.
 
 ui/input/
   HitRegion.kt               { key, x, y, w, h, depth, onClick?, onScroll? }
@@ -381,6 +411,29 @@ ui/input/
                              - tooltipRegions tracked separately from hit regions; the host
                                (SoulScreen) calls `findHoveredTooltip()` inside its NvgFrame
                                block AFTER the main draw to paint the tooltip overlay on top.
+                             - **deferred overlays** via `queueOverlay(action)` +
+                               `flushOverlays()`. Widgets that must paint over their later
+                               siblings (Dropdown popups, future tooltips with custom bgs)
+                               queue a lambda; the host (`SoulHud.renderOne`) drains the
+                               queue right after `root.draw` so the deferred paint is the
+                               last thing rendered in the panel. The lambda can record hit
+                               regions itself — they still land before `flush` dispatches.
+                             - **modal mode** via `beginModal()`. While `modalActive` is
+                               true (set by an open popup's overlay block), all subsequent
+                               `recordRegion` calls land in a separate `modalRegions` list,
+                               and click / scroll / hover dispatch consult ONLY that list.
+                               Sibling widgets recorded earlier in the frame become inert.
+                               Resets on next `startFrame`. Without this, two sibling
+                               dropdowns at the same tree depth would share the same
+                               `INTERACTIVE_DEPTH_BOOST` and a click on dropdown B's
+                               trigger could open B instead of dismissing A's popup.
+                             - **`panelWidth` / `panelHeight`** exposed as public read-only
+                               (set by `NvgFrame.submit`). Widgets like Dropdown read these
+                               to reason about their containing PIP texture's bounds —
+                               e.g. picking popup open-direction based on which side of the
+                               trigger has more room INSIDE the texture, not just on screen.
+                             - **`panelOriginX/Y` + `panelScale`** also public read-only —
+                               useful for screen-space conversions in custom widgets.
 
 ui/theme/
   SoulTheme.kt               colors / dimens / typography tokens. SoulColors mirrors legacy
@@ -421,14 +474,26 @@ A HUD's `element.scale` no longer grows the PIP region with empty space — it's
 **SoulHud lifecycle for new features:**
 
 1. Define a `@SoulComposable fun MyHud()` containing the composable tree.
-2. From `Soul.registerFeatures()` call `SoulHud.register(id = "my_hud", width = 220, height = 160, content = ::MyHud)`.
+2. From `Soul.registerFeatures()` call `SoulHud.register(id = "my_hud", width = 220, height = 160, content = ::MyHud)`. Optional params worth knowing:
+   - `defaultHorizontalAnchor` / `defaultVerticalAnchor` (`HudHorizontalAnchor` / `HudVerticalAnchor`) — pivot edge for the element. `Start`/`Top` = top-left corner sits at the anchor (legacy). `Center`/`Center` = centered. `End`/`Bottom` = right/bottom edge sits at the anchor. See "Anchor alignment system" below.
+   - `settingsCategory` / `settingsSubcategory` — deep-link target for the right-click "Settings" entry in `/soul gui`. See "GUI Edit context menu" below.
 3. That's it. The HUD is positioned via `/soul gui` (`SoulHudElement` is a `GuiElement` subclass — persists in `gui_layout.json`), scaled via per-element wheel + global slider, and survives layout-file reloads via the per-frame self-heal in `dispatchAll`.
+
+**Anchor alignment system.** `SoulHudElement` carries `horizontalAnchor: HudHorizontalAnchor` and `verticalAnchor: HudVerticalAnchor` enum fields (Start/Center/End and Top/Center/Bottom). `SoulHud.resolveBaseX/Y` apply the alignment by shifting the on-screen origin by `measured_size × effective_scale × {0, 0.5, 1}` depending on the anchor, so a Center-anchored HUD sits dead-center horizontally regardless of resolution / GUI scale / content size. Both `dispatchAll`'s render path AND `GuiEditScreen` / `GuiEdit.findHitElement`'s selection bounds go through the same `resolveBaseX/Y` so editor hit-tests stay aligned with the rendered panel. **Defaults today:** Fishing/Seasoning trackers `Start, Top` (top-left). Bobbin/Legion/Mineshaft Corpses `Center, Top` (top-center). Party `End, Top` (top-right).
+
+**GUI Edit context menu (`/soul gui`).** Right-clicking a `SoulHudElement` opens a small popover with five corner presets — **Top Left / Top Right / Bottom Left / Bottom Right / Center** — plus a **Settings** entry. Each preset calls `GuiLayoutManager.updateSoulHudAnchor(id, anchorX, anchorY, hAnchor, vAnchor)` which snaps `anchorX/Y` to a corner fraction and zeros the offset. **Settings** opens `SoulConfigScreen(initialCategory, initialSubcategory)` jumping to the HUD's registered category/subcategory (e.g. Bobbin → `fishing` / `bobbinTime`; Legion → `render` / `overlays`). A small black-bordered yellow dot is also drawn at each enabled HUD's pivot pixel while the editor is open so the user can see *which* corner is anchored.
+
+**`gui_layout.json` schema migration.** `GuiLayoutManager.CURRENT_SCHEMA_VERSION = 2`. On load, the raw JSON is probed for the `schemaVersion` key — **not** the deserialized field — because Gson uses `Unsafe` to bypass Kotlin constructor defaults on `SoulHudElement` (its `id` field has no default → no synthetic no-arg ctor), so the new alignment enum fields would deserialize as `null` from old files. When the key is missing OR `< CURRENT`, the in-memory layout is wiped to an empty `GuiLayout()` and immediately re-saved; per-frame `ensureLayoutElement` rebuilds entries from registration defaults. Users with a tweaked layout pay a one-time HUD-position reset. Bump `CURRENT_SCHEMA_VERSION` when a future field needs the same treatment.
+
+**Dynamic selection bounds (`/soul gui`).** After each frame's compose + layout, `SoulHud.renderOne` records the root node's measured size into `SoulHudRegistry.recordMeasured(id, w, h)`. `GuiEditScreen.render` and `GuiEdit.findHitElement` read it back via `SoulHudRegistry.lastMeasured(id)` so the selection box tracks the **actual** rendered panel size, not the registered max bounds. Falls back to the registration `(width, height)` for HUDs that haven't drawn yet this session (e.g. their visibility gate is closed). Critical: the recording happens inside `NvgFrame.submit`'s deferred lambda, so the HUD id is captured by closure rather than read from a shared field — the lambda runs at PIP-flush time when the global "current id" would otherwise be stale.
 
 **Dynamic selection bounds (`/soul gui`).** After each frame's compose + layout, `SoulHud.renderOne` records the root node's measured size into `SoulHudRegistry.recordMeasured(id, w, h)`. `GuiEditScreen.render` and `GuiEdit.findHitElement` read it back via `SoulHudRegistry.lastMeasured(id)` so the selection box tracks the **actual** rendered panel size, not the registered max bounds. Falls back to the registration `(width, height)` for HUDs that haven't drawn yet this session (e.g. their visibility gate is closed).
 
 **Conditional visibility — return `Box {}`.** A HUD that shouldn't render right now (gate closed: wrong area, item not equipped, master toggle off, etc.) must still emit one root composable — `SoulComposer.build` requires exactly one. The canonical "render nothing" sentinel is a bare `Box {}` followed by `return` from the composable body. The Box measures to zero, takes no PIP texture cost, and stops the GUI-edit selection-box from gaining a stale measured size from a previous "visible" frame.
 
-**Skyblock enchant gate.** `SkyblockItemUtils.hasArmorEnchant(player, enchantId)` reads `components.custom_data.enchantments.<id>` across the 4 equipment slots and returns `true` if any slot has a level > 0. Used by `LegionHud` (`ultimate_legion`) and `BobbinHud` (`ultimate_bobbin_time`) to render only when the wearer actually has the relevant enchant. Cheap enough to call per-frame from a composable. The numeric-level companion is `SkyblockItemUtils.highestArmorEnchantLevel(player, enchantId)`, which feeds the boost-percentage display on both HUDs.
+**Skyblock enchant gate.** `SkyblockItemUtils.hasArmorEnchant(player, enchantId)` reads `components.custom_data.enchantments.<id>` across the 4 equipment slots and returns `true` if any slot has a level > 0. Used by `LegionHud` (`ultimate_legion`) and `BobbinHud` (`ultimate_bobbin_time`) to render only when the wearer actually has the relevant enchant. Cheap enough to call per-frame from a composable. The numeric-level companion is `SkyblockItemUtils.highestArmorEnchantLevel(player, enchantId)`, which feeds the boost-percentage display on both HUDs. Per-stack helper: `SkyblockItemUtils.getSkyblockEnchantLevel(stack, enchantId)`.
+
+**Global Skyblock rarity table.** `data/skyblock/SkyblockRarity.kt` mirrors SkyHanni's `LorenzRarity` — an enum mapping each Hypixel rarity tier (`COMMON` / `UNCOMMON` / `RARE` / `EPIC` / `LEGENDARY` / `MYTHIC` / `DIVINE` / `SPECIAL` / `VERY_SPECIAL` / `ULTIMATE`) to its display ARGB. Two entry points: `SkyblockRarity.forName(name)` returns the enum or `null`; `SkyblockRarity.colorFor(name, fallback = 0xFFFFFFFF)` returns the color or the fallback. Used by `SeaCreature.rarityColor()` to tint per-creature rows in the fishing tracker; reserved for item lore / pet tooltip / future rarity-aware features. Update the enum (not scattered constants) if Hypixel ever adds a new tier or changes a color.
 
 **Legion / Bobbin Time boost formula.** Both Ultimate-tier armor enchants scale linearly with their on-screen count, per SkyHanni's `LegionBobbinOverlay.kt`:
 - **Legion**: `boost% = level × 0.07 × min(nearbyPlayers, 20)` — 7 % per level per player within 30 blocks, capped at 20 players.
@@ -436,7 +501,7 @@ A HUD's `element.scale` no longer grows the PIP region with empty space — it's
 
 Both HUDs display the result on a second line as `Boost: +X.YY%` via `String.format(Locale.ROOT, ...)`. The cap constants live on the HUD object (`PLAYER_CAP` / `BOBBER_CAP`) and the multiplier as `BOOST_PER_LEVEL` — update those if Hypixel changes the formula.
 
-**Fishing tracker visibility (`features/fishing/FishingVisibility`).** Tick-driven gate that combines four checks: (1) a SkyBlock rod (`FISHING_ROD_IDS` set covers all 14 vanilla + festival + bingo + lava variants) anywhere in the inventory, (2) `LocationApi.currentArea` in `FISHING_AREAS` (Hub / Crimson Isle / Spider's Den / Backwater Bayou / The Park / Farming Islands / Crystal Hollows / Dwarven Mines / Galatea / Jerry's Workshop / Lotus Atoll), (3) a water or lava block within 15 blocks of the player, (4) **first cast detected** — the local player's own `FishingHook` has been observed in water/lava at least once this session. The liquid check scans a 31×31×31 cube once per 20 ticks (~1 s) using a `BlockPos.MutableBlockPos` to avoid allocation, with `xz²` and `xyz²` short-circuits so most calls bail well under the cube's 30k positions. The bobber check runs every tick (cheap entity-list walk) until the sticky `firstCastDetected` flag flips true, then never again that session. A 60 s grace window after the last detected liquid keeps the HUD visible through brief chases away from the pond. Skipping the cube scan when the cheaper rod/area gates are already failing is the main reason the per-tick cost is negligible — most ticks never reach the block iteration.
+**Fishing tracker visibility (`features/fishing/FishingVisibility`).** Tick-driven gate that combines four checks: (1) a SkyBlock rod (`FISHING_ROD_IDS` set covers all 14 vanilla + festival + bingo + lava variants) anywhere in the inventory, (2) `LocationApi.currentArea` in `FISHING_AREAS` (Hub / Crimson Isle / Spider's Den / Backwater Bayou / The Park / Farming Islands / Crystal Hollows / Dwarven Mines / Galatea / Jerry's Workshop / Lotus Atoll), (3) a water or lava block within 15 blocks of the player, (4) **first cast detected** — the local player's own `FishingHook` has been observed in water/lava at least once this session. The liquid check scans a 31×31×31 cube once per 20 ticks (~1 s) using a `BlockPos.MutableBlockPos` to avoid allocation, with `xz²` and `xyz²` short-circuits so most calls bail well under the cube's 30k positions. The bobber check runs every tick (cheap entity-list walk) until the sticky `firstCastDetected` flag flips true, then never again that session. A 60 s grace window after the last detected liquid keeps the HUD visible through brief chases away from the pond. Skipping the cube scan when the cheaper rod/area gates are already failing is the main reason the per-tick cost is negligible — most ticks never reach the block iteration. **Subscribes to `AreaChanged`**: every area transition zeroes the cached state (`firstCastDetected`, `lastLiquidAt`, `nearLiquidNow`, `hasRod`, scan counter) so leaving a fishing island silently re-arms the first-cast gate. Walking back into a pond without recasting won't reopen the HUD.
 
 **`/soul gui` z-order fix for SoulHud.** `GuiEditScreen.render` calls `SoulHud.dispatchAll(context)` right after `renderTransparentBackground(context)` so HUDs re-render on top of the screen's blur layer. Without this they're visible but blurred during edit mode. Selection outline + label render afterward, on top of the now-crisp HUD.
 
@@ -445,24 +510,6 @@ Both HUDs display the result on a second line as `Boost: +X.YY%` via `String.for
 - `GuiLayoutManager.GuiRuntimeTypeAdapterFactory` (writer + reader — the `"type"` tag + class mapping in both directions)
 - `GuiEdit.kt :: findHitElement` (selection hit-test) + `GuiEditScreen.render`'s element-bounds switch
 - `GuiRendering.kt :: GuiRenderer.renderHud` dispatch (legacy `GuiRenderContext` path; new element types that render via NanoVG can be a no-op here, like `SoulHudElement`)
-
-### Tracker overlay framework (`gui/lib/tracker/`)
-
-Generic list-style HUD with tabs, sortable rows, paginated row-limit, and scroll-wheel support — designed for "show me a per-creature breakdown" / "show me sessions vs totals" features. First user is the Fishing HUD (`features/fishing/FishingTrackerOverlay`); other list-shaped HUDs (mineshaft corpses-by-type, future per-crop seasonings) should migrate here over time.
-
-Architecture:
-
-- **`TrackerOverlay`** (data model) — declarative description a feature builds at registration time. Has `id`, `title`, `tabs: List<TrackerTab>`, `sortOptions: List<TrackerSortOption>`, `limitOptions: List<Int>` (default `[5, 10, 15, -1]`, -1 = "All"), `defaults: TrackerSettings`, optional `onReset` for the footer's reset button. Each `TrackerTab.rowsProvider` is invoked every render — keep it cheap.
-- **`TrackerRow`** — single row data: `label`, `primaryValue: Long`, optional `secondaryValue + secondaryLabel`, and a `sortValues: Map<String, Long>` consulted by the active sort.
-- **`TrackerSettings`** — per-tracker UI state: `activeTab`, `sortKey`, `limit`, `scrollOffset`. Lives **separately** from `gui_layout.json` because layout (position/scale, owned by the user via `/soul gui`) and UI state (changed by clicking the panel itself) have different lifecycles.
-- **`TrackerSettingsStore`** — Gson JSON at `config/soul/tracker_settings.json`. Atomic temp+rename via `SoulExecutor`, tick-debounced one-write-per-second (mirrors `PersistentStats`). `getOrCreate(id, defaults)` returns a live reference — callers mutate it then call `markDirty()`. Must be `init()`'d before any tracker registers (wired in `Soul.onInitializeClient` right after `PersistentStats.init()`).
-- **`TrackerOverlayRegistry`** — `ConcurrentHashMap<String, TrackerOverlay>` of runtime overlay descriptors. Features call `register(overlay)`; the renderer/input handler look up by id. Not persisted — built fresh each launch.
-- **`TrackerOverlayElement`** (new `GuiElement` subclass) — shell that persists in `gui_layout.json` so the panel can be repositioned via `/soul gui` like every other HUD. Holds only position/scale/enabled. The overlay descriptor itself stays in the registry.
-- **`GuiLayoutApi.updateTrackerOverlay(id, enabled, defaultAnchorX, …)`** — upsert helper mirroring `updateTextBlock`. Idempotent: re-calling preserves user-edited position/scale; only `enabled` is overwritten.
-- **`TrackerOverlayRenderer`** — paints the translucent rounded panel (`PANEL_COLOR = 0xD81A1A1A`, radius 6f via `DrawContextRenderer.roundedFill`), header (title left + tab buttons right), scissor-clipped list, separator, footer (sort / limit / reset). Hit regions recorded for every interactive element + a single `TRACKER_OVERLAY_SCROLL_REGION` covering the list. All drawing via `GuiRenderContext` so the renderer stays Minecraft-free; `MinecraftGuiRenderContext` implements `fillRoundedRect` / `pushScissor` / `popScissor` / `textWidth` / `textLineHeight`.
-- **`TrackerInputHandler`** — routes the new `TRACKER_OVERLAY_*` hit-region kinds: tab clicks update `activeTab`, cycle-sort and cycle-limit walk their option arrays, reset invokes `overlay.onReset`. Scroll wheel adjusts `scrollOffset` (positive wheel-delta scrolls up by one row).
-- **Input plumbing.** `SoulGuiHudAdapter.registerScreenOverlay()` wires per-screen `ScreenMouseEvents.allowMouseClick` + `allowMouseScroll` callbacks on `AbstractContainerScreen` instances only. Clicks land in `GuiInteractionHandler.handleClick`; the tracker kinds dispatch to `TrackerInputHandler.handleClick(region)`. Scrolls land directly in `TrackerInputHandler.handleScroll(snapshot, mx, my, vsd)`. Returning `false` from the `Allow*` callback cancels the vanilla side-effect (e.g. inventory slot click) when we consumed the input.
-- **Render path.** The same `Gui.render` TAIL + `Screen.afterRender` two-pass strategy described under "HUD-over-screen z-order" applies — the renderer doesn't care which pass invoked it.
 
 ### HUD architecture
 
@@ -709,10 +756,31 @@ Tick-driven debounced save (max once per second), atomic write (temp file + rena
 - `data/skyblock/FishingFestivalState` — chat-driven festival state. The underway line (`FISHING FESTIVAL The festival is now underway`) is a "currently active" indicator: Hypixel sends it on real festival start, on server join while one is active, and sometimes duplicates it mid-festival (known bug). First occurrence while inactive → `Started` event + persist `festivalStartAt`; subsequent occurrences are no-ops. The concluded line (`… has concluded`) is reliable and authoritative — single fire per festival. A 1-hour safety cap from `firstSeenStartAt` ends the festival if the concluded message is somehow missed. `firstSeenStartAt` is persisted to `stats.json` so a mid-festival restart resumes the same bucket. **Mayor / Marina state is intentionally ignored** — special non-Marina mayors (Jerry perkpocalypse) can also fire festivals, and the chat lines are the only signal we trust.
 - `features/fishing/FishingTracker` — always-on tracker for sea-creature catches + double-hooks + cocoons. Sticky-flag attribution mirroring `SkyHanni/SeaCreatureManager.kt`: `It's a Double Hook!(?: Woot woot!)?` line sets `pendingDoubleHook = true`; the next catch line consumes it and publishes `SeaCreatureCaught(creature, doubleHook, duringFestival, ts)`. Interleaver lines (autopet, `> Your bottle of thunder has fully charged!`, `A Reindrake forms from the depths.`, blank lines) do not reset the flag — they can legitimately land between the hook line and the catch line. Any other unrelated server line clears the flag. The double-hook chat line is subject to chat-compactor `(N)` coalescing; decoded with the same `lastCompactedBase/Count/At` delta logic as `SeasoningTracker`. **Cocoon line** (`CAUGHT! You cocooned a <SeaCreature>!`) is a kill-time outcome from cocoon equipment — counted into a separate `cocoons*` family, **does not** consume `pendingDoubleHook`, and **does not** increment the catch counter (the catch line already fired earlier in the encounter). The creature name in the cocoon line is matched against `SeaCreatureCatalog.byName(...)`; an unknown name (catalog out-of-date vs. a new festival creature) is still counted under the chat-line name so totals never drop data. Counters: all-time (`PersistentStats`), session (in-memory on the singleton), festival (additive bucket persisted to stats.json — cleared on `FishingFestivalEvent.Started`, retained through `Ended` so the HUD can show just-ended numbers).
 - `features/fishing/FishingTimer` — session-only stopwatch for active fishing (mirrors `FarmingTimer` in spirit; resets per launch). **Active begins** when the local player's own `FishingHook` is in water or lava (`bobber.playerOwner === client.player && (bobber.isInWater || bobber.isInLava)`); other players' bobbers are ignored. Anchor captured at activation. **Active ends** on any of: (a) player moved > 50 blocks (xyz) from anchor — instant pause; (b) 5 s with both no own bobber AND no xyz movement; (c) 60 s hard cap since the bobber last existed (covers marathon sea creature fights where the bobber is gone but the player is still in combat in-area). Movement is **xyz only** — camera yaw/pitch deltas do not count, intentional so AFK rotation auto-rotators don't keep the timer alive. `FishingTimer.formatTime()` produces the `hh:mm:ss` string consumed by the HUD; `isPaused` toggles the `(Paused)` suffix. `resetSession()` is called from `FishingTracker.resetSession()` so the HUD Reset button clears both at once.
-- `ui/hud/FishingHud` — per-creature panel + header timer line. Tabs: `Session` (in-memory) and `Total` (persisted). Sort: Catches / Double Hooks / Cocoons. Per-row stats: catches (accent), `N DH` (when > 0), `N CC` (when > 0). Header second-line shows `Fishing Time: hh:mm:ss [(Paused)]` plus a right-aligned `Cocoons: N` for the active tab. Limit cycles 5 / 10 / 15 / All. Reset button calls `FishingTracker.resetSession()` (which also resets the timer). A separate small text block (`fishing_festival_sticker`) renders above the panel showing the festival countdown when active. Gated on `cfg.fishing.fishingHud.showHud()` + `cfg.fishing.fishingTracker.enableTracker()` + `SkyblockApi.isOnSkyblock`.
+- `ui/hud/FishingHud` — per-creature panel. **Layout (top to bottom):**
+  - **Header row 1**: "Fishing" centered (heading text).
+  - **Header row 2**: timer (`hh:mm:ss` + optional `(Paused)`) on the left, Tabs (`Session` / `Total`) on the right via SpaceBetween. Outside an `AbstractContainerScreen` the Tabs widget collapses to a dim-color label showing just the active tab name (since clicks don't route there).
+  - **Horizontal divider**, **scrollable list** of per-creature rows.
+  - Each row: creature name (colored via `SeaCreature.rarityColor()` from the global `SkyblockRarity` table) on the left; right-side number cells in the order **CC → DH → Catches**, each at `NUMBER_CELL_WIDTH = 32f` with `Arrangement.Center`, separated by thin vertical `ColumnDivider`s. Hidden columns (toggled off in the Columns dropdown) are skipped entirely.
+  - **Totals chip line**: appears below the list (before the footer divider) when ≥1 column is visible. Order: `CC: N (P.PP%)` `DH: N (P.PP%)` `Catches: N`. Arrangement = `SpaceBetween` when ≥2 chips, `End` when 1 chip (single chip flush-right). Percentages = `count / catches × 100`, `%.1f` via `Locale.ROOT`.
+  - **Horizontal divider**, **footer** (only inside container screens, since clicks don't fire on bare HUD): three rows —
+    1. Category dropdown (full width). Options: `"All"` + every `SeaCreature.variant` from the catalog, friendly-cased (`LAVA_CRIMSON_ISLE` → `Lava Crimson Isle`). `popupMaxHeight = 156f` (≈ 8 visible rows + scroll). Filter applies on `creature.variant`; creatures not in the catalog are dropped when a filter is active.
+    2. Sort dropdown + Columns dropdown (50/50 via `.weight(1f)` each). Sort options: `Catches`, `Double Hooks`, `Cocoons`, `Rarity` (descending `SkyblockRarity.ordinal`, alpha tie-break), `Alphabetical`. Column-bound sorts (`Catches` / `DH` / `Cocoons`) hide when their column is toggled off; `Rarity` and `Alphabetical` always visible.
+    3. **Reset Session** button (full width, centered label) — calls `FishingTracker.resetSession()` which also resets `FishingTimer`.
+- Gated on `cfg.fishing.fishingHud.showHud()` + `cfg.fishing.fishingTracker.enableTracker()` + `SkyblockApi.isOnSkyblock` + `FishingVisibility.isVisible`. A separate `fishing_festival_sticker` HUD renders the festival countdown when active.
+- HUD settings persisted at `config/soul/fishing_hud.json` (`tab`, `sort`, `scrollOffset`, `showCatches/DH/Cocoons`, `category` — null = All). Dropdown-open flags (`sortDropdownOpen`, `columnDropdownOpen`, `categoryDropdownOpen`) live on the singleton as `@Volatile` transients — never persisted.
 - `features/fishing/BobbinSpotter` + `ui/hud/BobbinHud` — pre-existing Bobbin-Time feature (unchanged).
 - `features/DoubleHookResponse` — pre-existing `/pc <message>` send on double-hook chat. Now event-bus + party-gated; still parses chat directly rather than subscribing to `SeaCreatureCaught` (v1 simplicity — could be migrated later if the user wants the party message to include the creature name).
 - **Persisted fields** (`PersistentStats.Data`): `doubleHooksAllTime`, `catchesAllTime`, `cocoonsAllTime`, `doubleHooksByCreature: Map<String, Long>`, `catchesByCreature`, `cocoonsByCreature`, `festivalStartAt`, `festivalDoubleHooks`, `festivalCatches`, `festivalCocoons`, `festivalDoubleHooksByCreature`, `festivalCatchesByCreature`, `festivalCocoonsByCreature`. Maps are **immutable** (`Map<String, Long>`, not `MutableMap`) — replaced via `m + (k to v)` rather than mutated, so the save-time `Data.copy()` (shallow) is safe against concurrent writes.
+
+#### Future tracker abstraction (don't extract early)
+
+`FishingHud.kt` (~620 lines) + `FishingHudSettings.kt` (~165 lines) is currently a **one-off, not a reusable framework.** Everything in those files is hardcoded to the fishing domain — `Sort` enum names columns `Catches`/`DoubleHooks`/`Cocoons`, `CreatureRow` has three fixed numeric columns, `buildRows` reads `FishingTracker.session*ByCreature` + `PersistentStats.current.*ByCreature`, Category dropdown pulls from `SeaCreatureCatalog.variants()`, reset hardcodes `FishingTracker.resetSession()`, title is the literal `"Fishing"`. The old `gui/lib/tracker/` package WAS a generic abstraction; it was deleted in P3 because it had only one consumer and the Soul UI migration was easier flat.
+
+**To add a similar tracker today** (e.g. Slayer Kills, Mineshaft Corpses with sort+filter, Mining Commissions): copy `FishingHud.kt` + `FishingHudSettings.kt`, rename, swap the data sources + column labels. Maybe 4–6 hours of work per new tracker, with substantial layout-scaffolding duplication (header, tabs, scrollable list, chips line, three-dropdown footer, reset button).
+
+**When to extract a `TrackerHud<T>` abstraction**: at **N = 2 trackers**, not now. Abstracting from N=1 always picks the wrong abstraction boundary. Once we have two concrete examples, the right shared shape becomes obvious from where they diverge. The likely API at that point: a `TrackerSpec<T>` data class with `id`, `title`, `rowsProvider`, `columns: List<TrackerColumn<T>>`, `extraSorts: List<TrackerSort<T>>`, optional `categoryProvider` + `rarityProvider` + `onReset`, fed into a single `@SoulComposable fun TrackerHud(spec: TrackerSpec<T>)`. After the refactor, new trackers shrink to ~50 lines of spec each. Until then: copy.
+
+**What IS already reusable** for any new tracker (so it's not zero leverage): every Soul UI primitive (`Surface`, `Column`, `Row`, `Tabs`, `ScrollableList`, `Dropdown` / `MultiSelectDropdown` with `popupMaxHeight` scroll, `Button`, `Text`, `ColumnDivider`); the persisted-settings + `@Volatile` transient-dropdown-flags pattern; `SkyblockRarity.colorFor` for rarity-tinted names; `LocationApi` + the `AreaChanged` event for visibility gates; the `Visibility` singleton template (`FishingVisibility`).
 
 ### Farming features
 

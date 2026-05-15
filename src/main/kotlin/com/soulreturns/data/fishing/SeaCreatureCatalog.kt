@@ -92,4 +92,28 @@ object SeaCreatureCatalog {
 
     /** All creatures currently in the catalog. */
     fun all(): Collection<SeaCreature> = byName.values
+
+    /**
+     * Set of every `variant` key that has at least one creature in the catalog. Sorted by
+     * display name so dropdown pickers iterate in a deterministic, user-friendly order.
+     * Mirrors SkyHanni's "fishing category" concept — there's no further grouping; each
+     * variant is its own dropdown entry.
+     */
+    fun variants(): List<String> =
+        byName.values.asSequence()
+            .map { it.variant }
+            .distinct()
+            .sortedBy { it.toDisplayName() }
+            .toList()
+
+    /**
+     * Friendly display name for a variant key: underscores become spaces, each word
+     * title-cased. `LAVA_CRIMSON_ISLE` → `Lava Crimson Isle`. Matches the SkyHanni
+     * `allLettersFirstUppercase()` formatting so the dropdown labels read the same as
+     * users already see in SkyHanni's sea-creature tracker.
+     */
+    fun String.toDisplayName(): String =
+        split('_').joinToString(" ") { word ->
+            word.lowercase().replaceFirstChar { it.titlecase() }
+        }
 }

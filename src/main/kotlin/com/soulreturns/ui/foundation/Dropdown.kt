@@ -12,6 +12,18 @@ import com.soulreturns.ui.composer.composable
 import com.soulreturns.ui.input.HitRegion
 import com.soulreturns.ui.input.SoulInput
 import com.soulreturns.ui.theme.SoulTheme
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Per-popup scroll offset, keyed by the dropdown's trigger key. Populated lazily — most
+ * dropdowns never set `popupMaxHeight` and stay un-scrollable, so the map is small. Held
+ * in module scope so the offset survives close/re-open cycles within one session (and
+ * resets at JVM exit). Reading off the wrong thread is fine — modal popups only render
+ * on the render thread, and `ConcurrentHashMap` makes the write-on-scroll safe.
+ */
+private val popupScrollOffsets: ConcurrentHashMap<Any, Float> = ConcurrentHashMap()
+
+private data class DropdownScrollKey(val parent: Any)
 
 /** One row inside a [MultiSelectDropdown]. */
 data class DropdownOption(
@@ -39,6 +51,13 @@ fun Dropdown(
     onExpandedChange: (Boolean) -> Unit,
     modifier: SoulModifier = SoulModifier.Empty,
     key: Any = SoulComposer.current.nextAutoKey(),
+    /**
+     * Optional cap on the popup's height. When the option list exceeds [popupMaxHeight] the
+     * popup renders at exactly this height, scissor-clips the option rows, and a mouse-
+     * wheel scroll region is recorded over the popup body so the user can scroll through
+     * the hidden options. `null` means "no cap" — popup grows to fit all options (legacy).
+     */
+    popupMaxHeight: Float? = null,
 ) {
     SoulComposer.current.composable(
         SingleSelectDropdownNode(
@@ -50,6 +69,7 @@ fun Dropdown(
             onExpandedChange = onExpandedChange,
             triggerKey = key,
             modifier = modifier,
+            popupMaxHeight = popupMaxHeight,
         ),
     )
 }
@@ -87,6 +107,8 @@ fun MultiSelectDropdown(
     onExpandedChange: (Boolean) -> Unit,
     modifier: SoulModifier = SoulModifier.Empty,
     key: Any = SoulComposer.current.nextAutoKey(),
+    /** See [Dropdown.popupMaxHeight]. */
+    popupMaxHeight: Float? = null,
 ) {
     SoulComposer.current.composable(
         MultiSelectDropdownNode(
@@ -96,6 +118,7 @@ fun MultiSelectDropdown(
             onExpandedChange = onExpandedChange,
             triggerKey = key,
             modifier = modifier,
+            popupMaxHeight = popupMaxHeight,
         ),
     )
 }
@@ -272,6 +295,42 @@ private fun computePopupWidth(
     return (contentW + 2 * DropdownChrome.POPUP_PAD_H).coerceAtLeast(minWidth)
 }
 
+/**
+ * Decide whether the popup should open above or below the trigger. Compares the panel-local
+ * room available on each side — opens into whichever side fits the popup (or has more space
+ * when neither side can hold it whole). Falls back to "above" when no panel size is known
+ * (e.g. unit tests, or before any panel has rendered).
+ *
+ * Why panel-local instead of screen-relative: the popup is bounded by the PIP texture, not
+ * by the screen. A HUD anchored to the top-left of the screen has plenty of room "below" in
+ * screen terms, but if its footer trigger sits near the panel's bottom edge there's no room
+ * for a tall popup inside the texture. Panel-local math catches that case.
+ */
+private fun computePopupY(
+    triggerLocalY: Float,
+    triggerHeight: Float,
+    popupHeight: Float,
+): Float {
+    val panelH = SoulInput.panelHeight
+    if (panelH <= 0f) {
+        return triggerLocalY - popupHeight - DropdownChrome.POPUP_GAP_FROM_TRIGGER
+    }
+    val gap = DropdownChrome.POPUP_GAP_FROM_TRIGGER
+    val roomAbove = triggerLocalY - gap
+    val roomBelow = panelH - (triggerLocalY + triggerHeight) - gap
+    val openBelow =
+        when {
+            roomBelow >= popupHeight -> true
+            roomAbove >= popupHeight -> false
+            else -> roomBelow >= roomAbove // neither fits fully — pick the larger side
+        }
+    return if (openBelow) {
+        triggerLocalY + triggerHeight + gap
+    } else {
+        triggerLocalY - popupHeight - gap
+    }
+}
+
 private data class DropdownScrimKey(val parent: Any)
 
 private data class DropdownOptionKey(val parent: Any, val index: Int)
@@ -285,6 +344,7 @@ internal class MultiSelectDropdownNode(
     private val onExpandedChange: (Boolean) -> Unit,
     private val triggerKey: Any,
     override val modifier: SoulModifier,
+    private val popupMaxHeight: Float? = null,
 ) : SoulNode() {
     private var triggerW = 0f
     private var triggerH = 0f
@@ -320,48 +380,90 @@ internal class MultiSelectDropdownNode(
         )
         if (!expanded) return
 
-        val px = x
-        val py = y - popupH - DropdownChrome.POPUP_GAP_FROM_TRIGGER
-        drawPopupChrome(
-            px,
-            py,
-            popupW,
-            popupH,
-            depth = depth,
-            triggerKey = triggerKey,
-            onDismiss = { onExpandedChange(false) },
-        )
+        // Deferred paint: the popup needs to land **on top** of later siblings (the rest
+        // of the footer column, the reset button, etc.). Queueing the visual + hit-region
+        // work means the host (`SoulHud.renderOne`) drains it after the main tree finishes.
+        SoulInput.queueOverlay {
+            // Modal mode — only regions recorded inside this block are consulted for
+            // click / hover dispatch. Sibling triggers (recorded in the regular drawSelf
+            // pass before this overlay runs) become inert until the popup closes, so a
+            // click on another dropdown's trigger goes to this popup's scrim instead.
+            SoulInput.beginModal()
 
-        val bodySize = SoulTheme.typography.body.size
-        val bodyFont = SoulTheme.typography.body.font
-        var ry = py + DropdownChrome.POPUP_PAD_V
-        for ((idx, option) in options.withIndex()) {
-            val rowX = px + DropdownChrome.POPUP_PAD_H
-            val rowY = ry
-            val rowW = popupW - 2 * DropdownChrome.POPUP_PAD_H
-            val optionKey = DropdownOptionKey(triggerKey, idx)
-
-            if (SoulInput.isHovered(optionKey)) {
-                NvgRenderer.rect(rowX, rowY, rowW, DropdownChrome.OPTION_ROW_H, SoulTheme.colors.panelHover, DropdownChrome.CHECKBOX_RADIUS)
+            val px = x
+            val effectiveH = popupMaxHeight?.coerceAtMost(popupH) ?: popupH
+            val maxScroll = (popupH - effectiveH).coerceAtLeast(0f)
+            val scrollOffset = (popupScrollOffsets[triggerKey] ?: 0f).coerceIn(0f, maxScroll)
+            if (scrollOffset != popupScrollOffsets[triggerKey] && maxScroll > 0f) {
+                popupScrollOffsets[triggerKey] = scrollOffset
             }
-            drawCheckbox(rowX, rowY + (DropdownChrome.OPTION_ROW_H - DropdownChrome.CHECKBOX_SIZE) / 2f, option.selected)
-
-            val labelX = rowX + DropdownChrome.CHECKBOX_SIZE + DropdownChrome.OPTION_GAP_BETWEEN_INDICATOR_AND_LABEL
-            val labelY = rowY + (DropdownChrome.OPTION_ROW_H - bodySize) / 2f
-            NvgRenderer.text(option.label, labelX, labelY, bodySize, SoulTheme.colors.text, bodyFont)
-
-            SoulInput.recordRegion(
-                HitRegion(
-                    key = optionKey,
-                    x = rowX,
-                    y = rowY,
-                    width = rowW,
-                    height = DropdownChrome.OPTION_ROW_H,
-                    depth = depth + DropdownChrome.INTERACTIVE_DEPTH_BOOST,
-                    onClick = { option.onToggle() },
-                ),
+            val py = computePopupY(y, triggerH, effectiveH)
+            drawPopupChrome(
+                px,
+                py,
+                popupW,
+                effectiveH,
+                depth = depth,
+                triggerKey = triggerKey,
+                onDismiss = { onExpandedChange(false) },
             )
-            ry += DropdownChrome.OPTION_ROW_H
+
+            // Clip option rows to the popup's visible window so a scrolled-off row doesn't
+            // bleed onto the surrounding HUD.
+            NvgRenderer.pushScissor(px, py, popupW, effectiveH)
+
+            val bodySize = SoulTheme.typography.body.size
+            val bodyFont = SoulTheme.typography.body.font
+            var ry = py + DropdownChrome.POPUP_PAD_V - scrollOffset
+            for ((idx, option) in options.withIndex()) {
+                val rowX = px + DropdownChrome.POPUP_PAD_H
+                val rowY = ry
+                val rowW = popupW - 2 * DropdownChrome.POPUP_PAD_H
+                val optionKey = DropdownOptionKey(triggerKey, idx)
+
+                if (SoulInput.isHovered(optionKey)) {
+                    NvgRenderer.rect(rowX, rowY, rowW, DropdownChrome.OPTION_ROW_H, SoulTheme.colors.panelHover, DropdownChrome.CHECKBOX_RADIUS)
+                }
+                drawCheckbox(rowX, rowY + (DropdownChrome.OPTION_ROW_H - DropdownChrome.CHECKBOX_SIZE) / 2f, option.selected)
+
+                val labelX = rowX + DropdownChrome.CHECKBOX_SIZE + DropdownChrome.OPTION_GAP_BETWEEN_INDICATOR_AND_LABEL
+                val labelY = rowY + (DropdownChrome.OPTION_ROW_H - bodySize) / 2f
+                NvgRenderer.text(option.label, labelX, labelY, bodySize, SoulTheme.colors.text, bodyFont)
+
+                SoulInput.recordRegion(
+                    HitRegion(
+                        key = optionKey,
+                        x = rowX,
+                        y = rowY,
+                        width = rowW,
+                        height = DropdownChrome.OPTION_ROW_H,
+                        depth = depth + DropdownChrome.INTERACTIVE_DEPTH_BOOST,
+                        onClick = { option.onToggle() },
+                    ),
+                )
+                ry += DropdownChrome.OPTION_ROW_H
+            }
+
+            NvgRenderer.popScissor()
+
+            // Scroll wheel region — covers the visible popup body. Sits at a depth between
+            // the scrim and the option rows so option clicks still win when they overlap.
+            if (maxScroll > 0f) {
+                SoulInput.recordRegion(
+                    HitRegion(
+                        key = DropdownScrollKey(triggerKey),
+                        x = px,
+                        y = py,
+                        width = popupW,
+                        height = effectiveH,
+                        depth = depth + DropdownChrome.SCRIM_DEPTH_BOOST + 10,
+                        onScroll = { vsd ->
+                            val raw = scrollOffset - vsd * DropdownChrome.OPTION_ROW_H
+                            popupScrollOffsets[triggerKey] = raw.coerceIn(0f, maxScroll)
+                        },
+                    ),
+                )
+            }
         }
     }
 
@@ -420,6 +522,7 @@ internal class SingleSelectDropdownNode(
     private val onExpandedChange: (Boolean) -> Unit,
     private val triggerKey: Any,
     override val modifier: SoulModifier,
+    private val popupMaxHeight: Float? = null,
 ) : SoulNode() {
     companion object {
         // Width of the selected-row indicator (a thin accent bar on the left of the row).
@@ -461,72 +564,108 @@ internal class SingleSelectDropdownNode(
         )
         if (!expanded) return
 
-        val px = x
-        val py = y - popupH - DropdownChrome.POPUP_GAP_FROM_TRIGGER
-        drawPopupChrome(
-            px,
-            py,
-            popupW,
-            popupH,
-            depth = depth,
-            triggerKey = triggerKey,
-            onDismiss = { onExpandedChange(false) },
-        )
+        // Deferred paint: see MultiSelectDropdownNode for the rationale (popups must paint
+        // after every other widget in the same panel so they overlay correctly).
+        SoulInput.queueOverlay {
+            // Modal mode — see MultiSelectDropdownNode comment.
+            SoulInput.beginModal()
 
-        val bodySize = SoulTheme.typography.body.size
-        val bodyFont = SoulTheme.typography.body.font
-        var ry = py + DropdownChrome.POPUP_PAD_V
-        for ((idx, optionLabel) in options.withIndex()) {
-            val rowX = px + DropdownChrome.POPUP_PAD_H
-            val rowY = ry
-            val rowW = popupW - 2 * DropdownChrome.POPUP_PAD_H
-            val optionKey = DropdownOptionKey(triggerKey, idx)
-            val isSelected = idx == selectedIndex
-
-            if (SoulInput.isHovered(optionKey)) {
-                NvgRenderer.rect(
-                    rowX,
-                    rowY,
-                    rowW,
-                    DropdownChrome.OPTION_ROW_H,
-                    SoulTheme.colors.panelHover,
-                    DropdownChrome.CHECKBOX_RADIUS,
-                )
+            val px = x
+            val effectiveH = popupMaxHeight?.coerceAtMost(popupH) ?: popupH
+            val maxScroll = (popupH - effectiveH).coerceAtLeast(0f)
+            val scrollOffset = (popupScrollOffsets[triggerKey] ?: 0f).coerceIn(0f, maxScroll)
+            if (scrollOffset != popupScrollOffsets[triggerKey] && maxScroll > 0f) {
+                popupScrollOffsets[triggerKey] = scrollOffset
             }
-
-            // Selected indicator: thin accent vertical bar on the left of the row.
-            if (isSelected) {
-                val barH = DropdownChrome.OPTION_ROW_H * 0.6f
-                NvgRenderer.rect(
-                    rowX,
-                    rowY + (DropdownChrome.OPTION_ROW_H - barH) / 2f,
-                    INDICATOR_BAR_WIDTH,
-                    barH,
-                    SoulTheme.colors.accent,
-                    1f,
-                )
-            }
-
-            val labelX = rowX + INDICATOR_BAR_WIDTH + DropdownChrome.OPTION_GAP_BETWEEN_INDICATOR_AND_LABEL
-            val labelY = rowY + (DropdownChrome.OPTION_ROW_H - bodySize) / 2f
-            val labelColor = if (isSelected) SoulTheme.colors.accent else SoulTheme.colors.text
-            NvgRenderer.text(optionLabel, labelX, labelY, bodySize, labelColor, bodyFont)
-
-            SoulInput.recordRegion(
-                HitRegion(
-                    key = optionKey,
-                    x = rowX,
-                    y = rowY,
-                    width = rowW,
-                    height = DropdownChrome.OPTION_ROW_H,
-                    depth = depth + DropdownChrome.INTERACTIVE_DEPTH_BOOST,
-                    onClick = {
-                        onSelect(idx)
-                        onExpandedChange(false)
-                    },
-                ),
+            val py = computePopupY(y, triggerH, effectiveH)
+            drawPopupChrome(
+                px,
+                py,
+                popupW,
+                effectiveH,
+                depth = depth,
+                triggerKey = triggerKey,
+                onDismiss = { onExpandedChange(false) },
             )
-            ry += DropdownChrome.OPTION_ROW_H
+
+            // Clip option rows to popup's visible window (see MultiSelectDropdownNode).
+            NvgRenderer.pushScissor(px, py, popupW, effectiveH)
+
+            val bodySize = SoulTheme.typography.body.size
+            val bodyFont = SoulTheme.typography.body.font
+            var ry = py + DropdownChrome.POPUP_PAD_V - scrollOffset
+            for ((idx, optionLabel) in options.withIndex()) {
+                val rowX = px + DropdownChrome.POPUP_PAD_H
+                val rowY = ry
+                val rowW = popupW - 2 * DropdownChrome.POPUP_PAD_H
+                val optionKey = DropdownOptionKey(triggerKey, idx)
+                val isSelected = idx == selectedIndex
+
+                if (SoulInput.isHovered(optionKey)) {
+                    NvgRenderer.rect(
+                        rowX,
+                        rowY,
+                        rowW,
+                        DropdownChrome.OPTION_ROW_H,
+                        SoulTheme.colors.panelHover,
+                        DropdownChrome.CHECKBOX_RADIUS,
+                    )
+                }
+
+                // Selected indicator: thin accent vertical bar on the left of the row.
+                if (isSelected) {
+                    val barH = DropdownChrome.OPTION_ROW_H * 0.6f
+                    NvgRenderer.rect(
+                        rowX,
+                        rowY + (DropdownChrome.OPTION_ROW_H - barH) / 2f,
+                        INDICATOR_BAR_WIDTH,
+                        barH,
+                        SoulTheme.colors.accent,
+                        1f,
+                    )
+                }
+
+                val labelX = rowX + INDICATOR_BAR_WIDTH + DropdownChrome.OPTION_GAP_BETWEEN_INDICATOR_AND_LABEL
+                val labelY = rowY + (DropdownChrome.OPTION_ROW_H - bodySize) / 2f
+                val labelColor = if (isSelected) SoulTheme.colors.accent else SoulTheme.colors.text
+                NvgRenderer.text(optionLabel, labelX, labelY, bodySize, labelColor, bodyFont)
+
+                SoulInput.recordRegion(
+                    HitRegion(
+                        key = optionKey,
+                        x = rowX,
+                        y = rowY,
+                        width = rowW,
+                        height = DropdownChrome.OPTION_ROW_H,
+                        depth = depth + DropdownChrome.INTERACTIVE_DEPTH_BOOST,
+                        onClick = {
+                            onSelect(idx)
+                            onExpandedChange(false)
+                        },
+                    ),
+                )
+                ry += DropdownChrome.OPTION_ROW_H
+            }
+
+            NvgRenderer.popScissor()
+
+            // Mouse-wheel scroll region — only when content actually overflows.
+            if (maxScroll > 0f) {
+                SoulInput.recordRegion(
+                    HitRegion(
+                        key = DropdownScrollKey(triggerKey),
+                        x = px,
+                        y = py,
+                        width = popupW,
+                        height = effectiveH,
+                        depth = depth + DropdownChrome.SCRIM_DEPTH_BOOST + 10,
+                        onScroll = { vsd ->
+                            val raw = scrollOffset - vsd * DropdownChrome.OPTION_ROW_H
+                            popupScrollOffsets[triggerKey] = raw.coerceIn(0f, maxScroll)
+                        },
+                    ),
+                )
+            }
         }
     }
 }

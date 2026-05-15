@@ -36,6 +36,8 @@ object FishingHudSettings {
         Catches("Catches"),
         DoubleHooks("Double Hooks"),
         Cocoons("Cocoons"),
+        Rarity("Rarity"),
+        Alphabetical("Alphabetical"),
     }
 
     /**
@@ -53,17 +55,30 @@ object FishingHudSettings {
         var showCatches: Boolean = true,
         var showDoubleHooks: Boolean = true,
         var showCocoons: Boolean = true,
+        /**
+         * Filter for the per-creature list. `null` = show every variant. Otherwise it's the
+         * raw `SeaCreature.variant` key (e.g. `"WATER"`, `"LAVA_CRIMSON_ISLE"`) and only
+         * rows whose creature lives in that variant render. Persisted so the user's last
+         * picked category sticks across sessions.
+         */
+        var category: String? = null,
     ) {
-        /** Whether [sort]'s underlying column is currently visible. */
+        /**
+         * Whether [sort] is currently selectable. Column-bound sorts (`Catches` / `DH` /
+         * `Cocoons`) hide when their column is toggled off — sorting by an invisible column
+         * silently shuffles the row order. `Rarity` and `Alphabetical` derive from the
+         * creature itself, not a column, so they're always visible.
+         */
         fun isSortVisible(sort: Sort): Boolean =
             when (sort) {
                 Sort.Catches -> showCatches
                 Sort.DoubleHooks -> showDoubleHooks
                 Sort.Cocoons -> showCocoons
+                Sort.Rarity, Sort.Alphabetical -> true
             }
 
-        /** First visible sort key, falling back to [Sort.Catches] if every column is hidden. */
-        fun firstVisibleSort(): Sort = Sort.values().firstOrNull { isSortVisible(it) } ?: Sort.Catches
+        /** First visible sort key, falling back to [Sort.Alphabetical] (always visible). */
+        fun firstVisibleSort(): Sort = Sort.values().firstOrNull { isSortVisible(it) } ?: Sort.Alphabetical
     }
 
     @Volatile private var settings: Settings = Settings()
@@ -80,6 +95,8 @@ object FishingHudSettings {
     @Volatile var columnDropdownOpen: Boolean = false
 
     @Volatile var sortDropdownOpen: Boolean = false
+
+    @Volatile var categoryDropdownOpen: Boolean = false
 
     fun init() {
         load()

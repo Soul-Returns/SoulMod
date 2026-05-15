@@ -235,6 +235,10 @@ object SoulHud {
                 0f,
                 SoulConstraints(maxWidth = entry.width.toFloat(), maxHeight = entry.height.toFloat()),
             )
+            // Run any draw lambdas widgets queued via `SoulInput.queueOverlay` (e.g. an
+            // expanded dropdown popup) — they paint after every sibling so they always
+            // appear on top.
+            com.soulreturns.ui.input.SoulInput.flushOverlays()
             // Capture the actual rendered size for /soul gui's selection-box geometry —
             // the registered (width, height) is a max bound; most HUDs render smaller.
             root.measured?.let { m -> SoulHudRegistry.recordMeasured(id, m.width, m.height) }

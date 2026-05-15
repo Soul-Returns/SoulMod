@@ -26,8 +26,12 @@ object FishingFestivalHud {
     fun register() {
         SoulHud.register(
             id = HUD_ID,
-            width = 220,
-            height = 36,
+            // "Fishing Festival — 38m 12s left" at heading-size weight + 12 px Surface
+            // padding on each side adds up to ~250 logical px wide; round to 280 so the
+            // PIP texture doesn't clip the trailing "left" on the right edge. Height bumped
+            // to 44 so the heading text (13 px) clears its 12 px top + bottom padding.
+            width = 280,
+            height = 44,
             defaultAnchorX = 0.02,
             defaultAnchorY = 0.42,
         ) {

@@ -71,7 +71,15 @@ object NvgFrame {
         val scissor = context.scissorStack.peek()
         val state =
             NvgPipState(x, y, scaledW, scaledH, null, scissor) {
-                SoulInput.startFrame(cursorLocalX, cursorLocalY, originX, originY, effectiveScale)
+                SoulInput.startFrame(
+                    cursorLocalX,
+                    cursorLocalY,
+                    originX,
+                    originY,
+                    effectiveScale,
+                    panelWidth = w.toFloat(),
+                    panelHeight = h.toFloat(),
+                )
                 if (effectiveScale != 1f) {
                     com.soulreturns.platform.render.nvg.NvgRenderer.push()
                     com.soulreturns.platform.render.nvg.NvgRenderer.scale(effectiveScale, effectiveScale)

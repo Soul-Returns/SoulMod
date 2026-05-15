@@ -15,8 +15,8 @@ sub-phase commit.
 | **P2.4** | Toggle, Slider (drag), Tabs, ScrollableList (self-clamping), Theme | ✅ shipped |
 | **P2.5** | SoulHud register API + SoulHudElement + SoulHudRegistry + SoulScreen + GuiEditScreen overlay fix | ✅ shipped |
 | **P3** | Migrate every HUD to the new framework | ✅ shipped |
-| **P4** | Migrate every Screen, retire owo-ui dependency | ⏳ next up |
-| **P5** | Polish: animations, theming variants, a11y, docs | not started |
+| **P4** | Migrate every Screen, retire owo-ui dependency | ✅ shipped |
+| **P5** | Polish: dropdowns, anchor system, schema migration, animations, theme variants | 🔄 partial |
 
 ## P3 outcome
 
@@ -100,86 +100,96 @@ After **every** HUD is on `SoulHud`:
 
 ---
 
-## P4 — Migrate Screens, retire owo-ui
+## P4 outcome
 
-The big migration. Owo-ui currently powers three screens, all of which need full
-re-implementation on `SoulScreen`:
+All three owo-ui screens migrated. `io.wispforest.owo.ui.*` imports are gone from Kotlin
+code; `modImplementation("io.wispforest:owo-lib:...")` still ships at runtime because the
+**owo-config** annotation processor remains (it generates `SoulConfig.java` from
+`SoulConfigModel.java`). UI half is dead-code at runtime — keep an eye on the dep size if
+that ever matters; for now removing it would force re-jigging the AP wiring for no real win.
 
-### 4.1 — `UpdateModal`
-Simplest screen. Single panel with a title, message body, two buttons. Good first
-migration to validate `SoulScreen` end-to-end.
+Shipped in P4:
 
-### 4.2 — Profile Viewer (`profileviewer/`)
-Medium complexity. Currently a `ProfileViewerScreen` with a top tab bar and a `DungeonsTab`
-(stats with XP bars + floor completion tables). Migration:
-- Tab bar → `Tabs` composable (already exists)
-- Stats card layouts → `Surface` + `Row` + `Column` + custom progress-bar composable
-  (new — small `Box` with two children, second one width-bound by `Modifier.width(progress * maxW)`)
-- Floor table → `Column` of `Row`s, or a future `Grid`/`Table` composable
-- Open via `/spv <username>` (`SpvCommand` already handles UUID resolution + backend fetch)
+- **UpdateModal** (`update/UpdateModal.kt`) — `SoulScreen` with title + body + two buttons.
+- **Profile Viewer** (`profileviewer/gui/ProfileViewerScreen.kt`, `DungeonsTab.kt`) — Tabs
+  strip, ScrollableList body, Surface cards. Built a new `ProgressBar` composable
+  (`ui/foundation/ProgressBar.kt`) for the dungeon XP bars.
+- **Config screen** (`config/gui/SoulConfigScreen.kt` + `ui/config/registry/ConfigSections.kt`
+  + `ui/config/model/*` + `ui/config/search/*`) — declarative extension maps survive
+  unchanged; the row/icon owo-ui renderers under `ui/config/components/*` and
+  `ui/config/rows/RowBuilders.kt` were deleted. Built supporting widgets:
+  - `TextField` (`ui/foundation/TextField.kt`) — single-line editable text with focus +
+    cursor + selection.
+  - `Slider` (continuous) / per-step rendering — `SoulIntSlider` discrete variant
+    inlined as a `Slider` configuration rather than its own widget.
+  - `Image` composable + `NvgRenderer.loadImage` for the Discord / GitHub social icons in
+    the title bar.
+- **GuiEditScreen** stays on vanilla `Screen` per the original recommendation — it's an
+  edit tool, not gameplay UI, and the cost of migrating outweighs the consistency win.
+  Got significant feature growth (anchor preset menu, corner indicators, dynamic bounds)
+  but the underlying base is still vanilla Screen.
 
-### 4.3 — Config screen (`config/gui/SoulConfigScreen` + `ui/config/*`)
-Biggest single migration in P4. Current architecture (see `CLAUDE.md → "Config UI architecture"`):
-- `SoulConfigScreen.kt` orchestrator
-- `ui/config/registry/ConfigSections.kt` declarative extension maps (explicitSections,
-  linkSections, actionRows, virtualSubs, categoryOrder, optionVisibility, optionDepth,
-  rebuildOnChange, keybindOptions)
-- `ui/config/rows/RowBuilders.kt` row builders
-- `ui/config/components/*` button + icon renderers
-- `ui/config/model/*` data classes
-- `ui/config/search/ConfigSearchFilter.kt` search
+---
 
-Migration strategy:
-- Keep `ConfigSections.kt` as-is — it's declarative metadata that's framework-agnostic. The
-  consumers change.
-- Build a new `SoulConfigScreen : SoulScreen` that walks owo-config's wrapper (same
-  `CategoriesCollector` logic), and produces `Surface { Row { Sidebar + Column { ... } } }`.
-- Sidebar = `Column` of `Button`s, one per category.
-- Content area = `ScrollableList { ... }` with section headers + row composables.
-- Each option type gets a composable: `BooleanRow` → `Toggle`, `IntRow` → `Slider` (int
-  variant — add `IntSlider` to foundation if not already), `FloatRow` → `Slider`, `StringRow`
-  → text field (need to add `TextField` composable in P4 — not yet in foundation), action
-  rows → `Button`.
-- Search filter remains a pure function over the categories list.
-- Keybind capture flow — currently `RowBuilders.buildKeybindButton` + `ConfigScreenContext`.
-  The new equivalent: a stateful Soul composable that exposes a capture-pending flag and
-  swallows the next key event.
+## P5 — Polish
 
-### 4.4 — `GuiEditScreen`
-Decide: migrate or keep on vanilla Screen.
-- Migrate pro: consistency with the rest of Soul UI; users see the same look across `/soul`
-  and `/soul gui`.
-- Migrate con: GuiEditScreen is a dev/edit tool, not gameplay UI. The current implementation
-  is fine and works. Migration is busywork.
-- **Recommendation:** leave as vanilla Screen unless a feature in P4.5+ needs it.
+Mixed bag of UX + framework features. Several major items shipped while others are still
+ahead. **Don't trust the "not started" status from before — read this section.**
 
-### 4.5 — Retire owo-ui dependency
-Once 4.1–4.3 are done and nothing imports `io.wispforest.owo.ui.*`:
-- Remove `modImplementation("io.wispforest:owo-lib:...")` from `build.gradle.kts`
-- **Keep** the `annotationProcessor("io.wispforest:owo-lib:...")` and the `include(...)`
-  for the annotation processor — `SoulConfigModel.java` still generates `SoulConfig.java`
-  via owo-config's AP. Owo-config and owo-ui are separable concerns.
+### Shipped in P5
 
-### Components needed for P4 that don't exist yet
+- **`Dropdown` + `MultiSelectDropdown`** (`ui/foundation/Dropdown.kt`). Trigger pill + popup
+  overlay with checkbox (multi) or accent-bar (single) option indicators. Popup is painted
+  via the new deferred-overlay mechanism (see below), opens upward or downward depending on
+  panel-local room (`computePopupY` reads `SoulInput.panelHeight`), and supports a
+  `popupMaxHeight` cap with mouse-wheel scrolling for long option lists (used by the
+  fishing tracker's 19-variant Category dropdown).
+- **Deferred overlay pass + modal click routing.** `SoulInput.queueOverlay(action)` queues
+  paint lambdas that `SoulHud.renderOne` drains after the main tree's `root.draw(...)`, so
+  popups land on top of every regular sibling. `SoulInput.beginModal()` flips a flag that
+  routes subsequent `recordRegion` calls into a separate `modalRegions` list; click / scroll
+  / hover dispatch only consult that list while a popup is open, so a sibling dropdown's
+  trigger or a button under the popup can't steal the click.
+- **Panel size on `SoulInput`.** `panelWidth` / `panelHeight` exposed (set by
+  `NvgFrame.submit`) so widgets can reason about their containing panel — the popup
+  direction picker uses this instead of screen-relative math, so a HUD anchored near the top
+  of the screen with a footer dropdown opens the popup upward into the panel's open space.
+- **Anchor alignment system.** `HudHorizontalAnchor` / `HudVerticalAnchor` fields on
+  `SoulHudElement` change the pivot edge (Start / Center / End on each axis). `SoulHud.
+  resolveBaseX/Y` apply the alignment using the latest measured size, so a Center-anchored
+  HUD sits dead-center regardless of resolution / GUI scale / content size. Right-click in
+  `/soul gui` opens a context menu with five corner presets (Top Left / Top Right / Bottom
+  Left / Bottom Right / Center) + a **Settings** entry that deep-links to the HUD's
+  registered config category via `SoulConfigScreen(initialCategory, initialSubcategory)`.
+  A small yellow dot marks each enabled HUD's pivot pixel while the editor is open.
+- **`gui_layout.json` schema migration.** `GuiLayoutManager.CURRENT_SCHEMA_VERSION = 2`;
+  loadOrInitialize / reload probe the raw JSON for the `schemaVersion` key (Gson defaults
+  can't be trusted — `Unsafe` bypasses Kotlin constructor defaults on `SoulHudElement`,
+  leaving the new enum fields null) and wipe the file when it's missing or below the current
+  version. Per-frame `SoulHud.ensureLayoutElement` then re-seeds defaults.
+- **`Modifier.weight(...)`** on `Row` / `Column`. Two-phase measure: unweighted children
+  measure intrinsically, leftover space distributed proportionally to weighted children. Used
+  for the fishing tracker's centered title cell and full-width dropdown row.
+- **`Button.centerLabel`** parameter. Wraps the label in `Row(fillMaxWidth, Center)` so a
+  `fillMaxWidth()` button centers its text instead of pinning to the left.
+- **`NvgRenderer.filledTriangle`** primitive. Used by the dropdown caret instead of a
+  text-based glyph (Inter doesn't cover ▾ / ▴).
+- **Dynamic GUI Edit bounds.** `SoulHudRegistry.recordMeasured(id, w, h)` is written in
+  `SoulHud.renderOne` after the tree draws; `GuiEditScreen` and `GuiEdit.findHitElement`
+  read it back via `lastMeasured(id)` so selection boxes match the actual rendered HUD
+  size instead of the registered max bound.
 
-Build these alongside the migrations they unblock:
+### Still ahead in P5
 
-- **`TextField`** — owo-ui-style single-line editable text. Needed by ConfigScreen string
-  rows + the Soul UI search bar.
-- **`IntSlider`** — discrete-step slider with tick marks. Owo-ui has it as `SoulIntSlider`;
-  port to the Soul UI framework.
-- **`ProgressBar`** — Box with a filled-portion child. Trivial; needed by SPV's XP bars.
-- **`Icon`** — render either a raster image (PNG) or a path-vector glyph. Need at least
-  raster for the Discord/GitHub icons in the config title bar. Image support is currently
-  deferred from `NvgRenderer`; add `image(...)` / `createImage(...)` methods (port from
-  Odin's NVGRenderer.kt:266-324) when this lands.
-- **`Dropdown`** + **`MultiSelectDropdown`** — ✅ shipped. Trigger + above-trigger popup
-  overlay. Single-select closes on row click; multi-select stays open and uses per-row
-  checkboxes. First user: `FishingHud` (Sort dropdown + column-visibility dropdown). Popup
-  is painted from `drawSelf` (NOT a separate overlay pass) so it shares the parent's
-  scissor — sufficient because all current callers have headroom above the trigger inside
-  the same panel. If a future widget needs to escape its parent panel, P5 can add a true
-  overlay layer.
+- **Theme variants** (Dark / Light / HighContrast) + custom accent color toggle.
+- **Animation library** (`animateFloatAsState`, easing primitives, frame-deltatime tracker
+  on `NvgFrame.submit`).
+- **Keyboard navigation** (Tab focus traversal across clickables, arrow keys for sliders
+  and scroll lists). `TextField` already handles char + edit keys via
+  `SoulInput.queueChar` / `queueEditKey`.
+- **A11y / high-contrast variant + reducedMotion toggle.**
+- **Move framework docs out of CLAUDE.md** into a dedicated `docs/ui-framework.md`. CLAUDE.md
+  has been growing; a split would keep the main file a high-level index.
 
 ---
 
@@ -261,3 +271,26 @@ Build these alongside the migrations they unblock:
   hit-tests fail by `panelScale - 1` of bias. ([P2.5 follow-up])
 - **owo-ui retires, owo-config stays.** Different things despite the shared `wispforest`
   package. ([P4 plan])
+- **Popup overlay = deferred draw + modal regions, not a separate render pass.** Popups
+  paint after the main tree via `SoulInput.queueOverlay`, flushed by
+  `SoulHud.renderOne`. Click routing is *also* segregated via `SoulInput.beginModal()` —
+  while a popup is open, only regions recorded inside the overlay block are dispatched
+  against, so sibling triggers / buttons can't steal clicks. Considered a global overlay
+  layer but rejected: too much plumbing for the single use case today (dropdowns inside
+  HUDs), and the current model keeps all hit regions per-panel which matches the
+  existing input model. ([P5 dropdown shipping]).
+- **Dropdown direction picker uses panel-local room.** Earlier draft used screen-relative
+  math; broke for HUDs anchored near the screen edge with a tall popup that still
+  overflowed the PIP texture. Switching to `SoulInput.panelHeight` made the math match what
+  actually clips. ([P5 follow-up after popup-clipping bug])
+- **`gui_layout.json` schema check reads raw JSON.** Gson applies Kotlin constructor
+  defaults *only* when every primary-ctor field has a default (the synthetic no-arg ctor
+  exists). `GuiLayout` qualifies, `SoulHudElement` doesn't (no-default `id`). So the
+  deserialized `schemaVersion` value can't be trusted to indicate file presence — it
+  inherits the Kotlin default `CURRENT_SCHEMA_VERSION` on old files. Solution: probe the
+  raw `JsonObject` for the key and wipe when missing. ([P5 anchor system NPE fix])
+- **HUD anchor fields nullable in JSON, non-null in Kotlin.** First attempt made them
+  nullable so old files would round-trip cleanly; reverted because the data model was uglier
+  for every reader. Final shape: `HudHorizontalAnchor` / `HudVerticalAnchor` with Kotlin
+  defaults, plus the schema-version wipe to handle old files in one shot.
+  ([P5 anchor system iteration])

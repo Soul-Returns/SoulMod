@@ -1,5 +1,7 @@
 package com.soulreturns.data.fishing
 
+import com.soulreturns.data.skyblock.SkyblockRarity
+
 /**
  * A single Hypixel SkyBlock sea creature. Built from [SeaCreatureCatalog]'s bundled
  * `assets/soul/sea_creatures.json` (snapshot of SkyHanni's `SeaCreatures.json` repo data).
@@ -13,4 +15,7 @@ data class SeaCreature(
     val rarity: String,
     val rare: Boolean,
     val fishingExperience: Int,
-)
+) {
+    /** Display color for this creature's rarity — delegates to the shared [SkyblockRarity] table. */
+    fun rarityColor(): Int = SkyblockRarity.colorFor(rarity)
+}
