@@ -218,14 +218,44 @@ object SoulHud {
         return element.useMinecraftFont ?: true
     }
 
+    /** Effective "draw text shadow" for [id]. Global-wins rule, see [shouldDrawBackground]. */
+    fun shouldDrawTextShadow(id: String): Boolean {
+        if (!cfg.general.ui.hudTextShadow()) return false
+        val element =
+            GuiLayoutManager.getLayout().elements.firstOrNull {
+                it is SoulHudElement && it.id == id
+            } as? SoulHudElement ?: return true
+        return element.useTextShadow ?: true
+    }
+
+    /** Effective "bump font to heavier weight" for [id]. Global-wins rule, see [shouldDrawBackground]. */
+    fun shouldUseBoldFont(id: String): Boolean {
+        if (!cfg.general.ui.hudBoldFont()) return false
+        val element =
+            GuiLayoutManager.getLayout().elements.firstOrNull {
+                it is SoulHudElement && it.id == id
+            } as? SoulHudElement ?: return true
+        return element.useBoldFont ?: true
+    }
+
+    /**
+     * Base multiplier applied to the user's `cfg.ui.globalScale` slider value before it
+     * factors into a HUD's effective scale. The slider's stored range stays 0.5–2.0 (and
+     * its default stays 1.0) so the config UX is unchanged, but the *on-screen* range
+     * shifts up to 0.75–3.0 with the default rendering at 1.5×. The earlier 1.0 baseline
+     * read too small at common GUI Scale + display-DPI combinations; users were having to
+     * hand-bump globalScale or per-HUD scales every install to get readable HUDs.
+     */
+    private const val BASE_GLOBAL_SCALE = 1.5f
+
     /**
      * Effective on-screen scale for a SoulHud element with the given per-element [scale].
      *
-     * Effective scale = element scale × `cfg.ui.globalScale` × optional Minecraft-GUI-scale
-     * inverter. When `cfg.ui.respectMinecraftGuiScale` is false, dividing by Minecraft's
-     * `window.guiScale` cancels out the implicit scaling Mojang applies to all
-     * GUI-coordinate rendering — the panel ends up the same physical pixel size regardless
-     * of the user's GUI Scale slider.
+     * Effective scale = element scale × [BASE_GLOBAL_SCALE] × `cfg.ui.globalScale` ×
+     * optional Minecraft-GUI-scale inverter. When `cfg.ui.respectMinecraftGuiScale` is
+     * false, dividing by Minecraft's `window.guiScale` cancels out the implicit scaling
+     * Mojang applies to all GUI-coordinate rendering — the panel ends up the same physical
+     * pixel size regardless of the user's GUI Scale slider.
      *
      * Public so `/soul gui` (and any future tooling) can compute matching selection bounds.
      */
@@ -233,7 +263,7 @@ object SoulHud {
         val uiCfg = cfg.general.ui
         val mcGuiScale = Minecraft.getInstance().window.guiScale.toFloat().coerceAtLeast(0.5f)
         val guiScaleCompensation = if (uiCfg.respectMinecraftGuiScale()) 1f else (1f / mcGuiScale)
-        return (scale.coerceAtLeast(0.25f) * uiCfg.globalScale() * guiScaleCompensation)
+        return (scale.coerceAtLeast(0.25f) * BASE_GLOBAL_SCALE * uiCfg.globalScale() * guiScaleCompensation)
             .coerceAtLeast(0.05f)
     }
 
@@ -256,7 +286,7 @@ object SoulHud {
         // shared mutable. Without that, the measured-size record below would write under a
         // stale id (whichever HUD is "current" at PIP-flush time, which is generally NOT this
         // HUD anymore).
-        NvgFrame.submit(context, x, y, entry.width, entry.height, scale = effectiveScale) {
+        NvgFrame.submit(context, x, y, entry.width, entry.height, scale = effectiveScale, hudId = id) {
             val root =
                 SoulComposer.create().build {
                     entry.content()

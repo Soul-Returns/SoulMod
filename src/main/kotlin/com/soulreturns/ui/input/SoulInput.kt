@@ -159,6 +159,15 @@ object SoulInput {
     var panelHeight: Float = 0f
         private set
 
+    /**
+     * Id of the `SoulHud` element currently rendering, or `null` for non-HUD panels
+     * (e.g. `SoulScreen` content). Read by widgets that need to apply per-HUD overrides —
+     * see `SoulHud.shouldDrawTextShadow` / `shouldUseBoldFont`. Set by `NvgFrame.submit` →
+     * `startFrame` so every nested composable sees the right id during its `drawSelf`.
+     */
+    var currentHudId: String? = null
+        private set
+
     /** Set of region keys under the cursor at end of the previous frame's [flush]. */
     var hoveredKeys: Set<Any> = emptySet()
         private set
@@ -212,6 +221,7 @@ object SoulInput {
         panelScale: Float = 1f,
         panelWidth: Float = 0f,
         panelHeight: Float = 0f,
+        currentHudId: String? = null,
     ) {
         val safeScale = panelScale.coerceAtLeast(0.001f)
         // Convert panel-local SCALED cursor → unscaled content coords so widgets reading
@@ -223,6 +233,7 @@ object SoulInput {
         this.panelScale = safeScale
         this.panelWidth = panelWidth
         this.panelHeight = panelHeight
+        this.currentHudId = currentHudId
         regions.clear()
         tooltipRegions.clear()
         deferredOverlays.clear()
@@ -513,6 +524,7 @@ object SoulInput {
         modalActive = false
         modalRegions.clear()
         deferredOverlays.clear()
+        currentHudId = null
     }
 
     private data class PendingClick(val x: Float, val y: Float)

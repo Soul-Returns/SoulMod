@@ -58,6 +58,23 @@ internal class TextNode(
         val m = measured ?: return
         modifier.drawBackgrounds(x, y, m.width, m.height)
         modifier.recordHitRegions(x, y, m.width, m.height, depth)
-        NvgRenderer.text(text, x, y, size, color, font)
+        // Per-HUD overrides: when this Text sits inside a SoulHud (currentHudId set), the
+        // HUD's effective "use bold font" + "draw text shadow" toggles can rewrite the
+        // font + drawing path. Outside a HUD (e.g. inside a SoulScreen) both effects are
+        // off — composables in screens manage their own font + emphasis explicitly.
+        val hudId = com.soulreturns.ui.input.SoulInput.currentHudId
+        val effectiveFont =
+            if (hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldUseBoldFont(hudId)) {
+                NvgRenderer.boldVariantOf(font)
+            } else {
+                font
+            }
+        val withShadow =
+            hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldDrawTextShadow(hudId)
+        if (withShadow) {
+            NvgRenderer.textShadow(text, x, y, size, color, effectiveFont)
+        } else {
+            NvgRenderer.text(text, x, y, size, color, effectiveFont)
+        }
     }
 }

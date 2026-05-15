@@ -178,8 +178,8 @@ class SoulConfigScreen(
     override fun Content() {
         // Card-on-page sizing. Clamp so ultra-wide doesn't stretch the card into unusable
         // dimensions and tiny windows still get a readable layout.
-        val cardW = (width * 0.9f).coerceIn(640f, 1100f)
-        val cardH = (height * 0.88f).coerceIn(400f, 720f)
+        val cardW = (composableWidth * 0.9f).coerceIn(640f, 1100f)
+        val cardH = (composableHeight * 0.88f).coerceIn(400f, 720f)
         val sidebarW = 200f
         val topNavH = 44f
         val footerH = 40f

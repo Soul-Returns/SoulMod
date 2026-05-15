@@ -264,6 +264,15 @@ The mod uses LWJGL's NanoVG bindings for crisp vector rendering of the Soul UI f
 
 **GL debug noise filter.** `mixin/render/GlDebugMixin` intercepts `com.mojang.blaze3d.opengl.GlDebug.printDebugLog(IIIIIJJ)V` at HEAD; reads the message C-string via `MemoryUtil.memUTF8`; cancels for known-benign patterns (currently `"No active program"` — emitted hundreds-of-times-per-second by Mojang's PIP composite validation after NanoVG zeros `glUseProgram(0)` in `nvgEndFrame`). Real GL errors still bubble. Add to `SUPPRESSED_PATTERNS` only after investigating.
 
+**Text shadow rendering — two gotchas, learned the hard way.** `NvgRenderer.textShadow` is deliberately a plain two-pass — paint pure-black shadow at `(+1, +1)`, paint main on top — *not* the same +1 offset with `NVG_DESTINATION_OUT` cleanup, and *not* an `nvgFontBlur` softened shadow. Both fancier approaches were tried and produced *non-deterministic per-row dropouts* — some text rows would render with a clean shadow while neighbours rendered with none at all. Two failure modes:
+
+1. **`nvgFontBlur` interacts badly with the FontStash atlas.** NanoVG keys glyph cache entries by `(font, size, blur)`, so each character at blur=0 and blur=0.5 occupies a separate slot. Under HUD-text load (~10 rows × 4 cells × multiple passes = lots of glyph traffic) the atlas fills, LRU eviction drops the less-recently-used blur=0.5 entries, and earlier-queued shadow quads end up sampling whatever overwrote their slots — manifesting as silently-missing shadow on some rows.
+2. **`nvgGlobalCompositeOperation` mid-frame seems to produce every-other-row shadow dropouts.** Painting shadow → switching to `NVG_DESTINATION_OUT` → painting the main glyph as a stencil to erase the AA crossover → switching back to `NVG_SOURCE_OVER` and painting main is mathematically clean and works perfectly for a single row, but when called repeatedly inside one NanoVG frame the alternating composite-op flushes interact with FontStash in a way that drops half the shadows. The exact mechanism wasn't pinned down, but reproduction was reliable.
+
+What lets the plain two-pass look clean at +1 px is the **bundled heavy Inter weights + the `hudBoldFont` default-on toggle** (`cfg.general.ui.hudBoldFont = true`). `NvgRenderer.boldVariantOf` skips a tier (Regular → SemiBold, Medium → Bold, SemiBold → Black) so HUD text renders with ~3–4 px thick strokes at body size, and the anti-aliased edge of each glyph is only ~0.5 px — the halo crossover region where shadow leaks under the main glyph's AA shrinks to a sliver. At thinner Regular weight the same +1 offset produces a visible bordered/glowy artefact. Don't move the offset back to +2 "to be safe" — the heavier strokes already handle it, and +2 makes the shadow read as a doubled-text artefact rather than a drop shadow. The Inter weight ladder bundled at `assets/soul/fonts/`: Regular, Medium, SemiBold, **Bold**, **Black** (Bold/Black added for `boldVariantOf` to reach).
+
+**Third gotcha — round ONCE for two-pass shadow rendering, not twice.** `kotlin.math.round(Float)` is half-to-even (banker's rounding), not half-up. At fractional `y` values — which occur whenever the panel sits at a non-integer screen origin or composes at a non-integer effective scale — `round(y)` and `round(y + 1f)` can disagree by **0, 1, or 2** px depending on which half-pixel each value lands on (e.g. `round(23.5)=24, round(24.5)=24` → delta 0; `round(24.5)=24, round(25.5)=26` → delta 2). Drawing the shadow at `nvgText(round(x + 1f), round(y + 1f))` and the main at `nvgText(round(x), round(y))` therefore alternates between 0/1/2 px offset per row, visible as a clearly different shadow on every-other-row. **Always round the base position once and add the integer offset afterward** (`val sy = round(y); nvgText(sy + 1f, …)`). Odin doesn't hit this because their `round(x + 2f) − round(x)` delta happens to be 2 regardless of banker's rounding at half-pixel `x`, but anything that's not exactly +2 has to follow the round-once rule.
+
 ### Soul UI framework (`ui/`)
 
 Declarative Compose-style UI framework that produces a `SoulNode` tree → measures → draws via the NanoVG runtime. Replaces ad-hoc `GuiRenderContext`-based HUDs and (eventually, in P4) replaces owo-ui for screens.
@@ -459,8 +468,26 @@ ui/runtime/                  Minecraft integration
   SoulScreen.kt              abstract Minecraft Screen subclass hosting a Soul composition.
                              Subclass it, override @SoulComposable Content(). Render +
                              mouseClicked (MouseButtonEvent in 1.21.11) / mouseReleased /
-                             mouseScrolled wire automatically into SoulInput. P2.5 built;
-                             no concrete subclass yet (P4 work).
+                             mouseScrolled wire automatically into SoulInput.
+
+                             **GUI-Scale-independent rendering.** Every SoulScreen always
+                             renders against a fixed `TARGET_GUI_SCALE = 2f` baseline — the
+                             screen looks visually identical at every user's GUI Scale
+                             setting. The render impl: keep the PIP composite rect at the
+                             full logical viewport `(0, 0, width, height)` so the screen
+                             fills the physical display, but compose at a "composable space"
+                             of `(width × actualGuiScale / TARGET, height × … / TARGET)` and
+                             set `NvgFrame.submit(scale = TARGET / actualGuiScale)` so the
+                             nvgScale inside maps composable coords back to the logical
+                             target. Cursor math via `cursorLocal / panelScale` lines up
+                             automatically. **Inside `Content()` use the protected
+                             `composableWidth` / `composableHeight` properties for layout
+                             math, NOT the Mojang `width` / `height` Screen fields** — those
+                             are still in GUI-logical units and would make `width * 0.9f` /
+                             similar references snap to a different physical size on every
+                             user's setup. `composableWidth/Height` read from
+                             `SoulInput.panelWidth/Height` so they reflect the current
+                             frame's composable bounds.
 ```
 
 **Scale model (this took a few iterations to get right):**
@@ -489,16 +516,22 @@ A HUD's `element.scale` no longer grows the PIP region with empty space — it's
 
 The menu is built fresh per-frame by `GuiEditScreen.buildContextMenuItems(elementId)` so the toggle labels always reflect the live state. A small black-bordered yellow dot is also drawn at each enabled HUD's pivot pixel while the editor is open so the user can see *which* corner is anchored.
 
-**HUD background + font overrides (global + per-HUD).** Two boolean toggles in `cfg.general.ui`:
-- `hudBackground` (default `true`) — master switch for panel backgrounds. When off, every Soul HUD renders without its `Surface` backdrop (transparent panel, text/shapes only).
-- `useMinecraftFont` (default `false`) — master switch for swapping the bundled Inter NanoVG fonts for Minecraft's vanilla/resource-pack font. *Wired into config + per-HUD menu, but the rendering path that swaps Inter for Mojang's font hasn't landed yet — the toggle currently has no visible effect.*
+**HUD-wide style overrides (global + per-HUD).** Four boolean toggles in `cfg.general.ui`, each with a matching nullable per-HUD override on `SoulHudElement` and a context-menu toggle entry in `/soul gui`:
 
-`SoulHudElement` carries nullable per-HUD overrides — `showBackground: Boolean?` and `useMinecraftFont: Boolean?` — defaulting to `null` ("follow global"). Old `gui_layout.json` files deserialize as null (Gson `Unsafe` leaves nullable references as null), so no schema bump needed. Resolver functions on `SoulHud`:
+| Global key | Per-HUD field | Helper | Default | Effect when ON |
+|---|---|---|---|---|
+| `hudBackground` | `showBackground: Boolean?` | `SoulHud.shouldDrawBackground(id)` | `true` | `Surface` paints its `panel` background |
+| `useMinecraftFont` | `useMinecraftFont: Boolean?` | `SoulHud.shouldUseMinecraftFont(id)` | `false` | (Stub) swap Inter for Mojang's font. *Wired into config + menu, rendering path NOT implemented yet — see "Future work" below.* |
+| `hudTextShadow` | `useTextShadow: Boolean?` | `SoulHud.shouldDrawTextShadow(id)` | `false` | `Text` composables use `NvgRenderer.textShadow` instead of `text` — black drop shadow behind glyphs |
+| `hudBoldFont` | `useBoldFont: Boolean?` | `SoulHud.shouldUseBoldFont(id)` | `false` | Per-glyph font swap via `NvgRenderer.boldVariantOf(font)` — Regular → Medium → SemiBold (SemiBold stays SemiBold; we don't ship Bold/Black) |
 
-- `SoulHud.shouldDrawBackground(id): Boolean` returns `global && (element.showBackground ?: true)`.
-- `SoulHud.shouldUseMinecraftFont(id): Boolean` returns `global && (element.useMinecraftFont ?: true)`.
+Per-HUD nullable fields all default to `null` ("follow global"). Old `gui_layout.json` files deserialize as null (Gson `Unsafe` leaves nullable references as null), so no schema bump needed.
 
-Formula: **global is the master.** Per-HUD `true` / unset / null → respects the global value. Per-HUD `false` → forces off for that HUD even when global is on. Per-HUD `true` cannot override global `false`. Each HUD's `Content()` reads `SoulHud.shouldDrawBackground(HUD_ID)` and passes either `SoulTheme.colors.panel` or `0x00000000` to its `Surface(color = ...)` — that's the only HUD-side wiring needed.
+**Formula:** all four helpers return `global && (perHud ?: true)`. **Global is the master.** Per-HUD `true` / unset → respects the global value. Per-HUD `false` → forces off for that HUD even when global is on. Per-HUD `true` cannot override global `false` back on.
+
+**Where the wiring happens.** The HUD-background override is read by each HUD's `Content()` (passes `panel` color or `0x00000000` to `Surface(color = ...)`). The text-shadow + bold-font overrides are read **automatically** by every `Text` composable via `SoulInput.currentHudId` — set by `NvgFrame.submit` → `SoulInput.startFrame(currentHudId = hudId)`, scoped to the panel. New HUD code doesn't need to touch text rendering; the framework picks up the active HUD's settings transparently. Outside a HUD frame (`SoulScreen` content) `currentHudId` is null and both effects are off — screens manage their own font + emphasis explicitly via composable parameters.
+
+**Context menu integration.** `GuiEditScreen.buildContextMenuItems(elementId)` adds four toggle rows (`HUD Background`, `Use Minecraft Font`, `Text Shadow`, `Bold Font`) below the corner presets. Labels read the effective resolver-helper result so they reflect the global+per-HUD merge in real time. Clicking flips the per-HUD nullable to the inverse of `current ?: true`. Each toggle has a dedicated `GuiLayoutManager.updateSoulHud<...>` setter that copies the `SoulHudElement` with the new value.
 
 **`gui_layout.json` schema migration.** `GuiLayoutManager.CURRENT_SCHEMA_VERSION = 2`. On load, the raw JSON is probed for the `schemaVersion` key — **not** the deserialized field — because Gson uses `Unsafe` to bypass Kotlin constructor defaults on `SoulHudElement` (its `id` field has no default → no synthetic no-arg ctor), so the new alignment enum fields would deserialize as `null` from old files. When the key is missing OR `< CURRENT`, the in-memory layout is wiped to an empty `GuiLayout()` and immediately re-saved; per-frame `ensureLayoutElement` rebuilds entries from registration defaults. Users with a tweaked layout pay a one-time HUD-position reset. Bump `CURRENT_SCHEMA_VERSION` when a future field needs the same treatment.
 

@@ -65,8 +65,8 @@ class ProfileViewerScreen(
         // Card sizing — clamp to a readable band so the UI doesn't stretch to absurd widths
         // on ultrawide screens or collapse on tiny ones. Heights are similarly capped so the
         // scrollable body always has a sensible viewport.
-        val cardW = (width * 0.85f).coerceIn(360f, 760f)
-        val cardH = (height * 0.9f).coerceIn(320f, 560f)
+        val cardW = (composableWidth * 0.85f).coerceIn(360f, 760f)
+        val cardH = (composableHeight * 0.9f).coerceIn(320f, 560f)
         val headerH = 40f
         val tabBarH = 32f
         val dividerH = 1f

@@ -43,9 +43,24 @@ abstract class SoulScreen(title: Component) : Screen(title) {
      * Compose the screen's content. Invoked from inside [SoulComposer.build] every frame —
      * call any `@SoulComposable` function freely. The lambda must produce exactly one root
      * composable.
+     *
+     * Use [composableWidth] / [composableHeight] inside `Content()` for layout sizing, **not**
+     * the Mojang `width` / `height` Screen fields. SoulScreens render at a fixed
+     * GUI-Scale-independent baseline ([TARGET_GUI_SCALE]) so the screen looks identical at
+     * every user's GUI Scale setting; `width` / `height` are still in GUI-logical units and
+     * shrink/grow with GUI Scale, which would make a `width * 0.9f` card snap to a different
+     * physical size on every setup.
      */
     @SoulComposable
     abstract fun Content()
+
+    /**
+     * Composable-space bounds (always in [TARGET_GUI_SCALE]-equivalent units, regardless of
+     * the user's actual GUI Scale). Read these inside `Content()` for any layout math that
+     * needs the on-screen dimensions. Outside a frame both return 0.
+     */
+    protected val composableWidth: Float get() = SoulInput.panelWidth
+    protected val composableHeight: Float get() = SoulInput.panelHeight
 
     /**
      * Whether this screen wants Minecraft's vanilla blurred background painted **behind** the
@@ -76,7 +91,22 @@ abstract class SoulScreen(title: Component) : Screen(title) {
                 // Visuals fall back to whatever dim layer [Content] paints itself.
             }
         }
-        NvgFrame.submit(context, x = 0, y = 0, w = width, h = height) {
+
+        // SoulScreens never respect Minecraft's GUI Scale — they always render as if
+        // GUI Scale = [TARGET_GUI_SCALE], so the layout looks identical across every
+        // user's GUI Scale setting. The trick: compose at a fixed composable space
+        // (`width × actualGuiScale / TARGET_GUI_SCALE`) and let the PIP scale
+        // (`TARGET_GUI_SCALE / actualGuiScale`) bring it back to the full logical
+        // viewport. PIP target rect stays `(0, 0, width, height)` so the screen
+        // fills physically; composables think they have GUI-Scale-2 space; cursor
+        // math via `cursorLocal / panelScale` already gives composable-space coords
+        // because `NvgFrame.submit` divides by the same scale.
+        val actualGuiScale = Minecraft.getInstance().window.guiScale.toFloat().coerceAtLeast(0.5f)
+        val pipScale = TARGET_GUI_SCALE / actualGuiScale
+        val composableW = (width * actualGuiScale / TARGET_GUI_SCALE).toInt().coerceAtLeast(1)
+        val composableH = (height * actualGuiScale / TARGET_GUI_SCALE).toInt().coerceAtLeast(1)
+
+        NvgFrame.submit(context, x = 0, y = 0, w = composableW, h = composableH, scale = pipScale) {
             val root =
                 SoulComposer.create().build {
                     Content()
@@ -84,21 +114,32 @@ abstract class SoulScreen(title: Component) : Screen(title) {
             root.draw(
                 0f,
                 0f,
-                SoulConstraints(maxWidth = width.toFloat(), maxHeight = height.toFloat()),
+                SoulConstraints(maxWidth = composableW.toFloat(), maxHeight = composableH.toFloat()),
             )
             // Tooltip overlay — painted last so it draws on top of everything in the same
             // NVG frame. Uses the tooltip regions recorded during the main draw above.
-            SoulInput.findHoveredTooltip()?.let { paintTooltip(it) }
+            SoulInput.findHoveredTooltip()?.let { paintTooltip(it, composableW.toFloat(), composableH.toFloat()) }
         }
         super.render(context, mouseX, mouseY, partialTick)
+    }
+
+    companion object {
+        /**
+         * GUI Scale baseline that every SoulScreen renders against. Picking 2 matches what
+         * most config screens were authored for (sensible default GUI Scale on modern
+         * displays); switching to 3 would make screens read larger across the board.
+         */
+        const val TARGET_GUI_SCALE = 2f
     }
 
     /**
      * Paint a small tooltip box near the cursor with [text]. Sized to fit the text plus
      * padding; positioned just below and to the right of the cursor, clamped so it never
-     * extends past the screen's right or bottom edge.
+     * extends past the screen's right or bottom edge. [w] and [h] are the composable-space
+     * bounds (NOT the screen's GUI-logical `width`/`height`) so clamping uses the same
+     * coordinate frame the cursor lives in inside the SoulInput state.
      */
-    private fun paintTooltip(text: String) {
+    private fun paintTooltip(text: String, w: Float, h: Float) {
         val font = com.soulreturns.ui.theme.SoulTheme.typography.body.font
         val size = com.soulreturns.ui.theme.SoulTheme.typography.body.size
         val padH = 8f
@@ -108,8 +149,6 @@ abstract class SoulScreen(title: Component) : Screen(title) {
         val boxH = size + padV * 2f
         val cursorOffsetX = 12f
         val cursorOffsetY = 16f
-        val w = width.toFloat()
-        val h = height.toFloat()
         // Anchor below-right of the cursor by default; flip to left/above if it would clip.
         var bx = SoulInput.cursorX + cursorOffsetX
         var by = SoulInput.cursorY + cursorOffsetY

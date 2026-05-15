@@ -106,6 +106,34 @@ object NvgRenderer {
         loadBundledFont("Inter-SemiBold", "/assets/soul/fonts/Inter-SemiBold.ttf")
     }
 
+    /** Inter Bold — heavy weight for HUDs (via [boldVariantOf]) or strong emphasis. */
+    val boldFont: NvgFont by lazy {
+        loadBundledFont("Inter-Bold", "/assets/soul/fonts/Inter-Bold.ttf")
+    }
+
+    /** Inter Black — heaviest bundled weight. Reserved for the "HUD Bold Font" upgrade path. */
+    val blackFont: NvgFont by lazy {
+        loadBundledFont("Inter-Black", "/assets/soul/fonts/Inter-Black.ttf")
+    }
+
+    /**
+     * Two steps heavier than [font] on the bundled Inter weight ladder
+     * (Regular → SemiBold, Medium → Bold, SemiBold → Black, Bold → Black, Black → Black).
+     * The skip-a-tier step is what makes the "HUD Bold Font" toggle visibly effective —
+     * jumping a single tier (Regular → Medium) is too subtle at small HUD sizes to read
+     * as "noticeably bolder" against the user's expectation. Relative weight relationships
+     * survive the bump: a title that was SemiBold stays heavier than a body that was
+     * Regular, because they jump to Black vs SemiBold respectively.
+     */
+    fun boldVariantOf(font: NvgFont): NvgFont =
+        when (font) {
+            defaultFont -> semiBoldFont
+            mediumFont -> boldFont
+            semiBoldFont -> blackFont
+            boldFont -> blackFont
+            else -> font
+        }
+
     private fun loadBundledFont(
         name: String,
         classpathResource: String
@@ -562,10 +590,34 @@ object NvgRenderer {
     ) {
         nvgFontFaceId(vg, getFontId(font))
         nvgFontSize(vg, size)
-        setFillColor(0xFF000000.toInt())
-        nvgText(vg, round(x + 2f), round(y + 2f), text)
+        // **Tight 1 px shadow at 70 % alpha black, plain two-pass.**
+        //
+        // The +1 offset works because HUD text defaults to a heavier Inter weight
+        // (Regular → SemiBold via [boldVariantOf] when `hudBoldFont` is on, the
+        // default). Heavier strokes are 3–4 px thick at 11–12 px body size, so the
+        // anti-aliased edge is only ~0.5 px and the halo crossover region shrinks
+        // to a sliver. 70 % alpha softens what little residual variance remains.
+        //
+        // **Round ONCE, then add the offset.** `kotlin.math.round` uses banker's
+        // rounding (half-to-even). At fractional `y` values — which happen at
+        // non-integer effective scales, fractional panel origins, or fractional
+        // row spacing — `round(y)` and `round(y + 1f)` can differ by **0, 1, or 2**
+        // depending on which side of the half-pixel each value lands on, e.g.
+        // `round(23.5)=24, round(24.5)=24` → delta 0, or `round(24.5)=24,
+        // round(25.5)=26` → delta 2. The visible bug was every-second-row
+        // alternating between a tight and a 2 px-spread shadow. Locking the rounded
+        // base position and offsetting from there keeps the delta at exactly 1 px
+        // regardless of sub-pixel alignment.
+        //
+        // Don't reintroduce `NVG_DESTINATION_OUT` cleanup or `nvgFontBlur` for the
+        // shadow pass — both produce non-deterministic per-row dropouts under
+        // HUD-text load. See the "Text shadow rendering" note in CLAUDE.md.
+        val sx = round(x)
+        val sy = round(y)
+        setFillColor(0xB3000000.toInt())
+        nvgText(vg, sx + 1f, sy + 1f, text)
         setFillColor(color)
-        nvgText(vg, round(x), round(y), text)
+        nvgText(vg, sx, sy, text)
     }
 
     fun textWidth(

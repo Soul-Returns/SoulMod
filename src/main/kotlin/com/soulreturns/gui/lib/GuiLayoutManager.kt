@@ -219,6 +219,40 @@ object GuiLayoutManager {
             )
     }
 
+    /** Per-HUD override for `cfg.general.ui.hudTextShadow`. See [updateSoulHudShowBackground]. */
+    @Synchronized
+    fun updateSoulHudUseTextShadow(
+        id: GuiElementId,
+        value: Boolean?,
+    ) {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element.id != id) return@map element
+                        if (element !is SoulHudElement) return@map element
+                        element.copy(useTextShadow = value)
+                    },
+            )
+    }
+
+    /** Per-HUD override for `cfg.general.ui.hudBoldFont`. See [updateSoulHudShowBackground]. */
+    @Synchronized
+    fun updateSoulHudUseBoldFont(
+        id: GuiElementId,
+        value: Boolean?,
+    ) {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element.id != id) return@map element
+                        if (element !is SoulHudElement) return@map element
+                        element.copy(useBoldFont = value)
+                    },
+            )
+    }
+
     @Synchronized
     fun updateElementScale(
         id: GuiElementId,

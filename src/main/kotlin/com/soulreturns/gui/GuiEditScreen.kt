@@ -88,7 +88,9 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val vBottom = com.soulreturns.gui.lib.HudVerticalAnchor.Bottom
 
         val bgEffective = com.soulreturns.ui.runtime.SoulHud.shouldDrawBackground(elementId)
-        val fontEffective = com.soulreturns.ui.runtime.SoulHud.shouldUseMinecraftFont(elementId)
+        val mcFontEffective = com.soulreturns.ui.runtime.SoulHud.shouldUseMinecraftFont(elementId)
+        val shadowEffective = com.soulreturns.ui.runtime.SoulHud.shouldDrawTextShadow(elementId)
+        val boldEffective = com.soulreturns.ui.runtime.SoulHud.shouldUseBoldFont(elementId)
 
         return listOf(
             preset("Top Left", 0.0, 0.0, hStart, vTop),
@@ -101,8 +103,16 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
                 action = { id -> toggleHudBackground(id) },
             ),
             ContextMenuItem(
-                label = "Use Minecraft Font: ${if (fontEffective) "ON" else "OFF"}",
+                label = "Use Minecraft Font: ${if (mcFontEffective) "ON" else "OFF"}",
                 action = { id -> toggleUseMinecraftFont(id) },
+            ),
+            ContextMenuItem(
+                label = "Text Shadow: ${if (shadowEffective) "ON" else "OFF"}",
+                action = { id -> toggleUseTextShadow(id) },
+            ),
+            ContextMenuItem(
+                label = "Bold Font: ${if (boldEffective) "ON" else "OFF"}",
+                action = { id -> toggleUseBoldFont(id) },
             ),
             ContextMenuItem(label = "Settings", action = ::openSettingsFor),
         )
@@ -130,6 +140,24 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
                 com.soulreturns.gui.lib.SoulHudElement ?: return
         val current = element.useMinecraftFont ?: true
         GuiLayoutManager.updateSoulHudUseMinecraftFont(elementId, !current)
+    }
+
+    /** Per-HUD analog of [toggleHudBackground] for the text-shadow override. */
+    private fun toggleUseTextShadow(elementId: String) {
+        val element =
+            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
+                com.soulreturns.gui.lib.SoulHudElement ?: return
+        val current = element.useTextShadow ?: true
+        GuiLayoutManager.updateSoulHudUseTextShadow(elementId, !current)
+    }
+
+    /** Per-HUD analog of [toggleHudBackground] for the bold-font override. */
+    private fun toggleUseBoldFont(elementId: String) {
+        val element =
+            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
+                com.soulreturns.gui.lib.SoulHudElement ?: return
+        val current = element.useBoldFont ?: true
+        GuiLayoutManager.updateSoulHudUseBoldFont(elementId, !current)
     }
 
     /**

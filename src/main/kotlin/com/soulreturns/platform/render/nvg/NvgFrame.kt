@@ -36,6 +36,7 @@ object NvgFrame {
         w: Int,
         h: Int,
         scale: Float = 1f,
+        hudId: String? = null,
         block: () -> Unit,
     ) {
         if (w <= 0 || h <= 0) return
@@ -79,6 +80,7 @@ object NvgFrame {
                     effectiveScale,
                     panelWidth = w.toFloat(),
                     panelHeight = h.toFloat(),
+                    currentHudId = hudId,
                 )
                 if (effectiveScale != 1f) {
                     com.soulreturns.platform.render.nvg.NvgRenderer.push()

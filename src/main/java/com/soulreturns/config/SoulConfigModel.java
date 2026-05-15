@@ -106,6 +106,16 @@ public class SoulConfigModel {
         // bundled Inter NanoVG fonts. Off (default) keeps the crisp Inter rendering.
         // Per-HUD overrides in /soul gui follow the same global-wins rule.
         public boolean useMinecraftFont = false;
+        // Render HUD text with a Minecraft-style drop shadow (offset black copy beneath
+        // the glyphs). Off (default) is cleaner against the dark HUD backdrop; on helps
+        // legibility when the HUD background is transparent or sits over bright terrain.
+        public boolean hudTextShadow = false;
+        // Use a heavier Inter weight for HUD body text (Regular → Medium, Medium → SemiBold).
+        // On by default — matches Odin's all-SemiBold approach and is what lets Inter render
+        // crisply at small HUD sizes without needing a shadow (shadow + AA Inter glyphs causes
+        // halo crossover; thicker strokes shrink the AA region so plain no-shadow text reads
+        // clean). Per-HUD overrides in /soul gui follow the same global-wins rule.
+        public boolean hudBoldFont = true;
     }
 
     public static class Fishing {

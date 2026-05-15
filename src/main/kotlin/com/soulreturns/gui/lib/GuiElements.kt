@@ -139,4 +139,8 @@ data class SoulHudElement(
     val showBackground: Boolean? = null,
     /** Per-HUD override for [com.soulreturns.config.SoulConfigModel.Ui.useMinecraftFont]. See [showBackground]. */
     val useMinecraftFont: Boolean? = null,
+    /** Per-HUD override for [com.soulreturns.config.SoulConfigModel.Ui.hudTextShadow]. See [showBackground]. */
+    val useTextShadow: Boolean? = null,
+    /** Per-HUD override for [com.soulreturns.config.SoulConfigModel.Ui.hudBoldFont]. See [showBackground]. */
+    val useBoldFont: Boolean? = null,
 ) : GuiElement(id, enabled, anchorX, anchorY, offsetX, offsetY, scale, textShadow)
