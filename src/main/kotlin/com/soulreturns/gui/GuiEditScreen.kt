@@ -66,9 +66,12 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val verticalAnchor: com.soulreturns.gui.lib.HudVerticalAnchor,
     )
 
-    private val contextMenuItems: List<ContextMenuItem> by lazy {
-        // Local helper keeps each row to a single short line — without it each
-        // ContextMenuItem(AnchorPreset(...)) call balloons across 6 lines.
+    /**
+     * Build the right-click context menu for [elementId]. Built fresh on every read so the
+     * toggle labels ("HUD Background: ON/OFF" / "Use Minecraft Font: ON/OFF") reflect the
+     * element's current effective state (global gate AND per-HUD override).
+     */
+    private fun buildContextMenuItems(elementId: String): List<ContextMenuItem> {
         fun preset(
             label: String,
             ax: Double,
@@ -84,14 +87,49 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val vCenter = com.soulreturns.gui.lib.HudVerticalAnchor.Center
         val vBottom = com.soulreturns.gui.lib.HudVerticalAnchor.Bottom
 
-        listOf(
+        val bgEffective = com.soulreturns.ui.runtime.SoulHud.shouldDrawBackground(elementId)
+        val fontEffective = com.soulreturns.ui.runtime.SoulHud.shouldUseMinecraftFont(elementId)
+
+        return listOf(
             preset("Top Left", 0.0, 0.0, hStart, vTop),
             preset("Top Right", 1.0, 0.0, hEnd, vTop),
             preset("Bottom Left", 0.0, 1.0, hStart, vBottom),
             preset("Bottom Right", 1.0, 1.0, hEnd, vBottom),
             preset("Center", 0.5, 0.5, hCenter, vCenter),
-            ContextMenuItem(label = "Settings", anchorPreset = null, action = ::openSettingsFor),
+            ContextMenuItem(
+                label = "HUD Background: ${if (bgEffective) "ON" else "OFF"}",
+                action = { id -> toggleHudBackground(id) },
+            ),
+            ContextMenuItem(
+                label = "Use Minecraft Font: ${if (fontEffective) "ON" else "OFF"}",
+                action = { id -> toggleUseMinecraftFont(id) },
+            ),
+            ContextMenuItem(label = "Settings", action = ::openSettingsFor),
         )
+    }
+
+    /**
+     * Flip the per-HUD `showBackground` override. Reads the current per-HUD value
+     * (defaulting `null` → `true`), inverts it, and writes back the explicit `Boolean`.
+     * The global `cfg.general.ui.hudBackground` still has to be on for any value here
+     * to actually show a backdrop — when global is off, this just records the preference
+     * for when global flips back on.
+     */
+    private fun toggleHudBackground(elementId: String) {
+        val element =
+            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
+                com.soulreturns.gui.lib.SoulHudElement ?: return
+        val current = element.showBackground ?: true
+        GuiLayoutManager.updateSoulHudShowBackground(elementId, !current)
+    }
+
+    /** Per-HUD analog of [toggleHudBackground] for the Minecraft font override. */
+    private fun toggleUseMinecraftFont(elementId: String) {
+        val element =
+            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
+                com.soulreturns.gui.lib.SoulHudElement ?: return
+        val current = element.useMinecraftFont ?: true
+        GuiLayoutManager.updateSoulHudUseMinecraftFont(elementId, !current)
     }
 
     /**
@@ -388,6 +426,7 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         mouseY: Int,
     ) {
         val menu = contextMenu ?: return
+        val items = buildContextMenuItems(menu.elementId)
         val client = Minecraft.getInstance()
         val textRenderer = client.font
         val padding = 4
@@ -395,7 +434,7 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val left = menu.originX
         val top = menu.originY
         val right = menu.originX + menu.width
-        val bottom = menu.originY + ih * contextMenuItems.size
+        val bottom = menu.originY + ih * items.size
         val bg = 0xE0202020.toInt()
         val border = 0xFF555555.toInt()
         val hover = 0xFF353535.toInt()
@@ -406,15 +445,17 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         context.fill(left, top, left + 1, bottom, border)
         context.fill(right - 1, top, right, bottom, border)
 
-        for ((idx, item) in contextMenuItems.withIndex()) {
+        for ((idx, item) in items.withIndex()) {
             val itemY = top + idx * ih
             val hovered = mouseX in left..(right - 1) && mouseY in itemY..(itemY + ih - 1)
             if (hovered) {
                 context.fill(left + 1, itemY, right - 1, itemY + ih, hover)
             }
-            // Separator above the trailing "action" entries (today: just "Settings") so
-            // they read visually distinct from the corner-preset rows above.
-            if (item.action != null && idx > 0) {
+            // Divider above the first non-preset item — visually separates the corner
+            // presets from the toggles + Settings entry. (Triggered when the previous
+            // item was a preset and this one isn't.)
+            val prev = items.getOrNull(idx - 1)
+            if (item.anchorPreset == null && prev?.anchorPreset != null) {
                 context.fill(left + 4, itemY, right - 4, itemY + 1, border)
             }
             context.drawString(
@@ -439,12 +480,13 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
 
         // Context menu is modal: while open, all clicks land here first.
         contextMenu?.let { menu ->
+            val items = buildContextMenuItems(menu.elementId)
             val ih = menu.itemHeight
             val withinX = mouseXInt >= menu.originX && mouseXInt < menu.originX + menu.width
-            val withinY = mouseYInt >= menu.originY && mouseYInt < menu.originY + ih * contextMenuItems.size
+            val withinY = mouseYInt >= menu.originY && mouseYInt < menu.originY + ih * items.size
             if (withinX && withinY) {
                 val idx = (mouseYInt - menu.originY) / ih
-                val item = contextMenuItems.getOrNull(idx)
+                val item = items.getOrNull(idx)
                 if (item != null) {
                     item.anchorPreset?.let { preset ->
                         GuiLayoutManager.updateSoulHudAnchor(
@@ -477,10 +519,11 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
             val hit = hitId?.let { id -> GuiLayoutManager.getElements().firstOrNull { it.id == id } }
             if (hit is com.soulreturns.gui.lib.SoulHudElement) {
                 editState = EditState(selectedElementId = hit.id)
-                // Clamp the menu to stay on-screen.
-                val menuWidth = 110
+                // Clamp the menu to stay on-screen. Item count comes from a freshly-built
+                // list because toggle items can change label width per-element.
+                val menuWidth = 160
                 val itemHeight = 14
-                val totalHeight = itemHeight * contextMenuItems.size
+                val totalHeight = itemHeight * buildContextMenuItems(hit.id).size
                 val ox = mouseXInt.coerceAtMost(width - menuWidth - 2).coerceAtLeast(2)
                 val oy = mouseYInt.coerceAtMost(height - totalHeight - 2).coerceAtLeast(2)
                 contextMenu =

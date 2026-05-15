@@ -29,6 +29,10 @@
   "text.config.soul/config.option.general.ui.respectMinecraftGuiScale.tooltip": "When on, Soul HUDs scale with Minecraft's GUI Scale setting (vanilla behavior). When off (default), they render at a fixed on-screen pixel size regardless of the GUI Scale slider.",
   "text.config.soul/config.option.general.ui.globalScale": "Global Scale",
   "text.config.soul/config.option.general.ui.globalScale.tooltip": "Global scale multiplier applied to every Soul HUD element, on top of each element's individual scale (adjusted via /soul gui mouse-wheel). 1.0 = no change.",
+  "text.config.soul/config.option.general.ui.hudBackground": "HUD Background",
+  "text.config.soul/config.option.general.ui.hudBackground.tooltip": "Master switch for Soul HUD panel backgrounds. When off, panels render with no dark backdrop (text + shapes only). Per-HUD overrides in /soul gui can opt INDIVIDUAL HUDs out when this is on, but cannot force a background on when this is off — global wins.",
+  "text.config.soul/config.option.general.ui.useMinecraftFont": "Use Minecraft Font",
+  "text.config.soul/config.option.general.ui.useMinecraftFont.tooltip": "Use Minecraft's vanilla / resource-pack font for Soul HUD text instead of the bundled Inter NanoVG fonts. Default (off) keeps the crisp Inter rendering. Per-HUD overrides in /soul gui follow the same global-wins rule.",
 
   "text.config.soul/config.group.general.fixes": "Fixes",
   "text.config.soul/config.group.render.hudScale": "HUD Scale",

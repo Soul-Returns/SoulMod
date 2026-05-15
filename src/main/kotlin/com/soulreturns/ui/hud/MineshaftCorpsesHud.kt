@@ -70,7 +70,9 @@ object MineshaftCorpsesHud {
             Box {}
             return
         }
-        Surface {
+        Surface(
+            color = if (SoulHud.shouldDrawBackground(HUD_ID)) SoulTheme.colors.panel else 0x00000000,
+        ) {
             Column(gap = 4f) {
                 Text(
                     text = "Corpses",

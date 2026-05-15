@@ -181,6 +181,44 @@ object GuiLayoutManager {
             )
     }
 
+    /**
+     * Flip the per-HUD `showBackground` override on a [SoulHudElement]. Set [value] to
+     * `true` / `false` for an explicit override, or `null` to clear and fall back to the
+     * global `cfg.general.ui.hudBackground`.
+     */
+    @Synchronized
+    fun updateSoulHudShowBackground(
+        id: GuiElementId,
+        value: Boolean?,
+    ) {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element.id != id) return@map element
+                        if (element !is SoulHudElement) return@map element
+                        element.copy(showBackground = value)
+                    },
+            )
+    }
+
+    /** Per-HUD override for `cfg.general.ui.useMinecraftFont`. See [updateSoulHudShowBackground]. */
+    @Synchronized
+    fun updateSoulHudUseMinecraftFont(
+        id: GuiElementId,
+        value: Boolean?,
+    ) {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element.id != id) return@map element
+                        if (element !is SoulHudElement) return@map element
+                        element.copy(useMinecraftFont = value)
+                    },
+            )
+    }
+
     @Synchronized
     fun updateElementScale(
         id: GuiElementId,

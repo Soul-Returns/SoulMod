@@ -98,6 +98,14 @@ public class SoulConfigModel {
         // element's individual `scale` (set via /soul gui mouse-wheel). 1.0 = no change.
         @RangeConstraint(min = 0.5f, max = 2.0f, decimalPlaces = 2)
         public float globalScale = 1.0f;
+        // Master switch for Soul HUD panel backgrounds. Off = transparent panels (text +
+        // shapes only, no dark backdrop). Per-HUD overrides in /soul gui can opt INDIVIDUAL
+        // HUDs out when this is on, but they cannot opt in when this is off — global wins.
+        public boolean hudBackground = true;
+        // Use Minecraft's vanilla / resource-pack font for Soul HUD text instead of the
+        // bundled Inter NanoVG fonts. Off (default) keeps the crisp Inter rendering.
+        // Per-HUD overrides in /soul gui follow the same global-wins rule.
+        public boolean useMinecraftFont = false;
     }
 
     public static class Fishing {

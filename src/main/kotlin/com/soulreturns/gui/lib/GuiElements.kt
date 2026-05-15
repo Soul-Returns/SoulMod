@@ -123,4 +123,20 @@ data class SoulHudElement(
      */
     val horizontalAnchor: HudHorizontalAnchor = HudHorizontalAnchor.Start,
     val verticalAnchor: HudVerticalAnchor = HudVerticalAnchor.Top,
+    /**
+     * Per-HUD override for the global `cfg.general.ui.hudBackground` toggle.
+     *
+     * Tri-state on disk: `null` = "follow global"; `true` = "show backdrop when global
+     * allows"; `false` = "force no backdrop (still subject to global)". Nullable (instead
+     * of non-null with a Kotlin default) so old `gui_layout.json` files without the field
+     * deserialize as `null` rather than getting whichever value Gson's `Unsafe`-bypass
+     * happens to leave on the field — no schema bump needed.
+     *
+     * Effective value resolved via `SoulHud.shouldDrawBackground(id)`:
+     * `global && (perHud ?: true)` — global is the master, per-HUD can only opt out when
+     * global is on.
+     */
+    val showBackground: Boolean? = null,
+    /** Per-HUD override for [com.soulreturns.config.SoulConfigModel.Ui.useMinecraftFont]. See [showBackground]. */
+    val useMinecraftFont: Boolean? = null,
 ) : GuiElement(id, enabled, anchorX, anchorY, offsetX, offsetY, scale, textShadow)

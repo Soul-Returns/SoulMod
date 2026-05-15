@@ -123,7 +123,10 @@ object FishingHud {
         // the tab switcher with a plain label so the active scope is still visible.
         val interactive = Minecraft.getInstance().screen is AbstractContainerScreen<*>
 
-        Surface(modifier = SoulModifier.Empty.fillMaxWidth()) {
+        Surface(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            color = if (SoulHud.shouldDrawBackground(HUD_ID)) SoulTheme.colors.panel else 0x00000000,
+        ) {
             Column(gap = 6f, modifier = SoulModifier.Empty.fillMaxWidth()) {
                 Header(settings, interactive)
                 HorizontalDivider()

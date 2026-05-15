@@ -51,7 +51,9 @@ object FishingFestivalHud {
             Box {}
             return
         }
-        Surface {
+        Surface(
+            color = if (SoulHud.shouldDrawBackground(HUD_ID)) SoulTheme.colors.panel else 0x00000000,
+        ) {
             Row(gap = 6f) {
                 Text(
                     text = "Fishing Festival",

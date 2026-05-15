@@ -74,7 +74,9 @@ object BobbinHud {
         val bobbers = BobbinSpotter.nearbyBobbers
         val cappedBobbers = bobbers.coerceAtMost(BOBBER_CAP)
         val boostPercent = enchantLevel * BOOST_PER_LEVEL * cappedBobbers
-        Surface {
+        Surface(
+            color = if (SoulHud.shouldDrawBackground(HUD_ID)) SoulTheme.colors.panel else 0x00000000,
+        ) {
             Column(gap = 4f) {
                 Text(
                     text = "Bobbin Time",

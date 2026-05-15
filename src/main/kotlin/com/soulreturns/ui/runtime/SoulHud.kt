@@ -188,6 +188,37 @@ object SoulHud {
     }
 
     /**
+     * Effective "show panel background" for [id]. Combines the global
+     * `cfg.general.ui.hudBackground` master switch with the per-HUD override stored on
+     * the [SoulHudElement] (`null` = follow global; `true` / `false` = explicit override).
+     * Formula: `global && (perHud ?: true)` — global is the master, per-HUD can only opt
+     * OUT when global is on. Called from each HUD's `Content()` to pick the Surface color.
+     */
+    fun shouldDrawBackground(id: String): Boolean {
+        if (!cfg.general.ui.hudBackground()) return false
+        val element =
+            GuiLayoutManager.getLayout().elements.firstOrNull {
+                it is SoulHudElement && it.id == id
+            } as? SoulHudElement ?: return true
+        return element.showBackground ?: true
+    }
+
+    /**
+     * Effective "use Minecraft font for this HUD's text" for [id]. Same global-wins rule
+     * as [shouldDrawBackground]. Currently consulted by future text-routing work — Text
+     * composables still render via the NanoVG path regardless until the parallel
+     * Mojang-font rendering pipeline lands.
+     */
+    fun shouldUseMinecraftFont(id: String): Boolean {
+        if (!cfg.general.ui.useMinecraftFont()) return false
+        val element =
+            GuiLayoutManager.getLayout().elements.firstOrNull {
+                it is SoulHudElement && it.id == id
+            } as? SoulHudElement ?: return true
+        return element.useMinecraftFont ?: true
+    }
+
+    /**
      * Effective on-screen scale for a SoulHud element with the given per-element [scale].
      *
      * Effective scale = element scale × `cfg.ui.globalScale` × optional Minecraft-GUI-scale
