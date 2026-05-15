@@ -30,26 +30,56 @@ object FishingHudSettings {
         File(FabricLoader.getInstance().configDir.toFile(), "soul/fishing_hud.json")
     }
 
-    /** Possible row-limit options for the "Show: …" button. -1 = "All". */
-    val LIMIT_OPTIONS: List<Int> = listOf(5, 10, 15, -1)
-
     enum class Tab { Session, Total }
 
-    enum class Sort(val label: String) { Catches("Catches"), DoubleHooks("Double Hooks") }
+    enum class Sort(val label: String) {
+        Catches("Catches"),
+        DoubleHooks("Double Hooks"),
+        Cocoons("Cocoons"),
+    }
 
-    /** Live mutable record. UI mutates fields directly, then calls [markDirty]. */
+    /**
+     * Live mutable record. UI mutates fields directly, then calls [markDirty].
+     *
+     * `showCatches` / `showDoubleHooks` / `showCocoons` are per-column visibility toggles.
+     * Hiding a column removes it from every row in the list AND from the [Sort] cycle's
+     * effective options. There's always at least one column showing because the toggle row
+     * refuses to flip the last enabled column off (see `FishingHud.toggleColumn`).
+     */
     data class Settings(
         var tab: Tab = Tab.Session,
         var sort: Sort = Sort.Catches,
-        var limit: Int = 10,
         var scrollOffset: Float = 0f,
-    )
+        var showCatches: Boolean = true,
+        var showDoubleHooks: Boolean = true,
+        var showCocoons: Boolean = true,
+    ) {
+        /** Whether [sort]'s underlying column is currently visible. */
+        fun isSortVisible(sort: Sort): Boolean =
+            when (sort) {
+                Sort.Catches -> showCatches
+                Sort.DoubleHooks -> showDoubleHooks
+                Sort.Cocoons -> showCocoons
+            }
+
+        /** First visible sort key, falling back to [Sort.Catches] if every column is hidden. */
+        fun firstVisibleSort(): Sort = Sort.values().firstOrNull { isSortVisible(it) } ?: Sort.Catches
+    }
 
     @Volatile private var settings: Settings = Settings()
 
     @Volatile private var dirty: Boolean = false
 
     @Volatile private var saving: Boolean = false
+
+    /**
+     * Transient UI flags — whether each dropdown popup is currently open. Kept off the
+     * persisted [Settings] data class so they never serialize into `fishing_hud.json`; all
+     * dropdowns boot closed on a fresh client launch.
+     */
+    @Volatile var columnDropdownOpen: Boolean = false
+
+    @Volatile var sortDropdownOpen: Boolean = false
 
     fun init() {
         load()
@@ -71,23 +101,6 @@ object FishingHudSettings {
         dirty = true
     }
 
-    /** Cycle to the next limit value in [LIMIT_OPTIONS]; wraps to first after the last. */
-    fun cycleLimit() {
-        val idx = LIMIT_OPTIONS.indexOf(settings.limit).coerceAtLeast(0)
-        settings.limit = LIMIT_OPTIONS[(idx + 1) % LIMIT_OPTIONS.size]
-        settings.scrollOffset = 0f
-        markDirty()
-    }
-
-    /** Cycle to the next [Sort] enum value. */
-    fun cycleSort() {
-        val values = Sort.values()
-        val idx = values.indexOf(settings.sort).coerceAtLeast(0)
-        settings.sort = values[(idx + 1) % values.size]
-        settings.scrollOffset = 0f
-        markDirty()
-    }
-
     private fun load() {
         if (!file.exists()) {
             logger.info("No fishing_hud.json — starting from defaults")
@@ -100,7 +113,7 @@ object FishingHudSettings {
                 return
             }
             settings = gson.fromJson(json, Settings::class.java) ?: Settings()
-            logger.info("Loaded fishing_hud settings: tab=${settings.tab} sort=${settings.sort} limit=${settings.limit}")
+            logger.info("Loaded fishing_hud settings: tab=${settings.tab} sort=${settings.sort}")
         } catch (e: Exception) {
             logger.warn("Failed to read fishing_hud.json — using defaults", e)
         }

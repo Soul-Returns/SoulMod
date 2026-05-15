@@ -1,6 +1,7 @@
 package com.soulreturns.ui.hud
 
 import com.soulreturns.config.cfg
+import com.soulreturns.gui.lib.HudHorizontalAnchor
 import com.soulreturns.ui.composer.SoulComposable
 import com.soulreturns.ui.foundation.Box
 import com.soulreturns.ui.foundation.Column
@@ -8,8 +9,10 @@ import com.soulreturns.ui.foundation.Surface
 import com.soulreturns.ui.foundation.Text
 import com.soulreturns.ui.runtime.SoulHud
 import com.soulreturns.ui.theme.SoulTheme
+import com.soulreturns.util.SkyblockItemUtils
 import net.minecraft.client.Minecraft
 import net.minecraft.world.entity.player.Player
+import java.util.Locale
 
 /**
  * Legion HUD — counts other real players within a 30-block radius and exposes a
@@ -27,13 +30,35 @@ object LegionHud {
     private const val RADIUS = 30.0
     private const val RADIUS_SQ = RADIUS * RADIUS
 
+    /** Skyblock enchant id that enables this HUD when present on any armor piece. */
+    private const val ENCHANT_ID = "ultimate_legion"
+
+    /** Vanilla `§d` light_purple — matches the in-game tooltip color of the Legion enchant. */
+    private const val COLOR_LIGHT_PURPLE = 0xFFFF55FF.toInt()
+
+    /**
+     * Bonus multiplier per enchant level — see SkyHanni `LegionBobbinOverlay.kt`. Final boost
+     * = level × [BOOST_PER_LEVEL] × min(nearbyPlayers, [PLAYER_CAP]).
+     */
+    private const val BOOST_PER_LEVEL = 0.07
+    private const val PLAYER_CAP = 20
+
     fun register() {
         SoulHud.register(
             id = HUD_ID,
             width = 180,
             height = 60,
-            defaultAnchorX = 0.02,
-            defaultAnchorY = 0.3,
+            // Top-center. Shares its default slot with Bobbin Time — only one is enabled at
+            // a time (their enchant gates are mutually exclusive in practice), so reusing
+            // the position keeps the default HUD layout uncluttered. `horizontalAnchor =
+            // Center` makes `dispatchAll` pivot on the actual rendered width so the panel
+            // sits dead-center regardless of screen resolution or GUI scale. `anchorY =
+            // 0.08` (≈ 8 % of screen height) leaves room above for the vanilla boss bar.
+            defaultAnchorX = 0.5,
+            defaultAnchorY = 0.08,
+            defaultHorizontalAnchor = HudHorizontalAnchor.Center,
+            settingsCategory = "render",
+            settingsSubcategory = "overlays",
         ) {
             Content()
         }
@@ -48,21 +73,40 @@ object LegionHud {
             Box {}
             return
         }
+        val player = Minecraft.getInstance().player
+        if (player == null) {
+            Box {}
+            return
+        }
+        val enchantLevel = SkyblockItemUtils.highestArmorEnchantLevel(player, ENCHANT_ID)
+        if (enchantLevel <= 0) {
+            // HUD only renders when the player is actually wearing the Legion enchant.
+            Box {}
+            return
+        }
         val count = countNearbyPlayers()
         if (count == null) {
             Box {}
             return
         }
+        val cappedCount = count.coerceAtMost(PLAYER_CAP)
+        val boostPercent = enchantLevel * BOOST_PER_LEVEL * cappedCount
         Surface {
             Column(gap = 4f) {
                 Text(
                     text = "Legion",
                     size = SoulTheme.typography.heading.size,
-                    color = SoulTheme.colors.text,
+                    color = COLOR_LIGHT_PURPLE,
                     font = SoulTheme.typography.heading.font,
                 )
                 Text(
-                    text = "Nearby players: $count",
+                    text =
+                        String.format(
+                            Locale.ROOT,
+                            "Nearby players: %d (%.2f%%)",
+                            count,
+                            boostPercent,
+                        ),
                     size = SoulTheme.typography.body.size,
                     color = SoulTheme.colors.textDim,
                     font = SoulTheme.typography.body.font,

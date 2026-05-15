@@ -2,15 +2,23 @@ package com.soulreturns.gui.lib
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.soulreturns.util.DebugLogger
 import java.io.File
 
 /**
  * Top-level layout definition for the GUI library.
+ *
+ * [schemaVersion] is stamped on every save. Old files (written before alignment metadata
+ * existed) deserialize as version `0` because Gson bypasses Kotlin constructor defaults via
+ * `Unsafe`. Loading code checks the version and wipes the file when it predates the current
+ * schema — see [GuiLayoutManager.CURRENT_SCHEMA_VERSION] and the wipe path in
+ * [GuiLayoutManager.loadOrInitialize].
  */
 data class GuiLayout(
     val elements: List<GuiElement> = emptyList(),
+    val schemaVersion: Int = GuiLayoutManager.CURRENT_SCHEMA_VERSION,
 )
 
 /**
@@ -22,6 +30,22 @@ data class GuiLayout(
  * an "Edit GUI" screen).
  */
 object GuiLayoutManager {
+    /**
+     * Bump this when the layout schema gains a field that older files won't carry. On the
+     * next load after the bump, any file with a lower `schemaVersion` is wiped — the in-
+     * memory layout is replaced with an empty one, and the next per-frame
+     * `SoulHud.ensureLayoutElement` pass rebuilds entries from the new registration
+     * defaults. Users with a tweaked layout will see it reset to defaults exactly once.
+     *
+     * **History:**
+     *  - `0`: pre-versioning. Predates alignment fields (`horizontalAnchor` /
+     *    `verticalAnchor`) on `SoulHudElement`. Wiped to fix a deserialization NPE — Gson
+     *    bypasses Kotlin constructor defaults via Unsafe, so the new enum fields landed as
+     *    null at runtime and `SoulHud.resolveBaseX` exploded on `null.ordinal()`.
+     *  - `2`: alignment-aware schema.
+     */
+    const val CURRENT_SCHEMA_VERSION: Int = 2
+
     private val gson: Gson =
         GsonBuilder()
             .registerTypeAdapterFactory(GuiRuntimeTypeAdapterFactory())
@@ -122,6 +146,41 @@ object GuiLayoutManager {
             )
     }
 
+    /**
+     * Apply a corner-preset anchor to a [SoulHudElement]: the element snaps to one of the
+     * five screen-edge presets exposed by the `/soul gui` right-click menu (Top Left, Top
+     * Right, Bottom Left, Bottom Right, Center). Offset resets to `(0, 0)` so the element
+     * sits flush with the chosen edge.
+     *
+     * Other element types are no-ops — only `SoulHudElement` carries the alignment metadata
+     * that lets the renderer pivot on its own size.
+     */
+    @Synchronized
+    fun updateSoulHudAnchor(
+        id: GuiElementId,
+        anchorX: Double,
+        anchorY: Double,
+        horizontalAnchor: HudHorizontalAnchor,
+        verticalAnchor: HudVerticalAnchor,
+    ) {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element.id != id) return@map element
+                        if (element !is SoulHudElement) return@map element
+                        element.copy(
+                            anchorX = anchorX,
+                            anchorY = anchorY,
+                            offsetX = 0,
+                            offsetY = 0,
+                            horizontalAnchor = horizontalAnchor,
+                            verticalAnchor = verticalAnchor,
+                        )
+                    },
+            )
+    }
+
     @Synchronized
     fun updateElementScale(
         id: GuiElementId,
@@ -206,6 +265,28 @@ object GuiLayoutManager {
     fun layoutFile(): File? = layoutFile
 
     /**
+     * Read the raw schema version from the JSON. Returns `null` if the file doesn't have a
+     * `schemaVersion` key at all — necessary because Gson applies Kotlin constructor defaults
+     * for [GuiLayout] (all primary-ctor fields have defaults → no-arg constructor exists), so
+     * a deserialized value of `CURRENT_SCHEMA_VERSION` doesn't actually prove the field was
+     * present in the JSON. Element-level Kotlin defaults are *not* applied (`SoulHudElement`
+     * has a no-default `id` field) — that's why old files crash on null enum fields and why
+     * we need this raw probe to catch them.
+     */
+    private fun readRawSchemaVersion(json: String): Int? =
+        try {
+            val root = JsonParser.parseString(json)
+            if (!root.isJsonObject) {
+                null
+            } else {
+                val obj = root.asJsonObject
+                if (!obj.has("schemaVersion")) null else obj.get("schemaVersion").asInt
+            }
+        } catch (e: Exception) {
+            null
+        }
+
+    /**
      * Re-read the layout from disk into the in-memory state. Used by cloud sync
      * after a remote pull writes a new gui_layout.json. Skips initialization
      * (does not write defaults) — call [loadOrInitialize] for that.
@@ -216,6 +297,16 @@ object GuiLayoutManager {
         if (!file.exists()) return
         try {
             val json = file.readText()
+            val rawVersion = readRawSchemaVersion(json)
+            if (rawVersion == null || rawVersion < CURRENT_SCHEMA_VERSION) {
+                DebugLogger.logGuiLayout(
+                    "Reload: GUI layout schemaVersion=$rawVersion < $CURRENT_SCHEMA_VERSION; " +
+                        "wiping to defaults"
+                )
+                currentLayout = GuiLayout()
+                save()
+                return
+            }
             val type = object : TypeToken<GuiLayout>() {}.type
             val loaded = gson.fromJson<GuiLayout>(json, type) ?: GuiLayout()
             currentLayout = loaded.copy(elements = loaded.elements.filterNotNull())
@@ -246,6 +337,24 @@ object GuiLayoutManager {
 
         try {
             val json = file.readText()
+            // Schema gate: a saved file from before the alignment field rolled out has no
+            // `schemaVersion` key. Wipe it so per-frame `ensureLayoutElement` rebuilds from
+            // the new registration defaults — the user pays a one-time HUD-position reset
+            // to clear a deserialization landmine that would otherwise NPE on the null
+            // enum fields Gson leaves on each `SoulHudElement`.
+            val rawVersion = readRawSchemaVersion(json)
+            DebugLogger.logGuiLayout(
+                "GUI layout file at ${file.absolutePath} reports schemaVersion=$rawVersion " +
+                    "(current=$CURRENT_SCHEMA_VERSION)"
+            )
+            if (rawVersion == null || rawVersion < CURRENT_SCHEMA_VERSION) {
+                DebugLogger.logGuiLayout(
+                    "GUI layout schemaVersion=$rawVersion < $CURRENT_SCHEMA_VERSION; wiping to defaults"
+                )
+                currentLayout = GuiLayout()
+                save()
+                return
+            }
             val type = object : TypeToken<GuiLayout>() {}.type
             val loaded = gson.fromJson(json, type) ?: GuiLayout()
             DebugLogger.logGuiLayout(

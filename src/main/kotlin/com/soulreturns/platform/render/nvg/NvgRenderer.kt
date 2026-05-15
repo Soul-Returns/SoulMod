@@ -17,7 +17,6 @@ import org.lwjgl.nanovg.NanoVG.nvgCircle
 import org.lwjgl.nanovg.NanoVG.nvgClosePath
 import org.lwjgl.nanovg.NanoVG.nvgCreateFontMem
 import org.lwjgl.nanovg.NanoVG.nvgCreateImageMem
-import org.lwjgl.nanovg.NanoVG.nvgImagePattern
 import org.lwjgl.nanovg.NanoVG.nvgEndFrame
 import org.lwjgl.nanovg.NanoVG.nvgFill
 import org.lwjgl.nanovg.NanoVG.nvgFillColor
@@ -25,6 +24,7 @@ import org.lwjgl.nanovg.NanoVG.nvgFillPaint
 import org.lwjgl.nanovg.NanoVG.nvgFontFaceId
 import org.lwjgl.nanovg.NanoVG.nvgFontSize
 import org.lwjgl.nanovg.NanoVG.nvgGlobalAlpha
+import org.lwjgl.nanovg.NanoVG.nvgImagePattern
 import org.lwjgl.nanovg.NanoVG.nvgLineTo
 import org.lwjgl.nanovg.NanoVG.nvgLinearGradient
 import org.lwjgl.nanovg.NanoVG.nvgMoveTo
@@ -268,6 +268,30 @@ object NvgRenderer {
     ) {
         nvgBeginPath(vg)
         nvgRoundedRect(vg, x, y, w, h + .5f, radius)
+        setFillColor(color)
+        nvgFill(vg)
+    }
+
+    /**
+     * Solid triangle defined by three corner points. Winding order doesn't matter for fill —
+     * NanoVG fills the closed path regardless. Useful for caret glyphs / arrows / pointer
+     * indicators that the bundled Inter font lacks the geometric-shape codepoints to render
+     * via [text].
+     */
+    fun filledTriangle(
+        x1: Float,
+        y1: Float,
+        x2: Float,
+        y2: Float,
+        x3: Float,
+        y3: Float,
+        color: Int,
+    ) {
+        nvgBeginPath(vg)
+        nvgMoveTo(vg, x1, y1)
+        nvgLineTo(vg, x2, y2)
+        nvgLineTo(vg, x3, y3)
+        nvgClosePath(vg)
         setFillColor(color)
         nvgFill(vg)
     }

@@ -91,12 +91,20 @@ data class ItemTrackerElement(
 ) : GuiElement(id, enabled, anchorX, anchorY, offsetX, offsetY, scale, textShadow)
 
 /**
- * Position/scale shell for a Soul UI framework HUD (see `ui.runtime.SoulHud`).
+ * How a HUD element is anchored to its `anchorX` position along the horizontal axis.
+ *  - `Start`: the element's left edge sits at the anchor pixel (legacy behavior).
+ *  - `Center`: the element is horizontally centered on the anchor pixel.
+ *  - `End`: the element's right edge sits at the anchor pixel.
  *
- * The composable content lambda lives in `SoulHudRegistry` at runtime — only positioning
- * persists in `gui_layout.json`. Features register one of these via `SoulHud.register(...)`
- * which calls `GuiLayoutApi.updateSoulHud(...)` internally.
+ * Use `Center` for a "top-center" default position with `anchorX = 0.5`, and `End` for a
+ * "top-right" default with `anchorX = 1.0`. With `Start` you need to compute `offsetX`
+ * yourself to shift the element away from the anchor.
  */
+enum class HudHorizontalAnchor { Start, Center, End }
+
+/** Vertical counterpart of [HudHorizontalAnchor]. */
+enum class HudVerticalAnchor { Top, Center, Bottom }
+
 data class SoulHudElement(
     override val id: GuiElementId,
     override val enabled: Boolean = true,
@@ -106,4 +114,13 @@ data class SoulHudElement(
     override val offsetY: Int = 0,
     override val scale: Float = 1.0f,
     override val textShadow: Boolean = true,
+    /**
+     * Alignment of the rendered HUD relative to its anchor point. Defaults to `Start` /
+     * `Top` for sources that don't specify (Kotlin construction); old `gui_layout.json`
+     * files written before alignment was a concept are wiped at load time via the schema
+     * version bump (see `GuiLayout.SCHEMA_VERSION`), so by the time anything reads these
+     * fields they're either user-set or the new registration defaults.
+     */
+    val horizontalAnchor: HudHorizontalAnchor = HudHorizontalAnchor.Start,
+    val verticalAnchor: HudVerticalAnchor = HudVerticalAnchor.Top,
 ) : GuiElement(id, enabled, anchorX, anchorY, offsetX, offsetY, scale, textShadow)

@@ -219,3 +219,22 @@ fun SoulModifier.fillMaxHeight(): SoulModifier = then(FillElement(width = false,
 
 /** Make the node fill all available space on both axes. */
 fun SoulModifier.fillMaxSize(): SoulModifier = then(FillElement(width = true, height = true))
+
+/**
+ * Claim a proportional share of the parent's *leftover* main-axis space after unweighted
+ * siblings have measured at their intrinsic size. Mirrors Compose's `Modifier.weight(...)`.
+ *
+ * Only honored by [com.soulreturns.ui.foundation.Row] and [com.soulreturns.ui.foundation.Column]
+ * when their own main axis is bounded — under an unbounded parent there is no "leftover"
+ * to distribute, so weighted children fall back to their intrinsic size.
+ *
+ * If multiple weighted siblings exist, each gets `weight / totalWeight` of the remaining
+ * space. Combine with `Arrangement.SpaceBetween` etc. only if you want extra spacing on
+ * top of the weighted split — weights consume all leftover space themselves.
+ */
+data class WeightElement(val weight: Float) : SoulModifier.Element
+
+fun SoulModifier.weight(weight: Float): SoulModifier = then(WeightElement(weight))
+
+/** Internal lookup used by Row/Column measure passes. Returns `0f` when no weight is set. */
+internal fun SoulModifier.weightValue(): Float = elements().filterIsInstance<WeightElement>().firstOrNull()?.weight ?: 0f

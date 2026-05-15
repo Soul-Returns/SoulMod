@@ -50,18 +50,26 @@ object PersistentStats {
         // Fishing — all-time counters across every fishing session on this profile.
         var doubleHooksAllTime: Long = 0L,
         var catchesAllTime: Long = 0L,
+        // Cocoons — "CAUGHT! You cocooned a <Sea Creature>!" — a non-catch outcome that
+        // can happen with specific equipment. Tracked separately from catches; the creature
+        // name in the chat line is matched against `SeaCreatureCatalog` so the per-creature
+        // breakdown lives in the same name space as `catchesByCreature`.
+        var cocoonsAllTime: Long = 0L,
         // Per-creature breakdowns. Stored as immutable [Map] so the data-class copy() used in
         // [saveAsync] is safe — replaced via `m + (k to v)` in update blocks rather than mutated.
         var doubleHooksByCreature: Map<String, Long> = emptyMap(),
         var catchesByCreature: Map<String, Long> = emptyMap(),
+        var cocoonsByCreature: Map<String, Long> = emptyMap(),
         // Fishing festival — `festivalStartAt` is epoch ms of the first underway message we saw for
         // the currently-active festival; 0L means no festival is active. Survives client restarts
         // so a mid-festival relaunch keeps writing to the same bucket.
         var festivalStartAt: Long = 0L,
         var festivalDoubleHooks: Long = 0L,
         var festivalCatches: Long = 0L,
+        var festivalCocoons: Long = 0L,
         var festivalDoubleHooksByCreature: Map<String, Long> = emptyMap(),
         var festivalCatchesByCreature: Map<String, Long> = emptyMap(),
+        var festivalCocoonsByCreature: Map<String, Long> = emptyMap(),
     )
 
     /** Top-level v2 storage shape: schema version + per-profile slots. */

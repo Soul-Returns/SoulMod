@@ -11,11 +11,11 @@ import com.soulreturns.ui.composer.VerticalAlignment
 import com.soulreturns.ui.composer.background
 import com.soulreturns.ui.composer.boxShadow
 import com.soulreturns.ui.composer.clickable
-import com.soulreturns.ui.composer.tooltip
 import com.soulreturns.ui.composer.fillMaxSize
 import com.soulreturns.ui.composer.fillMaxWidth
 import com.soulreturns.ui.composer.height
 import com.soulreturns.ui.composer.padding
+import com.soulreturns.ui.composer.tooltip
 import com.soulreturns.ui.composer.width
 import com.soulreturns.ui.config.model.ActionRowSpec
 import com.soulreturns.ui.config.model.CategoriesCollector
@@ -65,8 +65,11 @@ import java.util.Locale
  * a stable surface. Most callbacks reduce to no-ops because state changes auto-show on the
  * next frame (declarative model — no manual rebuild).
  */
-class SoulConfigScreen(private val initialSearch: String = "") :
-    SoulScreen(Component.translatable("text.config.soul/config.title")),
+class SoulConfigScreen(
+    private val initialSearch: String = "",
+    private val initialCategory: String? = null,
+    private val initialSubcategory: String? = null,
+) : SoulScreen(Component.translatable("text.config.soul/config.title")),
     ConfigScreenContext {
     private companion object {
         // Fixed height for every option / action / link row so all widget types (toggle 18px,
@@ -95,11 +98,27 @@ class SoulConfigScreen(private val initialSearch: String = "") :
     private val expandedCategories = mutableSetOf<String>()
 
     init {
-        // Pick the first visible (category, subcategory) so we don't open onto an empty body.
-        val first = categories.firstOrNull()
-        activeCategory = first?.id ?: ""
-        activeSubcategory = first?.subcategories?.firstOrNull()?.subId ?: ""
-        if (activeCategory.isNotEmpty()) expandedCategories.add(activeCategory)
+        // Honor a deep-link request (e.g. opened from `/soul gui` → right-click → Settings)
+        // if both ids resolve against the live category tree; otherwise fall back to the
+        // first visible (category, subcategory) so we don't open onto an empty body.
+        val requested =
+            initialCategory?.let { catId ->
+                categories.firstOrNull { it.id == catId }
+            }
+        val requestedSub =
+            requested?.subcategories?.firstOrNull { sub ->
+                initialSubcategory == null || sub.subId == initialSubcategory
+            }
+        if (requested != null) {
+            activeCategory = requested.id
+            activeSubcategory = requestedSub?.subId ?: requested.subcategories.firstOrNull()?.subId ?: ""
+            expandedCategories.add(requested.id)
+        } else {
+            val first = categories.firstOrNull()
+            activeCategory = first?.id ?: ""
+            activeSubcategory = first?.subcategories?.firstOrNull()?.subId ?: ""
+            if (activeCategory.isNotEmpty()) expandedCategories.add(activeCategory)
+        }
     }
 
     override fun shouldCloseOnEsc(): Boolean = true
@@ -400,6 +419,7 @@ class SoulConfigScreen(private val initialSearch: String = "") :
                     label = "Move GUI",
                     onClick = { Minecraft.getInstance().setScreen(GuiEditScreen()) },
                     modifier = SoulModifier.Empty.fillMaxWidth(),
+                    centerLabel = true,
                     key = "config.movegui",
                 )
             }
@@ -625,8 +645,9 @@ class SoulConfigScreen(private val initialSearch: String = "") :
             DimText("No matching options.")
             return
         }
-        val sub = cat.subcategories.firstOrNull { it.subId == activeSubcategory }
-            ?: cat.subcategories.firstOrNull()
+        val sub =
+            cat.subcategories.firstOrNull { it.subId == activeSubcategory }
+                ?: cat.subcategories.firstOrNull()
         if (sub == null) {
             DimText("No options in this category.")
             return

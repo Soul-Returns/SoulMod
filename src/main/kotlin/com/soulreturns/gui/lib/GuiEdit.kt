@@ -37,17 +37,27 @@ object GuiEditSession {
         return layout.elements.lastOrNull { element ->
             if (!element.enabled) return@lastOrNull false
             val (baseX, baseY) = computeBasePosition(element, ctx)
-            val width = 200
-            val height =
-                when (element) {
-                    is TextBlockElement -> 20 + element.lines.size * 10
-                    is ItemTrackerElement -> 20 + element.entries.size * 18
-                    is SoulHudElement -> {
-                        val entry = com.soulreturns.ui.runtime.SoulHudRegistry.get(element.id)
-                        val effectiveScale = com.soulreturns.ui.runtime.SoulHud.effectiveScaleFor(element.scale)
-                        ((entry?.height ?: 64) * effectiveScale).toInt()
-                    }
+            val width: Int
+            val height: Int
+            when (element) {
+                is TextBlockElement -> {
+                    width = 200
+                    height = 20 + element.lines.size * 10
                 }
+                is ItemTrackerElement -> {
+                    width = 200
+                    height = 20 + element.entries.size * 18
+                }
+                is SoulHudElement -> {
+                    val entry = com.soulreturns.ui.runtime.SoulHudRegistry.get(element.id)
+                    val measured = com.soulreturns.ui.runtime.SoulHudRegistry.lastMeasured(element.id)
+                    val effectiveScale = com.soulreturns.ui.runtime.SoulHud.effectiveScaleFor(element.scale)
+                    val intrinsicW = measured?.width ?: (entry?.width?.toFloat() ?: 200f)
+                    val intrinsicH = measured?.height ?: (entry?.height?.toFloat() ?: 64f)
+                    width = (intrinsicW * effectiveScale).toInt()
+                    height = (intrinsicH * effectiveScale).toInt()
+                }
+            }
             x >= baseX && x <= baseX + width && y >= baseY && y <= baseY + height
         }?.id
     }
@@ -136,6 +146,17 @@ object GuiEditSession {
         element: GuiElement,
         ctx: GuiRenderContext
     ): Pair<Int, Int> {
+        // SoulHudElements have alignment metadata (Start / Center / End on each axis) that
+        // shifts the on-screen origin away from the raw anchor — delegate to SoulHud so the
+        // hit-test rectangle lines up with what the user actually sees.
+        if (element is SoulHudElement) {
+            val entry = com.soulreturns.ui.runtime.SoulHudRegistry.get(element.id)
+            if (entry != null) {
+                val baseX = com.soulreturns.ui.runtime.SoulHud.resolveBaseX(element, entry, ctx.screenWidth)
+                val baseY = com.soulreturns.ui.runtime.SoulHud.resolveBaseY(element, entry, ctx.screenHeight)
+                return baseX to baseY
+            }
+        }
         val baseX = (element.anchorX * ctx.screenWidth).toInt() + element.offsetX
         val baseY = (element.anchorY * ctx.screenHeight).toInt() + element.offsetY
         return baseX to baseY

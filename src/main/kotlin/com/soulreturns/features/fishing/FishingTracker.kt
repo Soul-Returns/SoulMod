@@ -41,6 +41,12 @@ object FishingTracker {
     private val COMPACTED_COUNT_SUFFIX = Regex(""" \((\d+)\)$""")
     private const val COMPACTED_AGGREGATE_WINDOW_MS = 60_000L
 
+    // Cocoon kill-time line — fires when specific equipment cocoons a sea creature on kill.
+    // The creature name is whatever appears between "cocooned a " and the trailing "!".
+    // This is a separate outcome from a regular catch — does NOT consume pendingDoubleHook
+    // and does NOT increment catch counters (the catch line already counted earlier).
+    private val COCOON_PATTERN = Regex("""^CAUGHT! You cocooned a (.+)!$""")
+
     // Lines that may legitimately land between the double-hook line and the catch line.
     // Do not reset the sticky flag when these appear (see SeaCreatureManager.kt:106-118).
     private val THUNDER_CHARGED_PATTERN = Regex("""> Your bottle of thunder has fully charged!""")
@@ -58,6 +64,10 @@ object FishingTracker {
     var sessionCatches: Long = 0L
         private set
 
+    @Volatile
+    var sessionCocoons: Long = 0L
+        private set
+
     /** Per-creature session counts. In-memory only; reset by [resetSession]. */
     @Volatile
     var sessionCatchesByCreature: Map<String, Long> = emptyMap()
@@ -65,6 +75,10 @@ object FishingTracker {
 
     @Volatile
     var sessionDoubleHooksByCreature: Map<String, Long> = emptyMap()
+        private set
+
+    @Volatile
+    var sessionCocoonsByCreature: Map<String, Long> = emptyMap()
         private set
 
     private var lastDoubleHookBase: String? = null
@@ -79,8 +93,11 @@ object FishingTracker {
     fun resetSession() {
         sessionDoubleHooks = 0L
         sessionCatches = 0L
+        sessionCocoons = 0L
         sessionCatchesByCreature = emptyMap()
         sessionDoubleHooksByCreature = emptyMap()
+        sessionCocoonsByCreature = emptyMap()
+        FishingTimer.resetSession()
     }
 
     @HandleEvent
@@ -92,6 +109,7 @@ object FishingTracker {
 
         if (handleDoubleHook(stripped)) return
         if (handleCatch(stripped)) return
+        if (handleCocoon(stripped)) return
         if (isInterleaver(stripped)) return
 
         // Anything else — clear the stale flag so a later catch unrelated to a hook isn't mis-attributed.
@@ -105,8 +123,10 @@ object FishingTracker {
         PersistentStats.update {
             festivalDoubleHooks = 0L
             festivalCatches = 0L
+            festivalCocoons = 0L
             festivalDoubleHooksByCreature = emptyMap()
             festivalCatchesByCreature = emptyMap()
+            festivalCocoonsByCreature = emptyMap()
         }
         logger.info("Reset festival counters on festival start")
     }
@@ -166,6 +186,27 @@ object FishingTracker {
             }
         }
         Events.publish(SeaCreatureCaught(creature, wasDoubleHook, festivalActive, now))
+        return true
+    }
+
+    private fun handleCocoon(stripped: String): Boolean {
+        val match = COCOON_PATTERN.matchEntire(stripped) ?: return false
+        val creatureName = match.groupValues[1].trim()
+        // Match against the catalog by canonical name. If the catalog doesn't know the
+        // creature (e.g. a new festival creature added before our snapshot is refreshed),
+        // we still count it under the chat-line name so totals don't lose data.
+        val key = SeaCreatureCatalog.byName(creatureName)?.name ?: creatureName
+        sessionCocoons += 1
+        sessionCocoonsByCreature = sessionCocoonsByCreature.plusOne(key)
+        val festivalActive = FishingFestivalState.active
+        PersistentStats.update {
+            cocoonsAllTime += 1
+            cocoonsByCreature = cocoonsByCreature.plusOne(key)
+            if (festivalActive) {
+                festivalCocoons += 1
+                festivalCocoonsByCreature = festivalCocoonsByCreature.plusOne(key)
+            }
+        }
         return true
     }
 

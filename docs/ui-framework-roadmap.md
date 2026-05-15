@@ -173,8 +173,13 @@ Build these alongside the migrations they unblock:
   raster for the Discord/GitHub icons in the config title bar. Image support is currently
   deferred from `NvgRenderer`; add `image(...)` / `createImage(...)` methods (port from
   Odin's NVGRenderer.kt:266-324) when this lands.
-- **`Dropdown`** — header + popover. Used by various config rows currently. Lower priority;
-  most options can be `Button` (cycle through values) for now.
+- **`Dropdown`** + **`MultiSelectDropdown`** — ✅ shipped. Trigger + above-trigger popup
+  overlay. Single-select closes on row click; multi-select stays open and uses per-row
+  checkboxes. First user: `FishingHud` (Sort dropdown + column-visibility dropdown). Popup
+  is painted from `drawSelf` (NOT a separate overlay pass) so it shares the parent's
+  scissor — sufficient because all current callers have headroom above the trigger inside
+  the same panel. If a future widget needs to escape its parent panel, P5 can add a true
+  overlay layer.
 
 ---
 

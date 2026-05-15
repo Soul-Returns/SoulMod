@@ -17,6 +17,7 @@ import com.soulreturns.ui.composer.drawBackgrounds
 import com.soulreturns.ui.composer.recordHitRegions
 import com.soulreturns.ui.composer.totalPaddingHorizontal
 import com.soulreturns.ui.composer.totalPaddingVertical
+import com.soulreturns.ui.composer.weightValue
 
 /**
  * Horizontal stack — children placed left-to-right.
@@ -58,18 +59,64 @@ internal class RowNode(
         val padV = modifier.totalPaddingVertical()
         val offset = modifier.contentOffset()
 
-        // Children measure with unbounded width (we sum), height matching the row's content
-        // area (after vertical padding). If the row has bounded height, pass that down so
-        // children can fill if they want.
-        val inner =
+        val baseMaxH =
+            if (outer.hasBoundedHeight()) (outer.maxHeight - padV).coerceAtLeast(0f) else Float.POSITIVE_INFINITY
+
+        // Two-phase measure to support `Modifier.weight(...)` siblings:
+        //   1. Measure unweighted children with unbounded main axis (intrinsic).
+        //   2. Distribute remaining main-axis space across weighted children proportionally
+        //      and re-measure each at its computed fixed width.
+        // If the row's own main axis is unbounded, there's nothing to share, so weighted
+        // children also fall back to intrinsic.
+        val weights = children.map { it.modifier.weightValue() }
+        val totalWeight = weights.sum()
+
+        val baseInner =
             SoulConstraints(
                 minWidth = 0f,
                 maxWidth = Float.POSITIVE_INFINITY,
                 minHeight = 0f,
-                maxHeight = if (outer.hasBoundedHeight()) (outer.maxHeight - padV).coerceAtLeast(0f) else Float.POSITIVE_INFINITY,
+                maxHeight = baseMaxH,
             )
+        val intrinsicMeasured: List<SoulMeasured?> =
+            children.mapIndexed { i, c ->
+                if (weights[i] > 0f) null else c.measure(baseInner)
+            }
+        val gapCount = (children.size - 1).coerceAtLeast(0)
+        val totalGap = gap * gapCount
+        val intrinsicSumW =
+            intrinsicMeasured.filterNotNull().sumOf { it.width.toDouble() }.toFloat()
 
-        val childMeasured = children.map { it.measure(inner) }
+        val availableW =
+            if (outer.hasBoundedWidth()) (outer.maxWidth - padH).coerceAtLeast(0f) else Float.POSITIVE_INFINITY
+        val weightedMeasured: List<SoulMeasured?> =
+            if (totalWeight > 0f && outer.hasBoundedWidth()) {
+                val remaining = (availableW - intrinsicSumW - totalGap).coerceAtLeast(0f)
+                children.mapIndexed { i, c ->
+                    if (weights[i] > 0f) {
+                        val share = remaining * (weights[i] / totalWeight)
+                        c.measure(
+                            SoulConstraints(
+                                minWidth = share,
+                                maxWidth = share,
+                                minHeight = 0f,
+                                maxHeight = baseMaxH,
+                            ),
+                        )
+                    } else {
+                        null
+                    }
+                }
+            } else {
+                children.mapIndexed { i, c ->
+                    if (weights[i] > 0f) c.measure(baseInner) else null
+                }
+            }
+
+        val childMeasured =
+            children.mapIndexed { i, _ ->
+                intrinsicMeasured[i] ?: weightedMeasured[i] ?: SoulMeasured(0f, 0f)
+            }
         val childWidths = childMeasured.map { it.width }
         val maxChildH = childMeasured.maxOfOrNull { it.height } ?: 0f
 

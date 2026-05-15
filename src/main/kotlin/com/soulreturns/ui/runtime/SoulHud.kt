@@ -4,6 +4,8 @@ import com.soulreturns.config.cfg
 import com.soulreturns.gui.lib.GuiElement
 import com.soulreturns.gui.lib.GuiLayout
 import com.soulreturns.gui.lib.GuiLayoutManager
+import com.soulreturns.gui.lib.HudHorizontalAnchor
+import com.soulreturns.gui.lib.HudVerticalAnchor
 import com.soulreturns.gui.lib.SoulHudElement
 import com.soulreturns.platform.render.nvg.NvgFrame
 import com.soulreturns.ui.composer.SoulComposable
@@ -63,6 +65,10 @@ object SoulHud {
         defaultOffsetX: Int = 0,
         defaultOffsetY: Int = 0,
         defaultScale: Float = 1.0f,
+        defaultHorizontalAnchor: HudHorizontalAnchor = HudHorizontalAnchor.Start,
+        defaultVerticalAnchor: HudVerticalAnchor = HudVerticalAnchor.Top,
+        settingsCategory: String? = null,
+        settingsSubcategory: String? = null,
         content: @SoulComposable () -> Unit,
     ) {
         SoulHudRegistry.register(
@@ -74,6 +80,10 @@ object SoulHud {
             defaultOffsetX,
             defaultOffsetY,
             defaultScale,
+            defaultHorizontalAnchor,
+            defaultVerticalAnchor,
+            settingsCategory,
+            settingsSubcategory,
             content,
         )
         GuiLayoutManager.registerElementId(id)
@@ -108,6 +118,8 @@ object SoulHud {
                 defaultOffsetX = entry.defaultOffsetX,
                 defaultOffsetY = entry.defaultOffsetY,
                 defaultScale = entry.defaultScale,
+                defaultHorizontalAnchor = entry.defaultHorizontalAnchor,
+                defaultVerticalAnchor = entry.defaultVerticalAnchor,
             )
         }
 
@@ -116,10 +128,63 @@ object SoulHud {
             if (element !is SoulHudElement) continue
             if (!element.enabled) continue
             val entry = SoulHudRegistry.get(element.id) ?: continue
-            val baseX = (element.anchorX * screenW).toInt() + element.offsetX
-            val baseY = (element.anchorY * screenH).toInt() + element.offsetY
-            renderOne(context, baseX, baseY, entry, element.scale)
+            val baseX = resolveBaseX(element, entry, screenW)
+            val baseY = resolveBaseY(element, entry, screenH)
+            renderOne(context, element.id, baseX, baseY, entry, element.scale)
         }
+    }
+
+    /**
+     * Compute the screen-space top-left X for a HUD given its anchor + alignment + offset.
+     *
+     * `anchorX * screenW` is the pixel the user wants to "pin" along the horizontal axis.
+     * `horizontalAnchor` then says which edge of the HUD that pin grabs:
+     *  - `Start`: the HUD's left edge.
+     *  - `Center`: the HUD's horizontal center — pin is at `(left + width/2)`.
+     *  - `End`: the HUD's right edge — pin is at `(left + width)`.
+     *
+     * The shift is computed from the **on-screen** size (measured intrinsic × effective scale)
+     * so a Center-anchored HUD sits dead-center regardless of how the content composes or
+     * how the user's GUI scale is configured. Falls back to the registered max bound when no
+     * frame has rendered yet (e.g. first frame after a fresh launch with a gated HUD).
+     */
+    fun resolveBaseX(
+        element: SoulHudElement,
+        entry: SoulHudRegistry.Entry,
+        screenW: Int,
+    ): Int {
+        val anchorPx = element.anchorX * screenW
+        val measured = SoulHudRegistry.lastMeasured(element.id)
+        val intrinsicW = measured?.width ?: entry.width.toFloat()
+        val effectiveScale = effectiveScaleFor(element.scale)
+        val onScreenW = intrinsicW * effectiveScale
+        val shift =
+            when (element.horizontalAnchor) {
+                HudHorizontalAnchor.Start -> 0f
+                HudHorizontalAnchor.Center -> onScreenW / 2f
+                HudHorizontalAnchor.End -> onScreenW
+            }
+        return (anchorPx - shift).toInt() + element.offsetX
+    }
+
+    /** Vertical analog of [resolveBaseX]. */
+    fun resolveBaseY(
+        element: SoulHudElement,
+        entry: SoulHudRegistry.Entry,
+        screenH: Int,
+    ): Int {
+        val anchorPy = element.anchorY * screenH
+        val measured = SoulHudRegistry.lastMeasured(element.id)
+        val intrinsicH = measured?.height ?: entry.height.toFloat()
+        val effectiveScale = effectiveScaleFor(element.scale)
+        val onScreenH = intrinsicH * effectiveScale
+        val shift =
+            when (element.verticalAnchor) {
+                HudVerticalAnchor.Top -> 0f
+                HudVerticalAnchor.Center -> onScreenH / 2f
+                HudVerticalAnchor.Bottom -> onScreenH
+            }
+        return (anchorPy - shift).toInt() + element.offsetY
     }
 
     /**
@@ -143,6 +208,7 @@ object SoulHud {
 
     private fun renderOne(
         context: GuiGraphics,
+        id: String,
         x: Int,
         y: Int,
         entry: SoulHudRegistry.Entry,
@@ -153,6 +219,12 @@ object SoulHud {
         // NvgFrame.submit handles the PIP-size and nvgScale plumbing; we just pass intrinsic
         // (entry.width, entry.height) and the scale. Composables draw at intrinsic bounds;
         // the transform makes them appear at `effectiveScale` × on screen.
+        //
+        // The submit lambda is deferred — Mojang's PIP pipeline runs it later, NOT
+        // synchronously here — so we capture `id` by closure rather than reading it from a
+        // shared mutable. Without that, the measured-size record below would write under a
+        // stale id (whichever HUD is "current" at PIP-flush time, which is generally NOT this
+        // HUD anymore).
         NvgFrame.submit(context, x, y, entry.width, entry.height, scale = effectiveScale) {
             val root =
                 SoulComposer.create().build {
@@ -163,6 +235,9 @@ object SoulHud {
                 0f,
                 SoulConstraints(maxWidth = entry.width.toFloat(), maxHeight = entry.height.toFloat()),
             )
+            // Capture the actual rendered size for /soul gui's selection-box geometry —
+            // the registered (width, height) is a max bound; most HUDs render smaller.
+            root.measured?.let { m -> SoulHudRegistry.recordMeasured(id, m.width, m.height) }
         }
     }
 
@@ -173,6 +248,8 @@ object SoulHud {
         defaultOffsetX: Int,
         defaultOffsetY: Int,
         defaultScale: Float,
+        defaultHorizontalAnchor: HudHorizontalAnchor,
+        defaultVerticalAnchor: HudVerticalAnchor,
     ) {
         val current = GuiLayoutManager.getLayout()
         // Fast path: already present + correct type → nothing to do, preserve user edits.
@@ -198,6 +275,8 @@ object SoulHud {
                     offsetX = defaultOffsetX,
                     offsetY = defaultOffsetY,
                     scale = defaultScale,
+                    horizontalAnchor = defaultHorizontalAnchor,
+                    verticalAnchor = defaultVerticalAnchor,
                 )
         others += updated
         GuiLayoutManager.setLayout(GuiLayout(others))

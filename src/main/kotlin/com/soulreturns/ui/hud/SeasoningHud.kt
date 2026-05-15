@@ -36,8 +36,12 @@ object SeasoningHud {
             id = HUD_ID,
             width = 220,
             height = 160,
-            defaultAnchorX = 0.02,
-            defaultAnchorY = 0.4,
+            // Top-left. Shares its default slot with the Fishing tracker (only one is
+            // contextually relevant per area — Farming/Garden vs Fishing islands).
+            defaultAnchorX = 0.01,
+            defaultAnchorY = 0.02,
+            settingsCategory = "farming",
+            settingsSubcategory = "seasonings",
         ) {
             Content()
         }

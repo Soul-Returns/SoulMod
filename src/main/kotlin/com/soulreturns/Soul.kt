@@ -11,7 +11,9 @@ import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.seasoning.HarvestFeastReader
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
 import com.soulreturns.features.fishing.BobbinSpotter
+import com.soulreturns.features.fishing.FishingTimer
 import com.soulreturns.features.fishing.FishingTracker
+import com.soulreturns.features.fishing.FishingVisibility
 import com.soulreturns.features.itemhighlight.HighlightManager
 import com.soulreturns.features.itemhighlight.TooltipHandler
 import com.soulreturns.features.mining.dwarvenMines.DonExpresso
@@ -231,6 +233,8 @@ object Soul : ClientModInitializer {
         // → tracker (subscribes to both ChatMessage + festival events) → overlay (renders panel).
         SeaCreatureCatalog.init()
         FishingFestivalState.register()
+        FishingTimer.register()
+        FishingVisibility.register()
         FishingTracker.register()
         FishingHud.register()
         FishingFestivalHud.register()

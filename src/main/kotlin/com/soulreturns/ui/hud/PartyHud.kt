@@ -26,8 +26,15 @@ object PartyHud {
             id = HUD_ID,
             width = 260,
             height = 200,
-            defaultAnchorX = 0.02,
-            defaultAnchorY = 0.40,
+            // Top-right default. `horizontalAnchor = End` pins the rendered HUD's right
+            // edge to the anchor pixel, so we just need an X fraction that mirrors the Y
+            // fraction: anchorY = 0.02 leaves a 2 % gap at the top, anchorX = 0.98 leaves
+            // a 2 % gap at the right (since the right edge sits at 98 % of screen width).
+            defaultAnchorX = 0.98,
+            defaultAnchorY = 0.02,
+            defaultHorizontalAnchor = com.soulreturns.gui.lib.HudHorizontalAnchor.End,
+            settingsCategory = "render",
+            settingsSubcategory = "overlays",
         ) {
             Content()
         }

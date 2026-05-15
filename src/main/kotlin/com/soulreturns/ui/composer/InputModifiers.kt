@@ -41,8 +41,7 @@ fun SoulModifier.scrollable(
 ): SoulModifier = then(ScrollableElement(key, onScroll))
 
 /** Attach hover-tooltip text to this node. Empty strings are ignored (no overlay shown). */
-fun SoulModifier.tooltip(text: String): SoulModifier =
-    if (text.isEmpty()) this else then(TooltipElement(text))
+fun SoulModifier.tooltip(text: String): SoulModifier = if (text.isEmpty()) this else then(TooltipElement(text))
 
 /**
  * Walk this modifier chain and emit a hit region for any [ClickableElement] /

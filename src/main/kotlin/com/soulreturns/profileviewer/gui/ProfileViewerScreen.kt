@@ -20,7 +20,6 @@ import com.soulreturns.ui.foundation.Column
 import com.soulreturns.ui.foundation.Row
 import com.soulreturns.ui.foundation.ScrollableList
 import com.soulreturns.ui.foundation.Spacer
-import com.soulreturns.ui.foundation.Surface
 import com.soulreturns.ui.foundation.Tabs
 import com.soulreturns.ui.foundation.Text
 import com.soulreturns.ui.input.SoulInput
@@ -178,12 +177,13 @@ class ProfileViewerScreen(
         }
         when (activeTabIndex) {
             0 -> DungeonsTabContent(member)
-            else -> Text(
-                text = "Unknown tab",
-                size = SoulTheme.typography.body.size,
-                color = SoulTheme.colors.textDim,
-                font = SoulTheme.typography.body.font,
-            )
+            else ->
+                Text(
+                    text = "Unknown tab",
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.textDim,
+                    font = SoulTheme.typography.body.font,
+                )
         }
     }
 

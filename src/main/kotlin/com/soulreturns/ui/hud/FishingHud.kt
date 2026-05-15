@@ -4,7 +4,9 @@ import com.soulreturns.config.cfg
 import com.soulreturns.data.fishing.SeaCreatureCatalog
 import com.soulreturns.data.skyblock.SkyblockApi
 import com.soulreturns.features.fishing.FishingHudSettings
+import com.soulreturns.features.fishing.FishingTimer
 import com.soulreturns.features.fishing.FishingTracker
+import com.soulreturns.features.fishing.FishingVisibility
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.composer.Arrangement
 import com.soulreturns.ui.composer.SoulComposable
@@ -12,9 +14,15 @@ import com.soulreturns.ui.composer.SoulModifier
 import com.soulreturns.ui.composer.background
 import com.soulreturns.ui.composer.fillMaxWidth
 import com.soulreturns.ui.composer.height
+import com.soulreturns.ui.composer.padding
+import com.soulreturns.ui.composer.weight
+import com.soulreturns.ui.composer.width
 import com.soulreturns.ui.foundation.Box
 import com.soulreturns.ui.foundation.Button
 import com.soulreturns.ui.foundation.Column
+import com.soulreturns.ui.foundation.Dropdown
+import com.soulreturns.ui.foundation.DropdownOption
+import com.soulreturns.ui.foundation.MultiSelectDropdown
 import com.soulreturns.ui.foundation.Row
 import com.soulreturns.ui.foundation.ScrollableList
 import com.soulreturns.ui.foundation.Surface
@@ -22,6 +30,9 @@ import com.soulreturns.ui.foundation.Tabs
 import com.soulreturns.ui.foundation.Text
 import com.soulreturns.ui.runtime.SoulHud
 import com.soulreturns.ui.theme.SoulTheme
+import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+import java.util.Locale
 
 /**
  * Fishing HUD — per-creature sea-creature tracker with tabs, sorting, paging, and reset.
@@ -32,29 +43,61 @@ import com.soulreturns.ui.theme.SoulTheme
  *
  * Layout:
  * ```
- * ┌─────────────────────────────────────────────┐
- * │ Fishing                    [Session][Total] │  ← header
- * │ ───────────────────────────────────────────  │
- * │ Sea Archer            47     12 DH          │  ← scrollable list,
- * │ Lord Jawbus            3                    │    sorted by sort key,
- * │ ...                                          │    limited by limit
- * │ ───────────────────────────────────────────  │
- * │ [Sort: Catches] [Show: Top 10]   [Reset]    │  ← footer
- * └─────────────────────────────────────────────┘
+ * ┌──────────────────────────────────────────────────────────┐
+ * │ Fishing                                  [Session][Total]│  ← header
+ * │ Fishing Time: 00:12:34                       Cocoons: 7  │  ← timer + cocoon summary
+ * │ ────────────────────────────────────────────────────────  │
+ * │ Sea Archer                  47 │ 12 DH │ 0 CC            │  ← scrollable list,
+ * │ Lord Jawbus                  3 │  0 DH │ 0 CC            │    fixed-width right-aligned
+ * │ ...                                                       │    cells with vertical
+ * │ ────────────────────────────────────────────────────────  │    dividers
+ * │ [Sort: Catches▾]   [Columns▾]                            │  ← footer (controls row)
+ * │ [          Reset Session         ]                       │  ← footer (full-width)
+ * └──────────────────────────────────────────────────────────┘
  * ```
+ *
+ * The footer and the [Session/Total] toggle only render while an `AbstractContainerScreen`
+ * is open — outside of that the active tab shows as a dim label and the footer is hidden,
+ * so the HUD reads as data-only during normal play.
  */
 object FishingHud {
     private const val HUD_ID = "fishing_tracker"
     private const val SEPARATOR_HEIGHT = 1f
+    private const val COLOR_PAUSED_RED = 0xFFFF5555.toInt() // §c
+
+    // Per-column slot width (logical pixels). Wide enough for a 3-digit comma-formatted
+    // number plus the 3-char " DH" / " CC" suffix in the mono font at caption size. Tight
+    // on purpose: number is `Arrangement.Center`-positioned in the slot, and a thin
+    // vertical divider sits in the small gap between adjacent slots.
+    private const val NUMBER_CELL_WIDTH = 32f
+
+    // Vertical divider between visible columns. The visible line is 9px tall; we wrap it
+    // in a Box with `padding(top = 2f)` so the outer measured height (11f) matches the
+    // body-text bounding box of a NumberCell. The 2px top-padding compensates for Inter's
+    // ascender region — without it, the divider would sit centered in the text *bbox* but
+    // visually float above the digit *glyph*, since digits occupy roughly the lower 70% of
+    // their bbox.
+    private const val COLUMN_DIVIDER_WIDTH = 1f
+    private const val COLUMN_DIVIDER_HEIGHT = 9f
+    private const val COLUMN_DIVIDER_TOP_OFFSET = 2f
 
     fun register() {
         FishingHudSettings.init()
         SoulHud.register(
             id = HUD_ID,
             width = 280,
-            height = 280,
-            defaultAnchorX = 0.02,
-            defaultAnchorY = 0.45,
+            // Tall enough to fit: surface padding (24), header (20), timer line (14),
+            // two separator dividers + their column gaps (~16), scrollable list (140),
+            // footer column (~60: dropdown row + Reset Session), and column gaps between
+            // them (~36). 320 leaves a small buffer above the bottom edge.
+            height = 320,
+            // Top-left default. Shares its default slot with Seasoning tracker (only one is
+            // contextually relevant per area — Farming/Garden vs Fishing islands), so a
+            // shared origin keeps the default HUD layout uncluttered.
+            defaultAnchorX = 0.01,
+            defaultAnchorY = 0.02,
+            settingsCategory = "fishing",
+            settingsSubcategory = "fishingHud",
         ) {
             Content()
         }
@@ -66,50 +109,163 @@ object FishingHud {
         val showHud =
             hudCfg.showHud() &&
                 cfg.fishing.fishingTracker.enableTracker() &&
-                SkyblockApi.isOnSkyblock
+                SkyblockApi.isOnSkyblock &&
+                FishingVisibility.isVisible
         if (!showHud) {
             Box {}
             return
         }
         val settings = FishingHudSettings.get()
+        // Controls (tab switcher + footer buttons) only do anything when a container screen
+        // is open — SoulGuiHudAdapter only routes HUD clicks while `AbstractContainerScreen`
+        // is the active screen. Outside of that, collapse the panel to the data and replace
+        // the tab switcher with a plain label so the active scope is still visible.
+        val interactive = Minecraft.getInstance().screen is AbstractContainerScreen<*>
 
         Surface(modifier = SoulModifier.Empty.fillMaxWidth()) {
             Column(gap = 6f, modifier = SoulModifier.Empty.fillMaxWidth()) {
-                Header(settings)
+                Header(settings, interactive)
+                // Second row: total chips for the toggled-on columns. Skipped entirely when
+                // both DH and CC columns are hidden, so the panel doesn't reserve vertical
+                // space for an empty row + its surrounding Column gaps.
+                if (settings.showDoubleHooks || settings.showCocoons) {
+                    ChipsLine(settings)
+                }
                 HorizontalDivider()
                 List(settings)
-                HorizontalDivider()
-                Footer(settings)
+                if (interactive) {
+                    HorizontalDivider()
+                    Footer(settings)
+                }
             }
         }
     }
 
     @SoulComposable
-    private fun Header(settings: FishingHudSettings.Settings) {
+    private fun ChipsLine(settings: FishingHudSettings.Settings) {
+        Row(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            gap = 8f,
+        ) {
+            val catches = sessionOrTotalCatches(settings.tab)
+            if (settings.showDoubleHooks) {
+                val dh = sessionOrTotalDoubleHooks(settings.tab)
+                Text(
+                    text = formatChip("DH", dh, catches),
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.accent,
+                    font = SoulTheme.typography.mono.font,
+                )
+            }
+            if (settings.showCocoons) {
+                val cocoons = sessionOrTotalCocoons(settings.tab)
+                Text(
+                    text = formatChip("Cocoons", cocoons, catches),
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.accent,
+                    font = SoulTheme.typography.mono.font,
+                )
+            }
+        }
+    }
+
+    /**
+     * Format a "Label: N (P.P%)" chip — used by both the DH and Cocoons summary on the
+     * second row. Percentage = [count] / [catches] × 100, rendered with one decimal place
+     * via `Locale.ROOT` so locales that swap `.` and `,` for the decimal separator don't
+     * break the chip text. Falls back to "Label: N" with no percent when [catches] == 0
+     * (the only way that can happen is the very-first session before any catch lands).
+     */
+    private fun formatChip(
+        label: String,
+        count: Long,
+        catches: Long,
+    ): String =
+        if (catches > 0L) {
+            val pct = count.toDouble() / catches.toDouble() * 100.0
+            String.format(Locale.ROOT, "%s: %,d (%.1f%%)", label, count, pct)
+        } else {
+            String.format(Locale.ROOT, "%s: %,d", label, count)
+        }
+
+    private fun sessionOrTotalCocoons(tab: FishingHudSettings.Tab): Long =
+        when (tab) {
+            FishingHudSettings.Tab.Session -> FishingTracker.sessionCocoons
+            FishingHudSettings.Tab.Total -> PersistentStats.current.cocoonsAllTime
+        }
+
+    private fun sessionOrTotalDoubleHooks(tab: FishingHudSettings.Tab): Long =
+        when (tab) {
+            FishingHudSettings.Tab.Session -> FishingTracker.sessionDoubleHooks
+            FishingHudSettings.Tab.Total -> PersistentStats.current.doubleHooksAllTime
+        }
+
+    private fun sessionOrTotalCatches(tab: FishingHudSettings.Tab): Long =
+        when (tab) {
+            FishingHudSettings.Tab.Session -> FishingTracker.sessionCatches
+            FishingHudSettings.Tab.Total -> PersistentStats.current.catchesAllTime
+        }
+
+    @SoulComposable
+    private fun Header(
+        settings: FishingHudSettings.Settings,
+        interactive: Boolean,
+    ) {
         Row(
             modifier = SoulModifier.Empty.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = com.soulreturns.ui.composer.VerticalAlignment.Center,
         ) {
-            Text(
-                text = "Fishing",
-                size = SoulTheme.typography.heading.size,
-                color = SoulTheme.colors.text,
-                font = SoulTheme.typography.heading.font,
-            )
-            Tabs(
-                options = FishingHudSettings.Tab.values().map { it.name },
-                selectedIndex = settings.tab.ordinal,
-                onSelect = { idx ->
-                    val newTab = FishingHudSettings.Tab.values()[idx]
-                    if (newTab != settings.tab) {
-                        settings.tab = newTab
-                        settings.scrollOffset = 0f
-                        FishingHudSettings.markDirty()
-                    }
-                },
-                keyPrefix = "$HUD_ID.tabs",
-            )
+            // Left cluster: "Fishing" title + inline timer + optional (Paused) marker.
+            // No "Fishing Time:" prefix — the timer reads as a sub-heading of the title.
+            Row(
+                gap = 6f,
+                verticalAlignment = com.soulreturns.ui.composer.VerticalAlignment.Center,
+            ) {
+                Text(
+                    text = "Fishing",
+                    size = SoulTheme.typography.heading.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.heading.font,
+                )
+                Text(
+                    text = FishingTimer.formatTime(),
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.mono.font,
+                )
+                if (FishingTimer.isPaused) {
+                    Text(
+                        text = "(Paused)",
+                        size = SoulTheme.typography.body.size,
+                        color = COLOR_PAUSED_RED,
+                        font = SoulTheme.typography.body.font,
+                    )
+                }
+            }
+            if (interactive) {
+                Tabs(
+                    options = FishingHudSettings.Tab.values().map { it.name },
+                    selectedIndex = settings.tab.ordinal,
+                    onSelect = { idx ->
+                        val newTab = FishingHudSettings.Tab.values()[idx]
+                        if (newTab != settings.tab) {
+                            settings.tab = newTab
+                            settings.scrollOffset = 0f
+                            FishingHudSettings.markDirty()
+                        }
+                    },
+                    keyPrefix = "$HUD_ID.tabs",
+                )
+            } else {
+                Text(
+                    text = settings.tab.name,
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.textDim,
+                    font = SoulTheme.typography.body.font,
+                )
+            }
         }
     }
 
@@ -134,17 +290,21 @@ object FishingHud {
                     font = SoulTheme.typography.body.font,
                 )
             } else {
-                rows.forEach { row -> Row(row) }
+                rows.forEach { row -> Row(row, settings) }
             }
         }
     }
 
     @SoulComposable
-    private fun Row(row: CreatureRow) {
+    private fun Row(
+        row: CreatureRow,
+        settings: FishingHudSettings.Settings,
+    ) {
         Row(
             modifier = SoulModifier.Empty.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             gap = 6f,
+            verticalAlignment = com.soulreturns.ui.composer.VerticalAlignment.Center,
         ) {
             Text(
                 text = row.name,
@@ -152,19 +312,39 @@ object FishingHud {
                 color = SoulTheme.colors.text,
                 font = SoulTheme.typography.body.font,
             )
-            Row(gap = 6f) {
-                Text(
-                    text = "%,d".format(row.catches),
-                    size = SoulTheme.typography.body.size,
-                    color = SoulTheme.colors.accent,
-                    font = SoulTheme.typography.mono.font,
-                )
-                if (row.doubleHooks > 0L) {
-                    Text(
-                        text = "%,d DH".format(row.doubleHooks),
-                        size = SoulTheme.typography.caption.size,
+            // Numeric columns: fixed-width centered cells so the divider sits visually
+            // between values. Display order is CC → DH → Catches (rarest / most surprising
+            // signals leftmost; the bread-and-butter Catches column on the right where the
+            // eye expects the dominant metric). Hidden columns (toggled off in the footer)
+            // are omitted; thin vertical dividers separate visible cells.
+            Row(
+                gap = 2f,
+                verticalAlignment = com.soulreturns.ui.composer.VerticalAlignment.Center,
+            ) {
+                var first = true
+                if (settings.showCocoons) {
+                    NumberCell(
+                        text = "%,d CC".format(row.cocoons),
                         color = SoulTheme.colors.textDim,
-                        font = SoulTheme.typography.mono.font,
+                        isCaption = true,
+                    )
+                    first = false
+                }
+                if (settings.showDoubleHooks) {
+                    if (!first) ColumnDivider()
+                    NumberCell(
+                        text = "%,d DH".format(row.doubleHooks),
+                        color = SoulTheme.colors.textDim,
+                        isCaption = true,
+                    )
+                    first = false
+                }
+                if (settings.showCatches) {
+                    if (!first) ColumnDivider()
+                    NumberCell(
+                        text = "%,d".format(row.catches),
+                        color = SoulTheme.colors.accent,
+                        isCaption = false,
                     )
                 }
             }
@@ -172,31 +352,132 @@ object FishingHud {
     }
 
     @SoulComposable
-    private fun Footer(settings: FishingHudSettings.Settings) {
+    private fun ColumnDivider() {
+        // Outer Box: holds the top-offset padding so the visible line drops below the
+        // ascender region of the row's text. Inner Box: the actual 1×9px separator strip.
+        // Combined outer height (= padding + inner) matches the NumberCell text bbox so
+        // the row's vertical alignment lines everything up.
+        Box(modifier = SoulModifier.Empty.padding(top = COLUMN_DIVIDER_TOP_OFFSET)) {
+            Box(
+                modifier =
+                    SoulModifier.Empty
+                        .width(COLUMN_DIVIDER_WIDTH)
+                        .height(COLUMN_DIVIDER_HEIGHT)
+                        .background(SoulTheme.colors.separator),
+            )
+        }
+    }
+
+    @SoulComposable
+    private fun NumberCell(
+        text: String,
+        color: Int,
+        isCaption: Boolean,
+    ) {
+        // Center-align inside the fixed-width cell so the visible number sits in the
+        // middle of the column. Right-aligning here makes the column-dividers feel
+        // glued to the left number (because the next cell's empty padding sits between
+        // the divider and the next visible number). Center-align keeps each visible
+        // number equidistant from the dividers on both sides — at the cost of digit
+        // alignment across rows, which the user prefers visually balanced over
+        // strictly tabular here.
         Row(
-            modifier = SoulModifier.Empty.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            gap = 4f,
+            modifier = SoulModifier.Empty.width(NUMBER_CELL_WIDTH),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = com.soulreturns.ui.composer.VerticalAlignment.Center,
         ) {
-            // Left group: sort + limit
-            Row(gap = 4f) {
-                Button(
-                    label = "Sort: ${settings.sort.label}",
-                    onClick = { FishingHudSettings.cycleSort() },
+            Text(
+                text = text,
+                size = if (isCaption) SoulTheme.typography.caption.size else SoulTheme.typography.body.size,
+                color = color,
+                font = SoulTheme.typography.mono.font,
+            )
+        }
+    }
+
+    @SoulComposable
+    private fun Footer(settings: FishingHudSettings.Settings) {
+        Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f) {
+            // Sort dropdown (single-select) + columns dropdown (multi-select). Both open
+            // upward as popup overlays — see `MultiSelectDropdown` for the depth/scrim model.
+            // The Sort dropdown's options are filtered to currently-visible columns; selecting
+            // a hidden sort key would silently drift the row order. `.weight(1f)` on each
+            // splits the row width evenly between them so they always span the full footer.
+            Row(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f) {
+                val sortOptions =
+                    FishingHudSettings.Sort.values().filter { settings.isSortVisible(it) }
+                val sortIndex = sortOptions.indexOf(settings.sort).coerceAtLeast(0)
+                Dropdown(
+                    triggerLabel = "Sort: ${settings.sort.label}",
+                    options = sortOptions.map { it.label },
+                    selectedIndex = sortIndex,
+                    onSelect = { idx ->
+                        settings.sort = sortOptions[idx]
+                        settings.scrollOffset = 0f
+                        FishingHudSettings.markDirty()
+                    },
+                    expanded = FishingHudSettings.sortDropdownOpen,
+                    onExpandedChange = { FishingHudSettings.sortDropdownOpen = it },
+                    modifier = SoulModifier.Empty.weight(1f),
                     key = "$HUD_ID.sort",
                 )
-                Button(
-                    label = "Show: ${formatLimit(settings.limit)}",
-                    onClick = { FishingHudSettings.cycleLimit() },
-                    key = "$HUD_ID.limit",
+                MultiSelectDropdown(
+                    label = "Columns",
+                    options =
+                        listOf(
+                            DropdownOption("Catches", settings.showCatches) {
+                                toggleColumn(settings) { showCatches = !showCatches }
+                            },
+                            DropdownOption("Double Hooks", settings.showDoubleHooks) {
+                                toggleColumn(settings) { showDoubleHooks = !showDoubleHooks }
+                            },
+                            DropdownOption("Cocoons", settings.showCocoons) {
+                                toggleColumn(settings) { showCocoons = !showCocoons }
+                            },
+                        ),
+                    expanded = FishingHudSettings.columnDropdownOpen,
+                    onExpandedChange = { FishingHudSettings.columnDropdownOpen = it },
+                    modifier = SoulModifier.Empty.weight(1f),
+                    key = "$HUD_ID.columns",
                 )
             }
+            // Reset Session — full-width on its own row, centered label. Keeps a destructive
+            // action visually separated from the Sort/Columns row above so it can't be
+            // mis-clicked while picking a sort key.
             Button(
-                label = "Reset",
+                label = "Reset Session",
                 onClick = { FishingTracker.resetSession() },
+                modifier = SoulModifier.Empty.fillMaxWidth(),
+                centerLabel = true,
                 key = "$HUD_ID.reset",
             )
         }
+    }
+
+    /**
+     * Flip one of the column visibility flags via [block]. Refuses the flip if it would
+     * leave zero visible columns (the row would become "name only" with no numbers, which
+     * is useless) and snaps the [FishingHudSettings.Sort] key back to a visible column
+     * when the active one just got hidden.
+     */
+    private fun toggleColumn(
+        settings: FishingHudSettings.Settings,
+        block: FishingHudSettings.Settings.() -> Unit
+    ) {
+        val backupCatches = settings.showCatches
+        val backupDH = settings.showDoubleHooks
+        val backupCC = settings.showCocoons
+        settings.block()
+        if (!settings.showCatches && !settings.showDoubleHooks && !settings.showCocoons) {
+            settings.showCatches = backupCatches
+            settings.showDoubleHooks = backupDH
+            settings.showCocoons = backupCC
+            return
+        }
+        if (!settings.isSortVisible(settings.sort)) {
+            settings.sort = settings.firstVisibleSort()
+        }
+        FishingHudSettings.markDirty()
     }
 
     @SoulComposable
@@ -212,19 +493,31 @@ object FishingHud {
 
     // ───────────────────── row data assembly ─────────────────────
 
-    private data class CreatureRow(val name: String, val catches: Long, val doubleHooks: Long)
+    private data class CreatureRow(
+        val name: String,
+        val catches: Long,
+        val doubleHooks: Long,
+        val cocoons: Long,
+    )
 
     private fun buildRows(settings: FishingHudSettings.Settings): List<CreatureRow> {
-        val (catches, doubleHooks) =
-            when (settings.tab) {
-                FishingHudSettings.Tab.Session ->
-                    FishingTracker.sessionCatchesByCreature to FishingTracker.sessionDoubleHooksByCreature
-                FishingHudSettings.Tab.Total -> {
-                    val stats = PersistentStats.current
-                    stats.catchesByCreature to stats.doubleHooksByCreature
-                }
+        val catches: Map<String, Long>
+        val doubleHooks: Map<String, Long>
+        val cocoons: Map<String, Long>
+        when (settings.tab) {
+            FishingHudSettings.Tab.Session -> {
+                catches = FishingTracker.sessionCatchesByCreature
+                doubleHooks = FishingTracker.sessionDoubleHooksByCreature
+                cocoons = FishingTracker.sessionCocoonsByCreature
             }
-        val names = (catches.keys + doubleHooks.keys).toSet()
+            FishingHudSettings.Tab.Total -> {
+                val stats = PersistentStats.current
+                catches = stats.catchesByCreature
+                doubleHooks = stats.doubleHooksByCreature
+                cocoons = stats.cocoonsByCreature
+            }
+        }
+        val names = (catches.keys + doubleHooks.keys + cocoons.keys).toSet()
         val rows =
             names
                 .map { name ->
@@ -233,6 +526,7 @@ object FishingHud {
                         name = displayName,
                         catches = catches[name] ?: 0L,
                         doubleHooks = doubleHooks[name] ?: 0L,
+                        cocoons = cocoons[name] ?: 0L,
                     )
                 }
                 .sortedWith(
@@ -241,10 +535,10 @@ object FishingHud {
                             compareByDescending<CreatureRow> { it.catches }.thenBy { it.name }
                         FishingHudSettings.Sort.DoubleHooks ->
                             compareByDescending<CreatureRow> { it.doubleHooks }.thenBy { it.name }
+                        FishingHudSettings.Sort.Cocoons ->
+                            compareByDescending<CreatureRow> { it.cocoons }.thenBy { it.name }
                     },
                 )
-        return if (settings.limit < 0) rows else rows.take(settings.limit)
+        return rows
     }
-
-    private fun formatLimit(limit: Int): String = if (limit < 0) "All" else "Top $limit"
 }

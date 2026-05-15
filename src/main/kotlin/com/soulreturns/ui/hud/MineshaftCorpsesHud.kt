@@ -49,8 +49,15 @@ object MineshaftCorpsesHud {
             id = HUD_ID,
             width = 220,
             height = 200,
-            defaultAnchorX = 0.02,
-            defaultAnchorY = 0.5,
+            // Top-center default. The HUD only renders in `Area: Mineshaft`, so it never
+            // competes for screen space with the other top-center HUDs (Bobbin / Legion).
+            // `horizontalAnchor = Center` pivots on the actual rendered width so the panel
+            // sits dead-center regardless of resolution / GUI scale.
+            defaultAnchorX = 0.5,
+            defaultAnchorY = 0.02,
+            defaultHorizontalAnchor = com.soulreturns.gui.lib.HudHorizontalAnchor.Center,
+            settingsCategory = "mining",
+            settingsSubcategory = "mineshaft",
         ) {
             Content()
         }
