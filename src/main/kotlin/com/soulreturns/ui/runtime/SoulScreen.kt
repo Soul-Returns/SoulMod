@@ -86,8 +86,60 @@ abstract class SoulScreen(title: Component) : Screen(title) {
                 0f,
                 SoulConstraints(maxWidth = width.toFloat(), maxHeight = height.toFloat()),
             )
+            // Tooltip overlay — painted last so it draws on top of everything in the same
+            // NVG frame. Uses the tooltip regions recorded during the main draw above.
+            SoulInput.findHoveredTooltip()?.let { paintTooltip(it) }
         }
         super.render(context, mouseX, mouseY, partialTick)
+    }
+
+    /**
+     * Paint a small tooltip box near the cursor with [text]. Sized to fit the text plus
+     * padding; positioned just below and to the right of the cursor, clamped so it never
+     * extends past the screen's right or bottom edge.
+     */
+    private fun paintTooltip(text: String) {
+        val font = com.soulreturns.ui.theme.SoulTheme.typography.body.font
+        val size = com.soulreturns.ui.theme.SoulTheme.typography.body.size
+        val padH = 8f
+        val padV = 5f
+        val textW = com.soulreturns.platform.render.nvg.NvgRenderer.textWidth(text, size, font)
+        val boxW = textW + padH * 2f
+        val boxH = size + padV * 2f
+        val cursorOffsetX = 12f
+        val cursorOffsetY = 16f
+        val w = width.toFloat()
+        val h = height.toFloat()
+        // Anchor below-right of the cursor by default; flip to left/above if it would clip.
+        var bx = SoulInput.cursorX + cursorOffsetX
+        var by = SoulInput.cursorY + cursorOffsetY
+        if (bx + boxW > w) bx = (SoulInput.cursorX - cursorOffsetX - boxW).coerceAtLeast(0f)
+        if (by + boxH > h) by = (SoulInput.cursorY - cursorOffsetY - boxH).coerceAtLeast(0f)
+        com.soulreturns.platform.render.nvg.NvgRenderer.rect(
+            bx,
+            by,
+            boxW,
+            boxH,
+            com.soulreturns.ui.theme.SoulTheme.colors.panelInset,
+            com.soulreturns.ui.theme.SoulTheme.dimens.radiusSmall,
+        )
+        com.soulreturns.platform.render.nvg.NvgRenderer.hollowRect(
+            bx,
+            by,
+            boxW,
+            boxH,
+            thickness = 1f,
+            color = 0xFF333333.toInt(),
+            radius = com.soulreturns.ui.theme.SoulTheme.dimens.radiusSmall,
+        )
+        com.soulreturns.platform.render.nvg.NvgRenderer.text(
+            text,
+            bx + padH,
+            by + padV,
+            size,
+            com.soulreturns.ui.theme.SoulTheme.colors.text,
+            font,
+        )
     }
 
     override fun mouseClicked(

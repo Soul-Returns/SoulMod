@@ -16,6 +16,8 @@ import org.lwjgl.nanovg.NanoVG.nvgBoxGradient
 import org.lwjgl.nanovg.NanoVG.nvgCircle
 import org.lwjgl.nanovg.NanoVG.nvgClosePath
 import org.lwjgl.nanovg.NanoVG.nvgCreateFontMem
+import org.lwjgl.nanovg.NanoVG.nvgCreateImageMem
+import org.lwjgl.nanovg.NanoVG.nvgImagePattern
 import org.lwjgl.nanovg.NanoVG.nvgEndFrame
 import org.lwjgl.nanovg.NanoVG.nvgFill
 import org.lwjgl.nanovg.NanoVG.nvgFillColor
@@ -49,6 +51,7 @@ import org.lwjgl.nanovg.NanoVG.nvgTranslate
 import org.lwjgl.nanovg.NanoVGGL3.NVG_ANTIALIAS
 import org.lwjgl.nanovg.NanoVGGL3.NVG_STENCIL_STROKES
 import org.lwjgl.nanovg.NanoVGGL3.nvgCreate
+import org.lwjgl.system.MemoryUtil
 import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.min
@@ -312,6 +315,56 @@ object NvgRenderer {
         nvgBeginPath(vg)
         nvgRoundedRect(vg, x, y, w, h, radius)
         applyGradient(color1, color2, x, y, w, h, gradient)
+        nvgFillPaint(vg, nvgPaint)
+        nvgFill(vg)
+    }
+
+    /**
+     * Per-classpath-path image cache. NanoVG image handles are integers owned by the NVG
+     * context — created via [nvgCreateImageMem] and never freed (the cache lives for the
+     * JVM lifetime, matching the renderer's lifecycle).
+     */
+    private val imageCache: MutableMap<String, Int> = HashMap()
+
+    /**
+     * Load a PNG / JPG / GIF from the classpath and return its NanoVG image handle. The
+     * file at [resourcePath] (e.g. `"assets/soul/textures/gui/discord.png"`) is read once;
+     * subsequent calls return the cached handle. Throws if the resource is missing or NanoVG
+     * fails to decode the bytes — both indicate a packaging bug, never an end-user issue.
+     */
+    fun loadImage(resourcePath: String): Int {
+        imageCache[resourcePath]?.let { return it }
+        val bytes =
+            javaClass.classLoader.getResourceAsStream(resourcePath)?.use { it.readBytes() }
+                ?: error("NvgRenderer.loadImage: resource not found on classpath: $resourcePath")
+        val buf = MemoryUtil.memAlloc(bytes.size)
+        buf.put(bytes).flip()
+        return try {
+            val handle = nvgCreateImageMem(vg, 0, buf)
+            require(handle != 0) { "NvgRenderer.loadImage: nvgCreateImageMem failed for $resourcePath" }
+            imageCache[resourcePath] = handle
+            handle
+        } finally {
+            MemoryUtil.memFree(buf)
+        }
+    }
+
+    /**
+     * Paint an image (loaded via [loadImage]) into the rect `[x, y, x+w, y+h]`. [alpha] is a
+     * multiplier on the image's own alpha channel — useful for hover effects (e.g. dim icons
+     * at 0.7 idle and 1.0 on hover).
+     */
+    fun image(
+        x: Float,
+        y: Float,
+        w: Float,
+        h: Float,
+        imageHandle: Int,
+        alpha: Float = 1f,
+    ) {
+        nvgImagePattern(vg, x, y, w, h, 0f, imageHandle, alpha.coerceIn(0f, 1f), nvgPaint)
+        nvgBeginPath(vg)
+        nvgRect(vg, x, y, w, h)
         nvgFillPaint(vg, nvgPaint)
         nvgFill(vg)
     }

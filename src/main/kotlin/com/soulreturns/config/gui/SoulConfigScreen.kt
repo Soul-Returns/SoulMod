@@ -11,6 +11,7 @@ import com.soulreturns.ui.composer.VerticalAlignment
 import com.soulreturns.ui.composer.background
 import com.soulreturns.ui.composer.boxShadow
 import com.soulreturns.ui.composer.clickable
+import com.soulreturns.ui.composer.tooltip
 import com.soulreturns.ui.composer.fillMaxSize
 import com.soulreturns.ui.composer.fillMaxWidth
 import com.soulreturns.ui.composer.height
@@ -27,6 +28,7 @@ import com.soulreturns.ui.config.search.ConfigSearchFilter
 import com.soulreturns.ui.foundation.Box
 import com.soulreturns.ui.foundation.Button
 import com.soulreturns.ui.foundation.Column
+import com.soulreturns.ui.foundation.Image
 import com.soulreturns.ui.foundation.Row
 import com.soulreturns.ui.foundation.ScrollableList
 import com.soulreturns.ui.foundation.Slider
@@ -247,12 +249,26 @@ class SoulConfigScreen(private val initialSearch: String = "") :
                     color = SoulTheme.colors.accent,
                     font = SoulTheme.typography.title.font,
                 )
-                Text(
-                    text = "v${Soul.version.substringBefore("+")}",
-                    size = SoulTheme.typography.caption.size,
-                    color = SoulTheme.colors.textDim,
-                    font = SoulTheme.typography.caption.font,
-                )
+                Row(gap = 8f, verticalAlignment = VerticalAlignment.Center) {
+                    IconLink(
+                        resourcePath = "assets/soul/textures/gui/github.png",
+                        key = "config.github",
+                        tooltip = "View on GitHub",
+                        url = "https://github.com/Soul-Returns/SoulMod",
+                    )
+                    IconLink(
+                        resourcePath = "assets/soul/textures/gui/discord.png",
+                        key = "config.discord",
+                        tooltip = "Join the Discord",
+                        url = "https://discord.gg/Mn5dzEJEaJ",
+                    )
+                    Text(
+                        text = "v${Soul.version.substringBefore("+")}",
+                        size = SoulTheme.typography.caption.size,
+                        color = SoulTheme.colors.textDim,
+                        font = SoulTheme.typography.caption.font,
+                    )
+                }
             }
             VDivider(height = topNavH)
             // Header section — breadcrumb on the left, search field on the right.
@@ -269,6 +285,35 @@ class SoulConfigScreen(private val initialSearch: String = "") :
                 Breadcrumb()
                 SearchField()
             }
+        }
+    }
+
+    @SoulComposable
+    private fun IconLink(
+        resourcePath: String,
+        key: String,
+        tooltip: String,
+        url: String,
+    ) {
+        // 14×14 icon button. Hover bumps alpha from 0.7 → 1.0 for a subtle highlight. The
+        // tooltip modifier shows the destination label near the cursor on hover.
+        val hovered = SoulInput.isHovered(key)
+        val alpha = if (hovered) 1f else 0.7f
+        Box(
+            modifier =
+                SoulModifier.Empty
+                    .width(14f)
+                    .height(14f)
+                    .clickable(key) {
+                        net.minecraft.util.Util.getPlatform().openUri(java.net.URI.create(url))
+                    }
+                    .tooltip(tooltip),
+        ) {
+            Image(
+                resourcePath = resourcePath,
+                modifier = SoulModifier.Empty.fillMaxSize(),
+                alpha = alpha,
+            )
         }
     }
 
@@ -805,12 +850,19 @@ class SoulConfigScreen(private val initialSearch: String = "") :
         val pathKey = opt.key().path().joinToString(".")
         val isDependent = pathKey in ConfigSections.optionVisibility
         val depth = if (isDependent) (ConfigSections.optionDepth[pathKey] ?: 1) else 0
+        // Optional tooltip — only attached when a `text.config.soul/config.option.<path>.tooltip`
+        // translation key exists. Falls back gracefully if the key is missing (returns the
+        // key itself, in which case we skip the tooltip).
+        val tooltipKey = opt.translationKey() + ".tooltip"
+        val tooltipText = Component.translatable(tooltipKey).string
+        val baseMod =
+            SoulModifier.Empty
+                .fillMaxWidth()
+                .height(ROW_HEIGHT)
+                .padding(left = 8f, right = 6f)
+        val rowMod = if (tooltipText != tooltipKey) baseMod.tooltip(tooltipText) else baseMod
         Row(
-            modifier =
-                SoulModifier.Empty
-                    .fillMaxWidth()
-                    .height(ROW_HEIGHT)
-                    .padding(left = 8f, right = 6f),
+            modifier = rowMod,
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = VerticalAlignment.Center,
             gap = 8f,

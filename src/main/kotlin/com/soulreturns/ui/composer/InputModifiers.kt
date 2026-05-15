@@ -21,6 +21,13 @@ data class ClickableElement(val key: Any, val onClick: () -> Unit) : SoulModifie
  */
 data class ScrollableElement(val key: Any, val onScroll: (Float) -> Unit) : SoulModifier.Element
 
+/**
+ * Attaches hover-tooltip text to a node. The node's bounds become a tooltip region that
+ * the framework hit-tests against the cursor; the topmost matching tooltip is rendered as
+ * an overlay after the main composition. Works on any composable, clickable or not.
+ */
+data class TooltipElement(val text: String) : SoulModifier.Element
+
 /** Add a click handler with an explicit stable key. */
 fun SoulModifier.clickable(
     key: Any,
@@ -32,6 +39,10 @@ fun SoulModifier.scrollable(
     key: Any,
     onScroll: (Float) -> Unit,
 ): SoulModifier = then(ScrollableElement(key, onScroll))
+
+/** Attach hover-tooltip text to this node. Empty strings are ignored (no overlay shown). */
+fun SoulModifier.tooltip(text: String): SoulModifier =
+    if (text.isEmpty()) this else then(TooltipElement(text))
 
 /**
  * Walk this modifier chain and emit a hit region for any [ClickableElement] /
@@ -52,6 +63,7 @@ internal fun SoulModifier.recordHitRegions(
     var key: Any? = null
     var onClick: (() -> Unit)? = null
     var onScroll: ((Float) -> Unit)? = null
+    var tooltip: String? = null
     for (el in elements()) {
         when (el) {
             is ClickableElement -> {
@@ -62,20 +74,25 @@ internal fun SoulModifier.recordHitRegions(
                 key = el.key
                 onScroll = el.onScroll
             }
+            is TooltipElement -> tooltip = el.text
             else -> {}
         }
     }
-    if (key == null) return
-    SoulInput.recordRegion(
-        HitRegion(
-            key = key,
-            x = x,
-            y = y,
-            width = width,
-            height = height,
-            depth = depth,
-            onClick = onClick,
-            onScroll = onScroll,
-        ),
-    )
+    if (key != null) {
+        SoulInput.recordRegion(
+            HitRegion(
+                key = key,
+                x = x,
+                y = y,
+                width = width,
+                height = height,
+                depth = depth,
+                onClick = onClick,
+                onScroll = onScroll,
+            ),
+        )
+    }
+    if (tooltip != null) {
+        SoulInput.recordTooltip(x, y, width, height, depth, tooltip)
+    }
 }

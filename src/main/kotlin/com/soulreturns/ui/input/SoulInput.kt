@@ -27,9 +27,31 @@ package com.soulreturns.ui.input
  */
 object SoulInput {
     private val regions: MutableList<HitRegion> = mutableListOf()
+
+    /**
+     * Per-frame tooltip regions, recorded by [recordTooltip]. Separate from [regions] because
+     * tooltip rectangles aren't clickable — they exist purely to look up "what tooltip text
+     * applies under the cursor right now" at end-of-frame. Cleared each [startFrame].
+     */
+    private val tooltipRegions: MutableList<TooltipRegion> = mutableListOf()
+
     private var pendingClick: PendingClick? = null
     private var pendingScroll: PendingScroll? = null
     private var pendingRelease: Boolean = false
+
+    private data class TooltipRegion(
+        val x: Float,
+        val y: Float,
+        val width: Float,
+        val height: Float,
+        val depth: Int,
+        val text: String,
+    ) {
+        fun contains(
+            px: Float,
+            py: Float,
+        ): Boolean = px >= x && px < x + width && py >= y && py < y + height
+    }
 
     /**
      * Number of panels that have called [beginPanel] but not yet [flush]. Used to coordinate
@@ -154,6 +176,49 @@ object SoulInput {
         this.panelOriginY = panelOriginY
         this.panelScale = safeScale
         regions.clear()
+        tooltipRegions.clear()
+    }
+
+    /**
+     * Record a tooltip region — paired with a [TooltipElement] in a modifier chain. Scissor
+     * clipping is applied so a tooltip on a sub-item scrolled out of the viewport doesn't
+     * fire when the cursor lands on a sibling outside the scrollable.
+     */
+    fun recordTooltip(
+        x: Float,
+        y: Float,
+        width: Float,
+        height: Float,
+        depth: Int,
+        text: String,
+    ) {
+        val s = com.soulreturns.platform.render.nvg.NvgRenderer.currentScissorBounds()
+        var rx = x
+        var ry = y
+        var rw = width
+        var rh = height
+        if (s != null) {
+            if (x >= s.maxX || x + width <= s.x || y >= s.maxY || y + height <= s.y) return
+            rx = x.coerceAtLeast(s.x)
+            ry = y.coerceAtLeast(s.y)
+            rw = ((x + width).coerceAtMost(s.maxX) - rx).coerceAtLeast(0f)
+            rh = ((y + height).coerceAtMost(s.maxY) - ry).coerceAtLeast(0f)
+            if (rw <= 0f || rh <= 0f) return
+        }
+        tooltipRegions.add(TooltipRegion(rx, ry, rw, rh, depth, text))
+    }
+
+    /**
+     * Look up the topmost tooltip text under the cursor for this frame, or `null` if no
+     * tooltip region matches. Hosts call this from inside their NvgFrame block after
+     * composing/drawing the main UI so they can paint the tooltip overlay last.
+     */
+    fun findHoveredTooltip(): String? {
+        if (cursorX < 0f || cursorY < 0f) return null
+        return tooltipRegions
+            .filter { it.contains(cursorX, cursorY) }
+            .maxByOrNull { it.depth }
+            ?.text
     }
 
     /**

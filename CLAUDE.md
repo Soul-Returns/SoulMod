@@ -256,6 +256,8 @@ The mod uses LWJGL's NanoVG bindings for crisp vector rendering of the Soul UI f
 
 **Fonts bundled** at `src/main/resources/assets/soul/fonts/` (SIL OFL 1.1; license at `LICENSE-Inter.txt`): `Inter-Regular.ttf`, `Inter-Medium.ttf`, `Inter-SemiBold.ttf`. Loaded lazily via classpath on first font usage.
 
+**Image support.** `NvgRenderer.loadImage(resourcePath)` loads a PNG/JPG/GIF from the classpath, decodes via NanoVG's bundled stb_image, and returns a NVG image handle cached for the JVM lifetime. `NvgRenderer.image(x, y, w, h, handle, alpha)` paints it. Used by the `Image` composable (`ui/foundation/Image.kt`) and by the config top-nav social icons (`assets/soul/textures/gui/{github,discord}.png` — 14×14 in the title bar, 0.7 idle / 1.0 hover alpha).
+
 **Inter glyph coverage gotcha.** Inter covers Basic Latin + Latin-1 + Latin Extended A/B + common punctuation (including guillemets like `›`), but **not the Unicode Geometric Shapes block** (U+25xx — triangles `▾ ▸ ▼ ▶ ◀ ▲`) nor Miscellaneous Symbols. Those render as the tofu "missing glyph" box. Stick to basic ASCII + Latin Extended punctuation for any UI character — e.g. `+` / `−` for tree-view expand/collapse, `›` for breadcrumb separators, `↺` (which happens to be present) for the reset icon. When introducing a new glyph, smoke-test it in `/soul config` before assuming it works.
 
 **LWJGL dependency.** `lwjgl-nanovg:3.3.3` (matches Minecraft's bundled lwjgl) + four-platform natives (`windows`, `linux`, `macos`, `macos-arm64`) declared in `build.gradle.kts` via `modImplementation` + `include` so natives bundle into the released jar.
@@ -296,10 +298,15 @@ ui/composer/                 runtime + modifier system
                              in chain order)
   Alignment.kt               HorizontalAlignment / VerticalAlignment / Arrangement enums +
                              alignHorizontal / alignVertical / arrangeAlong helpers
-  InputModifiers.kt          ClickableElement + ScrollableElement + recordHitRegions helper
+  InputModifiers.kt          ClickableElement + ScrollableElement + TooltipElement +
+                             recordHitRegions helper (handles all three: clickable/scrollable
+                             register a HitRegion with a key; tooltip records a separate
+                             tooltip region that's hit-tested at end-of-frame, no key needed)
 
 ui/foundation/               composable primitives
   Text.kt                    single-line glyph rendering
+  Image.kt                   loads PNG/JPG/GIF from classpath via NvgRenderer.loadImage,
+                             paints into a sized rect; per-frame alpha for hover/dim effects
   Box.kt                     stacked-children container
   Column.kt / Row.kt         arrangement + cross-axis alignment + gap (size-to-content unless
                              fillMaxX overrides constraints; arrangement uses post-constraint
@@ -347,6 +354,9 @@ ui/input/
                                compose reads). Imperceptible.
                              - pressedKey survives the cursor leaving the region's bounds —
                                that's what makes Slider drag work outside the track
+                             - tooltipRegions tracked separately from hit regions; the host
+                               (SoulScreen) calls `findHoveredTooltip()` inside its NvgFrame
+                               block AFTER the main draw to paint the tooltip overlay on top.
 
 ui/theme/
   SoulTheme.kt               colors / dimens / typography tokens. SoulColors mirrors legacy
