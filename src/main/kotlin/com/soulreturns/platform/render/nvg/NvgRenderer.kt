@@ -590,34 +590,45 @@ object NvgRenderer {
     ) {
         nvgFontFaceId(vg, getFontId(font))
         nvgFontSize(vg, size)
-        // **Tight 1 px shadow at 70 % alpha black, plain two-pass.**
+        // **Tight 1 SCREEN-pixel shadow at 70 % alpha black, plain two-pass.**
         //
-        // The +1 offset works because HUD text defaults to a heavier Inter weight
-        // (Regular → SemiBold via [boldVariantOf] when `hudBoldFont` is on, the
-        // default). Heavier strokes are 3–4 px thick at 11–12 px body size, so the
-        // anti-aliased edge is only ~0.5 px and the halo crossover region shrinks
-        // to a sliver. 70 % alpha softens what little residual variance remains.
+        // The shadow offset has to be 1 px in *screen* coords, not 1 unit in
+        // composable coords. NanoVG multiplies the input x/y by the active
+        // `nvgScale` to get screen coords, so passing `x + 1f` here would actually
+        // produce a `+panelScale`-px screen offset — at panelScale = 0.5 (common
+        // when SoulScreens compose against `TARGET_GUI_SCALE = 2` on a higher MC
+        // GUI Scale, or when HUDs run through the `1/guiScale` compensation in
+        // `effectiveScaleFor`) that's a +0.5-px screen offset, which lands as
+        // either +0 or +1 screen pixels depending on each row's fractional `y`.
+        // The visible bug was alternating tight/missing shadow per row at lower
+        // overall scales.
         //
-        // **Round ONCE, then add the offset.** `kotlin.math.round` uses banker's
-        // rounding (half-to-even). At fractional `y` values — which happen at
-        // non-integer effective scales, fractional panel origins, or fractional
-        // row spacing — `round(y)` and `round(y + 1f)` can differ by **0, 1, or 2**
-        // depending on which side of the half-pixel each value lands on, e.g.
-        // `round(23.5)=24, round(24.5)=24` → delta 0, or `round(24.5)=24,
-        // round(25.5)=26` → delta 2. The visible bug was every-second-row
-        // alternating between a tight and a 2 px-spread shadow. Locking the rounded
-        // base position and offsetting from there keeps the delta at exactly 1 px
-        // regardless of sub-pixel alignment.
+        // Solution: round in *screen* space, then divide back. `mainScreen` and
+        // `mainScreen + 1` are exact integer screen pixels, so `mainComposable`
+        // and `shadowComposable = (mainScreen + 1) / scale` produce input coords
+        // that NanoVG scales to exactly +1 screen px apart, regardless of how the
+        // composable `y` is positioned within sub-pixel space. Also avoids the
+        // banker's-rounding `round(x) vs round(x+1)` delta-flip issue, since we
+        // only call `round` once per axis.
         //
         // Don't reintroduce `NVG_DESTINATION_OUT` cleanup or `nvgFontBlur` for the
         // shadow pass — both produce non-deterministic per-row dropouts under
         // HUD-text load. See the "Text shadow rendering" note in CLAUDE.md.
-        val sx = round(x)
-        val sy = round(y)
+        val ps = com.soulreturns.ui.input.SoulInput.panelScale.coerceAtLeast(0.0001f)
+        // Shadow offset in screen pixels — scales with the panel (rounded to an integer,
+        // minimum 1) so it's always an exact whole screen-pixel jump and no sub-pixel
+        // rasterisation alternation can creep in across rows.
+        val pxOffset = round(ps).coerceAtLeast(1f)
+        val mainScreenX = round(x * ps)
+        val mainScreenY = round(y * ps)
+        val mainCx = mainScreenX / ps
+        val mainCy = mainScreenY / ps
+        val shadowCx = (mainScreenX + pxOffset) / ps
+        val shadowCy = (mainScreenY + pxOffset) / ps
         setFillColor(0xB3000000.toInt())
-        nvgText(vg, sx + 1f, sy + 1f, text)
+        nvgText(vg, shadowCx, shadowCy, text)
         setFillColor(color)
-        nvgText(vg, sx, sy, text)
+        nvgText(vg, mainCx, mainCy, text)
     }
 
     fun textWidth(
