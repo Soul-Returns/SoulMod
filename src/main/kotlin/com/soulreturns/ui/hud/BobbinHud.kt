@@ -31,8 +31,10 @@ object BobbinHud {
     private const val ENCHANT_ID = "ultimate_bobbin_time"
 
     /**
-     * Bonus multiplier per enchant level — see SkyHanni `LegionBobbinOverlay.kt`. Final boost
-     * = level × [BOOST_PER_LEVEL] × min(nearbyBobbers, [BOBBER_CAP]).
+     * Bonus multiplier per enchant level. Final boost = (summed armor level) ×
+     * [BOOST_PER_LEVEL] × min(nearbyBobbers, [BOBBER_CAP]). Levels stack across all four
+     * armor pieces — 4× Bobbin Time 5 = combined level 20, max boost at 5 bobbers is
+     * 20 × 0.2 × 5 = 20 % (vs. 5 % if only the highest piece counted).
      */
     private const val BOOST_PER_LEVEL = 0.2
     private const val BOBBER_CAP = 5
@@ -65,15 +67,19 @@ object BobbinHud {
             return
         }
         val player = Minecraft.getInstance().player
-        val enchantLevel = SkyblockItemUtils.highestArmorEnchantLevel(player, ENCHANT_ID)
-        if (enchantLevel <= 0) {
+        val totalLevel = SkyblockItemUtils.summedArmorEnchantLevel(player, ENCHANT_ID)
+        if (totalLevel <= 0) {
             // HUD only renders when the player is actually wearing the Bobbin Time enchant.
             Box {}
             return
         }
         val bobbers = BobbinSpotter.nearbyBobbers
+        // Raw count is always shown; percentage uses the capped count so it reflects the
+        // actual Hypixel-applied boost. Above the cap the percentage stays at the max
+        // value — boost doesn't disappear when more bobbers join, it just stops growing.
         val cappedBobbers = bobbers.coerceAtMost(BOBBER_CAP)
-        val boostPercent = enchantLevel * BOOST_PER_LEVEL * cappedBobbers
+        val boostPercent = totalLevel * BOOST_PER_LEVEL * cappedBobbers
+        val body = String.format(Locale.ROOT, "Nearby bobbers: %d (%.2f%%)", bobbers, boostPercent)
         Surface(
             color = if (SoulHud.shouldDrawBackground(HUD_ID)) SoulTheme.colors.panel else 0x00000000,
         ) {
@@ -85,13 +91,7 @@ object BobbinHud {
                     font = SoulTheme.typography.heading.font,
                 )
                 Text(
-                    text =
-                        String.format(
-                            Locale.ROOT,
-                            "Nearby bobbers: %d (%.2f%%)",
-                            bobbers,
-                            boostPercent,
-                        ),
+                    text = body,
                     size = SoulTheme.typography.body.size,
                     color = SoulTheme.colors.textDim,
                     font = SoulTheme.typography.body.font,

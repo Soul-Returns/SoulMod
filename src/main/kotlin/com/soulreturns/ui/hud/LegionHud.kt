@@ -37,8 +37,10 @@ object LegionHud {
     private const val COLOR_LIGHT_PURPLE = 0xFFFF55FF.toInt()
 
     /**
-     * Bonus multiplier per enchant level — see SkyHanni `LegionBobbinOverlay.kt`. Final boost
-     * = level × [BOOST_PER_LEVEL] × min(nearbyPlayers, [PLAYER_CAP]).
+     * Bonus multiplier per enchant level. Final boost = (summed armor level) ×
+     * [BOOST_PER_LEVEL] × min(nearbyPlayers, [PLAYER_CAP]). Levels stack across all four
+     * armor pieces — e.g. 4× Legion 5 = combined level 20, max boost at 20 players is
+     * 20 × 0.07 × 20 = 28 % (vs. 7 % if only the highest piece counted).
      */
     private const val BOOST_PER_LEVEL = 0.07
     private const val PLAYER_CAP = 20
@@ -78,8 +80,8 @@ object LegionHud {
             Box {}
             return
         }
-        val enchantLevel = SkyblockItemUtils.highestArmorEnchantLevel(player, ENCHANT_ID)
-        if (enchantLevel <= 0) {
+        val totalLevel = SkyblockItemUtils.summedArmorEnchantLevel(player, ENCHANT_ID)
+        if (totalLevel <= 0) {
             // HUD only renders when the player is actually wearing the Legion enchant.
             Box {}
             return
@@ -89,8 +91,12 @@ object LegionHud {
             Box {}
             return
         }
+        // Raw count is always shown; percentage uses the capped count so it reflects the
+        // actual Hypixel-applied boost. Above the cap the percentage stays at the max
+        // value (boost doesn't disappear, it just doesn't grow further).
         val cappedCount = count.coerceAtMost(PLAYER_CAP)
-        val boostPercent = enchantLevel * BOOST_PER_LEVEL * cappedCount
+        val boostPercent = totalLevel * BOOST_PER_LEVEL * cappedCount
+        val body = String.format(Locale.ROOT, "Nearby players: %d (%.2f%%)", count, boostPercent)
         Surface(
             color = if (SoulHud.shouldDrawBackground(HUD_ID)) SoulTheme.colors.panel else 0x00000000,
         ) {
@@ -102,13 +108,7 @@ object LegionHud {
                     font = SoulTheme.typography.heading.font,
                 )
                 Text(
-                    text =
-                        String.format(
-                            Locale.ROOT,
-                            "Nearby players: %d (%.2f%%)",
-                            count,
-                            boostPercent,
-                        ),
+                    text = body,
                     size = SoulTheme.typography.body.size,
                     color = SoulTheme.colors.textDim,
                     font = SoulTheme.typography.body.font,

@@ -82,8 +82,9 @@ object SkyblockItemUtils {
 
     /**
      * Highest level of [enchantId] found across the player's equipped armor pieces. Returns
-     * `0` when no piece carries the enchant. Use this when the level itself feeds a formula
-     * (e.g. the Legion / Bobbin Time boost overlays) rather than just a presence check.
+     * `0` when no piece carries the enchant. Use this for gating logic ("is the enchant
+     * present at all?") rather than formula inputs — most multi-piece-armor boosts stack
+     * across pieces, see [summedArmorEnchantLevel].
      */
     fun highestArmorEnchantLevel(
         player: Player?,
@@ -97,5 +98,24 @@ object SkyblockItemUtils {
             if (level > best) best = level
         }
         return best
+    }
+
+    /**
+     * Sum of [enchantId] levels across all four armor slots. Returns `0` when no piece
+     * carries the enchant. Hypixel's ultimate-tier armor enchants (Legion, Bobbin Time, …)
+     * stack additively across the full armor set — e.g. 4× Legion 5 contributes a combined
+     * level of 20 to the boost formula, not just 5. Use this for boost-percentage maths;
+     * use [highestArmorEnchantLevel] for "is the enchant present" gating.
+     */
+    fun summedArmorEnchantLevel(
+        player: Player?,
+        enchantId: String,
+    ): Int {
+        if (player == null) return 0
+        var total = 0
+        for (slot in ARMOR_SLOTS) {
+            total += getSkyblockEnchantLevel(player.getItemBySlot(slot), enchantId)
+        }
+        return total
     }
 }
