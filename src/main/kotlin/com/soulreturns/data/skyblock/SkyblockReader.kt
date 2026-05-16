@@ -17,7 +17,8 @@ import net.minecraft.world.scores.DisplaySlot
  *  - `SKYBLOCK ♲` / `SKYBLOCK ☀` / `SKYBLOCK Ⓑ`
  *                              — Stranded / Ironman-like / Bingo suffixes (one-char marker)
  *
- * Pattern lifted from SkyHanni's `SkyBlockLocationData.scoreboardTitlePattern` — they've
+ * Pattern lifted from SkyHanni's `SkyBlockLocationData.scoreboardTitlePattern`
+ * (LGPL-2.1; attribution surfaced in `/soul config` → About → Used Software). They've
  * encountered every variant in production. Also tolerant of the `SKIBLOCK` typo seen on
  * Hypixel Alpha. An exact-equality check was too strict and missed Co-op / Bingo / Stranded
  * profiles entirely.

@@ -221,10 +221,11 @@ Post-P4.3 the config screen is a single `SoulScreen` (`config/gui/SoulConfigScre
 | `explicitSections` | Group flat depth-2/3 fields into labeled sections | `"render" → "highlights" → [("Item Highlights", {fieldNames…})]` |
 | `linkSections` | Cross-navigation buttons inside a sub | `"farming" → "pestFarming" → [LinkTarget("Configure Pest Equipment Highlighting", "render", "highlights")]` |
 | `actionRows` | Label + button rows that run an arbitrary callback receiving `ConfigScreenContext` | `"dev" → "config" → [ActionRowSpec("Reload Config from Disk", "Reload") { ctx -> ctx.reloadConfig() }]` |
-| `virtualSubs` | Subcategories with no backing config fields | `"farming" → ["pestFarming"]` |
-| `categoryOrder` | Explicit sidebar order; unlisted cats fall to the end | `["general", "render", "fishing", "mining", "farming", "profileViewer", "dev"]` |
+| `virtualSubs` | Subcategories with no backing config fields | `"farming" → ["pestFarming"]`, `"about" → ["usedSoftware"]` |
+| `categoryOrder` | Explicit sidebar order; unlisted cats fall to the end | `["general", "render", "fishing", "mining", "farming", "notifications", "profileViewer", "sync", "dev", "about"]` |
 | `optionVisibility` | Conditional visibility (parent toggle gates child) | `"render.highlights.usePestVest" → { cfg.render.highlights.highlightPestEquipment() }` |
 | `optionDepth` | Visual indent depth for chained dependents (default 1). Set ≥ 2 when an option's gate depends on another already-gated option, so the UI shows the nesting | `"dev.debug.logging.logRealtime" → 2` (gated by `logBackend`, which is itself gated by `debugMode`) |
+| `optionStep` | Float / Double slider step (snap to `min + n × step`). Integer-typed options auto-snap to 1; only set this for Float / Double fields | `"general.ui.hudTextShadowSize" → 0.5f` |
 | `rebuildOnChange` | Boolean toggles whose change rebuilds content (so visibility-dependent rows update live) | `setOf("render.highlights.highlightPestEquipment")` |
 | `keybindOptions` | String fields rendered as keybind pickers (capture mode) | `setOf("dev.keybinds.copyOpenedGui", …)` |
 
@@ -235,6 +236,8 @@ Post-P4.3 the config screen is a single `SoulScreen` (`config/gui/SoulConfigScre
 - **Dev category banner:** when `activeCategory == "dev"`, a translatable warning label (`text.config.soul/config.dev.warning`) is rendered above the scroll area.
 
 **Keybind capture flow:** keybind buttons (paths in `ConfigSections.keybindOptions`) call `requestKeybindCapture(opt)` on the screen. The screen's `keyPressed` / `mouseClicked` overrides intercept the next input while `capturingKeybind` is non-null, set the option, save, and clear the capture state. Esc clears the binding.
+
+**About → Used Software (third-party attribution).** Surfaced via `/soul config → About → Used Software` rather than project-root `NOTICE.md` / bundled license files — same pattern SkyHanni uses (their `config/features/About.kt`). Implementation: no backing config class (avoiding empty `About` / `UsedSoftware` Java classes), the category is purely virtual via `ConfigSections.virtualSubs["about"] = ["usedSoftware"]` + `actionRows["about"]["usedSoftware"]` populated with one `ActionRowSpec` per dependency. Each row's "Source" button calls a private `openUrl(...)` helper that wraps `Util.getPlatform().openUri(URI)` in a try/catch (the platform helper can throw if no browser is registered — swallowing keeps the screen interactive). Currently lists: SkyHanni (LGPL-2.1), Odin (BSD-3-Clause), Inter (OFL 1.1), owo-lib (MIT), Fabric API (Apache-2.0), No-Double-Sneak (MIT). The corresponding inline source comments (`SkyblockReader`, `SkyblockRarity`, `SeaCreatureCatalog`, `MessageHandler`) point users at this menu rather than at any bundled license file.
 
 ## Soul UI framework
 
@@ -264,19 +267,29 @@ The mod uses LWJGL's NanoVG bindings for crisp vector rendering of the Soul UI f
 
 **GL debug noise filter.** `mixin/render/GlDebugMixin` intercepts `com.mojang.blaze3d.opengl.GlDebug.printDebugLog(IIIIIJJ)V` at HEAD; reads the message C-string via `MemoryUtil.memUTF8`; cancels for known-benign patterns (currently `"No active program"` — emitted hundreds-of-times-per-second by Mojang's PIP composite validation after NanoVG zeros `glUseProgram(0)` in `nvgEndFrame`). Real GL errors still bubble. Add to `SUPPRESSED_PATTERNS` only after investigating.
 
-**Text shadow rendering — two gotchas, learned the hard way.** `NvgRenderer.textShadow` is deliberately a plain two-pass — paint pure-black shadow at `(+1, +1)`, paint main on top — *not* the same +1 offset with `NVG_DESTINATION_OUT` cleanup, and *not* an `nvgFontBlur` softened shadow. Both fancier approaches were tried and produced *non-deterministic per-row dropouts* — some text rows would render with a clean shadow while neighbours rendered with none at all. Two failure modes:
+**Text shadow rendering — multi-pass grid + screen-pixel rounding.** `NvgRenderer.textShadow(text, x, y, size, color, font, sizeMultiplier: Float = 1f)` is what every `Text` composable calls when `SoulHud.shouldDrawTextShadow(hudId)` is true. The implementation:
 
-1. **`nvgFontBlur` interacts badly with the FontStash atlas.** NanoVG keys glyph cache entries by `(font, size, blur)`, so each character at blur=0 and blur=0.5 occupies a separate slot. Under HUD-text load (~10 rows × 4 cells × multiple passes = lots of glyph traffic) the atlas fills, LRU eviction drops the less-recently-used blur=0.5 entries, and earlier-queued shadow quads end up sampling whatever overwrote their slots — manifesting as silently-missing shadow on some rows.
-2. **`nvgGlobalCompositeOperation` mid-frame seems to produce every-other-row shadow dropouts.** Painting shadow → switching to `NVG_DESTINATION_OUT` → painting the main glyph as a stencil to erase the AA crossover → switching back to `NVG_SOURCE_OVER` and painting main is mathematically clean and works perfectly for a single row, but when called repeatedly inside one NanoVG frame the alternating composite-op flushes interact with FontStash in a way that drops half the shadows. The exact mechanism wasn't pinned down, but reproduction was reliable.
+1. Snap the main glyph's start position to integer **screen pixels** (not integer composable units): `mainScreen = round(x × panelScale)`, then pass `mainScreen / panelScale` as the NanoVG input so after `nvgScale(panelScale)` the output lands on an exact integer screen pixel. Same for `y`.
+2. Compute a base step `basePhysical = round(ps × guiScale).coerceAtLeast(1f)` physical pixels (scales with the panel's actual on-screen size so the shadow remains proportional to the text), expressed back in PIP-logical as `baseStep = basePhysical / guiScale`.
+3. **Multi-pass grid** keyed off `sizeMultiplier` (1.0–4.0 in 0.5 steps from `cfg.general.ui.hudTextShadowSize`):
+   - `whole = floor(sizeMultiplier)`, `frac = sizeMultiplier - whole`.
+   - Paint full-alpha black at every `(i × baseStep, j × baseStep)` for `i, j ∈ 1..whole` — that's `whole²` passes filling an N × N square offset behind the text.
+   - If `frac > 0`, paint the next outer ring at `(whole+1)` at alpha `round(frac × 255)` — the `2(whole+1) − 1` extra positions where `max(i, j) = whole+1`. This is what makes the 1.5 / 2.5 / 3.5 slider steps look like a partial extra ring rather than a hard jump to the next integer size.
+4. Paint the main glyph on top in `color`, normal source-over.
 
-What lets the plain two-pass look clean at +1 px is the **bundled heavy Inter weights + the `hudBoldFont` default-on toggle** (`cfg.general.ui.hudBoldFont = true`). `NvgRenderer.boldVariantOf` skips a tier (Regular → SemiBold, Medium → Bold, SemiBold → Black) so HUD text renders with ~3–4 px thick strokes at body size, and the anti-aliased edge of each glyph is only ~0.5 px — the halo crossover region where shadow leaks under the main glyph's AA shrinks to a sliver. At thinner Regular weight the same +1 offset produces a visible bordered/glowy artefact. Don't move the offset back to +2 "to be safe" — the heavier strokes already handle it, and +2 makes the shadow read as a doubled-text artefact rather than a drop shadow. The Inter weight ladder bundled at `assets/soul/fonts/`: Regular, Medium, SemiBold, **Bold**, **Black** (Bold/Black added for `boldVariantOf` to reach).
+The **near edge** of the shadow stays at +1 step from the text regardless of size — only the **far edge** extends outward — so changing the slider grows shadow thickness without "throwing the shadow further back" from the text.
 
-**Third gotcha — shadow offset must be exactly 1 px in SCREEN space, not 1 unit in composable space.** Two related rounding issues bite this:
+**Two failure modes that look tempting but break — DO NOT REINTRODUCE:**
 
-1. `kotlin.math.round(Float)` is half-to-even (banker's rounding), not half-up. `round(23.5)=24, round(24.5)=24` → delta 0; `round(24.5)=24, round(25.5)=26` → delta 2. Rounding the shadow position and the main position independently (`round(x+1f)` vs `round(x)`) can produce a 0, 1, or 2 px delta depending on each row's fractional `x`. Round **once** and add the offset to the rounded base.
-2. NanoVG multiplies input coords by the active `nvgScale` before rasterising, so a `+1` offset in composable coords becomes `+panelScale` in screen pixels. At panelScale = 0.5 (very common — `SoulScreen` uses `TARGET_GUI_SCALE / actualGuiScale`, and HUDs go through `BASE_GLOBAL_SCALE / actualGuiScale` in `effectiveScaleFor`), that's a +0.5-px screen offset, which lands as either +0 or +1 screen pixels per glyph rasterisation. The visible bug at low overall scales was alternating clean / missing shadow per row, even with rule (1) followed.
+1. **`nvgFontBlur` for the shadow pass.** NanoVG keys FontStash cache entries by `(font, size, blur)`, so blurred and unblurred glyphs occupy separate atlas slots. Under HUD-text load (lots of rows × cells × passes) the atlas fills, LRU eviction drops the less-recently-used blur > 0 entries, and earlier-queued shadow quads end up sampling whatever overwrote their slots — silently-missing shadow on some rows.
+2. **`nvgGlobalCompositeOperation(NVG_DESTINATION_OUT)` to erase shadow under the main glyph's AA.** Mathematically clean for a single row, but the alternating composite-op flushes between rows interact with FontStash in a way that drops half the shadows. Empirically reliable failure mode; exact mechanism not pinned down.
 
-**`NvgRenderer.textShadow` solves both by rounding in screen space:** `mainScreen = round(x × panelScale)`, then the main is drawn at `mainScreen / panelScale` and the shadow at `(mainScreen + 1) / panelScale`. NanoVG scales those back up to exact integer screen pixels exactly 1 apart, regardless of how composable `x/y` are positioned within sub-pixel space or what the current `nvgScale` is. Don't simplify this back to `round(x); nvgText(x+1, …)` — it's correct at panelScale=1 only.
+**Screen-pixel rounding caveats (why step 1 above looks weird):**
+
+- `kotlin.math.round(Float)` is half-to-even (banker's rounding). `round(23.5)=24, round(24.5)=24` → delta 0; `round(24.5)=24, round(25.5)=26` → delta 2. Doing `round(x+1f) − round(x)` independently can therefore produce 0, 1, or 2-px deltas depending on each row's fractional `x`. Round once and add the offset to the rounded base.
+- NanoVG multiplies its input by the active `nvgScale` before rasterising, so a `+1` in composable coords becomes `+panelScale` in screen pixels. At common panelScales (`SoulScreen` uses `TARGET_GUI_SCALE / actualGuiScale`, HUDs go through `BASE_GLOBAL_SCALE × … × 1/guiScale` in `effectiveScaleFor`) that's usually a sub-pixel offset that lands as 0 or 1 screen pixels per glyph rasterisation. Rounding in **screen** space and dividing back is what guarantees deterministic integer screen-pixel positions across all rows.
+
+The bundled heavy Inter weights also matter for shadow legibility: `hudBoldFont = true` is the default, so `boldVariantOf` upgrades body text by one tier (Regular → SemiBold, Medium → Bold, SemiBold → Black, Bold → Black). Heavier strokes mean smaller AA edge regions and a shadow that reads as a clean drop rather than a halo.
 
 ### Soul UI framework (`ui/`)
 
@@ -322,20 +335,41 @@ ui/composer/                 runtime + modifier system
                              tooltip region that's hit-tested at end-of-frame, no key needed)
 
 ui/foundation/               composable primitives
-  Text.kt                    single-line glyph rendering
+  Text.kt                    single-line glyph rendering. **Line height = `size × 1.20`
+                             snapped to integer screen pixels** in `measure()` — Inter's
+                             actual rendered line height is ~1.20 × font size (ascender +
+                             descender past `size`), so reporting `size` as intrinsic
+                             height would let a Column/ScrollableList stack the next row
+                             inside the previous row's descender zone (visible as cramped
+                             rows). The screen-pixel snap (round(intrinsicH × ps), then
+                             /ps) combined with `effectiveGap` snapping in Column /
+                             ScrollableList keeps row pitch at an exact integer
+                             screen-pixel delta — no alternating tight/loose gap pattern
+                             from fractional composable-coord accumulation hitting
+                             banker's rounding at the render step.
   Image.kt                   loads PNG/JPG/GIF from classpath via NvgRenderer.loadImage,
                              paints into a sized rect; per-frame alpha for hover/dim effects
   Box.kt                     stacked-children container
   Column.kt / Row.kt         arrangement + cross-axis alignment + gap (size-to-content unless
                              fillMaxX overrides constraints; arrangement uses post-constraint
                              size so SpaceBetween / SpaceAround / SpaceEvenly are meaningful
-                             only when there's bounded extra space)
+                             only when there's bounded extra space). Column snaps its `gap`
+                             to integer screen pixels via `round(gap × panelScale) / ps` so
+                             together with Text's snapped intrinsic height the row pitch
+                             lands on exact integer screen pixels (see Text.kt note above).
   Spacer.kt                  sized-from-modifier empty box
   Surface.kt                 themed rounded background (Box + Theme.colors.panel + radius + padding)
-  Button.kt                  hover-aware clickable surface; `accent` boolean → accent/accentDim
-                             hover state; `centerLabel: Boolean = false` wraps the label in
+  Button.kt                  hover-aware clickable surface. **Three-tier color hierarchy**:
+                             idle = `panelHover` (same gray Toggle uses for off-track —
+                             visibly distinct from `panelInset` section cards behind);
+                             hover = `controlHover` (new palette color, 0xFF353535, a step
+                             lighter than panelHover for a clear hover lift); accent path =
+                             `accent` / `accentDim`. Using `panelInset` for idle made
+                             buttons blend into section cards — that's the bug `controlHover`
+                             was added to fix. `accent` boolean flips to accent/accentDim.
+                             `centerLabel: Boolean = false` wraps the label in
                              `Row(fillMaxWidth, Center)` so a `fillMaxWidth()` button centers
-                             its text instead of pinning to the left
+                             its text instead of pinning to the left.
   Toggle.kt                  pill switch; off=panelHover (visible against `panelInset` row
                              cards — using `panelInset` would make the track blend in),
                              on=accent, hover variants
@@ -343,7 +377,14 @@ ui/foundation/               composable primitives
                              stable hover state; each tab records its own hit region at
                              `depth+1` so the strip's hit region doesn't shadow individual tabs
   Slider.kt                  draggable; press captures slider's key; while pressed each frame
-                             reads SoulInput.cursorX and emits onChange; click also jumps value
+                             reads SoulInput.cursorX and emits onChange; click also jumps value.
+                             **`step: Float = 0f` parameter** — when > 0, the computed value
+                             snaps to `min + round((v − min) / step) × step` in both drag and
+                             click paths (0 = continuous). The config-screen NumericSlider
+                             passes `step = 1f` for Int / Long fields and reads
+                             `ConfigSections.optionStep[pathKey]` for Float / Double fields.
+  ScrollableList.kt          (see also: snaps `gap` to integer screen pixels — same idiom
+                             as Column.kt — so row pitch stays uniform across panel scales)
   ScrollableList.kt          scissor-clipped vertical list with mouse wheel; **self-clamping**:
                              widget computes maxScroll = contentHeight - viewportHeight, clamps
                              internally, passes new offset (not delta) to onScroll callback;
@@ -466,10 +507,15 @@ ui/runtime/                  Minecraft integration
                              (matches the per-tick upsert pattern of TrackerOverlay /
                              TextBlock features — survives gui_layout.json reload).
                              effectiveScaleFor(scale) is the canonical scale computation:
-                               element.scale × cfg.general.ui.globalScale ×
+                               element.scale × **BASE_GLOBAL_SCALE (1.5f)** ×
+                               cfg.general.ui.globalScale ×
                                (respectMinecraftGuiScale ? 1 : 1/window.guiScale)
                              — used by renderOne AND by GuiEditScreen/GuiEdit for matching
-                             selection-box bounds.
+                             selection-box bounds. BASE_GLOBAL_SCALE shifts the slider's
+                             effective range from 0.5–2.0 to 0.75–3.0 (default 1.5 instead
+                             of 1.0) because the original 1.0 baseline read too small on
+                             common GUI Scale + display-DPI combos; the slider value the
+                             user sees stays 0.5–2.0 and `globalScale = 1.0` (default).
   SoulScreen.kt              abstract Minecraft Screen subclass hosting a Soul composition.
                              Subclass it, override @SoulComposable Content(). Render +
                              mouseClicked (MouseButtonEvent in 1.21.11) / mouseReleased /
@@ -501,7 +547,7 @@ A HUD's `element.scale` no longer grows the PIP region with empty space — it's
 
 `cfg.general.ui.respectMinecraftGuiScale` (**default false**) toggles whether Soul HUDs scale with Minecraft's GUI Scale. When off (default), the panel renders at a fixed physical-pixel size regardless of the user's GUI Scale setting — the Soul-framework convention is "consistent sizing across setups." When on, behaves like vanilla HUDs.
 
-`cfg.general.ui.globalScale` (slider 0.5–2.0) is a per-user multiplier on top of every individual element's scale.
+`cfg.general.ui.globalScale` (slider 0.5–2.0, default 1.0) is a per-user multiplier on top of every individual element's scale. Note the **`BASE_GLOBAL_SCALE = 1.5f`** constant inside `effectiveScaleFor` shifts the effective on-screen range to 0.75–3.0; default rendering at slider=1.0 ends up at 1.5× of what the slider math would suggest.
 
 **SoulHud lifecycle for new features:**
 
@@ -521,14 +567,15 @@ A HUD's `element.scale` no longer grows the PIP region with empty space — it's
 
 The menu is built fresh per-frame by `GuiEditScreen.buildContextMenuItems(elementId)` so the toggle labels always reflect the live state. A small black-bordered yellow dot is also drawn at each enabled HUD's pivot pixel while the editor is open so the user can see *which* corner is anchored.
 
-**HUD-wide style overrides (global + per-HUD).** Four boolean toggles in `cfg.general.ui`, each with a matching nullable per-HUD override on `SoulHudElement` and a context-menu toggle entry in `/soul gui`:
+**HUD-wide style overrides (global + per-HUD).** Four boolean toggles + one stepped slider in `cfg.general.ui`. Booleans have a matching nullable per-HUD override on `SoulHudElement` and a context-menu toggle entry in `/soul gui`; the slider is global-only.
 
 | Global key | Per-HUD field | Helper | Default | Effect when ON |
 |---|---|---|---|---|
 | `hudBackground` | `showBackground: Boolean?` | `SoulHud.shouldDrawBackground(id)` | `true` | `Surface` paints its `panel` background |
 | `useMinecraftFont` | `useMinecraftFont: Boolean?` | `SoulHud.shouldUseMinecraftFont(id)` | `false` | (Stub) swap Inter for Mojang's font. *Wired into config + menu, rendering path NOT implemented yet — see "Future work" below.* |
-| `hudTextShadow` | `useTextShadow: Boolean?` | `SoulHud.shouldDrawTextShadow(id)` | `false` | `Text` composables use `NvgRenderer.textShadow` instead of `text` — black drop shadow behind glyphs |
-| `hudBoldFont` | `useBoldFont: Boolean?` | `SoulHud.shouldUseBoldFont(id)` | `false` | Per-glyph font swap via `NvgRenderer.boldVariantOf(font)` — Regular → Medium → SemiBold (SemiBold stays SemiBold; we don't ship Bold/Black) |
+| `hudTextShadow` | `useTextShadow: Boolean?` | `SoulHud.shouldDrawTextShadow(id)` | **`true`** | `Text` composables use `NvgRenderer.textShadow` instead of `text` — full-black drop shadow behind glyphs |
+| `hudTextShadowSize` | — (global only) | `SoulHud.hudTextShadowSize(): Float` | **`1.5`** | Stepped 1.0–4.0 in 0.5 increments via `@RangeConstraint(min=1.0f, max=4.0f, decimalPlaces=1)` + `ConfigSections.optionStep[…] = 0.5f`. Drives the multi-pass shadow grid (see textShadow note below) |
+| `hudBoldFont` | `useBoldFont: Boolean?` | `SoulHud.shouldUseBoldFont(id)` | **`true`** | Per-glyph font swap via `NvgRenderer.boldVariantOf(font)` — Regular → SemiBold, Medium → Bold, SemiBold → Black, Bold → Black (skips a tier so the toggle reads as visibly bolder at small HUD sizes). Inter Bold + Black are bundled under `assets/soul/fonts/` alongside Regular / Medium / SemiBold |
 
 Per-HUD nullable fields all default to `null` ("follow global"). Old `gui_layout.json` files deserialize as null (Gson `Unsafe` leaves nullable references as null), so no schema bump needed.
 
@@ -822,8 +869,9 @@ Tick-driven debounced save (max once per second), atomic write (temp file + rena
     1. Category dropdown (full width). Options: `"All"` + every `SeaCreature.variant` from the catalog, friendly-cased (`LAVA_CRIMSON_ISLE` → `Lava Crimson Isle`). `popupMaxHeight = 156f` (≈ 8 visible rows + scroll). Filter applies on `creature.variant`; creatures not in the catalog are dropped when a filter is active.
     2. Sort dropdown + Columns dropdown (50/50 via `.weight(1f)` each). Sort options: `Catches`, `Double Hooks`, `Cocoons`, `Rarity` (descending `SkyblockRarity.ordinal`, alpha tie-break), `Alphabetical`. Column-bound sorts (`Catches` / `DH` / `Cocoons`) hide when their column is toggled off; `Rarity` and `Alphabetical` always visible.
     3. **Reset Session** button (full width, centered label) — calls `FishingTracker.resetSession()` which also resets `FishingTimer`.
-- Gated on `cfg.fishing.fishingHud.showHud()` + `cfg.fishing.fishingTracker.enableTracker()` + `SkyblockApi.isOnSkyblock` + `FishingVisibility.isVisible`. A separate `fishing_festival_sticker` HUD renders the festival countdown when active.
+- Gated on `cfg.fishing.fishingHud.showHud()` + `cfg.dev.trackers.fishingTracker()` + `SkyblockApi.isOnSkyblock` + `FishingVisibility.isVisible`. **The data-layer master switch lives under Dev → Trackers** (`cfg.dev.trackers.fishingTracker`, default true) because it's a wholesale opt-out, not a gameplay preference. The HUD-layer `showHud` toggle stays in Fishing → Fishing HUD as a presentation preference. Turning the tracker off stops all chat parsing / stat writes; turning just the HUD off keeps data accumulating in the background. A separate `fishing_festival_sticker` HUD renders the festival countdown when active.
 - HUD settings persisted at `config/soul/fishing_hud.json` (`tab`, `sort`, `scrollOffset`, `showCatches/DH/Cocoons`, `category` — null = All). Dropdown-open flags (`sortDropdownOpen`, `columnDropdownOpen`, `categoryDropdownOpen`) live on the singleton as `@Volatile` transients — never persisted.
+- **Catch-display rollup toggles** (`cfg.fishing.fishingHud.addDoubleHookToCatches` default **true**, `addCocoonToCatches` default false): when on, the corresponding bucket gets added into the **Catches** column / total. Applied at the two display sites in `FishingHud.kt` with the same expression — `base + (addDH ? DH : 0) + (addCC ? CC : 0)` — so the per-row catches cell and the bottom totals line stay consistent. The chip percentages also use the inflated catches as denominator so the chips read self-consistent (DH count vs. the Catches number they're displayed against).
 - `features/fishing/BobbinSpotter` + `ui/hud/BobbinHud` — pre-existing Bobbin-Time feature (unchanged).
 - `features/DoubleHookResponse` — pre-existing `/pc <message>` send on double-hook chat. Now event-bus + party-gated; still parses chat directly rather than subscribing to `SeaCreatureCaught` (v1 simplicity — could be migrated later if the user wants the party message to include the creature name).
 - **Persisted fields** (`PersistentStats.Data`): `doubleHooksAllTime`, `catchesAllTime`, `cocoonsAllTime`, `doubleHooksByCreature: Map<String, Long>`, `catchesByCreature`, `cocoonsByCreature`, `festivalStartAt`, `festivalDoubleHooks`, `festivalCatches`, `festivalCocoons`, `festivalDoubleHooksByCreature`, `festivalCatchesByCreature`, `festivalCocoonsByCreature`. Maps are **immutable** (`Map<String, Long>`, not `MutableMap`) — replaced via `m + (k to v)` rather than mutated, so the save-time `Data.copy()` (shallow) is safe against concurrent writes.

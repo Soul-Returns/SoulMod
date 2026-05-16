@@ -97,13 +97,67 @@ internal object ConfigSections {
                             ),
                         ),
                 ),
+            // About → Used Software: third-party attributions. Each row's "Source" button
+            // opens the upstream repo in the user's browser. Order roughly by relevance to
+            // SkyBlock-mod users (SkyHanni first; Mojang-mapped Fabric platform / font
+            // resources lower). Patterned after SkyHanni's About.Licenses accordion.
+            "about" to
+                mapOf(
+                    "usedSoftware" to
+                        listOf(
+                            ActionRowSpec(
+                                label = "SkyHanni — sea creature data, regex, formula references (LGPL-2.1)",
+                                buttonText = "Source",
+                                action = { openUrl("https://github.com/hannibal002/SkyHanni") },
+                            ),
+                            ActionRowSpec(
+                                label = "Odin — NanoVG runtime adaptation (BSD-3-Clause)",
+                                buttonText = "Source",
+                                action = { openUrl("https://github.com/odtheking/Odin") },
+                            ),
+                            ActionRowSpec(
+                                label = "Inter — bundled UI font (SIL OFL 1.1)",
+                                buttonText = "Source",
+                                action = { openUrl("https://github.com/rsms/inter") },
+                            ),
+                            ActionRowSpec(
+                                label = "owo-lib — config wrapper + annotation processor (MIT)",
+                                buttonText = "Source",
+                                action = { openUrl("https://github.com/wisp-forest/owo-lib") },
+                            ),
+                            ActionRowSpec(
+                                label = "Fabric API — mod platform (Apache-2.0)",
+                                buttonText = "Source",
+                                action = { openUrl("https://github.com/FabricMC/fabric") },
+                            ),
+                            ActionRowSpec(
+                                label = "No-Double-Sneak — pose-data fix inlined into ClientPacketListenerMixin (MIT)",
+                                buttonText = "Source",
+                                action = { openUrl("https://modrinth.com/mod/no-double-sneak") },
+                            ),
+                        ),
+                ),
         )
+
+    private fun openUrl(url: String) {
+        try {
+            net.minecraft.util.Util.getPlatform().openUri(java.net.URI.create(url))
+        } catch (t: Throwable) {
+            // openUri can throw if no browser is registered. Swallowing here keeps the
+            // config screen interactive instead of crashing the whole compose pass.
+            com.soulreturns.util.SoulLogger("Soul/Config").warn("Failed to open URL $url: ${t.message}")
+        }
+    }
 
     /** Subcategories without backing config fields. Entries appear in the sidebar via translation keys. */
     val virtualSubs: Map<String, List<String>> =
         mapOf(
             "farming" to listOf("pestFarming"),
             "dev" to listOf("config"),
+            // About → Used Software has zero owo-config-backed fields, so `forEachOption`
+            // in CategoriesCollector never adds the category. Virtual-sub registration is
+            // what brings it into the sidebar; all rows below come from `actionRows`.
+            "about" to listOf("usedSoftware"),
         )
 
     /** Explicit category sort order. Categories not listed here fall to the end in their original order. */
@@ -118,6 +172,7 @@ internal object ConfigSections {
             "profileViewer",
             "sync",
             "dev",
+            "about",
         )
 
     /**

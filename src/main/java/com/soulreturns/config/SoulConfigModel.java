@@ -46,6 +46,11 @@ public class SoulConfigModel {
     @SectionHeader("dev")
     @Nest public Dev dev = new Dev();
 
+    // "About" category isn't declared here — it has no backing fields and is purely a
+    // virtual category surfaced via `ConfigSections.virtualSubs["about"]` + `actionRows`
+    // (third-party attribution buttons). Adding empty `About` / `UsedSoftware` classes
+    // produces zero owo-config options, so they'd be no-ops anyway.
+
     public static class General {
         @Nest public Ui ui = new Ui();
         @Nest public Fixes fixes = new Fixes();
@@ -127,7 +132,6 @@ public class SoulConfigModel {
     public static class Fishing {
         @Nest public FishingChat chat = new FishingChat();
         @Nest public BobbinTime bobbinTime = new BobbinTime();
-        @Nest public FishingTracker fishingTracker = new FishingTracker();
         @Nest public FishingHud fishingHud = new FishingHud();
     }
 
@@ -136,14 +140,20 @@ public class SoulConfigModel {
         public String doubleHookMessageText = "Woot Woot!";
     }
 
-    public static class FishingTracker {
-        public boolean enableTracker = true;
-    }
-
     public static class FishingHud {
         public boolean showHud = true;
         public boolean showFestivalTimer = true;
         public boolean showCounters = true;
+        // When true the Catches column / total includes Double Hook counts as well, so a
+        // creature catch that was also a double hook is counted twice (once for catches,
+        // once for the DH bonus). On by default — matches how most users think about their
+        // catch count. Affects both per-creature rows AND the bottom totals row.
+        public boolean addDoubleHookToCatches = true;
+        // When true the Catches column / total includes Cocoon counts as well. Cocoons are
+        // a separate kill-time outcome that don't currently feed into the catch counter;
+        // turning this on rolls them into the displayed catch number. Off by default —
+        // cocoons are a niche kill-outcome and most users treat them as their own bucket.
+        public boolean addCocoonToCatches = false;
     }
 
     public static class BobbinTime {
@@ -211,7 +221,15 @@ public class SoulConfigModel {
         @Nest public Backend backend = new Backend();
         @Nest public Debug debug = new Debug();
         @Nest public Data data = new Data();
+        @Nest public Trackers trackers = new Trackers();
         @Nest public DevKeybinds keybinds = new DevKeybinds();
+    }
+
+    // Per-tracker master switches. Trackers are the chat-driven data layers that feed
+    // HUDs / stats — turning one off stops accumulating data for that domain. Lives under
+    // Dev because it's a wholesale opt-out, not a gameplay preference; defaults are on.
+    public static class Trackers {
+        public boolean fishingTracker = true;
     }
 
     public static class Data {

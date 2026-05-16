@@ -109,7 +109,7 @@ object FishingHud {
         val hudCfg = cfg.fishing.fishingHud
         val showHud =
             hudCfg.showHud() &&
-                cfg.fishing.fishingTracker.enableTracker() &&
+                cfg.dev.trackers.fishingTracker() &&
                 SkyblockApi.isOnSkyblock &&
                 FishingVisibility.isVisible
         if (!showHud) {
@@ -164,11 +164,21 @@ object FishingHud {
             horizontalArrangement = arrangement,
             gap = 8f,
         ) {
-            val catches = sessionOrTotalCatches(settings.tab)
+            // `cfg.fishing.fishingHud.addDoubleHookToCatches` / `addCocoonToCatches` roll
+            // the corresponding bucket into the Catches display so users who think of those
+            // as catches see a single combined number. Affects both the displayed total AND
+            // the percentage denominator below, so the chips stay self-consistent.
+            val hudCfg = cfg.fishing.fishingHud
+            val baseCatches = sessionOrTotalCatches(settings.tab)
+            val cocoons = sessionOrTotalCocoons(settings.tab)
+            val dh = sessionOrTotalDoubleHooks(settings.tab)
+            val catches =
+                baseCatches +
+                    (if (hudCfg.addDoubleHookToCatches()) dh else 0L) +
+                    (if (hudCfg.addCocoonToCatches()) cocoons else 0L)
             // Chip order mirrors the per-row column order (CC → DH → Catches), so the eye
             // sweeps left-to-right consistently between the summary line and the rows.
             if (settings.showCocoons) {
-                val cocoons = sessionOrTotalCocoons(settings.tab)
                 Text(
                     text = formatChip("CC", cocoons, catches),
                     size = SoulTheme.typography.body.size,
@@ -177,7 +187,6 @@ object FishingHud {
                 )
             }
             if (settings.showDoubleHooks) {
-                val dh = sessionOrTotalDoubleHooks(settings.tab)
                 Text(
                     text = formatChip("DH", dh, catches),
                     size = SoulTheme.typography.body.size,
@@ -377,8 +386,15 @@ object FishingHud {
                 }
                 if (settings.showCatches) {
                     if (!first) ColumnDivider()
+                    // Same "Add DH / Cocoon to catches" toggle as the totals line — keeps
+                    // per-row numbers in sync with the totals row at the bottom.
+                    val hudCfg = cfg.fishing.fishingHud
+                    val displayedCatches =
+                        row.catches +
+                            (if (hudCfg.addDoubleHookToCatches()) row.doubleHooks else 0L) +
+                            (if (hudCfg.addCocoonToCatches()) row.cocoons else 0L)
                     NumberCell(
-                        text = "%,d".format(row.catches),
+                        text = "%,d".format(displayedCatches),
                         color = SoulTheme.colors.accent,
                         isCaption = false,
                     )

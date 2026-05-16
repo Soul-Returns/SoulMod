@@ -11,6 +11,7 @@
   "text.config.soul/config.category.profileViewer": "Profile Viewer",
   "text.config.soul/config.category.sync": "Cloud Sync",
   "text.config.soul/config.category.dev": "Dev",
+  "text.config.soul/config.category.about": "About",
 
   "text.config.soul/config.dev.warning": "Only change if you know what you're doing.",
 
@@ -67,7 +68,11 @@
   "text.config.soul/config.group.dev.debug": "Debug",
   "text.config.soul/config.group.dev.data": "Data",
   "text.config.soul/config.group.dev.config": "Config",
+  "text.config.soul/config.group.dev.trackers": "Trackers",
+  "text.config.soul/config.option.dev.trackers.fishingTracker": "Fishing Tracker",
+  "text.config.soul/config.option.dev.trackers.fishingTracker.tooltip": "Master switch for the chat-driven Fishing Tracker (sea-creature catches, double-hooks, cocoons, festival counters). When off, no fishing data is recorded — the Fishing HUD has nothing to display. Default on.",
   "text.config.soul/config.group.dev.keybinds": "Keybinds",
+  "text.config.soul/config.group.about.usedSoftware": "Used Software",
 
   "text.config.soul/config.option.dev.keybinds.copyOpenedGui": "Copy Opened GUI",
   "text.config.soul/config.option.dev.keybinds.copyOpenedGui.tooltip": "Copies a JSON dump of the currently open container screen (chest contents, slot map, title) to the clipboard.",
@@ -121,9 +126,6 @@
   "text.config.soul/config.option.fishing.bobbinTime.syncBobbinAlertWithParty": "Sync Alert with Party",
   "text.config.soul/config.option.fishing.bobbinTime.alertItemNameFilter": "Held Item Name Contains",
 
-  "text.config.soul/config.group.fishing.fishingTracker": "Fishing Tracker",
-  "text.config.soul/config.option.fishing.fishingTracker.enableTracker": "Enable Tracker",
-  "text.config.soul/config.option.fishing.fishingTracker.enableTracker.tooltip": "Track sea-creature catches and double-hooks for all-time, session, and current Fishing Festival counters. Per-creature breakdown is collected for future statistics.",
 
   "text.config.soul/config.group.fishing.fishingHud": "Fishing HUD",
   "text.config.soul/config.option.fishing.fishingHud.showHud": "Show HUD",
@@ -132,6 +134,10 @@
   "text.config.soul/config.option.fishing.fishingHud.showFestivalTimer.tooltip": "Show a countdown line while a Fishing Festival is active.",
   "text.config.soul/config.option.fishing.fishingHud.showCounters": "Show Counters",
   "text.config.soul/config.option.fishing.fishingHud.showCounters.tooltip": "Show Double Hooks / Catches lines with All-time, Session, and Festival columns.",
+  "text.config.soul/config.option.fishing.fishingHud.addDoubleHookToCatches": "Add Double Hook to Catches",
+  "text.config.soul/config.option.fishing.fishingHud.addDoubleHookToCatches.tooltip": "Roll Double Hook counts into the Catches column / total. Affects every creature row AND the bottom totals line so the numbers stay consistent.",
+  "text.config.soul/config.option.fishing.fishingHud.addCocoonToCatches": "Add Cocoon to Catches",
+  "text.config.soul/config.option.fishing.fishingHud.addCocoonToCatches.tooltip": "Roll Cocoon counts into the Catches column / total. Affects every creature row AND the bottom totals line so the numbers stay consistent.",
 
   "text.config.soul/config.option.mining.dwarvenMines.donExpressoAlert": "Don Espresso Alert",
   "text.config.soul/config.option.mining.mineshaft.enableLapisPtme": "!ptme on Lapis Corpses",

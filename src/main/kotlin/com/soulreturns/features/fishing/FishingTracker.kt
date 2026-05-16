@@ -103,7 +103,7 @@ object FishingTracker {
     @HandleEvent
     fun onChat(event: ChatMessage) {
         if (event.source != ChatMessage.Source.SERVER) return
-        if (!cfg.fishing.fishingTracker.enableTracker()) return
+        if (!cfg.dev.trackers.fishingTracker()) return
         val stripped = MessageDetector.stripColorCodes(event.raw).trim()
         if (stripped.isEmpty()) return // empty line — interleaver, leave flag intact
 

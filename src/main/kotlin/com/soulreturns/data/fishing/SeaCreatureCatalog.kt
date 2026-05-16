@@ -9,9 +9,10 @@ import java.io.InputStreamReader
  * Lookup of sea-creature catch chat messages → [SeaCreature].
  *
  * Loaded once from the bundled `assets/soul/sea_creatures.json` snapshot of SkyHanni's
- * `SeaCreatures.json` repo data. The catalog indexes both the canonical `chat_message` and
- * every entry in `alternate_messages` (with color codes stripped) so a single map probe on
- * any incoming chat line is enough to detect a catch.
+ * `SeaCreatures.json` repo data (LGPL-2.1; attribution surfaced in `/soul config` →
+ * About → Used Software). The catalog indexes both the canonical `chat_message` and every
+ * entry in `alternate_messages` (with color codes stripped) so a single map probe on any
+ * incoming chat line is enough to detect a catch.
  *
  * Refresh the snapshot manually when SkyHanni adds new creatures — there is no live repo
  * fetch by design.

@@ -14,10 +14,13 @@ import com.soulreturns.ui.theme.SoulTheme
  * Compact rounded button with hover feedback.
  *
  * Three visual states:
- *  - **default**: `Theme.colors.panelInset` background — opaque mid-dark fill that reads as
- *    a button against translucent `panel` Surfaces (HUD cards) as well as `panelInset`
- *    section cards (config screen).
- *  - **hovered**: `Theme.colors.panelHover` background — a half-step lighter.
+ *  - **default**: `Theme.colors.panelHover` background — matches Toggle's off-state track
+ *    color choice so the button reads as a distinct surface against the `panelInset`
+ *    section cards on the config screen (using `panelInset` for idle would blend the button
+ *    into the card and erase its outline). Also visible against translucent HUD `panel`
+ *    surfaces.
+ *  - **hovered**: `Theme.colors.controlHover` background — a step lighter than the idle
+ *    `panelHover`, gives a clear hover lift on top of the already-lifted idle color.
  *  - **accent**: `Theme.colors.accent` (or `accentDim` when hovered) — used by callers that
  *    want a primary / pressed-state look (e.g. a toggle button whose value is on).
  *
@@ -52,8 +55,8 @@ fun Button(
         when {
             accent && isHovered -> SoulTheme.colors.accentDim
             accent -> SoulTheme.colors.accent
-            isHovered -> SoulTheme.colors.panelHover
-            else -> SoulTheme.colors.panelInset
+            isHovered -> SoulTheme.colors.controlHover
+            else -> SoulTheme.colors.panelHover
         }
     Surface(
         modifier = modifier.clickable(key, onClick),

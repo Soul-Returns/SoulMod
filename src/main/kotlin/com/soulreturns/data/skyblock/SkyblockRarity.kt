@@ -3,7 +3,8 @@ package com.soulreturns.data.skyblock
 /**
  * Canonical Hypixel SkyBlock rarity tier + its display color.
  *
- * Values mirror SkyHanni's `LorenzRarity` enum so users see the same rarity tint they
+ * Values mirror SkyHanni's `LorenzRarity` enum (LGPL-2.1; attribution surfaced in
+ * `/soul config` → About → Used Software) so users see the same rarity tint they
  * already recognise from Hypixel tooltips. Used wherever the mod surfaces rarity to the
  * player — sea creature lists today, item lore/tooltip features tomorrow.
  *

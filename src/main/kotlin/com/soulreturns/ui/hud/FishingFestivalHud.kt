@@ -44,7 +44,7 @@ object FishingFestivalHud {
         val visible =
             cfg.fishing.fishingHud.showHud() &&
                 cfg.fishing.fishingHud.showFestivalTimer() &&
-                cfg.fishing.fishingTracker.enableTracker() &&
+                cfg.dev.trackers.fishingTracker() &&
                 SkyblockApi.isOnSkyblock &&
                 FishingFestivalState.active
         if (!visible) {

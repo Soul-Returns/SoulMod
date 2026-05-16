@@ -25,20 +25,48 @@ object MessageHandler {
     /**
      * Initialize the message handler and register event listeners.
      * Should be called once during mod initialization.
+     *
+     * **Why both `*_CANCELED` AND the normal `CHAT` / `GAME` channels.** Other mods (SkyHanni,
+     * etc.) cancel chat messages by returning `false` from `ClientReceiveMessageEvents.ALLOW_*`.
+     * Once any handler in that chain cancels, the regular `CHAT` / `GAME` events never fire
+     * for that message — but `CHAT_CANCELED` / `GAME_CANCELED` do. Subscribing to BOTH means
+     * we see every message exactly once: allowed messages via `CHAT` / `GAME`, canceled
+     * messages via `CHAT_CANCELED` / `GAME_CANCELED`. They're mutually exclusive per Fabric's
+     * dispatch order, so no risk of double-processing.
+     *
+     * This is what lets our parsers (FishingTracker double-hook / catch detection, milestone
+     * trackers, …) keep working when the user has SkyHanni's chat filter blocking
+     * sea-creature-catch / kill-combo / etc. lines. Conversely, when WE want to hide a message
+     * (future feature), we should use `ClientReceiveMessageEvents.ALLOW_*` and return `false`
+     * — SkyHanni and other mods then receive the cancellation through their own `*_CANCELED`
+     * listeners, keeping the ecosystem coherent.
+     *
+     * The "subscribe to canceled channels for coexistence" pattern was observed in
+     * SkyHanni's `api/minecraftevents/ClientEvents.kt`; the events used and the surrounding
+     * code are independent re-implementations. Full third-party attribution is surfaced
+     * in `/soul config` → About → Used Software.
      */
     fun register() {
         if (isRegistered) {
             return
         }
 
-        // Register for normal chat messages
+        // Player-style chat messages (signed). Hypixel doesn't generally use signed chat,
+        // but we hook both channels for completeness — same downstream handler.
         ClientReceiveMessageEvents.CHAT.register { message, _, _, _, _ ->
             handleMessage(message.string)
         }
+        ClientReceiveMessageEvents.CHAT_CANCELED.register { message, _, _, _, _ ->
+            handleMessage(message.string)
+        }
 
-        // Register for game/system messages
+        // System / disguised messages (the dominant channel on Hypixel).
         ClientReceiveMessageEvents.GAME.register { message, overlay ->
             if (overlay) return@register // Ignore action bar / overlay lines
+            handleMessage(message.string)
+        }
+        ClientReceiveMessageEvents.GAME_CANCELED.register { message, overlay ->
+            if (overlay) return@register
             handleMessage(message.string)
         }
 

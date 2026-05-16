@@ -34,6 +34,14 @@ data class SoulColors(
     val panelHover: Int,
     /** Inset / pressed surface — sub-regions, depressed buttons. */
     val panelInset: Int,
+    /**
+     * Hover state for *interactive controls* (Buttons, …) sitting on top of a [panelInset]
+     * section card. One step lighter than [panelHover] so a button has a clear idle vs.
+     * hover lift even when its idle color is already [panelHover] for contrast against the
+     * surrounding section. Toggle / Slider use [panelHover] / [accent] for their states
+     * and don't need this third tier.
+     */
+    val controlHover: Int,
     /** Hairline separator between sections. */
     val separator: Int,
     /** Accent color for active states, primary actions, key data. */
@@ -55,6 +63,7 @@ data class SoulColors(
                 panel = 0xD81A1A1A.toInt(),
                 panelHover = 0xE0242424.toInt(),
                 panelInset = 0xFF1E1E1E.toInt(),
+                controlHover = 0xFF353535.toInt(),
                 separator = 0xFF2A2A2A.toInt(),
                 accent = 0xFF3B82F6.toInt(),
                 accentDim = 0xFF2563EB.toInt(),
