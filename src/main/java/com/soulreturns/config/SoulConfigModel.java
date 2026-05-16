@@ -141,9 +141,13 @@ public class SoulConfigModel {
     }
 
     public static class FishingHud {
-        public boolean showHud = true;
+        // Default OFF — every user-facing feature in this mod is opt-in. Sub-options below
+        // (showFestivalTimer, addDoubleHookToCatches, …) stay on because they're display
+        // preferences inside the HUD; they only do anything once the user opts in by
+        // flipping showHud on. The Welcome page's "Quick Settings" + the Fishing → Fishing
+        // HUD page are the obvious places to enable it.
+        public boolean showHud = false;
         public boolean showFestivalTimer = true;
-        public boolean showCounters = true;
         // When true the Catches column / total includes Double Hook counts as well, so a
         // creature catch that was also a double hook is counted twice (once for catches,
         // once for the DH bonus). On by default — matches how most users think about their
@@ -202,7 +206,10 @@ public class SoulConfigModel {
     }
 
     public static class Notifications {
-        public boolean chatAlerts = true;
+        // Default OFF — chatAlerts is a user-facing feature (renders showAlert overlays via
+        // RenderUtils when chat lines match a rule, e.g. "X Pests spawned"). The mod's
+        // opt-in-by-default policy applies; user enables once they want the alerts.
+        public boolean chatAlerts = false;
     }
 
     public static class ProfileViewer {

@@ -1,15 +1,19 @@
 package com.soulreturns.commands.subcommands
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
+import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.data.location.LocationApi
 import com.soulreturns.data.profile.ProfileApi
 import com.soulreturns.data.skyblock.SkyblockApi
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
+import com.soulreturns.platform.sync.SyncEngine
+import com.soulreturns.platform.sync.SyncKind
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageHandler
 import com.soulreturns.util.RenderUtils
 import com.soulreturns.util.soulChat
+import io.wispforest.owo.config.Option
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
@@ -23,6 +27,7 @@ import net.minecraft.network.chat.Component
  *  - `/soul dev getProfile`                               → active SkyBlock profile from the tab list
  *  - `/soul dev listStatProfiles`                         → all profile slots in stats.json, marking the active one
  *  - `/soul dev resetSeasonings`                          → reset seasoning total to 0 (persisted)
+ *  - `/soul dev resetConfig`                              → reset every owo-config option to its declared default + save + notify cloud sync
  *  - `/soul dev clearAlerts`                              → wipe in-flight alert overlays
  *  - `/soul dev testAlert [<message>]`                    → render a test alert
  *  - `/soul dev testMessage <type> <message>`             → simulate an incoming chat line of [type]
@@ -112,6 +117,20 @@ object DevSubcommand : SoulSubcommand {
                 }
             )
 
+            // Full config reset — sets every owo-config option to its declared default.
+            // Mirrors what the admin web UI's "reset all" button does on the backend, but
+            // entirely client-side. Saves config.json5 and notifies the sync engine so the
+            // wipe propagates to other devices on the account. Destructive — runs without
+            // confirmation (matching the rest of /soul dev), so it's gated behind the dev
+            // category by virtue of living here.
+            then(
+                literal("resetConfig") {
+                    runs { _ ->
+                        resetConfigToDefaults()
+                    }
+                }
+            )
+
             // Alerts
             then(
                 literal("clearAlerts") {
@@ -151,6 +170,46 @@ object DevSubcommand : SoulSubcommand {
                 }
             )
         }
+    }
+
+    /**
+     * Walk every owo-config option and write its declared default back into the live
+     * wrapper, then persist + notify cloud sync. Same per-option API the config screen's
+     * per-row reset chip uses, just applied wholesale via `forEachOption`. Failures on
+     * individual options are swallowed and counted so a single bad type cast doesn't
+     * abort the whole sweep — there's no useful recovery beyond "report what worked".
+     */
+    private fun resetConfigToDefaults() {
+        if (!SoulConfigHolder.isConfigReady()) {
+            soulChat("§cConfig wrapper not initialised yet — can't reset.")
+            return
+        }
+        var ok = 0
+        var failed = 0
+        SoulConfigHolder.INSTANCE.forEachOption { opt ->
+            try {
+                @Suppress("UNCHECKED_CAST")
+                (opt as Option<Any>).set(opt.defaultValue() as Any)
+                ok++
+            } catch (t: Throwable) {
+                failed++
+                DebugLogger.logFeatureEvent("resetConfig: failed on ${opt.key().asString()}: ${t.message}")
+            }
+        }
+        try {
+            SoulConfigHolder.INSTANCE.save()
+        } catch (t: Throwable) {
+            soulChat("§cReset wrote $ok defaults in memory but failed to save: ${t.message}")
+            return
+        }
+        // Push to cloud sync so other devices on this account pick up the wipe. Skipped
+        // silently if sync is disabled / not yet initialised.
+        try {
+            SyncEngine.notifyChanged(SyncKind.CONFIG)
+        } catch (_: Throwable) {
+        }
+        val suffix = if (failed > 0) " §7($failed option${if (failed == 1) "" else "s"} failed, see soul-latest.log)" else ""
+        soulChat("§aConfig reset — §f$ok§a option${if (ok == 1) "" else "s"} restored to defaults$suffix.")
     }
 
     private enum class MessageType { SERVER, PARTY, PUBLIC, GUILD }

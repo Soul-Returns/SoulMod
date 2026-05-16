@@ -2,6 +2,7 @@ package com.soulreturns.ui.hud
 
 import com.soulreturns.config.cfg
 import com.soulreturns.data.fishing.SeaCreatureCatalog
+import com.soulreturns.data.skyblock.FishingFestivalState
 import com.soulreturns.data.skyblock.SkyblockApi
 import com.soulreturns.features.fishing.FishingHudSettings
 import com.soulreturns.features.fishing.FishingTimer
@@ -31,7 +32,7 @@ import com.soulreturns.ui.foundation.Text
 import com.soulreturns.ui.runtime.SoulHud
 import com.soulreturns.ui.theme.SoulTheme
 import net.minecraft.client.Minecraft
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
+import net.minecraft.client.gui.screens.inventory.InventoryScreen
 import java.util.Locale
 
 /**
@@ -64,6 +65,7 @@ object FishingHud {
     private const val HUD_ID = "fishing_tracker"
     private const val SEPARATOR_HEIGHT = 1f
     private const val COLOR_PAUSED_RED = 0xFFFF5555.toInt() // §c
+    private const val COLOR_FESTIVAL_GOLD = 0xFFFFAA00.toInt() // §6 — matches Hypixel's festival msg colour
 
     // Per-column slot width (logical pixels). Wide enough for a 3-digit comma-formatted
     // number plus the 3-char " DH" / " CC" suffix in the mono font at caption size. Tight
@@ -117,11 +119,16 @@ object FishingHud {
             return
         }
         val settings = FishingHudSettings.get()
-        // Controls (tab switcher + footer buttons) only do anything when a container screen
-        // is open — SoulGuiHudAdapter only routes HUD clicks while `AbstractContainerScreen`
-        // is the active screen. Outside of that, collapse the panel to the data and replace
-        // the tab switcher with a plain label so the active scope is still visible.
-        val interactive = Minecraft.getInstance().screen is AbstractContainerScreen<*>
+        // Controls (tab switcher + footer buttons) only render in the **player inventory**.
+        // SoulGuiHudAdapter actually routes HUD clicks for any `AbstractContainerScreen<*>`
+        // (chests, anvils, Hypixel-custom GUIs, …) but expanding the footer on every chest
+        // open is noisy — opening a chest is a routine inventory transfer action, not a
+        // "I want to configure my fishing tracker" intent. Gating on `InventoryScreen`
+        // specifically means players need to press their own inventory key (E by default)
+        // to fiddle with sort / column / category filters. Outside the player inventory,
+        // collapse the panel to the data and replace the tab switcher with a plain label
+        // so the active scope is still visible.
+        val interactive = Minecraft.getInstance().screen is InventoryScreen
 
         Surface(
             modifier = SoulModifier.Empty.fillMaxWidth(),
@@ -213,6 +220,17 @@ object FishingHud {
      * break the chip text. Falls back to "Label: N" with no percent when [catches] == 0
      * (the only way that can happen is the very-first session before any catch lands).
      */
+    /**
+     * Format the festival countdown — Hypixel festivals last 60 minutes, so we only need
+     * `Xm YYs`. Mirrors the old standalone sticker HUD's format.
+     */
+    private fun formatFestivalDuration(ms: Long): String {
+        val totalSec = ms / 1000
+        val m = totalSec / 60
+        val s = totalSec % 60
+        return String.format(Locale.ROOT, "%dm %02ds", m, s)
+    }
+
     private fun formatChip(
         label: String,
         count: Long,
@@ -248,9 +266,11 @@ object FishingHud {
         settings: FishingHudSettings.Settings,
         interactive: Boolean,
     ) {
-        // Two stacked rows. Top: full-width "Fishing" title, centered. Bottom: timer on the
-        // left, tabs on the right (SpaceBetween). Splitting onto two rows gives the title
-        // its own visual line and removes any chance of collision with the timer or tabs.
+        // Stacked rows. Top: full-width "Fishing" title centered. Optional middle:
+        // festival countdown (gold accent) when a fishing festival is active and the
+        // `showFestivalTimer` toggle is on — integrated here rather than as a standalone
+        // sticker HUD so users don't need to position a second element. Bottom: session
+        // timer on the left, tabs on the right (SpaceBetween).
         Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 4f) {
             Row(
                 modifier = SoulModifier.Empty.fillMaxWidth(),
@@ -263,6 +283,37 @@ object FishingHud {
                     color = SoulTheme.colors.text,
                     font = SoulTheme.typography.heading.font,
                 )
+            }
+            // Festival countdown — only present when a festival is active AND the user
+            // hasn't turned the toggle off. Gold-accented (§6) heading-size text matching
+            // the Hypixel festival message colour. Composable is the only "header" element
+            // visible to users today; the standalone `fishing_festival_sticker` HUD is gone.
+            if (cfg.fishing.fishingHud.showFestivalTimer() && FishingFestivalState.active) {
+                Row(
+                    modifier = SoulModifier.Empty.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = com.soulreturns.ui.composer.VerticalAlignment.Center,
+                    gap = 6f,
+                ) {
+                    Text(
+                        text = "Fishing Festival",
+                        size = SoulTheme.typography.body.size,
+                        color = COLOR_FESTIVAL_GOLD,
+                        font = SoulTheme.typography.heading.font,
+                    )
+                    Text(
+                        text = "—",
+                        size = SoulTheme.typography.body.size,
+                        color = SoulTheme.colors.textDim,
+                        font = SoulTheme.typography.body.font,
+                    )
+                    Text(
+                        text = "${formatFestivalDuration(FishingFestivalState.remainingMs())} left",
+                        size = SoulTheme.typography.body.size,
+                        color = SoulTheme.colors.text,
+                        font = SoulTheme.typography.body.font,
+                    )
+                }
             }
             Row(
                 modifier = SoulModifier.Empty.fillMaxWidth(),

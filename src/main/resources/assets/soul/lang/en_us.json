@@ -133,8 +133,6 @@
   "text.config.soul/config.option.fishing.fishingHud.showHud.tooltip": "Show the Fishing HUD overlay. Position with /soul gui. Tracking always runs regardless of this toggle.",
   "text.config.soul/config.option.fishing.fishingHud.showFestivalTimer": "Show Festival Timer",
   "text.config.soul/config.option.fishing.fishingHud.showFestivalTimer.tooltip": "Show a countdown line while a Fishing Festival is active.",
-  "text.config.soul/config.option.fishing.fishingHud.showCounters": "Show Counters",
-  "text.config.soul/config.option.fishing.fishingHud.showCounters.tooltip": "Show Double Hooks / Catches lines with All-time, Session, and Festival columns.",
   "text.config.soul/config.option.fishing.fishingHud.addDoubleHookToCatches": "Add Double Hook to Catches",
   "text.config.soul/config.option.fishing.fishingHud.addDoubleHookToCatches.tooltip": "Roll Double Hook counts into the Catches column / total. Affects every creature row AND the bottom totals line so the numbers stay consistent.",
   "text.config.soul/config.option.fishing.fishingHud.addCocoonToCatches": "Add Cocoon to Catches",

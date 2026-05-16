@@ -34,7 +34,6 @@ import com.soulreturns.platform.sync.SyncedArtifact
 import com.soulreturns.render.RoundRectRenderer
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.hud.BobbinHud
-import com.soulreturns.ui.hud.FishingFestivalHud
 import com.soulreturns.ui.hud.FishingHud
 import com.soulreturns.ui.hud.LegionHud
 import com.soulreturns.ui.hud.MineshaftCorpsesHud
@@ -237,7 +236,6 @@ object Soul : ClientModInitializer {
         FishingVisibility.register()
         FishingTracker.register()
         FishingHud.register()
-        FishingFestivalHud.register()
 
         // Party tracking and HUD overlay
         PartyManager.register()

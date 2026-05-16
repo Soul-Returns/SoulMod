@@ -696,6 +696,35 @@ class SoulConfigScreen(
                 )
             }
 
+            // First-impression knobs duplicated from `General → UI`. Players who don't like
+            // the bundled Inter font / the translucent HUD panels need to find these toggles
+            // immediately — burying them three clicks deep was costing installs. The
+            // toggles drive the same `cfg.general.ui.*` fields as the regular option rows,
+            // so changes propagate everywhere (per-HUD overrides still win; remind users
+            // via the Reset buttons under General → UI if they've customized individual HUDs).
+            HomeSection("Quick Settings") {
+                QuickToggleRow(
+                    label = "HUD Background",
+                    description = "Translucent panel behind each HUD.",
+                    value = com.soulreturns.config.cfg.general.ui.hudBackground(),
+                    onChange = { newValue ->
+                        com.soulreturns.config.cfg.general.ui.hudBackground(newValue)
+                        save()
+                    },
+                    key = "home.toggle.hudBackground",
+                )
+                QuickToggleRow(
+                    label = "Use Minecraft Font",
+                    description = "Render HUD text with Minecraft's vanilla / resource-pack font.",
+                    value = com.soulreturns.config.cfg.general.ui.useMinecraftFont(),
+                    onChange = { newValue ->
+                        com.soulreturns.config.cfg.general.ui.useMinecraftFont(newValue)
+                        save()
+                    },
+                    key = "home.toggle.useMinecraftFont",
+                )
+            }
+
             HomeSection("Features") {
                 HomeFeature("Fishing", "Sea-creature tracker, double hooks, Bobbin & Legion HUDs.")
                 HomeFeature("Garden", "Seasoning tracker with milestone targets and per-hour rate.")
@@ -728,6 +757,47 @@ class SoulConfigScreen(
             padding = 10f,
         ) {
             Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f, content = content)
+        }
+    }
+
+    @SoulComposable
+    private fun QuickToggleRow(
+        label: String,
+        description: String,
+        value: Boolean,
+        onChange: (Boolean) -> Unit,
+        key: String,
+    ) {
+        // Two-line label cluster on the left (heading-weight title + dim caption so the
+        // toggle's purpose is obvious without having to navigate elsewhere) and the
+        // Toggle pill on the right. `ROW_HEIGHT` matches the regular option-row cadence
+        // in the rest of the screen so the cards align visually if the user looks at
+        // both pages side-by-side.
+        Row(
+            modifier = SoulModifier.Empty.fillMaxWidth().height(ROW_HEIGHT),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = VerticalAlignment.Center,
+            gap = 10f,
+        ) {
+            Column(gap = 2f) {
+                Text(
+                    text = label,
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.heading.font,
+                )
+                Text(
+                    text = description,
+                    size = SoulTheme.typography.caption.size,
+                    color = SoulTheme.colors.textDim,
+                    font = SoulTheme.typography.caption.font,
+                )
+            }
+            Toggle(
+                value = value,
+                onChange = onChange,
+                key = key,
+            )
         }
     }
 
