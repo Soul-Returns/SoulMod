@@ -70,10 +70,18 @@ internal class ColumnNode(
         val childHeights = childMeasured.map { it.height }
         val maxChildW = childMeasured.maxOfOrNull { it.width } ?: 0f
 
+        // Snap `gap` to integer screen pixels. Each Text child's intrinsic height is also
+        // snapped (see Text.kt). Together this makes `child.height + gap` always evaluate
+        // to an exact integer screen-pixel pitch — every row sits at the same screen-pixel
+        // delta from the previous one, no alternating tight/loose gap pattern when the
+        // composable accumulator hits banker's rounding at the render step.
+        val ps = com.soulreturns.ui.input.SoulInput.panelScale.coerceAtLeast(0.0001f)
+        val effectiveGap = if (gap > 0f) kotlin.math.round(gap * ps).coerceAtLeast(1f) / ps else 0f
+
         // Default: column sizes to content. `fillMaxHeight()` raises outer.minHeight to
         // maxHeight via [applySizeOverride], so [outer.constrain] later expands the height.
         // `arrangeAlong` then sees the post-constrain height and can distribute extra space.
-        val contentSumH = childHeights.sum() + gap * (childHeights.size - 1).coerceAtLeast(0)
+        val contentSumH = childHeights.sum() + effectiveGap * (childHeights.size - 1).coerceAtLeast(0)
         val totalW = maxChildW + padH
         val totalH = contentSumH + padV
         val (w, h) = outer.constrain(totalW, totalH)
@@ -84,7 +92,7 @@ internal class ColumnNode(
         // `HorizontalAlignment.Center` a no-op for single-child columns.
         val crossAxisSize = (w - padH).coerceAtLeast(maxChildW)
         val arrangementSpace = (h - padV).coerceAtLeast(0f)
-        val mainPositions = arrangeAlong(arrangement, childHeights, arrangementSpace, gap)
+        val mainPositions = arrangeAlong(arrangement, childHeights, arrangementSpace, effectiveGap)
         val positions =
             childMeasured.mapIndexed { i, m ->
                 val xOffset = offset.x + alignHorizontal(horizontalAlignment, m.width, crossAxisSize)

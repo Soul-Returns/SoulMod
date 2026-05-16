@@ -107,9 +107,15 @@ public class SoulConfigModel {
         // Per-HUD overrides in /soul gui follow the same global-wins rule.
         public boolean useMinecraftFont = false;
         // Render HUD text with a Minecraft-style drop shadow (offset black copy beneath
-        // the glyphs). Off (default) is cleaner against the dark HUD backdrop; on helps
-        // legibility when the HUD background is transparent or sits over bright terrain.
-        public boolean hudTextShadow = false;
+        // the glyphs). On by default — matches the visual weight of vanilla HUDs and reads
+        // better when the HUD background is transparent or sits over bright terrain.
+        public boolean hudTextShadow = true;
+        // Shadow thickness multiplier in physical (monitor) pixels. 1 = thin, 4 = heavy.
+        // 1.5 by default (1 px hard shadow plus a half-alpha second ring) — softer than
+        // 1 but doesn't read as a heavy drop. Config UI snaps to 0.5 steps (see
+        // `ConfigSections.optionStep`). Only meaningful when [hudTextShadow] is on.
+        @RangeConstraint(min = 1.0f, max = 4.0f, decimalPlaces = 1)
+        public float hudTextShadowSize = 1.5f;
         // Use a heavier Inter weight for HUD body text (Regular → Medium, Medium → SemiBold).
         // On by default — matches Odin's all-SemiBold approach and is what lets Inter render
         // crisply at small HUD sizes without needing a shadow (shadow + AA Inter glyphs causes

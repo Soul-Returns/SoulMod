@@ -587,6 +587,7 @@ object NvgRenderer {
         size: Float,
         color: Int,
         font: NvgFont = defaultFont,
+        sizeMultiplier: Float = 1f,
     ) {
         nvgFontFaceId(vg, getFontId(font))
         nvgFontSize(vg, size)
@@ -615,18 +616,64 @@ object NvgRenderer {
         // shadow pass — both produce non-deterministic per-row dropouts under
         // HUD-text load. See the "Text shadow rendering" note in CLAUDE.md.
         val ps = com.soulreturns.ui.input.SoulInput.panelScale.coerceAtLeast(0.0001f)
-        // Shadow offset in screen pixels — scales with the panel (rounded to an integer,
-        // minimum 1) so it's always an exact whole screen-pixel jump and no sub-pixel
-        // rasterisation alternation can creep in across rows.
-        val pxOffset = round(ps).coerceAtLeast(1f)
+        // Shadow offset scales with the panel's physical size, so the shadow/text
+        // ratio stays constant across element scale, global scale, and GUI Scale.
+        //
+        // `ps × guiScale` IS the panel's physical scale factor — when
+        // `respectMinecraftGuiScale = false` (the default) `ps` already has `1/guiScale`
+        // baked in, so `ps × guiScale = element × BASE_GLOBAL_SCALE × globalScale` and
+        // is independent of the user's GUI Scale setting. Rounding to the nearest
+        // integer physical pixel (min 1) keeps the rasterised offset at whole physical
+        // pixels — which, at the common (guiScale=1, dpr=2) and (guiScale=2, dpr=2)
+        // combos, ALSO lands on integer texture pixels, avoiding FontStash sub-pixel
+        // variant atlas pressure. Convert physical back to PIP-logical (which is what
+        // we add to `mainScreenX`) by dividing by `guiScale`.
+        val guiScale =
+            net.minecraft.client.Minecraft.getInstance().window.guiScale.toFloat().coerceAtLeast(0.5f)
+        // Base "1 physical pixel" step, snapped to integer screen pixels (and scaled with
+        // the panel — at larger HUD sizes a single step is multiple physical pixels so the
+        // shadow keeps a proportional thickness to the text).
+        val basePhysical = round(ps * guiScale).coerceAtLeast(1f)
+        val baseStep = basePhysical / guiScale
         val mainScreenX = round(x * ps)
         val mainScreenY = round(y * ps)
         val mainCx = mainScreenX / ps
         val mainCy = mainScreenY / ps
-        val shadowCx = (mainScreenX + pxOffset) / ps
-        val shadowCy = (mainScreenY + pxOffset) / ps
-        setFillColor(0xB3000000.toInt())
-        nvgText(vg, shadowCx, shadowCy, text)
+        // Shadow thickness via multi-pass grid. The integer "floor" of sizeMultiplier
+        // (`whole`) paints a full whole×whole grid at full alpha. A fractional part
+        // (`frac`) — for in-between slider values like 1.5 — adds the *next* outer ring
+        // of positions at `frac` alpha so the slider feels continuous instead of jumping
+        // between whole shadow thicknesses. The shadow's NEAR edge stays at +1 step
+        // regardless of size; only the FAR edge extends outward.
+        val mult = sizeMultiplier.coerceIn(1f, 4f)
+        val whole = mult.toInt()
+        val frac = mult - whole
+        setFillColor(0xFF000000.toInt())
+        for (i in 1..whole) {
+            for (j in 1..whole) {
+                val shadowCx = (mainScreenX + i * baseStep) / ps
+                val shadowCy = (mainScreenY + j * baseStep) / ps
+                nvgText(vg, shadowCx, shadowCy, text)
+            }
+        }
+        if (frac > 0f && whole < 4) {
+            val ringAlpha = (frac * 255f).toInt().coerceIn(0, 255)
+            setFillColor((ringAlpha shl 24) or 0x000000)
+            val k = whole + 1
+            // Ring at index k: every (i, j) where max(i, j) = k AND both are in 1..k.
+            // That's `2k - 1` positions: the new row j=k (i=1..k) and the new column
+            // i=k (j=1..k-1, to avoid double-counting the corner).
+            for (i in 1..k) {
+                val shadowCx = (mainScreenX + i * baseStep) / ps
+                val shadowCy = (mainScreenY + k * baseStep) / ps
+                nvgText(vg, shadowCx, shadowCy, text)
+            }
+            for (j in 1 until k) {
+                val shadowCx = (mainScreenX + k * baseStep) / ps
+                val shadowCy = (mainScreenY + j * baseStep) / ps
+                nvgText(vg, shadowCx, shadowCy, text)
+            }
+        }
         setFillColor(color)
         nvgText(vg, mainCx, mainCy, text)
     }

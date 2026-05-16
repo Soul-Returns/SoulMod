@@ -983,6 +983,16 @@ class SoulConfigScreen(
                 color = SoulTheme.colors.textDim,
                 font = SoulTheme.typography.body.font,
             )
+            // Integer / long options snap to 1 by virtue of `toInt`/`toLong` truncation;
+            // Float / Double options check ConfigSections.optionStep for an explicit step
+            // (e.g. 0.5 for hudTextShadowSize). 0 = continuous slider.
+            val explicitStep = ConfigSections.optionStep[pathKey] ?: 0f
+            val step =
+                when {
+                    integer -> 1f
+                    explicitStep > 0f -> explicitStep
+                    else -> 0f
+                }
             Slider(
                 value = current,
                 onChange = { newVal ->
@@ -997,6 +1007,7 @@ class SoulConfigScreen(
                 },
                 min = min,
                 max = max,
+                step = step,
                 modifier = SoulModifier.Empty.width(140f),
                 key = "config.slider.$pathKey",
             )

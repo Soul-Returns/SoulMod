@@ -92,12 +92,20 @@ internal class ScrollableListNode(
         val childMeasured = children.map { it.measure(inner) }
         val maxChildW = childMeasured.maxOfOrNull { it.width } ?: 0f
 
+        // Snap `gap` to integer screen pixels. Combined with screen-pixel-snapped
+        // intrinsic heights in Text.kt, each row's pitch (height + gap) becomes an
+        // exact integer screen-pixel delta from the previous row — no alternating
+        // tight/loose gap pattern from fractional composable accumulation hitting
+        // banker's rounding at the render step.
+        val ps = com.soulreturns.ui.input.SoulInput.panelScale.coerceAtLeast(0.0001f)
+        val effectiveGap = if (gap > 0f) kotlin.math.round(gap * ps).coerceAtLeast(1f) / ps else 0f
+
         var cursorY = 0f
         val positions =
             childMeasured.mapIndexed { i, m ->
                 val pos = SoulMeasured.Position(offset.x, offset.y + cursorY)
                 cursorY += m.height
-                if (i < children.size - 1) cursorY += gap
+                if (i < children.size - 1) cursorY += effectiveGap
                 pos
             }
 

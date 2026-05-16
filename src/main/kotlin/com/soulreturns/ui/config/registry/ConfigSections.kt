@@ -134,12 +134,25 @@ internal object ConfigSections {
     val optionDepth: Map<String, Int> =
         mapOf(
             "dev.debug.logging.logRealtime" to 2,
+            "general.ui.hudTextShadowSize" to 1,
+        )
+
+    /**
+     * Option full-path → step value passed to the Float / Double slider. `0` (the default
+     * when missing) means a fully continuous slider; a positive value snaps the slider to
+     * the nearest `min + n × step` position. Only honoured for Float / Double options —
+     * integer-typed sliders already snap to 1 by virtue of their type.
+     */
+    val optionStep: Map<String, Float> =
+        mapOf(
+            "general.ui.hudTextShadowSize" to 0.5f,
         )
 
     /** Option full-path → predicate. Option is hidden when the predicate returns false. */
     val optionVisibility: Map<String, () -> Boolean> =
         mapOf(
             "render.highlights.usePestVest" to { cfg.render.highlights.highlightPestEquipment() },
+            "general.ui.hudTextShadowSize" to { cfg.general.ui.hudTextShadow() },
             "farming.seasonings.showMaxMilestone" to { cfg.farming.seasonings.enableTracker() },
             "farming.seasonings.showNextMilestone" to { cfg.farming.seasonings.enableTracker() },
             "farming.seasonings.showFarmingTime" to { cfg.farming.seasonings.enableTracker() },
@@ -168,6 +181,7 @@ internal object ConfigSections {
     val rebuildOnChange: Set<String> =
         setOf(
             "render.highlights.highlightPestEquipment",
+            "general.ui.hudTextShadow",
             "farming.seasonings.enableTracker",
             "mining.mineshaft.enableLapisPtme",
             "mining.mineshaft.enableLittlefootPtme",

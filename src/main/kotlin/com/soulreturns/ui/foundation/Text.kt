@@ -43,11 +43,33 @@ internal class TextNode(
     override fun measure(constraints: SoulConstraints): SoulMeasured {
         val c = modifier.applySizeOverride(constraints)
         val intrinsicW = NvgRenderer.textWidth(text, size, font)
-        val intrinsicH = size
+        // Line height: snap to integer screen pixels.
+        //
+        // Inter's natural line-height ratio is ~1.20, so the *target* height in screen
+        // pixels is `size × 1.20 × panelScale`. We round that to a whole screen pixel and
+        // divide back to composable space so the resulting `intrinsicH × panelScale` is an
+        // exact integer screen pixel count. Combined with screen-pixel-snapped `gap` in
+        // Column / ScrollableList, this makes every row's pitch constant in screen
+        // pixels — eliminating the alternating tight/loose row gap pattern you get when
+        // fractional composable accumulation hits banker's rounding at the render step.
+        val ps = com.soulreturns.ui.input.SoulInput.panelScale.coerceAtLeast(0.0001f)
+        val intrinsicHScreen = kotlin.math.round(size * LINE_HEIGHT_RATIO * ps).coerceAtLeast(1f)
+        val intrinsicH = intrinsicHScreen / ps
         val (w, h) = c.constrain(intrinsicW, intrinsicH)
         val out = SoulMeasured(w, h)
         measured = out
         return out
+    }
+
+    private companion object {
+        /**
+         * Em-to-line-height ratio for the bundled Inter weights. 1.20 matches Inter's `hhea`
+         * line-gap metrics closely enough for layout purposes — exact value via
+         * `nvgTextMetrics` would be marginally better but require an NvgRenderer round-trip
+         * per measure. Update if a font with a substantially different metric is ever made
+         * the default.
+         */
+        const val LINE_HEIGHT_RATIO = 1.20f
     }
 
     override fun drawSelf(
@@ -72,7 +94,8 @@ internal class TextNode(
         val withShadow =
             hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldDrawTextShadow(hudId)
         if (withShadow) {
-            NvgRenderer.textShadow(text, x, y, size, color, effectiveFont)
+            val shadowMultiplier = com.soulreturns.ui.runtime.SoulHud.hudTextShadowSize()
+            NvgRenderer.textShadow(text, x, y, size, color, effectiveFont, shadowMultiplier)
         } else {
             NvgRenderer.text(text, x, y, size, color, effectiveFont)
         }

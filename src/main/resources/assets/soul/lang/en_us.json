@@ -35,6 +35,8 @@
   "text.config.soul/config.option.general.ui.useMinecraftFont.tooltip": "Use Minecraft's vanilla / resource-pack font for Soul HUD text instead of the bundled Inter NanoVG fonts. Default (off) keeps the crisp Inter rendering. Per-HUD overrides in /soul gui follow the same global-wins rule.",
   "text.config.soul/config.option.general.ui.hudTextShadow": "HUD Text Shadow",
   "text.config.soul/config.option.general.ui.hudTextShadow.tooltip": "Render HUD text with a black drop shadow beneath the glyphs (Minecraft-style). Off (default) is cleaner against the dark HUD backdrop; on helps legibility when the HUD background is transparent or sits over bright terrain. Per-HUD overrides in /soul gui follow the same global-wins rule.",
+  "text.config.soul/config.option.general.ui.hudTextShadowSize": "Shadow Size",
+  "text.config.soul/config.option.general.ui.hudTextShadowSize.tooltip": "Drop shadow thickness in physical (monitor) pixels. 1 = thin / default, 4 = heavy. Only takes effect when HUD Text Shadow is on.",
   "text.config.soul/config.option.general.ui.hudBoldFont": "HUD Bold Font",
   "text.config.soul/config.option.general.ui.hudBoldFont.tooltip": "Use a heavier Inter font weight for HUD body text (Regular → Medium, Medium → SemiBold). Off (default) keeps the framework's calibrated weight pairs. On boosts contrast for readability at small GUI scales. Per-HUD overrides in /soul gui follow the same global-wins rule.",
 

@@ -42,6 +42,7 @@ fun Slider(
     modifier: SoulModifier = SoulModifier.Empty,
     min: Float = 0f,
     max: Float = 1f,
+    step: Float = 0f,
     key: Any = SoulComposer.current.nextAutoKey(),
 ) {
     SoulComposer.current.composable(
@@ -49,6 +50,7 @@ fun Slider(
             value = value,
             min = min,
             max = max,
+            step = step,
             ownerKey = key,
             modifier = modifier,
             onChange = onChange,
@@ -60,10 +62,13 @@ internal class SliderNode(
     private val value: Float,
     private val min: Float,
     private val max: Float,
+    private val step: Float,
     private val ownerKey: Any,
     override val modifier: SoulModifier,
     private val onChange: (Float) -> Unit,
 ) : SoulNode() {
+    private fun snap(raw: Float): Float =
+        if (step <= 0f) raw else (min + kotlin.math.round((raw - min) / step) * step).coerceIn(min, max)
     companion object {
         private const val DEFAULT_W = 120f
         private const val DEFAULT_H = 14f
@@ -132,7 +137,7 @@ internal class SliderNode(
             val cursorX = SoulInput.cursorX
             if (cursorX >= 0f) {
                 val newT = ((cursorX - trackX) / trackW).coerceIn(0f, 1f)
-                val newValue = min + newT * (max - min)
+                val newValue = snap(min + newT * (max - min))
                 if (newValue != clampedValue) {
                     onChange(newValue)
                 }
@@ -152,7 +157,7 @@ internal class SliderNode(
                     val cursorX = SoulInput.cursorX
                     if (cursorX >= 0f) {
                         val newT = ((cursorX - trackX) / trackW).coerceIn(0f, 1f)
-                        onChange(min + newT * (max - min))
+                        onChange(snap(min + newT * (max - min)))
                     }
                 },
             ),

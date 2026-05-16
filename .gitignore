@@ -51,5 +51,6 @@ replay_*.log
 *.jfr
 
 .kotlin/sessions
+.kotlin/errors
 
 prompts/

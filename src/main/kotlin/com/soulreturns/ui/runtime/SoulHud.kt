@@ -228,6 +228,12 @@ object SoulHud {
         return element.useTextShadow ?: true
     }
 
+    /**
+     * Shadow-thickness multiplier (1.0–4.0) read from the global slider. Global only —
+     * no per-HUD override. Only consulted when [shouldDrawTextShadow] is already true.
+     */
+    fun hudTextShadowSize(): Float = cfg.general.ui.hudTextShadowSize().coerceIn(1f, 4f)
+
     /** Effective "bump font to heavier weight" for [id]. Global-wins rule, see [shouldDrawBackground]. */
     fun shouldUseBoldFont(id: String): Boolean {
         if (!cfg.general.ui.hudBoldFont()) return false
