@@ -4,6 +4,29 @@ import com.soulreturns.gui.lib.EditState
 import com.soulreturns.gui.lib.GuiEditSession
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.gui.lib.GuiRenderer
+import com.soulreturns.platform.render.nvg.NvgFrame
+import com.soulreturns.ui.composer.Arrangement
+import com.soulreturns.ui.composer.HorizontalAlignment
+import com.soulreturns.ui.composer.SoulComposable
+import com.soulreturns.ui.composer.SoulComposer
+import com.soulreturns.ui.composer.SoulConstraints
+import com.soulreturns.ui.composer.SoulModifier
+import com.soulreturns.ui.composer.VerticalAlignment
+import com.soulreturns.ui.composer.background
+import com.soulreturns.ui.composer.clickable
+import com.soulreturns.ui.composer.fillMaxSize
+import com.soulreturns.ui.composer.fillMaxWidth
+import com.soulreturns.ui.composer.padding
+import com.soulreturns.ui.composer.width
+import com.soulreturns.ui.foundation.Box
+import com.soulreturns.ui.foundation.Button
+import com.soulreturns.ui.foundation.Column
+import com.soulreturns.ui.foundation.Row
+import com.soulreturns.ui.foundation.Surface
+import com.soulreturns.ui.foundation.Text
+import com.soulreturns.ui.input.SoulInput
+import com.soulreturns.ui.runtime.SoulScreen
+import com.soulreturns.ui.theme.SoulTheme
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphics
 import net.minecraft.client.gui.screens.Screen
@@ -14,6 +37,26 @@ import net.minecraft.network.chat.Component
  * elements defined by the GUI library.
  */
 class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
+    private companion object {
+        // Top-right action button strip — rendered via a small NanoVG submit so the buttons
+        // share Soul UI's visual language (rounded, hover-aware) instead of the previous
+        // vanilla-rectangle Reset button. Sized to fit a `?` icon button + the `Reset HUD`
+        // label button at body-text size with the default Button padding.
+        const val BTN_PANEL_W = 140
+        const val BTN_PANEL_H = 32
+        const val BTN_PANEL_MARGIN = 6
+
+        // Right-click context-menu geometry. The anchor-grid section sits above the per-HUD
+        // toggle list; its height is fixed regardless of element so the menu doesn't reflow
+        // between targets. 16:9-ish screen rect = `(menuWidth − 2·GRID_MARGIN_H) × (gridH − 2·GRID_MARGIN_V)`.
+        const val CTX_MENU_WIDTH = 160
+        const val CTX_ITEM_HEIGHT = 14
+        const val CTX_GRID_HEIGHT = 88
+        const val GRID_MARGIN_H = 16
+        const val GRID_MARGIN_V = 8
+        const val DOT_INSET = 5
+    }
+
     private var editState: EditState = EditState()
 
     private data class ElementBounds(
@@ -24,19 +67,23 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val height: Int,
     )
 
-    private data class ButtonBounds(
-        val x: Int,
-        val y: Int,
-        val width: Int,
-        val height: Int,
-    )
-
     private var elementBounds: List<ElementBounds> = emptyList()
-    private var resetButtonBounds: ButtonBounds? = null
+
+    /**
+     * When true, render a modal help dialog overlay explaining how to use the editor and
+     * how anchors work. Toggled by the `?` button at the top-right; dismissed via the
+     * dialog's `Got it` button, by clicking the dimmed scrim, or by pressing Esc.
+     */
+    @Volatile private var showHelpDialog: Boolean = false
 
     /**
      * Open context menu state. Non-null while the user has right-clicked a SoulHudElement
-     * to bring up the anchor-preset picker. Cleared on selection, outside-click, or escape.
+     * to bring up the anchor picker + per-HUD toggles. Cleared on selection, outside-click,
+     * or escape.
+     *
+     * [gridHeight] is the height of the top "anchor grid" section (a 3×3 grid of dots on a
+     * screen-shaped rectangle). Action items (per-HUD toggles + Settings) are stacked below
+     * it at [itemHeight] each.
      */
     private data class ContextMenu(
         val elementId: String,
@@ -44,19 +91,15 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val originY: Int,
         val itemHeight: Int,
         val width: Int,
+        val gridHeight: Int,
     )
 
     private var contextMenu: ContextMenu? = null
 
-    /**
-     * One row in the right-click context menu. Either snaps the element to a corner preset
-     * ([anchorPreset] non-null) or runs an arbitrary [action] ([action] non-null). Mutually
-     * exclusive — exactly one of the two should be set.
-     */
+    /** Per-HUD toggle / link row in the right-click context menu (no anchor presets). */
     private data class ContextMenuItem(
         val label: String,
-        val anchorPreset: AnchorPreset? = null,
-        val action: ((elementId: String) -> Unit)? = null,
+        val action: (elementId: String) -> Unit,
     )
 
     private data class AnchorPreset(
@@ -67,37 +110,45 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
     )
 
     /**
-     * Build the right-click context menu for [elementId]. Built fresh on every read so the
-     * toggle labels ("HUD Background: ON/OFF" / "Use Minecraft Font: ON/OFF") reflect the
+     * Compute the 9 anchor presets row-major (top→bottom, left→right). The list always has
+     * the same shape; the visual grid maps `index = row × 3 + col` and the same indexing is
+     * used by hit-testing.
+     */
+    private fun anchorGridPresets(): List<AnchorPreset> {
+        val hAnchors =
+            listOf(
+                com.soulreturns.gui.lib.HudHorizontalAnchor.Start,
+                com.soulreturns.gui.lib.HudHorizontalAnchor.Center,
+                com.soulreturns.gui.lib.HudHorizontalAnchor.End,
+            )
+        val vAnchors =
+            listOf(
+                com.soulreturns.gui.lib.HudVerticalAnchor.Top,
+                com.soulreturns.gui.lib.HudVerticalAnchor.Center,
+                com.soulreturns.gui.lib.HudVerticalAnchor.Bottom,
+            )
+        val fracs = listOf(0.0, 0.5, 1.0)
+        return buildList {
+            for (row in 0..2) {
+                for (col in 0..2) {
+                    add(AnchorPreset(fracs[col], fracs[row], hAnchors[col], vAnchors[row]))
+                }
+            }
+        }
+    }
+
+    /**
+     * Build the per-HUD toggle / link rows for the right-click context menu. Re-evaluated on
+     * every draw / hit-test so the toggle labels ("HUD Background: ON/OFF" etc.) reflect the
      * element's current effective state (global gate AND per-HUD override).
      */
     private fun buildContextMenuItems(elementId: String): List<ContextMenuItem> {
-        fun preset(
-            label: String,
-            ax: Double,
-            ay: Double,
-            h: com.soulreturns.gui.lib.HudHorizontalAnchor,
-            v: com.soulreturns.gui.lib.HudVerticalAnchor,
-        ) = ContextMenuItem(label, AnchorPreset(ax, ay, h, v), null)
-
-        val hStart = com.soulreturns.gui.lib.HudHorizontalAnchor.Start
-        val hCenter = com.soulreturns.gui.lib.HudHorizontalAnchor.Center
-        val hEnd = com.soulreturns.gui.lib.HudHorizontalAnchor.End
-        val vTop = com.soulreturns.gui.lib.HudVerticalAnchor.Top
-        val vCenter = com.soulreturns.gui.lib.HudVerticalAnchor.Center
-        val vBottom = com.soulreturns.gui.lib.HudVerticalAnchor.Bottom
-
         val bgEffective = com.soulreturns.ui.runtime.SoulHud.shouldDrawBackground(elementId)
         val mcFontEffective = com.soulreturns.ui.runtime.SoulHud.shouldUseMinecraftFont(elementId)
         val shadowEffective = com.soulreturns.ui.runtime.SoulHud.shouldDrawTextShadow(elementId)
         val boldEffective = com.soulreturns.ui.runtime.SoulHud.shouldUseBoldFont(elementId)
 
         return listOf(
-            preset("Top Left", 0.0, 0.0, hStart, vTop),
-            preset("Top Right", 1.0, 0.0, hEnd, vTop),
-            preset("Bottom Left", 0.0, 1.0, hStart, vBottom),
-            preset("Bottom Right", 1.0, 1.0, hEnd, vBottom),
-            preset("Center", 0.5, 0.5, hCenter, vCenter),
             ContextMenuItem(
                 label = "HUD Background: ${if (bgEffective) "ON" else "OFF"}",
                 action = { id -> toggleHudBackground(id) },
@@ -391,10 +442,6 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         // content so the dot reads on top.
         drawAnchorIndicators(context, layout)
 
-        // Draw a simple "Reset" button in the top-right corner to restore the
-        // layout to its default positions and scales.
-        drawResetButton(context, mouseX, mouseY)
-
         // Small label showing which element is selected.
         editState.selectedElementId?.let { selectedId ->
             guiCtx.drawText("Selected: $selectedId", 4, 4, 0xFFFFFF00.toInt(), shadow = true)
@@ -403,7 +450,196 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         // Context menu rendered last so it overlays everything else (HUDs, indicators).
         drawContextMenu(context, mouseX, mouseY)
 
+        // Soul UI overlay: top-right action buttons OR the help dialog (mutually exclusive
+        // so a click inside the dimmed scrim can't reach a button accidentally rendered
+        // behind it). Submitted last so the buttons / dialog composite on top of HUDs +
+        // selection boxes + context menu. Both panels render against
+        // [SoulScreen.TARGET_GUI_SCALE] so they look the same physical size regardless of
+        // the user's Minecraft GUI Scale — same convention every Soul UI screen uses.
+        val actualGuiScale = Minecraft.getInstance().window.guiScale.toFloat().coerceAtLeast(0.5f)
+        val pipScale = SoulScreen.TARGET_GUI_SCALE / actualGuiScale
+        if (showHelpDialog) {
+            // Full-viewport composable space sized so `composable × pipScale = screen`.
+            val composableW = (width * actualGuiScale / SoulScreen.TARGET_GUI_SCALE).toInt().coerceAtLeast(1)
+            val composableH = (height * actualGuiScale / SoulScreen.TARGET_GUI_SCALE).toInt().coerceAtLeast(1)
+            NvgFrame.submit(context, x = 0, y = 0, w = composableW, h = composableH, scale = pipScale) {
+                val root =
+                    SoulComposer.create().build {
+                        HelpDialog()
+                    }
+                root.draw(
+                    0f,
+                    0f,
+                    SoulConstraints(
+                        maxWidth = composableW.toFloat(),
+                        maxHeight = composableH.toFloat(),
+                    ),
+                )
+            }
+        } else {
+            // Strip's on-screen footprint = composable × pipScale; pin to top-right with a
+            // screen-space margin so it stays a uniform distance from the corner across
+            // GUI Scales.
+            val screenW = (BTN_PANEL_W * pipScale).toInt().coerceAtLeast(1)
+            val screenH = (BTN_PANEL_H * pipScale).toInt().coerceAtLeast(1)
+            val bx = width - screenW - BTN_PANEL_MARGIN
+            val by = BTN_PANEL_MARGIN
+            NvgFrame.submit(context, x = bx, y = by, w = BTN_PANEL_W, h = BTN_PANEL_H, scale = pipScale) {
+                val root =
+                    SoulComposer.create().build {
+                        EditorButtons()
+                    }
+                root.draw(
+                    0f,
+                    0f,
+                    SoulConstraints(
+                        maxWidth = BTN_PANEL_W.toFloat(),
+                        maxHeight = BTN_PANEL_H.toFloat(),
+                    ),
+                )
+            }
+        }
+
         super.render(context, mouseX, mouseY, delta)
+    }
+
+    // ─────────────────────────────── editor overlay composables ──────────────────────────
+
+    @SoulComposable
+    private fun EditorButtons() {
+        Row(
+            modifier = SoulModifier.Empty.fillMaxSize().padding(all = 4f),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = VerticalAlignment.Center,
+            gap = 6f,
+        ) {
+            Button(
+                label = "?",
+                onClick = { showHelpDialog = true },
+                key = "editor.help",
+            )
+            Button(
+                label = "Reset HUD",
+                onClick = { resetLayoutToDefaults() },
+                key = "editor.reset",
+            )
+        }
+    }
+
+    @SoulComposable
+    private fun HelpDialog() {
+        // Full-screen dimmed backdrop. Clicking the scrim (anywhere outside the card)
+        // closes the dialog — same affordance as Esc / the Got it button.
+        Box(
+            modifier =
+                SoulModifier.Empty
+                    .fillMaxSize()
+                    .background(color = 0xA0000000.toInt(), radius = 0f)
+                    .clickable("editor.help.scrim") { showHelpDialog = false },
+        ) {
+            Column(
+                modifier = SoulModifier.Empty.fillMaxSize(),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = HorizontalAlignment.Center,
+            ) {
+                // Inner card: absorb clicks (no-op clickable at a deeper region depth than
+                // the scrim) so clicking the card itself doesn't bubble up and dismiss.
+                Surface(
+                    modifier =
+                        SoulModifier.Empty
+                            .width(480f)
+                            .clickable("editor.help.card") { /* swallow */ },
+                    color = SoulTheme.colors.panel,
+                    radius = SoulTheme.dimens.radiusMedium,
+                    padding = 16f,
+                ) {
+                    Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 10f) {
+                        Text(
+                            text = "GUI Editor Help",
+                            size = SoulTheme.typography.title.size,
+                            color = SoulTheme.colors.accent,
+                            font = SoulTheme.typography.title.font,
+                        )
+
+                        HelpSection("Controls") {
+                            HelpRow("Left-click + drag", "Move a HUD.")
+                            HelpRow("Scroll wheel", "Scale the hovered HUD.")
+                            HelpRow("Right-click", "Open the per-HUD menu.")
+                            HelpRow("Reset HUD", "Restore every HUD to its default.")
+                        }
+
+                        HelpSection("Anchors") {
+                            HelpRow("Pivot dot", "Yellow dot = the HUD's pinned corner.")
+                            HelpRow("Snap", "Right-click → pick a cell on the 3×3 grid.")
+                        }
+
+                        Row(
+                            modifier = SoulModifier.Empty.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            Button(
+                                label = "Got it",
+                                onClick = { showHelpDialog = false },
+                                accent = true,
+                                key = "editor.help.close",
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @SoulComposable
+    private fun HelpSection(
+        title: String,
+        content: @SoulComposable () -> Unit,
+    ) {
+        Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f) {
+            Text(
+                text = title,
+                size = SoulTheme.typography.heading.size,
+                color = SoulTheme.colors.text,
+                font = SoulTheme.typography.heading.font,
+            )
+            Surface(
+                modifier = SoulModifier.Empty.fillMaxWidth(),
+                color = SoulTheme.colors.panelInset,
+                radius = SoulTheme.dimens.radiusSmall,
+                padding = 10f,
+            ) {
+                Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f, content = content)
+            }
+        }
+    }
+
+    @SoulComposable
+    private fun HelpRow(
+        key: String,
+        description: String,
+    ) {
+        // Two-column row mirroring the Home page's HomeFeature pattern: fixed-width key
+        // label on the left (accent color, heading font) so descriptions line up cleanly.
+        Row(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            verticalAlignment = VerticalAlignment.Top,
+            gap = 10f,
+        ) {
+            Box(modifier = SoulModifier.Empty.width(130f)) {
+                Text(
+                    text = key,
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.accent,
+                    font = SoulTheme.typography.heading.font,
+                )
+            }
+            Text(
+                text = description,
+                size = SoulTheme.typography.body.size,
+                color = SoulTheme.colors.text,
+                font = SoulTheme.typography.body.font,
+            )
+        }
     }
 
     /**
@@ -462,7 +698,7 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val left = menu.originX
         val top = menu.originY
         val right = menu.originX + menu.width
-        val bottom = menu.originY + ih * items.size
+        val bottom = menu.originY + menu.gridHeight + ih * items.size
         val bg = 0xE0202020.toInt()
         val border = 0xFF555555.toInt()
         val hover = 0xFF353535.toInt()
@@ -473,18 +709,19 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         context.fill(left, top, left + 1, bottom, border)
         context.fill(right - 1, top, right, bottom, border)
 
+        // Anchor grid section at the top — replaces the 5 text preset rows. Exposes all 9
+        // anchor combinations (including the 4 edge midpoints) on a single visual widget.
+        drawAnchorGrid(context, menu, mouseX, mouseY)
+
+        // Divider between grid and action items.
+        val itemsTop = top + menu.gridHeight
+        context.fill(left + 4, itemsTop, right - 4, itemsTop + 1, border)
+
         for ((idx, item) in items.withIndex()) {
-            val itemY = top + idx * ih
+            val itemY = itemsTop + idx * ih
             val hovered = mouseX in left..(right - 1) && mouseY in itemY..(itemY + ih - 1)
             if (hovered) {
                 context.fill(left + 1, itemY, right - 1, itemY + ih, hover)
-            }
-            // Divider above the first non-preset item — visually separates the corner
-            // presets from the toggles + Settings entry. (Triggered when the previous
-            // item was a preset and this one isn't.)
-            val prev = items.getOrNull(idx - 1)
-            if (item.anchorPreset == null && prev?.anchorPreset != null) {
-                context.fill(left + 4, itemY, right - 4, itemY + 1, border)
             }
             context.drawString(
                 textRenderer,
@@ -497,6 +734,172 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         }
     }
 
+    /**
+     * Geometry of the anchor grid inside a [ContextMenu]. The visible "screen rectangle" is
+     * inset from the menu's left / right by [GRID_MARGIN_H] and from its top / bottom of the
+     * grid section by [GRID_MARGIN_V]. The 9 cells are equal thirds of that rectangle; each
+     * cell's dot is centered on the corresponding anchor pixel (corner / edge midpoint /
+     * exact center) with a small inward inset so it stays visually inside the rect frame.
+     */
+    private data class GridGeometry(
+        val rectLeft: Int,
+        val rectTop: Int,
+        val rectRight: Int,
+        val rectBottom: Int,
+    ) {
+        val cellW: Int get() = (rectRight - rectLeft) / 3
+        val cellH: Int get() = (rectBottom - rectTop) / 3
+
+        /** Cell index `0..8` at (mouseX, mouseY); -1 if outside the rectangle. */
+        fun cellIndexAt(mouseX: Int, mouseY: Int): Int {
+            if (mouseX < rectLeft || mouseX >= rectRight) return -1
+            if (mouseY < rectTop || mouseY >= rectBottom) return -1
+            val col = ((mouseX - rectLeft) / cellW).coerceIn(0, 2)
+            val row = ((mouseY - rectTop) / cellH).coerceIn(0, 2)
+            return row * 3 + col
+        }
+
+        /** Center coords of the visible dot for cell `index` (row-major, 0..8). */
+        fun dotCenter(index: Int): IntArray {
+            val col = index % 3
+            val row = index / 3
+            val hFrac = listOf(0.0, 0.5, 1.0)[col]
+            val vFrac = listOf(0.0, 0.5, 1.0)[row]
+            val cx = rectLeft + DOT_INSET + ((rectRight - rectLeft - 2 * DOT_INSET) * hFrac).toInt()
+            val cy = rectTop + DOT_INSET + ((rectBottom - rectTop - 2 * DOT_INSET) * vFrac).toInt()
+            return intArrayOf(cx, cy)
+        }
+    }
+
+    /**
+     * Snap [elementId] to [preset]'s anchor configuration while keeping the HUD visually
+     * fixed on screen. The renderer formula is
+     * `baseX = anchorX × screenW − shift(horizontalAnchor, onScreenW) + offsetX` (and same
+     * for Y), so to preserve `baseX` we solve for the new offset:
+     * `newOffsetX = baseX_current − newAnchorX × screenW + shift(newHA, onScreenW)`.
+     * Without this the HUD would teleport to the new corner (`offset = 0`).
+     *
+     * `onScreenW/H` come from the last measured intrinsic size × the element's effective
+     * scale — the **same** values the renderer uses, so the pivot shift cancels out exactly
+     * and the visible position doesn't drift even by one pixel.
+     */
+    private fun applyAnchorPreservingPosition(
+        elementId: String,
+        preset: AnchorPreset,
+    ) {
+        val element =
+            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
+                com.soulreturns.gui.lib.SoulHudElement
+        val entry = com.soulreturns.ui.runtime.SoulHudRegistry.get(elementId)
+        if (element == null || entry == null) {
+            // No registration / wrong element type — fall back to the corner-snap behavior.
+            GuiLayoutManager.updateSoulHudAnchor(
+                id = elementId,
+                anchorX = preset.anchorX,
+                anchorY = preset.anchorY,
+                horizontalAnchor = preset.horizontalAnchor,
+                verticalAnchor = preset.verticalAnchor,
+            )
+            return
+        }
+        val baseX = com.soulreturns.ui.runtime.SoulHud.resolveBaseX(element, entry, width)
+        val baseY = com.soulreturns.ui.runtime.SoulHud.resolveBaseY(element, entry, height)
+        val measured = com.soulreturns.ui.runtime.SoulHudRegistry.lastMeasured(elementId)
+        val effectiveScale = com.soulreturns.ui.runtime.SoulHud.effectiveScaleFor(element.scale)
+        val onScreenW = (measured?.width ?: entry.width.toFloat()) * effectiveScale
+        val onScreenH = (measured?.height ?: entry.height.toFloat()) * effectiveScale
+        val newShiftX =
+            when (preset.horizontalAnchor) {
+                com.soulreturns.gui.lib.HudHorizontalAnchor.Start -> 0f
+                com.soulreturns.gui.lib.HudHorizontalAnchor.Center -> onScreenW / 2f
+                com.soulreturns.gui.lib.HudHorizontalAnchor.End -> onScreenW
+            }
+        val newShiftY =
+            when (preset.verticalAnchor) {
+                com.soulreturns.gui.lib.HudVerticalAnchor.Top -> 0f
+                com.soulreturns.gui.lib.HudVerticalAnchor.Center -> onScreenH / 2f
+                com.soulreturns.gui.lib.HudVerticalAnchor.Bottom -> onScreenH
+            }
+        val newOffsetX = (baseX - preset.anchorX * width + newShiftX).toInt()
+        val newOffsetY = (baseY - preset.anchorY * height + newShiftY).toInt()
+        GuiLayoutManager.updateSoulHudAnchor(
+            id = elementId,
+            anchorX = preset.anchorX,
+            anchorY = preset.anchorY,
+            horizontalAnchor = preset.horizontalAnchor,
+            verticalAnchor = preset.verticalAnchor,
+            offsetX = newOffsetX,
+            offsetY = newOffsetY,
+        )
+    }
+
+    private fun computeGridGeometry(menu: ContextMenu): GridGeometry {
+        val rectLeft = menu.originX + GRID_MARGIN_H
+        val rectTop = menu.originY + GRID_MARGIN_V
+        val rectRight = menu.originX + menu.width - GRID_MARGIN_H
+        val rectBottom = menu.originY + menu.gridHeight - GRID_MARGIN_V
+        return GridGeometry(rectLeft, rectTop, rectRight, rectBottom)
+    }
+
+    private fun drawAnchorGrid(
+        context: GuiGraphics,
+        menu: ContextMenu,
+        mouseX: Int,
+        mouseY: Int,
+    ) {
+        val geom = computeGridGeometry(menu)
+        val frameColor = 0xFF555555.toInt()
+        val accentColor = 0xFF3B82F6.toInt()
+        val dimDot = 0xFF777777.toInt()
+        val brightDot = 0xFFEEEEEE.toInt()
+        val cellHover = 0x33FFFFFF.toInt()
+
+        // Screen-shaped frame (1-px outline).
+        context.fill(geom.rectLeft, geom.rectTop, geom.rectRight, geom.rectTop + 1, frameColor)
+        context.fill(geom.rectLeft, geom.rectBottom - 1, geom.rectRight, geom.rectBottom, frameColor)
+        context.fill(geom.rectLeft, geom.rectTop, geom.rectLeft + 1, geom.rectBottom, frameColor)
+        context.fill(geom.rectRight - 1, geom.rectTop, geom.rectRight, geom.rectBottom, frameColor)
+
+        val element =
+            GuiLayoutManager.getElements().firstOrNull { it.id == menu.elementId } as?
+                com.soulreturns.gui.lib.SoulHudElement
+        val presets = anchorGridPresets()
+        val hoveredIdx = geom.cellIndexAt(mouseX, mouseY)
+        val currentIdx =
+            if (element != null) {
+                presets.indexOfFirst {
+                    it.horizontalAnchor == element.horizontalAnchor &&
+                        it.verticalAnchor == element.verticalAnchor
+                }
+            } else {
+                -1
+            }
+
+        for (i in 0..8) {
+            val col = i % 3
+            val row = i / 3
+            val cellLeft = geom.rectLeft + col * geom.cellW
+            val cellTop = geom.rectTop + row * geom.cellH
+            val cellRight = if (col == 2) geom.rectRight else cellLeft + geom.cellW
+            val cellBottom = if (row == 2) geom.rectBottom else cellTop + geom.cellH
+            val isHovered = i == hoveredIdx
+            val isCurrent = i == currentIdx
+            if (isHovered) {
+                context.fill(cellLeft + 1, cellTop + 1, cellRight - 1, cellBottom - 1, cellHover)
+            }
+            val (dotCx, dotCy) = geom.dotCenter(i)
+            val dotSize = if (isCurrent || isHovered) 8 else 6
+            val dotColor =
+                when {
+                    isCurrent -> accentColor
+                    isHovered -> brightDot
+                    else -> dimDot
+                }
+            val half = dotSize / 2
+            context.fill(dotCx - half, dotCy - half, dotCx + half, dotCy + half, dotColor)
+        }
+    }
+
     override fun mouseClicked(
         click: net.minecraft.client.input.MouseButtonEvent,
         doubled: Boolean
@@ -506,36 +909,50 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val mouseYInt = click.y.toInt()
         val isRightClick = click.button() == 1
 
-        // Context menu is modal: while open, all clicks land here first.
-        contextMenu?.let { menu ->
-            val items = buildContextMenuItems(menu.elementId)
-            val ih = menu.itemHeight
-            val withinX = mouseXInt >= menu.originX && mouseXInt < menu.originX + menu.width
-            val withinY = mouseYInt >= menu.originY && mouseYInt < menu.originY + ih * items.size
-            if (withinX && withinY) {
-                val idx = (mouseYInt - menu.originY) / ih
-                val item = items.getOrNull(idx)
-                if (item != null) {
-                    item.anchorPreset?.let { preset ->
-                        GuiLayoutManager.updateSoulHudAnchor(
-                            id = menu.elementId,
-                            anchorX = preset.anchorX,
-                            anchorY = preset.anchorY,
-                            horizontalAnchor = preset.horizontalAnchor,
-                            verticalAnchor = preset.verticalAnchor,
-                        )
-                    }
-                    item.action?.invoke(menu.elementId)
-                }
-            }
-            contextMenu = null
+        // Help dialog is modal: route ALL clicks to SoulInput so the close button + scrim
+        // dismiss work. Legacy edit logic is fully blocked until the dialog is closed.
+        if (showHelpDialog) {
+            SoulInput.queueClick(click.x.toFloat(), click.y.toFloat())
             return true
         }
 
-        // First, check if the reset button was clicked; if so, clear the layout
-        // back to defaults and skip element selection/dragging.
-        if (isOverResetButton(mouseXInt, mouseYInt)) {
-            resetLayoutToDefaults()
+        // Soul UI top-right button strip: any click in its small region goes through
+        // SoulInput rather than the legacy editor flow (no selection/drag side-effects).
+        // Bounds match the scaled PIP rect computed in render() — `BTN_PANEL_*` are in
+        // composable units, multiplied by `pipScale` to land in screen-space.
+        val actualGuiScale = Minecraft.getInstance().window.guiScale.toFloat().coerceAtLeast(0.5f)
+        val pipScale = SoulScreen.TARGET_GUI_SCALE / actualGuiScale
+        val screenW = (BTN_PANEL_W * pipScale).toInt().coerceAtLeast(1)
+        val screenH = (BTN_PANEL_H * pipScale).toInt().coerceAtLeast(1)
+        val bx = width - screenW - BTN_PANEL_MARGIN
+        val by = BTN_PANEL_MARGIN
+        if (mouseXInt in bx..(bx + screenW - 1) && mouseYInt in by..(by + screenH - 1)) {
+            SoulInput.queueClick(click.x.toFloat(), click.y.toFloat())
+            return true
+        }
+
+        // Context menu is modal: while open, all clicks land here first.
+        contextMenu?.let { menu ->
+            // Anchor-grid hit-test first — covers the top `menu.gridHeight` strip.
+            val geom = computeGridGeometry(menu)
+            val gridIdx = geom.cellIndexAt(mouseXInt, mouseYInt)
+            if (gridIdx in 0..8) {
+                val preset = anchorGridPresets()[gridIdx]
+                applyAnchorPreservingPosition(menu.elementId, preset)
+                contextMenu = null
+                return true
+            }
+            // Per-HUD toggle / Settings rows live below the grid section.
+            val items = buildContextMenuItems(menu.elementId)
+            val itemsTop = menu.originY + menu.gridHeight
+            val ih = menu.itemHeight
+            val withinX = mouseXInt >= menu.originX && mouseXInt < menu.originX + menu.width
+            val withinY = mouseYInt >= itemsTop && mouseYInt < itemsTop + ih * items.size
+            if (withinX && withinY) {
+                val idx = (mouseYInt - itemsTop) / ih
+                items.getOrNull(idx)?.action?.invoke(menu.elementId)
+            }
+            contextMenu = null
             return true
         }
 
@@ -547,20 +964,20 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
             val hit = hitId?.let { id -> GuiLayoutManager.getElements().firstOrNull { it.id == id } }
             if (hit is com.soulreturns.gui.lib.SoulHudElement) {
                 editState = EditState(selectedElementId = hit.id)
-                // Clamp the menu to stay on-screen. Item count comes from a freshly-built
-                // list because toggle items can change label width per-element.
-                val menuWidth = 160
-                val itemHeight = 14
-                val totalHeight = itemHeight * buildContextMenuItems(hit.id).size
-                val ox = mouseXInt.coerceAtMost(width - menuWidth - 2).coerceAtLeast(2)
+                // Clamp the menu to stay on-screen. Total height = grid section + per-HUD
+                // toggle rows; item count is freshly built because toggle labels can change.
+                val itemCount = buildContextMenuItems(hit.id).size
+                val totalHeight = CTX_GRID_HEIGHT + CTX_ITEM_HEIGHT * itemCount
+                val ox = mouseXInt.coerceAtMost(width - CTX_MENU_WIDTH - 2).coerceAtLeast(2)
                 val oy = mouseYInt.coerceAtMost(height - totalHeight - 2).coerceAtLeast(2)
                 contextMenu =
                     ContextMenu(
                         elementId = hit.id,
                         originX = ox,
                         originY = oy,
-                        itemHeight = itemHeight,
-                        width = menuWidth,
+                        itemHeight = CTX_ITEM_HEIGHT,
+                        width = CTX_MENU_WIDTH,
+                        gridHeight = CTX_GRID_HEIGHT,
                     )
                 return true
             }
@@ -583,6 +1000,7 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         offsetX: Double,
         offsetY: Double
     ): Boolean {
+        if (showHelpDialog) return false
         // Right-button drags + drags while the context menu is up shouldn't move elements.
         if (click.button() != 0) return super.mouseDragged(click, offsetX, offsetY)
         if (contextMenu != null) return super.mouseDragged(click, offsetX, offsetY)
@@ -609,6 +1027,10 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
     }
 
     override fun mouseReleased(click: net.minecraft.client.input.MouseButtonEvent): Boolean {
+        if (showHelpDialog) {
+            SoulInput.queueRelease()
+            return true
+        }
         if (editState.isDragging) {
             editState = GuiEditSession.endDrag(editState)
             return true
@@ -622,6 +1044,8 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         horizontalAmount: Double,
         verticalAmount: Double
     ): Boolean {
+        // Block legacy HUD-scaling scroll while the help dialog is open.
+        if (showHelpDialog) return true
         if (verticalAmount == 0.0) return super.mouseScrolled(mouseX, mouseY, horizontalAmount, verticalAmount)
 
         val client = Minecraft.getInstance()
@@ -636,49 +1060,18 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         return true
     }
 
+    override fun keyPressed(keyEvent: net.minecraft.client.input.KeyEvent): Boolean {
+        if (showHelpDialog && keyEvent.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            showHelpDialog = false
+            return true
+        }
+        return super.keyPressed(keyEvent)
+    }
+
     override fun onClose() {
         // Persist layout changes when leaving edit mode
         GuiLayoutManager.save()
         super.onClose()
-    }
-
-    private fun drawResetButton(
-        context: GuiGraphics,
-        mouseX: Int,
-        mouseY: Int
-    ) {
-        val textRenderer = Minecraft.getInstance().font
-        val padding = 6
-        val buttonHeight = 18
-        val label = "Reset HUD"
-        val labelWidth = textRenderer.width(label)
-        val buttonWidth = labelWidth + padding * 2
-        val x = width - buttonWidth - padding
-        val y = padding
-
-        val hovered = mouseX >= x && mouseX <= x + buttonWidth && mouseY >= y && mouseY <= y + buttonHeight
-        val backgroundColor = if (hovered) 0x80000000.toInt() else 0x60000000.toInt()
-        val borderColor = if (hovered) 0xFFFFFFFF.toInt() else 0x80FFFFFF.toInt()
-
-        // Store bounds for click handling
-        resetButtonBounds = ButtonBounds(x, y, buttonWidth, buttonHeight)
-
-        // Border
-        context.fill(x - 1, y - 1, x + buttonWidth + 1, y + buttonHeight + 1, borderColor)
-        // Background
-        context.fill(x, y, x + buttonWidth, y + buttonHeight, backgroundColor)
-
-        val textX = x + padding
-        val textY = y + (buttonHeight - textRenderer.lineHeight) / 2
-        context.drawString(textRenderer, label, textX, textY, 0xFFFFFFFF.toInt(), false)
-    }
-
-    private fun isOverResetButton(
-        mouseX: Int,
-        mouseY: Int
-    ): Boolean {
-        val b = resetButtonBounds ?: return false
-        return mouseX >= b.x && mouseX <= b.x + b.width && mouseY >= b.y && mouseY <= b.y + b.height
     }
 
     private fun resetLayoutToDefaults() {

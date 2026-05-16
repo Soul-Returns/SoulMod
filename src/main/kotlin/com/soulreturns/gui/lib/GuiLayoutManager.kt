@@ -162,6 +162,8 @@ object GuiLayoutManager {
         anchorY: Double,
         horizontalAnchor: HudHorizontalAnchor,
         verticalAnchor: HudVerticalAnchor,
+        offsetX: Int = 0,
+        offsetY: Int = 0,
     ) {
         currentLayout =
             currentLayout.copy(
@@ -172,8 +174,8 @@ object GuiLayoutManager {
                         element.copy(
                             anchorX = anchorX,
                             anchorY = anchorY,
-                            offsetX = 0,
-                            offsetY = 0,
+                            offsetX = offsetX,
+                            offsetY = offsetY,
                             horizontalAnchor = horizontalAnchor,
                             verticalAnchor = verticalAnchor,
                         )

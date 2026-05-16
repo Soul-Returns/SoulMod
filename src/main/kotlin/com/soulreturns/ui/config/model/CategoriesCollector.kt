@@ -36,8 +36,18 @@ internal object CategoriesCollector {
                 if (idx < 0) maxOrderIdx else idx
             }
             .map { (catId, groups) ->
+                val order = ConfigSections.subcategoryOrder[catId]
+                val orderedEntries =
+                    if (order != null) {
+                        groups.entries.sortedBy {
+                            val idx = order.indexOf(it.key)
+                            if (idx < 0) Int.MAX_VALUE else idx
+                        }
+                    } else {
+                        groups.entries.toList()
+                    }
                 val subs =
-                    groups.entries.map { (subId, options) ->
+                    orderedEntries.map { (subId, options) ->
                         SubcategoryEntry(
                             catId = catId,
                             subId = subId,

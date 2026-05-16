@@ -3,6 +3,7 @@
   "text.config.soul/config.search": "Search",
 
   "text.config.soul/config.category.general": "General",
+  "text.config.soul/config.group.general.welcome": "Welcome",
   "text.config.soul/config.category.render": "Render",
   "text.config.soul/config.category.fishing": "Fishing",
   "text.config.soul/config.category.mining": "Mining",

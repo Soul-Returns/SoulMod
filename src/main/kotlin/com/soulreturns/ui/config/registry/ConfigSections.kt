@@ -152,12 +152,30 @@ internal object ConfigSections {
     /** Subcategories without backing config fields. Entries appear in the sidebar via translation keys. */
     val virtualSubs: Map<String, List<String>> =
         mapOf(
+            // Welcome is a fully custom landing page — see SoulConfigScreen.HomePage(). It
+            // lives under `general` (rather than its own category) and `subcategoryOrder`
+            // pins it to the top of general's sub-list.
+            "general" to listOf("welcome"),
             "farming" to listOf("pestFarming"),
             "dev" to listOf("config"),
             // About → Used Software has zero owo-config-backed fields, so `forEachOption`
             // in CategoriesCollector never adds the category. Virtual-sub registration is
             // what brings it into the sidebar; all rows below come from `actionRows`.
             "about" to listOf("usedSoftware"),
+        )
+
+    /**
+     * Explicit subcategory sort order within a category. Subs listed here come out in this
+     * order; unlisted subs (real or virtual) fall to the end in original (model / virtualSubs)
+     * order. Use this when a virtual sub needs to appear *before* the natural model-order
+     * subs (default behavior is virtual-last because [CategoriesCollector] injects virtual
+     * subs after walking the wrapper).
+     */
+    val subcategoryOrder: Map<String, List<String>> =
+        mapOf(
+            // Welcome sits above the real `general.ui` / `general.fixes` subs so it's the
+            // first thing a user sees when /soul config opens.
+            "general" to listOf("welcome"),
         )
 
     /** Explicit category sort order. Categories not listed here fall to the end in their original order. */

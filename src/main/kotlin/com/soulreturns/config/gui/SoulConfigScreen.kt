@@ -639,6 +639,13 @@ class SoulConfigScreen(
 
     @SoulComposable
     private fun Body() {
+        // Welcome is a fully custom landing page under General — no option/action/link
+        // iteration. Branches before the regular path so the empty-options short-circuit
+        // doesn't fire on it.
+        if (activeCategory == "general" && activeSubcategory == "welcome") {
+            HomePage()
+            return
+        }
         val visible = filteredCategories()
         val cat = visible.firstOrNull { it.id == activeCategory }
         if (cat == null) {
@@ -666,6 +673,113 @@ class SoulConfigScreen(
             BuildSections(sub, options)
             if (!actions.isNullOrEmpty()) ActionSection(sub.displayName.string, actions)
             if (!links.isNullOrEmpty()) LinkSection(sub.displayName.string, links)
+        }
+    }
+
+    // ────────────────────────────────────── home page ────────────────────────────────────
+
+    @SoulComposable
+    private fun HomePage() {
+        Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 14f) {
+            Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 4f) {
+                Text(
+                    text = "Welcome to Soul",
+                    size = SoulTheme.typography.title.size,
+                    color = SoulTheme.colors.accent,
+                    font = SoulTheme.typography.title.font,
+                )
+                Text(
+                    text = "A client-side companion mod for Hypixel SkyBlock.",
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.textDim,
+                    font = SoulTheme.typography.body.font,
+                )
+            }
+
+            HomeSection("Features") {
+                HomeFeature("Fishing", "Sea-creature tracker, double hooks, Bobbin & Legion HUDs.")
+                HomeFeature("Garden", "Seasoning tracker with milestone targets and per-hour rate.")
+                HomeFeature("Mining", "Mineshaft corpse alerts, Littlefoot ping + waypoint share.")
+                HomeFeature("Items", "Highlight pest gear, farming tools, and custom items.")
+                HomeFeature("Profile Viewer", "Type /spv <username> to inspect any SkyBlock profile.")
+                HomeFeature("Cloud Sync", "Your config, HUD layout, and stats follow you across PCs.")
+            }
+
+            HomeSection("Getting Started") {
+                HomeBullet("Use the sidebar to configure each feature.")
+                HomeBullet("Press Move GUI (bottom-left) to position HUD elements.")
+                HomeBullet("Right-click a HUD in edit mode for anchor, font, and shortcut settings.")
+                HomeBullet("Hover any setting for a tooltip explaining what it does.")
+                HomeBullet("Run /soul gui in chat to open the HUD editor anytime.")
+            }
+        }
+    }
+
+    @SoulComposable
+    private fun HomeSection(
+        label: String,
+        content: @SoulComposable () -> Unit,
+    ) {
+        SectionLabel(label)
+        Surface(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            color = SoulTheme.colors.panelInset,
+            radius = SoulTheme.dimens.radiusMedium,
+            padding = 10f,
+        ) {
+            Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f, content = content)
+        }
+    }
+
+    @SoulComposable
+    private fun HomeFeature(
+        title: String,
+        description: String,
+    ) {
+        // Two-column row: fixed-width title on the left so descriptions line up cleanly,
+        // dim description on the right. Vertical alignment Top so multi-line descriptions
+        // wrap relative to the title baseline rather than vertically recentering.
+        Row(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            verticalAlignment = VerticalAlignment.Top,
+            gap = 10f,
+        ) {
+            Box(modifier = SoulModifier.Empty.width(110f)) {
+                Text(
+                    text = title,
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.text,
+                    font = SoulTheme.typography.heading.font,
+                )
+            }
+            Text(
+                text = description,
+                size = SoulTheme.typography.body.size,
+                color = SoulTheme.colors.textDim,
+                font = SoulTheme.typography.body.font,
+            )
+        }
+    }
+
+    @SoulComposable
+    private fun HomeBullet(text: String) {
+        Row(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            verticalAlignment = VerticalAlignment.Top,
+            gap = 8f,
+        ) {
+            Text(
+                text = "•",
+                size = SoulTheme.typography.body.size,
+                color = SoulTheme.colors.accent,
+                font = SoulTheme.typography.body.font,
+            )
+            Text(
+                text = text,
+                size = SoulTheme.typography.body.size,
+                color = SoulTheme.colors.text,
+                font = SoulTheme.typography.body.font,
+            )
         }
     }
 
