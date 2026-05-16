@@ -188,34 +188,38 @@ object SoulHud {
     }
 
     /**
-     * Effective "show panel background" for [id]. Combines the global
-     * `cfg.general.ui.hudBackground` master switch with the per-HUD override stored on
-     * the [SoulHudElement] (`null` = follow global; `true` / `false` = explicit override).
-     * Formula: `global && (perHud ?: true)` — global is the master, per-HUD can only opt
-     * OUT when global is on. Called from each HUD's `Content()` to pick the Surface color.
+     * Effective "show panel background" for [id]. Per-HUD override wins unconditionally
+     * when set: `perHud ?: global`. `null` falls back to the global master toggle; an
+     * explicit `true` / `false` always wins regardless of the global value. Used by HUD
+     * `Content()` to pick the Surface color, and surfaced to the user via the right-click
+     * context menu (which shows a marker when the per-HUD value isn't `null`).
+     *
+     * To clear all per-HUD overrides at once (e.g. after toggling the global off and
+     * wanting it to actually take effect everywhere), use the
+     * `Reset per HUD settings (Background)` button under `General → UI` — that path
+     * walks every `SoulHudElement` and writes `showBackground = null`.
      */
     fun shouldDrawBackground(id: String): Boolean {
-        if (!cfg.general.ui.hudBackground()) return false
         val element =
             GuiLayoutManager.getLayout().elements.firstOrNull {
                 it is SoulHudElement && it.id == id
-            } as? SoulHudElement ?: return true
-        return element.showBackground ?: true
+            } as? SoulHudElement
+        element?.showBackground?.let { return it }
+        return cfg.general.ui.hudBackground()
     }
 
     /**
-     * Effective "use Minecraft font for this HUD's text" for [id]. Same global-wins rule
-     * as [shouldDrawBackground]. Currently consulted by future text-routing work — Text
-     * composables still render via the NanoVG path regardless until the parallel
-     * Mojang-font rendering pipeline lands.
+     * Effective "use Minecraft font for this HUD's text" for [id]. Per-HUD wins
+     * unconditionally when set — same `perHud ?: global` rule as [shouldDrawBackground].
+     * Reset via `General → UI → Reset per HUD settings (Font)`.
      */
     fun shouldUseMinecraftFont(id: String): Boolean {
-        if (!cfg.general.ui.useMinecraftFont()) return false
         val element =
             GuiLayoutManager.getLayout().elements.firstOrNull {
                 it is SoulHudElement && it.id == id
-            } as? SoulHudElement ?: return true
-        return element.useMinecraftFont ?: true
+            } as? SoulHudElement
+        element?.useMinecraftFont?.let { return it }
+        return cfg.general.ui.useMinecraftFont()
     }
 
     /** Effective "draw text shadow" for [id]. Global-wins rule, see [shouldDrawBackground]. */
@@ -248,11 +252,18 @@ object SoulHud {
      * Base multiplier applied to the user's `cfg.ui.globalScale` slider value before it
      * factors into a HUD's effective scale. The slider's stored range stays 0.5–2.0 (and
      * its default stays 1.0) so the config UX is unchanged, but the *on-screen* range
-     * shifts up to 0.75–3.0 with the default rendering at 1.5×. The earlier 1.0 baseline
+     * shifts up to ~0.83–3.3 with the default rendering at 1.65×. The earlier 1.0 baseline
      * read too small at common GUI Scale + display-DPI combinations; users were having to
      * hand-bump globalScale or per-HUD scales every install to get readable HUDs.
+     *
+     * 1.65 = 1.5 × 1.1, i.e. one extra `/soul gui` scroll-wheel click above the previous
+     * default. Bumped here because the previous 1.5 still felt slightly small at common
+     * setups, and the scroll step (`adjustScale`'s `× 1.1` per click) makes 1.65 the next
+     * natural notch. Per-HUD scale = 1.0 (the registered default) plus globalScale = 1.0
+     * (the slider default) now produces the same on-screen size that previously required
+     * one extra scroll click on each HUD.
      */
-    private const val BASE_GLOBAL_SCALE = 1.5f
+    private const val BASE_GLOBAL_SCALE = 1.65f
 
     /**
      * Effective on-screen scale for a SoulHud element with the given per-element [scale].
@@ -282,6 +293,113 @@ object SoulHud {
         scale: Float,
     ) {
         val effectiveScale = effectiveScaleFor(scale)
+        val useMcFont = shouldUseMinecraftFont(id)
+
+        // When the HUD wants Mojang's font, we need each text glyph drawn via
+        // `GuiGraphics.drawString` so resource-pack font overrides apply. The NVG block
+        // runs DEFERRED inside Mojang's PIP render pass — we can't queue more
+        // `GuiRenderState` commands from there. So we pre-compose the tree synchronously
+        // here, walk it to collect each TextNode's screen-space position, then reuse the
+        // same tree inside the NVG block (no double compose). The Mojang text dispatch
+        // runs AFTER the `NvgFrame.submit` call below — that places the text commands
+        // AFTER the PIP command in the GuiRenderState, so Mojang processes them in order:
+        // PIP composites the panel + shapes, then text renders on top.
+        //
+        // `SoulInput.currentHudId` is set during the pre-pass too so `Text.measure` picks
+        // up Mojang width / `Text.drawSelf` skips the NVG glyph path — matching exactly
+        // what the in-block draw will see.
+        val preBuiltTree: com.soulreturns.ui.composer.SoulNode?
+        val mojangTexts: List<MojangTextEntry>
+        val occlusionsScreen: List<com.soulreturns.ui.composer.ClipRect>
+        if (useMcFont) {
+            val collected = mutableListOf<MojangTextEntry>()
+            val occlusions = mutableListOf<com.soulreturns.ui.composer.ClipRect>()
+            // Save / restore the previous values — multiple HUDs render per frame, and other
+            // panels' state must not leak into this HUD's pre-pass. `panelWidth/Height` are
+            // needed so `MultiSelectDropdownNode.emitOcclusions` → `computePopupY` picks the
+            // same open-above-vs-below side the in-block popup draw will use.
+            val prevHudId = com.soulreturns.ui.input.SoulInput.currentHudId
+            val prevScale = com.soulreturns.ui.input.SoulInput.panelScale
+            val prevPanelW = com.soulreturns.ui.input.SoulInput.panelWidth
+            val prevPanelH = com.soulreturns.ui.input.SoulInput.panelHeight
+            com.soulreturns.ui.input.SoulInput.currentHudId = id
+            com.soulreturns.ui.input.SoulInput.panelScale = effectiveScale
+            com.soulreturns.ui.input.SoulInput.panelWidth = entry.width.toFloat()
+            com.soulreturns.ui.input.SoulInput.panelHeight = entry.height.toFloat()
+            val tree =
+                try {
+                    val built =
+                        SoulComposer.create().build {
+                            entry.content()
+                        }
+                    built.measure(
+                        com.soulreturns.ui.composer.SoulConstraints(
+                            maxWidth = entry.width.toFloat(),
+                            maxHeight = entry.height.toFloat(),
+                        ),
+                    )
+                    built.walk(0f, 0f) { node, nx, ny, clip ->
+                        // Any node implementing `MojangTextEmitter` can emit one-or-more
+                        // pieces of text — `TextNode` emits its single string, `TabsNode`
+                        // emits one per tab label, `DropdownNode` emits its trigger label.
+                        // Popup option labels in Dropdown go through `SoulInput.queueOverlay`
+                        // and aren't reachable from this walker; they remain NVG-rendered.
+                        val emitter = node as? com.soulreturns.ui.composer.MojangTextEmitter
+                            ?: return@walk
+                        // Convert panel-local clip to screen-space — GuiGraphics scissor
+                        // coords are in GUI-logical pixels (same coord system GuiGraphics.fill
+                        // etc. use).
+                        val screenClip =
+                            clip?.let {
+                                com.soulreturns.ui.composer.ClipRect(
+                                    x = x.toFloat() + it.x * effectiveScale,
+                                    y = y.toFloat() + it.y * effectiveScale,
+                                    width = it.width * effectiveScale,
+                                    height = it.height * effectiveScale,
+                                )
+                            }
+                        emitter.emitMojangTexts(nx, ny, clip) { spec ->
+                            collected.add(
+                                MojangTextEntry(
+                                    text = spec.text,
+                                    screenX = x.toFloat() + spec.x * effectiveScale,
+                                    screenY = y.toFloat() + spec.y * effectiveScale,
+                                    size = spec.size,
+                                    color = spec.color,
+                                    scale = effectiveScale,
+                                    clip = screenClip,
+                                ),
+                            )
+                        }
+                        // Occlusion bounds — e.g. the open dropdown popup. Convert from
+                        // panel-local to screen-space so the dispatcher can filter by
+                        // simple containment without re-running the math.
+                        emitter.emitOcclusions(nx, ny) { rect ->
+                            occlusions.add(
+                                com.soulreturns.ui.composer.ClipRect(
+                                    x = x.toFloat() + rect.x * effectiveScale,
+                                    y = y.toFloat() + rect.y * effectiveScale,
+                                    width = rect.width * effectiveScale,
+                                    height = rect.height * effectiveScale,
+                                ),
+                            )
+                        }
+                    }
+                    built
+                } finally {
+                    com.soulreturns.ui.input.SoulInput.currentHudId = prevHudId
+                    com.soulreturns.ui.input.SoulInput.panelScale = prevScale
+                    com.soulreturns.ui.input.SoulInput.panelWidth = prevPanelW
+                    com.soulreturns.ui.input.SoulInput.panelHeight = prevPanelH
+                }
+            preBuiltTree = tree
+            mojangTexts = collected
+            occlusionsScreen = occlusions
+        } else {
+            preBuiltTree = null
+            mojangTexts = emptyList()
+            occlusionsScreen = emptyList()
+        }
 
         // NvgFrame.submit handles the PIP-size and nvgScale plumbing; we just pass intrinsic
         // (entry.width, entry.height) and the scale. Composables draw at intrinsic bounds;
@@ -294,9 +412,10 @@ object SoulHud {
         // HUD anymore).
         NvgFrame.submit(context, x, y, entry.width, entry.height, scale = effectiveScale, hudId = id) {
             val root =
-                SoulComposer.create().build {
-                    entry.content()
-                }
+                preBuiltTree
+                    ?: SoulComposer.create().build {
+                        entry.content()
+                    }
             root.draw(
                 0f,
                 0f,
@@ -310,7 +429,83 @@ object SoulHud {
             // the registered (width, height) is a max bound; most HUDs render smaller.
             root.measured?.let { m -> SoulHudRegistry.recordMeasured(id, m.width, m.height) }
         }
+
+        // Dispatch Mojang text AFTER the PIP submission so text composites on top of the
+        // panel's NVG content. `Minecraft.font` is the live font instance — resource-pack
+        // overrides are picked up automatically (no caching here).
+        if (useMcFont && mojangTexts.isNotEmpty()) {
+            val font = Minecraft.getInstance().font
+            val withShadow = shouldDrawTextShadow(id)
+            val pose = context.pose()
+            for (mt in mojangTexts) {
+                // Skip any text whose bounding box intersects an occluding region —
+                // currently the open dropdown popup. Bbox intersection (not just
+                // origin-inside-popup) is required because text isn't always pinned to
+                // a corner: a `centerLabel` Button like Reset Session has its label
+                // origin to the LEFT of its center, so the origin can sit outside the
+                // popup while the text glyphs extend INTO the popup. Origin-only check
+                // missed those and the half-overlapped text bled across the popup.
+                //
+                // Width = `font.width × mcScale` (matches the eventual drawString output);
+                // height = `size × panelScale` (Mojang's native 9-pixel cap height × the
+                // post-`pose.scale` factor that follows below).
+                val mcTextW = font.width(mt.text).toFloat() * (mt.size * mt.scale / MC_NATIVE_LINE_HEIGHT)
+                val mcTextH = mt.size * mt.scale
+                val textRight = mt.screenX + mcTextW
+                val textBottom = mt.screenY + mcTextH
+                val occluded =
+                    occlusionsScreen.any { r ->
+                        textRight > r.x && mt.screenX < r.x + r.width &&
+                            textBottom > r.y && mt.screenY < r.y + r.height
+                    }
+                if (occluded) continue
+                // Mojang's text natively renders at ~9-pixel line height. To make a Text
+                // composable with `size = N` and panel scale = S occupy roughly the same
+                // screen-pixel height as the equivalent NVG draw, scale Mojang's output by
+                // `(N × S) / 9` — applied via the GuiGraphics matrix stack around the draw.
+                val mcScale = mt.size * mt.scale / MC_NATIVE_LINE_HEIGHT
+                // ScrollableList (and any future clipping container) records the panel-
+                // local viewport during the walk, which the renderOne pre-pass converted
+                // to screen space. Apply it via GuiGraphics' scissor stack — Mojang's
+                // text renderer ignores NVG's scissor, so without this rows scrolled past
+                // the viewport leak past the panel's bottom edge.
+                val clip = mt.clip
+                if (clip != null) {
+                    context.enableScissor(
+                        clip.x.toInt(),
+                        clip.y.toInt(),
+                        (clip.x + clip.width).toInt(),
+                        (clip.y + clip.height).toInt(),
+                    )
+                }
+                pose.pushMatrix()
+                pose.translate(mt.screenX, mt.screenY)
+                pose.scale(mcScale, mcScale)
+                context.drawString(font, mt.text, 0, 0, mt.color, withShadow)
+                pose.popMatrix()
+                if (clip != null) context.disableScissor()
+            }
+        }
     }
+
+    /**
+     * Snapshot of a `TextNode` collected during `SoulHud.renderOne`'s synchronous pre-pass,
+     * carrying everything the post-PIP dispatch needs to call `GuiGraphics.drawString` at
+     * the right place + scale. [clip] is the screen-space viewport this text must be
+     * clipped to (e.g. inherited from a `ScrollableList` ancestor); null when no clip is
+     * active.
+     */
+    private data class MojangTextEntry(
+        val text: String,
+        val screenX: Float,
+        val screenY: Float,
+        val size: Float,
+        val color: Int,
+        val scale: Float,
+        val clip: com.soulreturns.ui.composer.ClipRect?,
+    )
+
+    private const val MC_NATIVE_LINE_HEIGHT = 9f
 
     private fun ensureLayoutElement(
         id: String,

@@ -88,8 +88,14 @@ object GuiEditSession {
     }
 
     /**
-     * Update drag: compute new anchor/offset based on mouse delta and apply to
-     * the selected element via GuiLayoutManager.
+     * Update drag: move the element by the mouse delta in **pixels**, applied to
+     * `offsetX/Y`. `anchorX/Y` stays at whatever the user chose via the right-click
+     * anchor-grid preset (edge or center) — the anchor is the conceptual "where this HUD
+     * is glued to the screen edge", and dragging just changes its distance from that
+     * edge. The previous behaviour translated drag into `anchorX` changes, which broke
+     * for HUDs that had been pinned to an edge (anchor at 0 or 1 with offset filling in
+     * the visible position): the drag would clamp the anchor at the edge fraction and
+     * the offset stayed fixed, so the HUD couldn't actually move past its current spot.
      */
     fun updateDrag(
         state: EditState,
@@ -103,19 +109,12 @@ object GuiEditSession {
         val dx = mouseX - state.dragStartScreenX
         val dy = mouseY - state.dragStartScreenY
 
-        // Convert delta in pixels to deltas in normalized anchor space.
-        val deltaAnchorX = dx.toDouble() / ctx.screenWidth.toDouble()
-        val deltaAnchorY = dy.toDouble() / ctx.screenHeight.toDouble()
-
-        val newAnchorX = (state.originalAnchorX + deltaAnchorX).coerceIn(0.0, 1.0)
-        val newAnchorY = (state.originalAnchorY + deltaAnchorY).coerceIn(0.0, 1.0)
-
         GuiLayoutManager.updateElementPosition(
             id = elementId,
-            anchorX = newAnchorX,
-            anchorY = newAnchorY,
-            offsetX = state.originalOffsetX,
-            offsetY = state.originalOffsetY,
+            anchorX = state.originalAnchorX,
+            anchorY = state.originalAnchorY,
+            offsetX = state.originalOffsetX + dx,
+            offsetY = state.originalOffsetY + dy,
         )
 
         return state

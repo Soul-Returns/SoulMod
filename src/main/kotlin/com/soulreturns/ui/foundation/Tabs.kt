@@ -55,7 +55,8 @@ internal class TabsNode(
     private val onSelect: (Int) -> Unit,
     private val keyPrefix: Any,
     override val modifier: SoulModifier,
-) : SoulNode() {
+) : SoulNode(),
+    com.soulreturns.ui.composer.MojangTextEmitter {
     companion object {
         // Match `Button`'s overall geometry exactly: `Surface(padding = paddingSmall = 8f)`
         // wraps `Box(padding(horizontal = 2f))` wraps body-text. So total height = font + 16,
@@ -107,6 +108,13 @@ internal class TabsNode(
         depth: Int,
     ) {
         val m = measured ?: return
+        // If this Tabs sits inside a HUD with `useMinecraftFont` on, the label glyphs are
+        // dispatched separately via `SoulHud.renderOne`'s Mojang pipeline (see
+        // `emitMojangTexts` below) — skip the `NvgRenderer.text` call here so we don't
+        // double-render Inter underneath the Mojang glyphs.
+        val hudId = SoulInput.currentHudId
+        val skipNvgText =
+            hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldUseMinecraftFont(hudId)
         for ((i, label) in options.withIndex()) {
             val (relX, width) = tabBounds[i]
             val selected = i == selectedIndex
@@ -123,20 +131,37 @@ internal class TabsNode(
                     hovered -> SoulTheme.colors.panelHover
                     else -> 0
                 }
-            val textColor =
-                when {
-                    selected -> 0xFFFFFFFFu.toInt()
-                    hovered -> SoulTheme.colors.text
-                    else -> SoulTheme.colors.textDim
-                }
             val absX = x + relX
             if (bg != 0) NvgRenderer.rect(absX, y, width, m.height, bg, SoulTheme.dimens.radiusSmall)
 
-            val labelW = NvgRenderer.textWidth(label, FONT_SIZE, FONT)
-            val textX = absX + (width - labelW) / 2f
-            // Center the text vertically within the tab height (font size = glyph cap height).
-            val textY = y + (m.height - FONT_SIZE) / 2f
-            NvgRenderer.text(label, textX, textY, FONT_SIZE, textColor, FONT)
+            if (!skipNvgText) {
+                val textColor =
+                    when {
+                        selected -> 0xFFFFFFFFu.toInt()
+                        hovered -> SoulTheme.colors.text
+                        else -> SoulTheme.colors.textDim
+                    }
+                // Mirror the per-HUD override logic that `TextNode.drawSelf` runs: pick the
+                // bold-variant font when `shouldUseBoldFont` is true, and route through
+                // `textShadow` (with the configured multiplier) when `shouldDrawTextShadow`
+                // is true. Without this Tabs labels were always painted via the plain
+                // `NvgRenderer.text` codepath, ignoring the HUD's shadow / bold toggles.
+                val useBold =
+                    hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldUseBoldFont(hudId)
+                val effectiveFont = if (useBold) NvgRenderer.boldVariantOf(FONT) else FONT
+                val withShadow =
+                    hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldDrawTextShadow(hudId)
+                val labelW = NvgRenderer.textWidth(label, FONT_SIZE, effectiveFont)
+                val textX = absX + (width - labelW) / 2f
+                // Center the text vertically within the tab height (font size = glyph cap height).
+                val textY = y + (m.height - FONT_SIZE) / 2f
+                if (withShadow) {
+                    val mult = com.soulreturns.ui.runtime.SoulHud.hudTextShadowSize()
+                    NvgRenderer.textShadow(label, textX, textY, FONT_SIZE, textColor, effectiveFont, mult)
+                } else {
+                    NvgRenderer.text(label, textX, textY, FONT_SIZE, textColor, effectiveFont)
+                }
+            }
 
             // Per-tab hit region for hover + click routing.
             com.soulreturns.ui.input.SoulInput.recordRegion(
@@ -154,6 +179,37 @@ internal class TabsNode(
         }
         // Hover/click on the strip itself (e.g. for an outer container's clickable modifier).
         modifier.recordHitRegions(x, y, m.width, m.height, depth)
+    }
+
+    /**
+     * Emit each tab label as a `MojangTextSpec` so SoulHud's pre-pass walker can route them
+     * through Mojang's font when `useMinecraftFont` is on. Text positions mirror exactly
+     * what `drawSelf` computes — same horizontal centering, same vertical centering.
+     * Hover/selection color also mirrored so the visual matches.
+     */
+    override fun emitMojangTexts(
+        x: Float,
+        y: Float,
+        clip: com.soulreturns.ui.composer.ClipRect?,
+        emit: (com.soulreturns.ui.composer.MojangTextSpec) -> Unit,
+    ) {
+        val m = measured ?: return
+        for ((i, label) in options.withIndex()) {
+            val (relX, width) = tabBounds[i]
+            val selected = i == selectedIndex
+            val hovered = SoulInput.isHovered(TabKey(keyPrefix, i))
+            val textColor =
+                when {
+                    selected -> 0xFFFFFFFFu.toInt()
+                    hovered -> SoulTheme.colors.text
+                    else -> SoulTheme.colors.textDim
+                }
+            val labelW = NvgRenderer.textWidth(label, FONT_SIZE, FONT)
+            val absX = x + relX
+            val textX = absX + (width - labelW) / 2f
+            val textY = y + (m.height - FONT_SIZE) / 2f
+            emit(com.soulreturns.ui.composer.MojangTextSpec(label, textX, textY, FONT_SIZE, textColor))
+        }
     }
 
     private data class TabKey(val prefix: Any, val index: Int)

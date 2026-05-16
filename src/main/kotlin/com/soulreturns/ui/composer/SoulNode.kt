@@ -59,6 +59,74 @@ data class SoulMeasured(
 }
 
 /**
+ * A piece of text a [SoulNode] would draw via NanoVG, exposed to the walker so the
+ * Minecraft-font dispatch in `SoulHud` can paint it through Mojang's font instead. Position
+ * coordinates are in the same panel-local space the walker uses (`(node.x + offset.x,
+ * node.y + offset.y)`).
+ */
+data class MojangTextSpec(
+    val text: String,
+    val x: Float,
+    val y: Float,
+    val size: Float,
+    val color: Int,
+)
+
+/**
+ * Implemented by nodes that paint text directly via `NvgRenderer.text` rather than via a
+ * child [com.soulreturns.ui.foundation.TextNode] (e.g. `TabsNode`, `DropdownNode`'s trigger).
+ * The walker invokes [emitMojangTexts] with the node's computed top-left so the implementor
+ * can call `emit(...)` once per piece of text it would draw. The walker then forwards each
+ * spec to the SoulHud Minecraft-font pipeline.
+ *
+ * Implementors must ALSO skip the NanoVG `text` call in their own `drawSelf` when the
+ * containing HUD has `useMinecraftFont` on — otherwise the same string would render twice
+ * (Inter underneath, Mojang on top, with subtle misalignment).
+ */
+interface MojangTextEmitter {
+    fun emitMojangTexts(
+        x: Float,
+        y: Float,
+        clip: ClipRect?,
+        emit: (MojangTextSpec) -> Unit,
+    )
+
+    /**
+     * Emit any panel-local "occlusion" rectangles — regions where this node paints
+     * NanoVG content (e.g. an open dropdown popup) that must NOT be overlaid by the
+     * post-PIP Mojang text dispatch. The dispatcher in `SoulHud.renderOne` filters out
+     * any Mojang text whose origin falls inside an occlusion rect — without this, HUD
+     * row text would render on top of the popup since Mojang's `drawString` happens
+     * after the PIP composite. Default is no-op for nodes that don't paint occluding
+     * overlays.
+     */
+    fun emitOcclusions(
+        x: Float,
+        y: Float,
+        emit: (ClipRect) -> Unit,
+    ) {}
+}
+
+/**
+ * Axis-aligned rectangle in composable-space coordinates. Plumbed through [SoulNode.walk]
+ * by nodes that constrain their children's visible area (e.g. [com.soulreturns.ui.foundation.ScrollableList])
+ * so downstream consumers — like SoulHud's Minecraft-font dispatch — can clip non-NanoVG
+ * draws (which don't honor the NVG scissor stack) to the same viewport the NVG draw would
+ * use.
+ */
+data class ClipRect(val x: Float, val y: Float, val width: Float, val height: Float) {
+    /** Intersection with [other]; null if the rectangles don't overlap. */
+    fun intersect(other: ClipRect): ClipRect? {
+        val left = maxOf(x, other.x)
+        val top = maxOf(y, other.y)
+        val right = minOf(x + width, other.x + other.width)
+        val bottom = minOf(y + height, other.y + other.height)
+        if (right <= left || bottom <= top) return null
+        return ClipRect(left, top, right - left, bottom - top)
+    }
+}
+
+/**
  * Base class for all Soul UI tree nodes.
  *
  * The runtime produces a tree of [SoulNode] each frame by re-running the composable lambda
@@ -128,6 +196,36 @@ abstract class SoulNode {
                 SoulConstraints.fixed(child.measured?.width ?: 0f, child.measured?.height ?: 0f),
                 depth + 1,
             )
+        }
+    }
+
+    /**
+     * Read-only traversal that visits this node + every descendant at its computed
+     * composable-space position. Uses the cached `measured` child positions — call after a
+     * [measure] / [draw] pass (positions are populated during measure).
+     *
+     * Differs from [draw] in that it doesn't invoke [drawSelf] and doesn't touch NVG /
+     * hit-region state — safe to call OUTSIDE an active NanoVG frame. Used by the
+     * SoulHud Minecraft-font pipeline to harvest [com.soulreturns.ui.foundation.TextNode]
+     * positions before the NVG block runs (deferred), so the corresponding Mojang text
+     * draws can be queued in the GuiRenderState ABOVE the PIP composite.
+     *
+     * [clip] is the active panel-local clip rectangle. Nodes that introduce scissor /
+     * scroll (e.g. [com.soulreturns.ui.foundation.ScrollableList]) override this to narrow
+     * the clip and apply scroll offsets to their children's positions. Leaves and the
+     * default base impl pass the clip through unchanged.
+     */
+    open fun walk(
+        x: Float,
+        y: Float,
+        clip: ClipRect? = null,
+        visit: (node: SoulNode, x: Float, y: Float, clip: ClipRect?) -> Unit,
+    ) {
+        visit(this, x, y, clip)
+        val m = measured ?: return
+        children.forEachIndexed { i, child ->
+            val pos = m.childPositions.getOrNull(i) ?: SoulMeasured.Position(0f, 0f)
+            child.walk(x + pos.x, y + pos.y, clip, visit)
         }
     }
 }

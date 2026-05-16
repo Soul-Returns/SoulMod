@@ -147,6 +147,34 @@ internal class ScrollableListNode(
         )
     }
 
+    override fun walk(
+        x: Float,
+        y: Float,
+        clip: com.soulreturns.ui.composer.ClipRect?,
+        visit: (com.soulreturns.ui.composer.SoulNode, Float, Float, com.soulreturns.ui.composer.ClipRect?) -> Unit,
+    ) {
+        // Same shape as draw(): apply scroll offset, intersect the inherited clip with
+        // the viewport, and drop fully off-screen children. Mirroring the draw logic is
+        // critical for the Minecraft-font pipeline — its text positions must match where
+        // the NVG draw would have placed glyphs, and its scissor must match the NVG
+        // viewport so overflowing rows don't leak past the panel.
+        visit(this, x, y, clip)
+        val m = measured ?: return
+        val viewportRect = com.soulreturns.ui.composer.ClipRect(x, y, m.width, m.height)
+        val effectiveClip = clip?.intersect(viewportRect) ?: viewportRect
+        val maxScroll = (contentHeight - m.height).coerceAtLeast(0f)
+        val clampedScroll = scrollOffset.coerceIn(0f, maxScroll)
+        val viewportTop = y
+        val viewportBottom = y + m.height
+        children.forEachIndexed { i, child ->
+            val pos = m.childPositions.getOrNull(i) ?: SoulMeasured.Position(0f, 0f)
+            val childTop = y + pos.y - clampedScroll
+            val childH = child.measured?.height ?: 0f
+            if (childTop + childH < viewportTop || childTop > viewportBottom) return@forEachIndexed
+            child.walk(x + pos.x, childTop, effectiveClip, visit)
+        }
+    }
+
     override fun draw(
         x: Float,
         y: Float,

@@ -86,6 +86,27 @@ internal object ConfigSections {
      */
     val actionRows: Map<String, Map<String, List<ActionRowSpec>>> =
         mapOf(
+            // General → UI: bulk-reset buttons for the two per-HUD override fields whose
+            // resolver formula is `perHud ?: global`. Once a user has toggled a per-HUD
+            // override via /soul gui's right-click menu, the global toggle no longer
+            // affects that HUD — these buttons clear the per-HUD value on every HUD so
+            // the global takes over again.
+            "general" to
+                mapOf(
+                    "ui" to
+                        listOf(
+                            ActionRowSpec(
+                                label = "Reset per-HUD settings (HUD Background)",
+                                buttonText = "Reset",
+                                action = { resetAllHudBackgroundOverrides() },
+                            ),
+                            ActionRowSpec(
+                                label = "Reset per-HUD settings (Minecraft Font)",
+                                buttonText = "Reset",
+                                action = { resetAllHudMinecraftFontOverrides() },
+                            ),
+                        ),
+                ),
             "dev" to
                 mapOf(
                     "config" to
@@ -138,6 +159,35 @@ internal object ConfigSections {
                         ),
                 ),
         )
+
+    /**
+     * Clear every `SoulHudElement.showBackground` per-HUD override. Persist + notify the
+     * sync engine so the wipe ships to other devices on the same account. Called from the
+     * `Reset per-HUD settings (HUD Background)` action row.
+     */
+    private fun resetAllHudBackgroundOverrides() {
+        com.soulreturns.gui.lib.GuiLayoutManager.resetAllSoulHudShowBackground()
+        com.soulreturns.gui.lib.GuiLayoutManager.save()
+        try {
+            com.soulreturns.platform.sync.SyncEngine.notifyChanged(
+                com.soulreturns.platform.sync.SyncKind.GUI_LAYOUT,
+            )
+        } catch (_: Throwable) {
+            // SyncEngine not initialised / disabled — periodic scan will pick it up.
+        }
+    }
+
+    /** Same as [resetAllHudBackgroundOverrides] for the per-HUD Minecraft-font override. */
+    private fun resetAllHudMinecraftFontOverrides() {
+        com.soulreturns.gui.lib.GuiLayoutManager.resetAllSoulHudUseMinecraftFont()
+        com.soulreturns.gui.lib.GuiLayoutManager.save()
+        try {
+            com.soulreturns.platform.sync.SyncEngine.notifyChanged(
+                com.soulreturns.platform.sync.SyncKind.GUI_LAYOUT,
+            )
+        } catch (_: Throwable) {
+        }
+    }
 
     private fun openUrl(url: String) {
         try {

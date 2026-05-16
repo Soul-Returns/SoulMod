@@ -255,6 +255,38 @@ object GuiLayoutManager {
             )
     }
 
+    /**
+     * Clear `showBackground` on every [SoulHudElement] — restores every HUD's per-HUD
+     * Background override to "follow global". Backs the `Reset per HUD settings (Background)`
+     * button under `General → UI` in the config screen.
+     */
+    @Synchronized
+    fun resetAllSoulHudShowBackground() {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element !is SoulHudElement) return@map element
+                        if (element.showBackground == null) return@map element
+                        element.copy(showBackground = null)
+                    },
+            )
+    }
+
+    /** Bulk-reset analog of [resetAllSoulHudShowBackground] for the Minecraft-font override. */
+    @Synchronized
+    fun resetAllSoulHudUseMinecraftFont() {
+        currentLayout =
+            currentLayout.copy(
+                elements =
+                    currentLayout.elements.map { element ->
+                        if (element !is SoulHudElement) return@map element
+                        if (element.useMinecraftFont == null) return@map element
+                        element.copy(useMinecraftFont = null)
+                    },
+            )
+    }
+
     @Synchronized
     fun updateElementScale(
         id: GuiElementId,

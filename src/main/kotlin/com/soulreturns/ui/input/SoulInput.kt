@@ -143,30 +143,45 @@ object SoulInput {
      * the layout system measures at intrinsic sizes; the cursor (and click coords) arrive
      * in **scaled screen coords**. Hit-testing therefore divides cursor by [panelScale] to
      * line them up.
+     *
+     * `internal set` so the SoulHud Mojang-font pre-compose pass can transiently set the
+     * scale for measure-time width math — `Text.measure` reads `panelScale` to snap line
+     * heights to integer screen pixels, and the pre-pass needs the same value the in-block
+     * draw will see.
      */
     var panelScale: Float = 1f
-        private set
+        internal set
 
     /**
      * Logical (unscaled) dimensions of the current panel's PIP texture. Set by
      * `NvgFrame.submit` at frame start. Used by widgets that need to know the panel's
      * bounds — e.g. dropdown popups picking which direction to open based on which side
      * has the most panel-local room.
+     *
+     * `internal set` so the SoulHud Minecraft-font pre-compose pass can match the values
+     * the in-block draw will see — `Dropdown.computePopupY` reads `panelHeight` to decide
+     * which side of the trigger to open the popup on, and the pre-pass walker needs the
+     * same answer to compute occlusion bounds for the dispatcher.
      */
     var panelWidth: Float = 0f
-        private set
+        internal set
 
     var panelHeight: Float = 0f
-        private set
+        internal set
 
     /**
      * Id of the `SoulHud` element currently rendering, or `null` for non-HUD panels
      * (e.g. `SoulScreen` content). Read by widgets that need to apply per-HUD overrides —
      * see `SoulHud.shouldDrawTextShadow` / `shouldUseBoldFont`. Set by `NvgFrame.submit` →
      * `startFrame` so every nested composable sees the right id during its `drawSelf`.
+     *
+     * `internal set` so the SoulHud Mojang-font pre-compose pass can transiently set the
+     * id — `Text.measure` / `Text.drawSelf` both consult `currentHudId` to look up the
+     * effective `shouldUseMinecraftFont(hudId)`, and the pre-pass must match what the
+     * in-block compose will see.
      */
     var currentHudId: String? = null
-        private set
+        internal set
 
     /** Set of region keys under the cursor at end of the previous frame's [flush]. */
     var hoveredKeys: Set<Any> = emptySet()

@@ -147,14 +147,28 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val mcFontEffective = com.soulreturns.ui.runtime.SoulHud.shouldUseMinecraftFont(elementId)
         val shadowEffective = com.soulreturns.ui.runtime.SoulHud.shouldDrawTextShadow(elementId)
         val boldEffective = com.soulreturns.ui.runtime.SoulHud.shouldUseBoldFont(elementId)
+        // Per-HUD override markers — appended to the toggle's label when the element's
+        // nullable override field is set (i.e. the value differs from "follow global").
+        // Lets the user see at a glance which toggles this HUD has customised away from
+        // the master setting. Cleared via the `Reset per HUD settings (...)` buttons under
+        // General → UI in the config screen.
+        val element =
+            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
+                com.soulreturns.gui.lib.SoulHudElement
+        val bgOverride = element?.showBackground != null
+        val mcFontOverride = element?.useMinecraftFont != null
 
         return listOf(
             ContextMenuItem(
-                label = "HUD Background: ${if (bgEffective) "ON" else "OFF"}",
+                label =
+                    "HUD Background: ${if (bgEffective) "ON" else "OFF"}" +
+                        if (bgOverride) " *" else "",
                 action = { id -> toggleHudBackground(id) },
             ),
             ContextMenuItem(
-                label = "Use Minecraft Font: ${if (mcFontEffective) "ON" else "OFF"}",
+                label =
+                    "Use Minecraft Font: ${if (mcFontEffective) "ON" else "OFF"}" +
+                        if (mcFontOverride) " *" else "",
                 action = { id -> toggleUseMinecraftFont(id) },
             ),
             ContextMenuItem(
@@ -170,45 +184,42 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
     }
 
     /**
-     * Flip the per-HUD `showBackground` override. Reads the current per-HUD value
-     * (defaulting `null` → `true`), inverts it, and writes back the explicit `Boolean`.
-     * The global `cfg.general.ui.hudBackground` still has to be on for any value here
-     * to actually show a backdrop — when global is off, this just records the preference
-     * for when global flips back on.
+     * Flip the per-HUD `showBackground` override. Reads the **effective** state (the same
+     * value [com.soulreturns.ui.runtime.SoulHud.shouldDrawBackground] would return — i.e.
+     * `perHud ?: global` for the per-HUD-wins formula) and writes its inverse as the new
+     * explicit per-HUD value. Reading the effective state instead of `element.showBackground
+     * ?: true` is what makes the FIRST click flip what the user is actually looking at:
+     * when global is `false` and per-HUD is `null`, the old `?: true` fallback would
+     * compute `current = true`, store `false`, and produce no visible change because
+     * effective was already `false`.
      */
     private fun toggleHudBackground(elementId: String) {
-        val element =
-            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
-                com.soulreturns.gui.lib.SoulHudElement ?: return
-        val current = element.showBackground ?: true
-        GuiLayoutManager.updateSoulHudShowBackground(elementId, !current)
+        val effective = com.soulreturns.ui.runtime.SoulHud.shouldDrawBackground(elementId)
+        GuiLayoutManager.updateSoulHudShowBackground(elementId, !effective)
     }
 
     /** Per-HUD analog of [toggleHudBackground] for the Minecraft font override. */
     private fun toggleUseMinecraftFont(elementId: String) {
-        val element =
-            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
-                com.soulreturns.gui.lib.SoulHudElement ?: return
-        val current = element.useMinecraftFont ?: true
-        GuiLayoutManager.updateSoulHudUseMinecraftFont(elementId, !current)
+        val effective = com.soulreturns.ui.runtime.SoulHud.shouldUseMinecraftFont(elementId)
+        GuiLayoutManager.updateSoulHudUseMinecraftFont(elementId, !effective)
     }
 
-    /** Per-HUD analog of [toggleHudBackground] for the text-shadow override. */
+    /**
+     * Per-HUD analog of [toggleHudBackground] for the text-shadow override. Note: this
+     * resolver uses the global-wins formula `global && (perHud ?: true)`, so when the
+     * global toggle is OFF the per-HUD value can't bring it back ON — clicking when global
+     * is OFF stores the inverted per-HUD value, but the visible state stays OFF until the
+     * global is also turned on.
+     */
     private fun toggleUseTextShadow(elementId: String) {
-        val element =
-            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
-                com.soulreturns.gui.lib.SoulHudElement ?: return
-        val current = element.useTextShadow ?: true
-        GuiLayoutManager.updateSoulHudUseTextShadow(elementId, !current)
+        val effective = com.soulreturns.ui.runtime.SoulHud.shouldDrawTextShadow(elementId)
+        GuiLayoutManager.updateSoulHudUseTextShadow(elementId, !effective)
     }
 
-    /** Per-HUD analog of [toggleHudBackground] for the bold-font override. */
+    /** Per-HUD analog of [toggleHudBackground] for the bold-font override. Same global-wins caveat as text-shadow. */
     private fun toggleUseBoldFont(elementId: String) {
-        val element =
-            GuiLayoutManager.getElements().firstOrNull { it.id == elementId } as?
-                com.soulreturns.gui.lib.SoulHudElement ?: return
-        val current = element.useBoldFont ?: true
-        GuiLayoutManager.updateSoulHudUseBoldFont(elementId, !current)
+        val effective = com.soulreturns.ui.runtime.SoulHud.shouldUseBoldFont(elementId)
+        GuiLayoutManager.updateSoulHudUseBoldFont(elementId, !effective)
     }
 
     /**

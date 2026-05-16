@@ -204,7 +204,25 @@ private fun drawTriggerChrome(
     val bodySize = SoulTheme.typography.body.size
     val bodyFont = SoulTheme.typography.body.font
     val textY = y + DropdownChrome.TRIGGER_PAD_V
-    NvgRenderer.text(label, x + DropdownChrome.TRIGGER_PAD_H, textY, bodySize, SoulTheme.colors.text, bodyFont)
+    // When the host HUD has `useMinecraftFont` on, the Dropdown node implements
+    // `MojangTextEmitter` and the trigger label is dispatched through Mojang's font by
+    // `SoulHud.renderOne`'s pre-pass walker. Skip the NVG draw here so the same string
+    // doesn't render twice (Inter underneath, Mojang glyphs on top). Popup option labels
+    // below still render via NVG because they live in a deferred overlay the walker can't
+    // reach.
+    val hudId = SoulInput.currentHudId
+    val mcFont =
+        hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldUseMinecraftFont(hudId)
+    if (!mcFont) {
+        drawNvgLabelWithHudOverrides(
+            label = label,
+            x = x + DropdownChrome.TRIGGER_PAD_H,
+            y = textY,
+            size = bodySize,
+            color = SoulTheme.colors.text,
+            baseFont = bodyFont,
+        )
+    }
 
     // Caret triangle, vertically centered within the trigger. Points down when collapsed,
     // up when expanded — same convention as native OS dropdowns.
@@ -247,6 +265,37 @@ private fun drawTriggerChrome(
             onClick = onClick,
         ),
     )
+}
+
+/**
+ * Render [label] at `(x, y)` honoring the currently-active HUD's text-shadow / bold-font
+ * overrides — same logic `TextNode.drawSelf` runs. Both Dropdown variants paint label
+ * text directly via `NvgRenderer.text` (rather than embedding a `Text` composable), so
+ * without this helper the trigger + popup labels would always be plain regular-weight
+ * unshadowed glyphs regardless of the HUD's settings. Callers OUTSIDE a SoulHud frame
+ * (e.g. dropdowns inside a `SoulScreen`) get the plain `NvgRenderer.text` codepath
+ * automatically because `SoulInput.currentHudId` is null there.
+ */
+private fun drawNvgLabelWithHudOverrides(
+    label: String,
+    x: Float,
+    y: Float,
+    size: Float,
+    color: Int,
+    baseFont: com.soulreturns.platform.render.nvg.NvgFont,
+) {
+    val hudId = SoulInput.currentHudId
+    val useBold =
+        hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldUseBoldFont(hudId)
+    val effectiveFont = if (useBold) NvgRenderer.boldVariantOf(baseFont) else baseFont
+    val withShadow =
+        hudId != null && com.soulreturns.ui.runtime.SoulHud.shouldDrawTextShadow(hudId)
+    if (withShadow) {
+        val mult = com.soulreturns.ui.runtime.SoulHud.hudTextShadowSize()
+        NvgRenderer.textShadow(label, x, y, size, color, effectiveFont, mult)
+    } else {
+        NvgRenderer.text(label, x, y, size, color, effectiveFont)
+    }
 }
 
 /** Paint the popup background + dismiss scrim. Caller draws the option rows inside. */
@@ -345,7 +394,48 @@ internal class MultiSelectDropdownNode(
     private val triggerKey: Any,
     override val modifier: SoulModifier,
     private val popupMaxHeight: Float? = null,
-) : SoulNode() {
+) : SoulNode(),
+    com.soulreturns.ui.composer.MojangTextEmitter {
+    /**
+     * Emit just the trigger label. Popup option labels live in `SoulInput.queueOverlay`'s
+     * deferred queue and aren't reachable from the SoulHud walker — they remain
+     * NVG-rendered (Inter glyphs) even when the host HUD has `useMinecraftFont` on.
+     */
+    override fun emitMojangTexts(
+        x: Float,
+        y: Float,
+        clip: com.soulreturns.ui.composer.ClipRect?,
+        emit: (com.soulreturns.ui.composer.MojangTextSpec) -> Unit,
+    ) {
+        val bodySize = SoulTheme.typography.body.size
+        emit(
+            com.soulreturns.ui.composer.MojangTextSpec(
+                text = label,
+                x = x + DropdownChrome.TRIGGER_PAD_H,
+                y = y + DropdownChrome.TRIGGER_PAD_V,
+                size = bodySize,
+                color = SoulTheme.colors.text,
+            ),
+        )
+    }
+
+    /**
+     * Report the open popup's panel-local bounds so SoulHud's Mojang dispatcher can avoid
+     * painting HUD row text over the popup. The popup itself + its option labels render in
+     * the PIP via NanoVG (Inter glyphs); Mojang text dispatch happens AFTER the PIP
+     * composites, so without this filter HUD row text would bleed over the popup.
+     * Geometry mirrors what `drawSelf`'s overlay path computes (same `computePopupY`).
+     */
+    override fun emitOcclusions(
+        x: Float,
+        y: Float,
+        emit: (com.soulreturns.ui.composer.ClipRect) -> Unit,
+    ) {
+        if (!expanded) return
+        val effectiveH = popupMaxHeight?.coerceAtMost(popupH) ?: popupH
+        val py = computePopupY(y, triggerH, effectiveH)
+        emit(com.soulreturns.ui.composer.ClipRect(x, py, popupW, effectiveH))
+    }
     private var triggerW = 0f
     private var triggerH = 0f
     private var popupW = 0f
@@ -428,7 +518,7 @@ internal class MultiSelectDropdownNode(
 
                 val labelX = rowX + DropdownChrome.CHECKBOX_SIZE + DropdownChrome.OPTION_GAP_BETWEEN_INDICATOR_AND_LABEL
                 val labelY = rowY + (DropdownChrome.OPTION_ROW_H - bodySize) / 2f
-                NvgRenderer.text(option.label, labelX, labelY, bodySize, SoulTheme.colors.text, bodyFont)
+                drawNvgLabelWithHudOverrides(option.label, labelX, labelY, bodySize, SoulTheme.colors.text, bodyFont)
 
                 SoulInput.recordRegion(
                     HitRegion(
@@ -523,7 +613,38 @@ internal class SingleSelectDropdownNode(
     private val triggerKey: Any,
     override val modifier: SoulModifier,
     private val popupMaxHeight: Float? = null,
-) : SoulNode() {
+) : SoulNode(),
+    com.soulreturns.ui.composer.MojangTextEmitter {
+    /** See [MultiSelectDropdownNode.emitMojangTexts] — only the trigger label is reachable. */
+    override fun emitMojangTexts(
+        x: Float,
+        y: Float,
+        clip: com.soulreturns.ui.composer.ClipRect?,
+        emit: (com.soulreturns.ui.composer.MojangTextSpec) -> Unit,
+    ) {
+        val bodySize = SoulTheme.typography.body.size
+        emit(
+            com.soulreturns.ui.composer.MojangTextSpec(
+                text = triggerLabel,
+                x = x + DropdownChrome.TRIGGER_PAD_H,
+                y = y + DropdownChrome.TRIGGER_PAD_V,
+                size = bodySize,
+                color = SoulTheme.colors.text,
+            ),
+        )
+    }
+
+    /** See [MultiSelectDropdownNode.emitOcclusions]. */
+    override fun emitOcclusions(
+        x: Float,
+        y: Float,
+        emit: (com.soulreturns.ui.composer.ClipRect) -> Unit,
+    ) {
+        if (!expanded) return
+        val effectiveH = popupMaxHeight?.coerceAtMost(popupH) ?: popupH
+        val py = computePopupY(y, triggerH, effectiveH)
+        emit(com.soulreturns.ui.composer.ClipRect(x, py, popupW, effectiveH))
+    }
     companion object {
         // Width of the selected-row indicator (a thin accent bar on the left of the row).
         // Reuses the checkbox horizontal slot so popup-width math lines up.
@@ -628,7 +749,7 @@ internal class SingleSelectDropdownNode(
                 val labelX = rowX + INDICATOR_BAR_WIDTH + DropdownChrome.OPTION_GAP_BETWEEN_INDICATOR_AND_LABEL
                 val labelY = rowY + (DropdownChrome.OPTION_ROW_H - bodySize) / 2f
                 val labelColor = if (isSelected) SoulTheme.colors.accent else SoulTheme.colors.text
-                NvgRenderer.text(optionLabel, labelX, labelY, bodySize, labelColor, bodyFont)
+                drawNvgLabelWithHudOverrides(optionLabel, labelX, labelY, bodySize, labelColor, bodyFont)
 
                 SoulInput.recordRegion(
                     HitRegion(
