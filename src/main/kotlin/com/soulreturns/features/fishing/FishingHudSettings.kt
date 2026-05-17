@@ -56,12 +56,13 @@ object FishingHudSettings {
         var showDoubleHooks: Boolean = true,
         var showCocoons: Boolean = true,
         /**
-         * Filter for the per-creature list. `null` = show every variant. Otherwise it's the
-         * raw `SeaCreature.variant` key (e.g. `"WATER"`, `"LAVA_CRIMSON_ISLE"`) and only
-         * rows whose creature lives in that variant render. Persisted so the user's last
-         * picked category sticks across sessions.
+         * Multi-select filter on raw `SeaCreature.variant` keys (e.g. `"WATER"`,
+         * `"LAVA_CRIMSON_ISLE"`). Empty set = show every variant (the default); otherwise
+         * only rows whose creature lives in one of these variants render. Persisted so the
+         * user's last picked filter sticks across sessions. The footer's "Show All" button
+         * resets this back to the empty set.
          */
-        var category: String? = null,
+        var categories: Set<String> = emptySet(),
     ) {
         /**
          * Whether [sort] is currently selectable. Column-bound sorts (`Catches` / `DH` /

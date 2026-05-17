@@ -501,41 +501,60 @@ object FishingHud {
     @SoulComposable
     private fun Footer(settings: FishingHudSettings.Settings) {
         Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f) {
-            // Category dropdown — full-width filter row above Sort/Columns. Mirrors
-            // SkyHanni's sea-creature variants (raw JSON keys, no further grouping); "All"
-            // is the unfiltered default. Selecting a category resets scroll so the user
-            // doesn't land halfway down a (now shorter) list.
+            // Filter — multi-select over sea-creature variants. Empty selection = unfiltered
+            // (no synthetic "All" row in the popup; Show All is a dedicated button to the
+            // right of the trigger). Toggling a variant resets scroll so the user doesn't
+            // land halfway down a (now shorter) list.
             val variants = SeaCreatureCatalog.variants()
-            val categoryLabels =
-                listOf("All") + variants.map { with(SeaCreatureCatalog) { it.toDisplayName() } }
-            val selectedCategoryIndex =
-                when (val current = settings.category) {
-                    null -> 0
-                    else -> (variants.indexOf(current) + 1).coerceAtLeast(0)
-                }
-            val triggerLabel =
-                if (selectedCategoryIndex == 0) {
-                    "Category: All"
+            val filterLabel =
+                if (settings.categories.isEmpty()) {
+                    "Filter"
                 } else {
-                    "Category: ${categoryLabels[selectedCategoryIndex]}"
+                    "Filter (${settings.categories.size})"
                 }
-            Dropdown(
-                triggerLabel = triggerLabel,
-                options = categoryLabels,
-                selectedIndex = selectedCategoryIndex,
-                onSelect = { idx ->
-                    settings.category = if (idx == 0) null else variants.getOrNull(idx - 1)
-                    settings.scrollOffset = 0f
-                    FishingHudSettings.markDirty()
-                },
-                expanded = FishingHudSettings.categoryDropdownOpen,
-                onExpandedChange = { FishingHudSettings.categoryDropdownOpen = it },
-                modifier = SoulModifier.Empty.fillMaxWidth(),
-                key = "$HUD_ID.category",
-                // 19 SkyHanni variants + "All" don't fit in any direction; cap to ~8 visible
-                // rows and let the user scroll through the rest.
-                popupMaxHeight = 156f,
-            )
+            Row(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f) {
+                MultiSelectDropdown(
+                    label = filterLabel,
+                    options =
+                        variants.map { variant ->
+                            val display =
+                                with(SeaCreatureCatalog) { variant.toDisplayName() }
+                            DropdownOption(
+                                label = display,
+                                selected = variant in settings.categories,
+                            ) {
+                                settings.categories =
+                                    if (variant in settings.categories) {
+                                        settings.categories - variant
+                                    } else {
+                                        settings.categories + variant
+                                    }
+                                settings.scrollOffset = 0f
+                                FishingHudSettings.markDirty()
+                            }
+                        },
+                    expanded = FishingHudSettings.categoryDropdownOpen,
+                    onExpandedChange = { FishingHudSettings.categoryDropdownOpen = it },
+                    modifier = SoulModifier.Empty.weight(2f),
+                    key = "$HUD_ID.filter",
+                    // 19 SkyHanni variants don't fit in any direction; cap to ~8 visible rows
+                    // and let the user scroll through the rest.
+                    popupMaxHeight = 156f,
+                )
+                Button(
+                    label = "Show All",
+                    onClick = {
+                        if (settings.categories.isNotEmpty()) {
+                            settings.categories = emptySet()
+                            settings.scrollOffset = 0f
+                            FishingHudSettings.markDirty()
+                        }
+                    },
+                    modifier = SoulModifier.Empty.weight(1f),
+                    centerLabel = true,
+                    key = "$HUD_ID.showAll",
+                )
+            }
             // Sort dropdown (single-select) + columns dropdown (multi-select). Both open
             // upward as popup overlays — see `MultiSelectDropdown` for the depth/scrim model.
             // The Sort dropdown's options are filtered to currently-visible columns; selecting
@@ -664,16 +683,16 @@ object FishingHud {
             }
         }
         val names = (catches.keys + doubleHooks.keys + cocoons.keys).toSet()
-        val categoryFilter = settings.category
+        val categoryFilter = settings.categories
         val rows =
             names
                 .mapNotNull { name ->
                     val creature = SeaCreatureCatalog.byName(name)
-                    // Category filter applies on the creature's `variant`. Creatures not in
-                    // the catalog (catch-line text that doesn't match any known entry) have
-                    // no variant and are dropped entirely when a filter is active — they'd
-                    // otherwise leak through every category.
-                    if (categoryFilter != null && creature?.variant != categoryFilter) {
+                    // Filter applies on the creature's `variant`. Empty selection = show
+                    // everything. Creatures not in the catalog (catch-line text that doesn't
+                    // match any known entry) have no variant and are dropped entirely when
+                    // any filter is active — they'd otherwise leak through every category.
+                    if (categoryFilter.isNotEmpty() && creature?.variant !in categoryFilter) {
                         return@mapNotNull null
                     }
                     val displayName = creature?.name ?: name

@@ -31,6 +31,7 @@ internal object ConfigSections {
                         listOf(
                             "Tooltips" to setOf("hideHeldItemTooltip", "showSkyblockIdInTooltip"),
                             "Player Rendering" to setOf("oldSneakHeight"),
+                            "Status Effects" to setOf("hideEffectsInInventory", "hideEffectsInHud"),
                         ),
                     "highlights" to
                         listOf(

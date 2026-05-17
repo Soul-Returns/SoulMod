@@ -25,6 +25,13 @@ public class GuiMixin {
         }
     }
 
+    @Inject(method = "renderEffects", at = @At("HEAD"), cancellable = true)
+    private void hideHudEffects(GuiGraphics context, DeltaTracker tickCounter, CallbackInfo ci) {
+        if (getCfg().render.hideEffectsInHud()) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "render", at = @At("TAIL"))
     public void onRender(GuiGraphics context, DeltaTracker tickCounter, CallbackInfo ci) {
         RenderUtils.INSTANCE.renderAlerts(context);

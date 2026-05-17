@@ -11,6 +11,7 @@
     "render.GuiMixin",
     "render.SneakHeightMixin",
     "render.AbstractContainerScreenMixin",
+    "render.EffectsInInventoryMixin",
     "render.ChatScreenMixin",
     "render.ChatComponentMixin",
     "render.ChatComponentAddMessageMixin",

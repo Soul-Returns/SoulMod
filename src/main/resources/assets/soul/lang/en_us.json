@@ -100,6 +100,10 @@
   "text.config.soul/config.option.render.showSkyblockIdInTooltip.tooltip": "Adds the internal SkyBlock item ID to item tooltips.",
   "text.config.soul/config.option.render.oldSneakHeight": "Old Sneak Height",
   "text.config.soul/config.option.render.oldSneakHeight.tooltip": "Restores the pre-1.14 sneaking eye height (1.54 blocks).",
+  "text.config.soul/config.option.render.hideEffectsInInventory": "Hide Effects in Inventory",
+  "text.config.soul/config.option.render.hideEffectsInInventory.tooltip": "Hide the active status-effect panel that appears to the left of the player inventory and other container screens.",
+  "text.config.soul/config.option.render.hideEffectsInHud": "Hide Effects in HUD",
+  "text.config.soul/config.option.render.hideEffectsInHud.tooltip": "Hide the active status-effect icons that appear in the top-right corner of the screen during gameplay.",
 
   "text.config.soul/config.option.render.hudScale.tabListScale": "Tab List Scale",
   "text.config.soul/config.option.render.hudScale.hotbarScale": "Hotbar Scale",

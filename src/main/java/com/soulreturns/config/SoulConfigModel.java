@@ -64,6 +64,8 @@ public class SoulConfigModel {
         public boolean hideHeldItemTooltip = false;
         public boolean showSkyblockIdInTooltip = false;
         public boolean oldSneakHeight = false;
+        public boolean hideEffectsInInventory = false;
+        public boolean hideEffectsInHud = false;
     }
 
     public static class HudScale {
