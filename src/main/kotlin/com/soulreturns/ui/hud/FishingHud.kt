@@ -220,17 +220,6 @@ object FishingHud {
      * break the chip text. Falls back to "Label: N" with no percent when [catches] == 0
      * (the only way that can happen is the very-first session before any catch lands).
      */
-    /**
-     * Format the festival countdown — Hypixel festivals last 60 minutes, so we only need
-     * `Xm YYs`. Mirrors the old standalone sticker HUD's format.
-     */
-    private fun formatFestivalDuration(ms: Long): String {
-        val totalSec = ms / 1000
-        val m = totalSec / 60
-        val s = totalSec % 60
-        return String.format(Locale.ROOT, "%dm %02ds", m, s)
-    }
-
     private fun formatChip(
         label: String,
         count: Long,
@@ -242,6 +231,17 @@ object FishingHud {
         } else {
             String.format(Locale.ROOT, "%s: %,d", label, count)
         }
+
+    /**
+     * Format the festival countdown — Hypixel festivals last 60 minutes, so we only need
+     * `Xm YYs`. Mirrors the old standalone sticker HUD's format.
+     */
+    private fun formatFestivalDuration(ms: Long): String {
+        val totalSec = ms / 1000
+        val m = totalSec / 60
+        val s = totalSec % 60
+        return String.format(Locale.ROOT, "%dm %02ds", m, s)
+    }
 
     private fun sessionOrTotalCocoons(tab: FishingHudSettings.Tab): Long =
         when (tab) {

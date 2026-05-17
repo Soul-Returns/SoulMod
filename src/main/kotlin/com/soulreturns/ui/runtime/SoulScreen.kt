@@ -139,7 +139,11 @@ abstract class SoulScreen(title: Component) : Screen(title) {
      * bounds (NOT the screen's GUI-logical `width`/`height`) so clamping uses the same
      * coordinate frame the cursor lives in inside the SoulInput state.
      */
-    private fun paintTooltip(text: String, w: Float, h: Float) {
+    private fun paintTooltip(
+        text: String,
+        w: Float,
+        h: Float
+    ) {
         val font = com.soulreturns.ui.theme.SoulTheme.typography.body.font
         val size = com.soulreturns.ui.theme.SoulTheme.typography.body.size
         val padH = 8f

@@ -67,8 +67,8 @@ internal class SliderNode(
     override val modifier: SoulModifier,
     private val onChange: (Float) -> Unit,
 ) : SoulNode() {
-    private fun snap(raw: Float): Float =
-        if (step <= 0f) raw else (min + kotlin.math.round((raw - min) / step) * step).coerceIn(min, max)
+    private fun snap(raw: Float): Float = if (step <= 0f) raw else (min + kotlin.math.round((raw - min) / step) * step).coerceIn(min, max)
+
     companion object {
         private const val DEFAULT_W = 120f
         private const val DEFAULT_H = 14f

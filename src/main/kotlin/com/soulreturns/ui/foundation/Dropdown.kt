@@ -436,6 +436,7 @@ internal class MultiSelectDropdownNode(
         val py = computePopupY(y, triggerH, effectiveH)
         emit(com.soulreturns.ui.composer.ClipRect(x, py, popupW, effectiveH))
     }
+
     private var triggerW = 0f
     private var triggerH = 0f
     private var popupW = 0f
@@ -512,7 +513,14 @@ internal class MultiSelectDropdownNode(
                 val optionKey = DropdownOptionKey(triggerKey, idx)
 
                 if (SoulInput.isHovered(optionKey)) {
-                    NvgRenderer.rect(rowX, rowY, rowW, DropdownChrome.OPTION_ROW_H, SoulTheme.colors.panelHover, DropdownChrome.CHECKBOX_RADIUS)
+                    NvgRenderer.rect(
+                        rowX,
+                        rowY,
+                        rowW,
+                        DropdownChrome.OPTION_ROW_H,
+                        SoulTheme.colors.panelHover,
+                        DropdownChrome.CHECKBOX_RADIUS
+                    )
                 }
                 drawCheckbox(rowX, rowY + (DropdownChrome.OPTION_ROW_H - DropdownChrome.CHECKBOX_SIZE) / 2f, option.selected)
 
@@ -645,6 +653,7 @@ internal class SingleSelectDropdownNode(
         val py = computePopupY(y, triggerH, effectiveH)
         emit(com.soulreturns.ui.composer.ClipRect(x, py, popupW, effectiveH))
     }
+
     companion object {
         // Width of the selected-row indicator (a thin accent bar on the left of the row).
         // Reuses the checkbox horizontal slot so popup-width math lines up.

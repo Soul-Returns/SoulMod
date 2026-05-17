@@ -344,8 +344,9 @@ object SoulHud {
                         // emits one per tab label, `DropdownNode` emits its trigger label.
                         // Popup option labels in Dropdown go through `SoulInput.queueOverlay`
                         // and aren't reachable from this walker; they remain NVG-rendered.
-                        val emitter = node as? com.soulreturns.ui.composer.MojangTextEmitter
-                            ?: return@walk
+                        val emitter =
+                            node as? com.soulreturns.ui.composer.MojangTextEmitter
+                                ?: return@walk
                         // Convert panel-local clip to screen-space — GuiGraphics scissor
                         // coords are in GUI-logical pixels (same coord system GuiGraphics.fill
                         // etc. use).

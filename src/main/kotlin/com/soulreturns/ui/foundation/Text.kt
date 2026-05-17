@@ -49,6 +49,7 @@ internal class TextNode(
     ) {
         emit(com.soulreturns.ui.composer.MojangTextSpec(text, x, y, size, color))
     }
+
     override fun measure(constraints: SoulConstraints): SoulMeasured {
         val c = modifier.applySizeOverride(constraints)
         // If this TextNode is composing inside a HUD whose "Use Minecraft Font" override is

@@ -762,7 +762,10 @@ class GuiEditScreen : Screen(Component.literal("Edit GUI")) {
         val cellH: Int get() = (rectBottom - rectTop) / 3
 
         /** Cell index `0..8` at (mouseX, mouseY); -1 if outside the rectangle. */
-        fun cellIndexAt(mouseX: Int, mouseY: Int): Int {
+        fun cellIndexAt(
+            mouseX: Int,
+            mouseY: Int
+        ): Int {
             if (mouseX < rectLeft || mouseX >= rectRight) return -1
             if (mouseY < rectTop || mouseY >= rectBottom) return -1
             val col = ((mouseX - rectLeft) / cellW).coerceIn(0, 2)
