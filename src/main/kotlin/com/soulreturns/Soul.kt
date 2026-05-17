@@ -4,6 +4,7 @@ import com.soulreturns.commands.SoulCommand
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.data.fishing.SeaCreatureCatalog
 import com.soulreturns.data.location.LocationReader
+import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.skyblock.FishingFestivalState
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.dev.DevKeybindHandler
@@ -25,6 +26,10 @@ import com.soulreturns.features.mining.mineshaft.VanguardCorpseAlert
 import com.soulreturns.features.notifications.BackendNotificationCenter
 import com.soulreturns.features.notifications.ChatNotifications
 import com.soulreturns.features.party.PartyManager
+import com.soulreturns.features.profit.dragon.DragonDeathDetector
+import com.soulreturns.features.profit.dragon.DragonLootScanner
+import com.soulreturns.features.profit.dragon.DragonProfitTracker
+import com.soulreturns.features.profit.dragon.EyePlacementTracker
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.platform.http.PresenceService
 import com.soulreturns.platform.realtime.RealtimeClient
@@ -34,6 +39,7 @@ import com.soulreturns.platform.sync.SyncedArtifact
 import com.soulreturns.render.RoundRectRenderer
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.hud.BobbinHud
+import com.soulreturns.ui.hud.DragonProfitHud
 import com.soulreturns.ui.hud.FishingHud
 import com.soulreturns.ui.hud.LegionHud
 import com.soulreturns.ui.hud.MineshaftCorpsesHud
@@ -252,6 +258,19 @@ object Soul : ClientModInitializer {
 
         // Notifications
         ChatNotifications.register()
+
+        // Profit trackers — price cache must start before the tracker registers its HUD so
+        // the first frame after registration can render real prices. PriceCache.start is
+        // idempotent + dormant when offline; safe to call unconditionally.
+        PriceCache.start()
+        DragonProfitTracker.init()
+        // Dragon drop / eye detection — listens for chat banners. Order vs HUD register
+        // doesn't matter (no state crossing), but conventionally we register listeners
+        // before view code so the data layer is "live" by the time the HUD first paints.
+        DragonDeathDetector.register()
+        DragonLootScanner.register()
+        EyePlacementTracker.register()
+        DragonProfitHud.register()
     }
 
     fun reloadFeatures() {

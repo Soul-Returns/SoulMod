@@ -8,6 +8,7 @@ import com.soulreturns.config.cfg
 import com.soulreturns.util.SkyblockItemUtils
 import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.soulChat
+import com.soulreturns.util.toLegacyText
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -305,6 +306,11 @@ object DevKeybindHandler {
         val obj =
             JsonObject().apply {
                 addProperty("displayName", stack.hoverName.string)
+                // Same display name with Hypixel §-color codes preserved. Useful for pets
+                // and other items where rarity is encoded purely in the name's color (e.g.
+                // `§7[Lvl 1] §5Ender Dragon` is EPIC, `§7[Lvl 1] §6Ender Dragon` is
+                // LEGENDARY — the plain `displayName` collapses both to identical text).
+                addProperty("displayNameColored", stack.hoverName.toLegacyText())
                 addProperty("count", stack.count)
                 addProperty("itemId", BuiltInRegistries.ITEM.getKey(stack.item).toString())
             }

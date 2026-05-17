@@ -237,6 +237,7 @@ internal object ConfigSections {
             "fishing",
             "mining",
             "farming",
+            "combat",
             "notifications",
             "profileViewer",
             "sync",

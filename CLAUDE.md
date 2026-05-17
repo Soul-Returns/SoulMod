@@ -131,10 +131,11 @@ The config wrapper class `SoulConfig` is **generated** from `SoulConfigModel.jav
 13. `registerSyncArtifacts(...)` + `SyncEngine.start(...)` — reconciles in the background; if a remote pull is fresher than local, `onAfterPull` hot-reloads the affected subsystem (config / gui_layout / stats).
 14. `BackendNotificationCenter.register()` + `RealtimeClient.start(...)` — **last**. The notification center must be wired before the realtime client connects so it doesn't miss events that fire during the first message dispatch. Notification rendering rides on `RenderUtils.showAlert` (same path as `/soul dev testAlert`), so there's no HUD element to register here.
 
-**Within `registerFeatures()`** two ordering constraints apply, both for the same reason — the consumer reads state owned by the producer on the same tick:
+**Within `registerFeatures()`** three ordering constraints apply, all for the same reason — the consumer reads state owned by the producer on the same tick:
 
 - `BobbinSpotter.register()` before `BobbinHud.register()`.
 - `MineshaftCorpses.register()` before `LapisCorpseAlert.register()`, `VanguardCorpseAlert.register()`, `LittlefootAlert.register()`, `MineshaftVisitTracker.register()`, and `MineshaftCorpsesHud.register()` — all five consume `MineshaftCorpses.byType` / `totalOf(...)`.
+- **Profit-tracker trio**: `PriceCache.start()` → `DragonProfitTracker.init()` → `DragonProfitHud.register()`. The cache must start first so the HUD's first frame after registration sees real prices instead of zeroes; the tracker must `init()` (loading persisted data + registering its tick-driven save loop) before the HUD's compose reads from it.
 
 ### Event bus (`core/events/`)
 
@@ -664,6 +665,8 @@ All HUDs live under `ui/hud/`. State-vs-view split: anything other code might wa
 | Bobbin time | `ui/hud/BobbinHud.kt` | `features/fishing/BobbinSpotter.kt` (count + alert state + alert decision logic) |
 | Party overlay | `ui/hud/PartyHud.kt` | `features/party/PartyManager.kt` (chat-driven party state machine) |
 | Mineshaft corpses | `ui/hud/MineshaftCorpsesHud.kt` | `features/mining/mineshaft/MineshaftCorpses.kt` (tab-list scan, by-type counts) |
+| Fishing tracker | `ui/hud/FishingHud.kt` (spec on `TrackerHud`) | `features/fishing/FishingTracker.kt` + `PersistentStats` |
+| Dragon profit | `ui/hud/DragonProfitHud.kt` (spec on `TrackerHud`) | `features/profit/dragon/DragonProfitTracker.kt` + `PriceCache` |
 
 HUDs read `cfg.<feature>.<flags>()` directly for enable/visibility flags — no extra `HudConfig` wrapper interface; the generated owo-config nested types already provide a typed surface. Each HUD pushes a text block via `GuiLayoutApi.updateTextBlock(...)` so it's positionable in `/soul gui`.
 
@@ -915,15 +918,128 @@ Tick-driven debounced save (max once per second), atomic write (temp file + rena
 - `features/DoubleHookResponse` — pre-existing `/pc <message>` send on double-hook chat. Now event-bus + party-gated; still parses chat directly rather than subscribing to `SeaCreatureCaught` (v1 simplicity — could be migrated later if the user wants the party message to include the creature name).
 - **Persisted fields** (`PersistentStats.Data`): `doubleHooksAllTime`, `catchesAllTime`, `cocoonsAllTime`, `doubleHooksByCreature: Map<String, Long>`, `catchesByCreature`, `cocoonsByCreature`, `festivalStartAt`, `festivalDoubleHooks`, `festivalCatches`, `festivalCocoons`, `festivalDoubleHooksByCreature`, `festivalCatchesByCreature`, `festivalCocoonsByCreature`. Maps are **immutable** (`Map<String, Long>`, not `MutableMap`) — replaced via `m + (k to v)` rather than mutated, so the save-time `Data.copy()` (shallow) is safe against concurrent writes.
 
-#### Future tracker abstraction (don't extract early)
+### Tracker framework (`ui/hud/tracker/`)
 
-`FishingHud.kt` (~620 lines) + `FishingHudSettings.kt` (~165 lines) is currently a **one-off, not a reusable framework.** Everything in those files is hardcoded to the fishing domain — `Sort` enum names columns `Catches`/`DoubleHooks`/`Cocoons`, `CreatureRow` has three fixed numeric columns, `buildRows` reads `FishingTracker.session*ByCreature` + `PersistentStats.current.*ByCreature`, Category dropdown pulls from `SeaCreatureCatalog.variants()`, reset hardcodes `FishingTracker.resetSession()`, title is the literal `"Fishing"`. The old `gui/lib/tracker/` package WAS a generic abstraction; it was deleted in P3 because it had only one consumer and the Soul UI migration was easier flat.
+Generic abstraction extracted from `FishingHud` when the second tracker (`DragonProfitHud`) arrived. Lets a new tracker ship as ~50–120 lines of spec wiring instead of ~620 lines of duplicated panel scaffolding.
 
-**To add a similar tracker today** (e.g. Slayer Kills, Mineshaft Corpses with sort+filter, Mining Commissions): copy `FishingHud.kt` + `FishingHudSettings.kt`, rename, swap the data sources + column labels. Maybe 4–6 hours of work per new tracker, with substantial layout-scaffolding duplication (header, tabs, scrollable list, chips line, three-dropdown footer, reset button).
+**Two flavours, one composable.** The user's mental model is that there are two *kinds* of tracker — **general trackers** (sea creatures, mineshaft corpses, …) that track per-row counts, and **profit trackers** (dragons, future slayer / mining / fishing profit) that add coin values via [PriceCache] — but they're not separate types. Both produce a `TrackerSpec<T>` and render through the same `TrackerHud` composable. The distinction is just *which columns the spec declares*.
 
-**When to extract a `TrackerHud<T>` abstraction**: at **N = 2 trackers**, not now. Abstracting from N=1 always picks the wrong abstraction boundary. Once we have two concrete examples, the right shared shape becomes obvious from where they diverge. The likely API at that point: a `TrackerSpec<T>` data class with `id`, `title`, `rowsProvider`, `columns: List<TrackerColumn<T>>`, `extraSorts: List<TrackerSort<T>>`, optional `categoryProvider` + `rarityProvider` + `onReset`, fed into a single `@SoulComposable fun TrackerHud(spec: TrackerSpec<T>)`. After the refactor, new trackers shrink to ~50 lines of spec each. Until then: copy.
+| File | Role |
+|---|---|
+| `TrackerSpec.kt` | Declarative spec — `id`, `title`, `columns`, `sorts`, `rowsProvider`, `filterVariants`, `filterPredicate`, `onResetSession`, `isVisible`, optional `timerLine` / `headerExtra`. One per tracker. |
+| `TrackerColumn.kt` | `id`, `chipLabel`, `toggleLabel`, `cellValue(row, tab)`, `totalValue(rows, tab)`, `formatCell`, `formatChipTotal`, `isCaption`, `cellColor` (defaults to `textDim` for caption / `accent` for body), `chipPercentageOfColumn` (denominator id for chip "(P.P%)"), `cellWidth` (default 32px; bump for wider profit values). |
+| `TrackerSort.kt` | `id`, `label`, `comparator`, `requiresColumnId` (hides the sort when that column is hidden). |
+| `TrackerSettings.kt` | Interface every tracker's settings singleton implements — `tab`, `sortId`, `scrollOffset`, `filter`, `isColumnVisible`/`setColumnVisible`, three transient `*DropdownOpen` flags, `markDirty()`. Persistence is the implementor's concern (each tracker owns one JSON file). |
+| `TrackerHud.kt` | The single `@SoulComposable fun <T : Any> TrackerHud(spec, settings)` that builds the full panel: header (title + optional `headerExtra` + optional `timerLine` + tabs), divider, scrollable list, chips line, divider, footer (filter + Show All, sort + columns, reset). Includes the at-least-one-visible-column invariant and the sort-snap-to-visible logic. |
 
-**What IS already reusable** for any new tracker (so it's not zero leverage): every Soul UI primitive (`Surface`, `Column`, `Row`, `Tabs`, `ScrollableList`, `Dropdown` / `MultiSelectDropdown` with `popupMaxHeight` scroll, `Button`, `Text`, `ColumnDivider`); the persisted-settings + `@Volatile` transient-dropdown-flags pattern; `SkyblockRarity.colorFor` for rarity-tinted names; `LocationApi` + the `AreaChanged` event for visibility gates; the `Visibility` singleton template (`FishingVisibility`).
+**Concrete spec recipe** (see `FishingHud.kt`, `DragonProfitHud.kt` for full examples):
+
+```kotlin
+private val spec: TrackerSpec<MyRow> by lazy {
+    TrackerSpec(
+        id = "my_tracker_hud",
+        title = "My Tracker",
+        settingsCategory = "combat", settingsSubcategory = "myDomain",
+        columns = listOf(
+            TrackerColumn(id = "amount", chipLabel = "Drops", toggleLabel = "Amount",
+                cellValue = { row, _ -> row.amount },
+                totalValue = { rows, _ -> rows.sumOf { it.amount } }),
+            TrackerColumn(id = "value", chipLabel = "Profit", toggleLabel = "Coins",
+                cellValue = { row, _ -> row.value },
+                totalValue = { rows, _ -> rows.sumOf { it.value } - eyeCost() },
+                formatCell = ::formatCoinsShort, cellWidth = 56f),
+        ),
+        sorts = listOf(
+            TrackerSort("value", "Coins", compareByDescending { it.value }, requiresColumnId = "value"),
+            TrackerSort("alpha", "Alphabetical", compareBy { it.name }),
+        ),
+        rowsProvider = ::buildRows,
+        rowKey = { it.id }, rowLabel = { it.name }, rowLabelColor = { it.rarity.color },
+        filterVariants = { Bucket.entries.map { it.displayName } },
+        filterPredicate = { row, sel -> row.bucket.displayName in sel },
+        onResetSession = { MyTracker.resetSession() },
+        isVisible = { cfg.combat.myDomain.showHud() && LocationApi.isInArea("Wherever") },
+    )
+}
+
+fun register() {
+    MyTrackerHudSettings.init()
+    SoulHud.register(id = spec.id, width = spec.width, height = spec.height, ...) {
+        TrackerHud(spec, MyTrackerHudSettings)
+    }
+}
+```
+
+**Settings singleton recipe** — implement `TrackerSettings` directly on the singleton, hold a private `Data` data class for Gson, copy the tick-debounced save loop from `FishingHudSettings` / `DragonProfitHudSettings`. The two are structurally identical; the existing pair is the template.
+
+**What the framework intentionally doesn't abstract:**
+- **Per-row aggregation / multi-bucket flattening** — when a profit tracker wants to aggregate per-(bucket, drop) entries into one row per drop summed across selected buckets, the spec's `rowsProvider` does it directly (reading the active filter from the singleton). The framework's `filterPredicate` is then a no-op. See `DragonProfitHud.buildRows` for the canonical pattern.
+- **Custom header content beyond timer** — pass a `@SoulComposable () -> Unit` to `headerExtra`. Used by `FishingHud` for its festival countdown banner.
+- **Storage format** — each tracker owns its JSON. A generic `TrackerSettingsStore` was tried in pre-P3 history and removed; the per-tracker copy-paste is small and lets each tracker do schema migration in isolation (`FishingHudSettings.parseLegacy` is the migration path from the pre-abstraction shape).
+
+**Hot-spots when adding columns**: column ids are referenced from BOTH the spec's `columns` list AND from `TrackerSort.requiresColumnId` AND from the persisted settings' `columnVisibility` map. The Fishing/Dragon settings classes both expose `const val COLUMN_*` for stable id constants so a rename ripples through compile-time. Use the same pattern in new trackers.
+
+**About the previous "wait until N=2" advice that used to live here:** that was the correct call. The abstraction shape was non-obvious from `FishingHud` alone — the actual extraction (driven by `DragonProfitHud`'s requirements) added things `FishingHud` had baked-in differently: per-column `cellWidth`, optional `onResetSession` (some trackers may not have one), `cellColor` defaults that depend on `isCaption`, the chip's `chipPercentageOfColumn` denominator pointer, and the aggregate-in-rowsProvider pattern for filtered profit trackers. Extracting at N=1 would have missed all of these.
+
+### Price cache (`data/prices/`)
+
+Background poller of Hypixel SkyBlock item prices for the profit-tracker family.
+
+- **`PriceCache.kt`** — singleton with two `ConcurrentHashMap`s (`bazaarMap: String → BazaarPrices(instantBuy, instantSell)`, `lowestBinMap: String → Long`). `start()` launches a dedicated daemon thread `soul-prices` that refreshes both feeds every 2 minutes whenever `SkyblockApi.isOnSkyblock` is true. **Never run sync work on `SoulExecutor`** — same lesson as `SyncEngine` / `RealtimeClient` (the JDK `HttpClient` shares it for selector dispatch).
+- **`PriceSource.kt`** — `BAZAAR_INSTANT_BUY` (ask, higher; what the player pays to buy — SkyHanni's default for valuing drops), `BAZAAR_INSTANT_SELL` (bid, lower; what the player gets from instaselling), `LOWEST_BIN` (cheapest AH listing from Elite's mirror).
+
+**Hypixel `quick_status` field semantics (recorded once so the next session doesn't re-derive):**
+- `buyPrice` = ASK side = price at which sell-orders sit waiting = what an instabuyer hits (paying). Higher number.
+- `sellPrice` = BID side = price at which buy-orders sit waiting = what an instaseller hits (receiving). Lower number.
+
+So in `parseBazaar`: `instantBuy = quick.buyPrice`, `instantSell = quick.sellPrice` — no swap. The Hypixel field names map directly to player-facing semantics; the easy mistake is to read them as "buy = sell-side" because of the array names (`buy_summary` is misleadingly the ASK stack), but `quick_status` is consistent.
+
+**Endpoints:**
+- `https://api.hypixel.net/v2/skyblock/bazaar` — public, no key.
+- `https://api.eliteskyblock.com/resources/auctions/neu` — Elite's scrape of the AH API rebroadcast as `{<NEU_INTERNAL_NAME>: <lowestBin>}`. Same source SkyHanni uses.
+
+**Lookup semantics.** `PriceCache.price(itemId, source)` returns 0 when no data is cached yet, and falls back across feeds in a SkyHanni-style chain: bazaar → lowest-BIN, lowest-BIN → bazaar. Callers display "—" or skip the value when the result is 0 rather than printing a confidently-wrong "0 coins".
+
+**Diagnostics.** `/soul dev refreshPrices` resets the rate limiters and pokes the daemon thread; prints `Bazaar: N products (Xs ago) · Lowest BIN: M items (Ys ago)` via `PriceCache.snapshot()`.
+
+### Profit trackers (`features/profit/`)
+
+The second tracker flavour after `FishingTracker`-style general trackers. Built on the same [Tracker framework](#tracker-framework-uihudtracker) so a profit HUD is just a `TrackerSpec` with `cellValue = price × amount` columns.
+
+| File | Role |
+|---|---|
+| `ProfitTracker.kt` | Generic abstract base `ProfitTracker<B : Enum<B>, D : Any>`. Per-bucket `Map<D, Counts>` for both session (in-memory) and total (persisted). [PriceCache] looked up at display time, not stored, so price moves don't rewrite data. `grantDrop(bucket, drop, amount)` is the only data-entry method; `grantKill(bucket, count)` bumps the kill counter; `resetSession` / `resetAll`; `profitFor(tab, bucketFilter, source)` for chip-totals math; `ancillaryCost(bucket, tab)` open for subclasses to subtract per-bucket overhead (eyes, summon tokens). Persistence: per-tracker JSON at `config/soul/<name>.json` with tick-debounced atomic writes (the `FishingHudSettings` pattern). |
+| `features/profit/dragon/DragonType.kt` | Enum of 7 dragon types (PROTECTOR / OLD / WISE / UNSTABLE / YOUNG / STRONG / SUPERIOR) with `displayName` + Hypixel-style `color`. |
+| `features/profit/dragon/DragonDrop.kt` | Hardcoded catalog enum — each entry carries `itemId` (NEU/Hypixel id used by `PriceCache`), `displayName`, `rarity`, `dragonTypes: Set<DragonType>` (which buckets it drops from). **Placeholder for the future repo-backed item list** — when the SkyHanni-style repo lands, this enum becomes a JSON-loaded list with the same shape. |
+| `features/profit/dragon/DragonProfitTracker.kt` | **Standalone** tracker (does NOT extend `ProfitTracker<B, D>` — see note below). Stores drops + kills partitioned by `(DragonType, KillSource)` plus per-bucket eye counts. `grantDrop(bucket, drop, amount, source = currentKillSource)`, `grantKill(...)`, `grantEye(bucket, count)` (always SUMMONED). `countsFor(tab, sourceFilter)` and `profitFor(tab, bucketFilter, sourceFilter)` read filtered partitions; passing `sourceFilter = null` returns the merged view. Persists `dragon_profit.json` at schema v2 (`{summoned: {kills, drops, eyes}, lootshare: {kills, drops}}`); v1 files migrate forward by treating prior data as SUMMONED. |
+| `features/profit/dragon/KillSource.kt` | Enum `SUMMONED` / `LOOTSHARE`. Set per spawn by `EyePlacementTracker`: if `pendingOwnEyes > 0` when the spawn line fires → SUMMONED, else LOOTSHARE. Stored on `DragonProfitTracker.currentKillSource` and snapshotted into `DragonLootScanner.ActiveScan.killSource` at scan-begin so back-to-back kills don't bleed attribution. Default is LOOTSHARE so missed-spawn-message scenarios under-attribute eye cost rather than fabricate it. |
+| `features/profit/dragon/DragonDeathDetector.kt` | Chat listener on `"<TYPE> DRAGON DOWN!"` (color-stripped + trimmed). Hands off to `DragonLootScanner.beginScan(type)`. |
+| `features/profit/dragon/DragonLootScanner.kt` | 30-second scan window, scanning every 10 ticks. **Re-centers each scan on the player's current xz** (loot stands are render-distance-gated by Hypixel — only appear within ~20 blocks of the client player, so a fixed banner-time center misses tag-killers). Radius 30. Tracks max count seen per drop across scans (survives pickup mid-window). Parses both plain-text customNames (`"Protector Dragon Fragment x8"`) via `DragonDrop.byDisplayName` and pet customNames (`"§7[Lvl 1] §5Ender Dragon"`) by matching the §-color of the name to `ENDER_DRAGON;3` (EPIC) or `ENDER_DRAGON;4` (LEGENDARY) — requires the §-coded form via `Component.toLegacyText()` since `Component.string` strips colors. Logs diagnostic counts on empty-window failures (totalStandsSeen / standsInRadius / namedStandsInRadius / closest named stand) so we can tell if loot exists but lies outside the radius vs no stands at all. |
+| `features/profit/dragon/EyePlacementTracker.kt` | Chat listener. `"☬ You placed a Summoning Eye!"` increments `pendingOwnEyes` (own placements only — `<other_player> placed` is ignored). `"☬ The <Type> Dragon has spawned!"` sets `DragonProfitTracker.currentKillSource` to SUMMONED (pendingOwnEyes > 0) or LOOTSHARE, flushes pending eyes to that bucket via `grantEye`, resets the queue. 5-minute TTL on stale pending eyes if no spawn message follows. |
+| `features/profit/dragon/DragonProfitHudSettings.kt` | `TrackerSettings` implementation; stored at `config/soul/dragon_profit_hud.json`. Default sort is `value` (Coins descending). Also persists `sourceFilter` as a string-keyed sentinel (`"ALL"` / `"SUMMONED"` / `"LOOTSHARE"`) — translated to `KillSource?` via a property getter/setter so the picker can offer "All" without a dedicated enum entry. |
+| `ui/hud/DragonProfitHud.kt` | The `TrackerSpec<Row>` wiring + `register()`. Aggregates per-(bucket, drop) entries into one `Row(drop, amount, value)` per unique drop summed across the active dragon filter (filter empty = all buckets) AND across the active source filter (null = all sources). Renders an `Eyes placed: N` line in `headerExtra` (tab-aware), and a `Source: All / Summoned / Lootshare` single-select dropdown in `footerExtra` above the dragon-type filter. Profit chip subtracts eye cost only when the active source view includes SUMMONED. Visibility gate: `cfg.combat.dragons.showProfitHud() && cfg.dev.trackers.profitTrackers() && SkyblockApi.isOnSkyblock && LocationApi.isInArea("The End")`. |
+
+**Why `DragonProfitTracker` doesn't extend `ProfitTracker<B, D>`.** The generic base's single-axis bucketing (one enum of buckets, one per-bucket data map) fits domains like slayer / mineshaft profit where every kill maps to one bucket value. Dragons have a genuine second axis — kill source — that every piece of per-kill state (drops, kills, eye costs) needs to be partitioned along, AND eye costs are conditional on the active source view. Forcing the second axis into `B` via composite enums (`PROTECTOR_SUMMONED`, `PROTECTOR_LOOTSHARE`, …) was tempting but every read path then has to project away one axis to render a single dragon-type row in the HUD. Standalone storage was cleaner. Future profit trackers without a partition axis should continue to extend the base — the single-axis path is still its happy case.
+
+**Lootshare attribution rules at a glance:**
+- Eyes always live in the SUMMONED partition (you can only place eyes if you're summoning).
+- Eye cost subtracts from profit in the `All` view and the `Summoned` view only — the `Lootshare` view returns 0 eye cost since the player didn't place any.
+- Default `currentKillSource` is LOOTSHARE so a player who misses the spawn message (lag, late join, relog) gets a safe under-attribution rather than a fabricated eye cost.
+- `/soul dev grantDragonDropAs <SUMMONED|LOOTSHARE> <type> <dropId> [amount]` forces a partition — useful for testing the source picker without live kills.
+
+**Adding a new profit tracker** (e.g. Slayer Profit):
+1. Add a new enum `SlayerBoss` and a `SlayerDrop` enum (or JSON catalog when the repo lands).
+2. `object SlayerProfitTracker : ProfitTracker<SlayerBoss, SlayerDrop>("slayer_profit.json", SlayerBoss.entries)` — implement the four abstract methods (`itemId`, `dropById`, `dropId`, `bucketByName`); override `ancillaryCost` only if there's a per-fight cost worth subtracting.
+3. `object SlayerProfitHudSettings : TrackerSettings { ... }` — copy `DragonProfitHudSettings`, rename the file path + the default sort id.
+4. `object SlayerProfitHud { val spec by lazy { TrackerSpec(...) }; fun register() { SlayerProfitHudSettings.init(); SoulHud.register(...) { TrackerHud(spec, SlayerProfitHudSettings) } } }`.
+5. Wire in `Soul.registerFeatures()`: `SlayerProfitTracker.init(); SlayerProfitHud.register()`. `PriceCache.start()` is shared — only call once across all profit trackers.
+6. Add `combat.slayers.showProfitHud` to `SoulConfigModel.java` + lang keys.
+
+**Why not in `PersistentStats`?** Profit data is per-tracker (each has its own bucket axis + reset semantics), can grow large per item × bucket, and shouldn't bloat the per-profile `stats.json` blob that every general tracker writes to. Each profit tracker owns one JSON file in `config/soul/`. Cloud sync via a new `SyncKind` per profit file is a future extension — out of scope for the initial cut.
+
+### "Combat" config category
+
+New top-level category for End-Island / Crimson Isle / future-Garden-pest combat features. Currently houses `dragons.showProfitHud`. Lives in `SoulConfigModel.Combat → Dragons`, ordered between `farming` and `notifications` in `ConfigSections.categoryOrder` (game-area progression). Lang keys: `text.config.soul/config.category.combat`, `text.config.soul/config.section.combat`, `text.config.soul/config.group.combat.dragons`. When adding more combat features (kuudra profit, dungeon profit, slayer profit), add new `@Nest`s under `Combat` and new group keys.
 
 ### Farming features
 

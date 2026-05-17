@@ -34,6 +34,9 @@ public class SoulConfigModel {
     @SectionHeader("farming")
     @Nest public Farming farming = new Farming();
 
+    @SectionHeader("combat")
+    @Nest public Combat combat = new Combat();
+
     @SectionHeader("notifications")
     @Nest public Notifications notifications = new Notifications();
 
@@ -194,6 +197,16 @@ public class SoulConfigModel {
         @Nest public Seasonings seasonings = new Seasonings();
     }
 
+    public static class Combat {
+        @Nest public Dragons dragons = new Dragons();
+    }
+
+    public static class Dragons {
+        // Default OFF — every user-facing feature in this mod is opt-in. See the policy notes
+        // in the FishingHud section above.
+        public boolean showProfitHud = false;
+    }
+
     public static class Seasonings {
         public boolean enableTracker = false;
         public boolean showMaxMilestone = true;
@@ -239,6 +252,12 @@ public class SoulConfigModel {
     // Dev because it's a wholesale opt-out, not a gameplay preference; defaults are on.
     public static class Trackers {
         public boolean fishingTracker = true;
+        // Master switch for all profit-tracker data layers (dragon profit, future slayer
+        // profit, etc.). Off ⇒ the price-cache poller stays idle and individual profit
+        // HUDs short-circuit to Box {} regardless of their own showHud flag. On by default
+        // because trackers only accumulate data when the player is actively in their domain
+        // (e.g. in The End for dragon profit) — no cost when idle.
+        public boolean profitTrackers = true;
     }
 
     public static class Data {

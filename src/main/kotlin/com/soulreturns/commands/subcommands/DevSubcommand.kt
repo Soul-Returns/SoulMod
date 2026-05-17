@@ -1,11 +1,18 @@
 package com.soulreturns.commands.subcommands
 
+import com.mojang.brigadier.arguments.IntegerArgumentType
+import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.data.location.LocationApi
+import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.profile.ProfileApi
 import com.soulreturns.data.skyblock.SkyblockApi
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
+import com.soulreturns.features.profit.dragon.DragonDrop
+import com.soulreturns.features.profit.dragon.DragonProfitTracker
+import com.soulreturns.features.profit.dragon.DragonType
+import com.soulreturns.features.profit.dragon.KillSource
 import com.soulreturns.platform.sync.SyncEngine
 import com.soulreturns.platform.sync.SyncKind
 import com.soulreturns.stats.PersistentStats
@@ -14,6 +21,7 @@ import com.soulreturns.util.MessageHandler
 import com.soulreturns.util.RenderUtils
 import com.soulreturns.util.soulChat
 import io.wispforest.owo.config.Option
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
 import net.minecraft.network.chat.Component
@@ -32,6 +40,13 @@ import net.minecraft.network.chat.Component
  *  - `/soul dev testAlert [<message>]`                    → render a test alert
  *  - `/soul dev testMessage <type> <message>`             → simulate an incoming chat line of [type]
  *      types: `server`, `serverColor`, `party`, `partyColor`, `public`, `publicColor`, `guild`, `guildColor`
+ *  - `/soul dev grantDragonDrop <dragonType> <dropId> [amount]`  → add fake drops to the dragon profit tracker (uses current kill source)
+ *  - `/soul dev grantDragonDropAs <SUMMONED|LOOTSHARE> <dragonType> <dropId> [amount]`  → grant with explicit source partition
+ *  - `/soul dev grantDragonEye <dragonType> [count]`             → add fake Summoning Eye placements (cost subtracted from profit)
+ *  - `/soul dev grantDragonKill <dragonType> [count]`            → bump the dragon profit tracker's kill counter
+ *  - `/soul dev resetDragonProfit`                               → wipe all dragon profit data (session + persisted)
+ *  - `/soul dev refreshPrices`                                   → force an immediate bazaar + lowest-BIN refetch (synchronous, echoes counts)
+ *  - `/soul dev getPrice <itemId>`                               → print the cached bazaar buy / sell / lowest-BIN price for one item id
  */
 object DevSubcommand : SoulSubcommand {
     override fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
@@ -169,7 +184,243 @@ object DevSubcommand : SoulSubcommand {
                     then(literal("guildColor").stringArg("message") { _, msg -> sendTestMessage(MessageType.GUILD, msg, true) })
                 }
             )
+
+            // Dragon profit tracker test commands — drop detection isn't wired yet; these
+            // populate the tracker manually so HUD layout / sort / filter / reset can be
+            // validated end-to-end. <dragonType> is the enum name (PROTECTOR, OLD, WISE, …);
+            // <dropId> is also the enum name from DragonDrop (PROTECTOR_FRAGMENT, ASPECT_OF_THE_DRAGONS, …).
+            then(
+                literal("grantDragonDrop") {
+                    then(
+                        ClientCommandManager.argument("dragonType", StringArgumentType.word())
+                            .then(
+                                ClientCommandManager.argument("dropId", StringArgumentType.word())
+                                    .executes { ctx ->
+                                        executeGrantDragonDrop(
+                                            StringArgumentType.getString(ctx, "dragonType"),
+                                            StringArgumentType.getString(ctx, "dropId"),
+                                            1,
+                                        )
+                                        1
+                                    }
+                                    .then(
+                                        ClientCommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                            .executes { ctx ->
+                                                executeGrantDragonDrop(
+                                                    StringArgumentType.getString(ctx, "dragonType"),
+                                                    StringArgumentType.getString(ctx, "dropId"),
+                                                    IntegerArgumentType.getInteger(ctx, "amount"),
+                                                )
+                                                1
+                                            },
+                                    ),
+                            ),
+                    )
+                },
+            )
+            then(
+                literal("grantDragonDropAs") {
+                    then(
+                        ClientCommandManager.argument("source", StringArgumentType.word())
+                            .then(
+                                ClientCommandManager.argument("dragonType", StringArgumentType.word())
+                                    .then(
+                                        ClientCommandManager.argument("dropId", StringArgumentType.word())
+                                            .executes { ctx ->
+                                                executeGrantDragonDropAs(
+                                                    StringArgumentType.getString(ctx, "source"),
+                                                    StringArgumentType.getString(ctx, "dragonType"),
+                                                    StringArgumentType.getString(ctx, "dropId"),
+                                                    1,
+                                                )
+                                                1
+                                            }
+                                            .then(
+                                                ClientCommandManager.argument("amount", IntegerArgumentType.integer(1))
+                                                    .executes { ctx ->
+                                                        executeGrantDragonDropAs(
+                                                            StringArgumentType.getString(ctx, "source"),
+                                                            StringArgumentType.getString(ctx, "dragonType"),
+                                                            StringArgumentType.getString(ctx, "dropId"),
+                                                            IntegerArgumentType.getInteger(ctx, "amount"),
+                                                        )
+                                                        1
+                                                    },
+                                            ),
+                                    ),
+                            ),
+                    )
+                },
+            )
+            then(
+                literal("grantDragonEye") {
+                    then(
+                        ClientCommandManager.argument("dragonType", StringArgumentType.word())
+                            .executes { ctx ->
+                                executeGrantDragonEye(StringArgumentType.getString(ctx, "dragonType"), 1)
+                                1
+                            }
+                            .then(
+                                ClientCommandManager.argument("count", IntegerArgumentType.integer(1))
+                                    .executes { ctx ->
+                                        executeGrantDragonEye(
+                                            StringArgumentType.getString(ctx, "dragonType"),
+                                            IntegerArgumentType.getInteger(ctx, "count"),
+                                        )
+                                        1
+                                    },
+                            ),
+                    )
+                },
+            )
+            then(
+                literal("grantDragonKill") {
+                    then(
+                        ClientCommandManager.argument("dragonType", StringArgumentType.word())
+                            .executes { ctx ->
+                                executeGrantDragonKill(StringArgumentType.getString(ctx, "dragonType"), 1)
+                                1
+                            }
+                            .then(
+                                ClientCommandManager.argument("count", IntegerArgumentType.integer(1))
+                                    .executes { ctx ->
+                                        executeGrantDragonKill(
+                                            StringArgumentType.getString(ctx, "dragonType"),
+                                            IntegerArgumentType.getInteger(ctx, "count"),
+                                        )
+                                        1
+                                    },
+                            ),
+                    )
+                },
+            )
+            then(
+                literal("resetDragonProfit") {
+                    runs { _ ->
+                        DragonProfitTracker.resetAll()
+                        soulChat("§aDragon profit tracker wiped (session + persisted).")
+                    }
+                },
+            )
+
+            // Price cache diagnostics.
+            then(
+                literal("refreshPrices") {
+                    runs { _ ->
+                        val status = PriceCache.refreshNow()
+                        soulChat("§aPrices refreshed: §f$status")
+                        soulChat("§7${PriceCache.snapshot()}")
+                    }
+                },
+            )
+            // Inspect the cached price for a single item id — quickest way to tell whether
+            // a profit-tracker row shows 0 because the cache hasn't populated yet, the
+            // item id is wrong, or the item is genuinely worthless. Usage:
+            //   /soul dev getPrice ASPECT_OF_THE_DRAGON
+            //   /soul dev getPrice ENDER_DRAGON;4
+            then(
+                literal("getPrice") {
+                    stringArg("itemId") { _, itemId ->
+                        val buy = PriceCache.price(itemId, com.soulreturns.data.prices.PriceSource.BAZAAR_INSTANT_BUY)
+                        val sell = PriceCache.price(itemId, com.soulreturns.data.prices.PriceSource.BAZAAR_INSTANT_SELL)
+                        val bin = PriceCache.price(itemId, com.soulreturns.data.prices.PriceSource.LOWEST_BIN)
+                        soulChat("§7Prices for §f$itemId§7:")
+                        soulChat("  §7Bazaar buy:  §f${formatLong(buy)}")
+                        soulChat("  §7Bazaar sell: §f${formatLong(sell)}")
+                        soulChat("  §7Lowest BIN:  §f${formatLong(bin)}")
+                    }
+                },
+            )
         }
+    }
+
+    private fun formatLong(v: Long): String = java.lang.String.format(java.util.Locale.ROOT, "%,d", v)
+
+    private fun executeGrantDragonDrop(
+        dragonTypeName: String,
+        dropIdName: String,
+        amount: Int,
+    ) {
+        val bucket =
+            DragonType.byName(dragonTypeName.uppercase())
+                ?: run {
+                    val opts = DragonType.entries.joinToString(", ") { it.name }
+                    soulChat("§cUnknown dragon type '§f$dragonTypeName§c'. Valid: §7$opts")
+                    return
+                }
+        val drop =
+            DragonDrop.byId(dropIdName.uppercase())
+                ?: run {
+                    val opts = DragonDrop.entries.filter { bucket in it.dragonTypes }.joinToString(", ") { it.name }
+                    soulChat("§cUnknown drop id '§f$dropIdName§c'. Valid for ${bucket.displayName}: §7$opts")
+                    return
+                }
+        DragonProfitTracker.grantDrop(bucket, drop, amount.toLong())
+        soulChat("§aGranted §f$amount§a × §f${drop.displayName}§a to §f${bucket.displayName}§a.")
+    }
+
+    private fun executeGrantDragonDropAs(
+        sourceName: String,
+        dragonTypeName: String,
+        dropIdName: String,
+        amount: Int,
+    ) {
+        val source =
+            runCatching { KillSource.valueOf(sourceName.uppercase()) }.getOrNull()
+                ?: run {
+                    val opts = KillSource.entries.joinToString(", ") { it.name }
+                    soulChat("§cUnknown source '§f$sourceName§c'. Valid: §7$opts")
+                    return
+                }
+        val bucket =
+            DragonType.byName(dragonTypeName.uppercase())
+                ?: run {
+                    val opts = DragonType.entries.joinToString(", ") { it.name }
+                    soulChat("§cUnknown dragon type '§f$dragonTypeName§c'. Valid: §7$opts")
+                    return
+                }
+        val drop =
+            DragonDrop.byId(dropIdName.uppercase())
+                ?: run {
+                    val opts = DragonDrop.entries.filter { bucket in it.dragonTypes }.joinToString(", ") { it.name }
+                    soulChat("§cUnknown drop id '§f$dropIdName§c'. Valid for ${bucket.displayName}: §7$opts")
+                    return
+                }
+        DragonProfitTracker.grantDrop(bucket, drop, amount.toLong(), source)
+        soulChat(
+            "§aGranted §f$amount§a × §f${drop.displayName}§a to §f${bucket.displayName}§a " +
+                "as §f${source.displayName}§a.",
+        )
+    }
+
+    private fun executeGrantDragonEye(
+        dragonTypeName: String,
+        count: Int,
+    ) {
+        val bucket =
+            DragonType.byName(dragonTypeName.uppercase())
+                ?: run {
+                    val opts = DragonType.entries.joinToString(", ") { it.name }
+                    soulChat("§cUnknown dragon type '§f$dragonTypeName§c'. Valid: §7$opts")
+                    return
+                }
+        DragonProfitTracker.grantEye(bucket, count.toLong())
+        soulChat("§aGranted §f$count§a Summoning Eye(s) to §f${bucket.displayName}§a.")
+    }
+
+    private fun executeGrantDragonKill(
+        dragonTypeName: String,
+        count: Int,
+    ) {
+        val bucket =
+            DragonType.byName(dragonTypeName.uppercase())
+                ?: run {
+                    val opts = DragonType.entries.joinToString(", ") { it.name }
+                    soulChat("§cUnknown dragon type '§f$dragonTypeName§c'. Valid: §7$opts")
+                    return
+                }
+        DragonProfitTracker.grantKill(bucket, count.toLong())
+        soulChat("§aGranted §f$count§a kill(s) for §f${bucket.displayName}§a.")
     }
 
     /**

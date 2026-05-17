@@ -2,102 +2,116 @@ package com.soulreturns.features.fishing
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
+import com.soulreturns.data.fishing.SeaCreatureCatalog.toDisplayName
 import com.soulreturns.platform.concurrent.SoulExecutor
+import com.soulreturns.ui.hud.tracker.TrackerSettings
+import com.soulreturns.ui.hud.tracker.TrackerTab
 import com.soulreturns.util.SoulLogger
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 
 /**
- * User-controlled UI state for the Fishing HUD — which tab is open, what sort order, how
- * many rows to display, current scroll position.
+ * User-controlled UI state for the Fishing HUD — which tab is open, what sort order, scroll
+ * position, per-column visibility, and the per-creature variant filter.
  *
- * Stored at `config/soul/fishing_hud.json`. Tick-debounced one-write-per-second on a
- * dedicated daemon thread (mirrors `PersistentStats`), so toggling tabs / cycling sort
- * mid-fishing never blocks render. Atomic temp+rename keeps the file consistent if the JVM
- * dies mid-write.
+ * Stored at `config/soul/fishing_hud.json` with tick-debounced atomic writes (mirrors
+ * `PersistentStats`). **Not** profile-keyed — UI preferences live across SkyBlock profiles.
  *
- * **Not** profile-keyed (unlike `PersistentStats`) — the user's HUD preferences are the
- * same regardless of which SkyBlock profile is active.
- *
- * The previous tracker framework had a generic `TrackerSettingsStore` for this; it was
- * retired alongside `TrackerOverlay` in P3 — this is the feature-local replacement.
+ * **Migrated to the [TrackerSettings] interface in the tracker-framework refactor.** The
+ * old persisted shape used explicit `showCatches` / `showDoubleHooks` / `showCocoons`
+ * booleans plus a `Sort` enum value; the new shape stores a `columnVisibility: Map<String,
+ * Boolean>` + a string `sortId`. The load path detects the legacy shape and migrates on
+ * first read so existing users keep their preferences without manual intervention.
  */
-object FishingHudSettings {
+object FishingHudSettings : TrackerSettings {
     private val logger = SoulLogger("Soul/FishingHud")
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val file: File by lazy {
         File(FabricLoader.getInstance().configDir.toFile(), "soul/fishing_hud.json")
     }
 
-    enum class Tab { Session, Total }
+    /** Stable column ids — keep in sync with the column declarations in `FishingHud.kt`. */
+    const val COLUMN_CATCHES = "catches"
+    const val COLUMN_DOUBLE_HOOKS = "doubleHooks"
+    const val COLUMN_COCOONS = "cocoons"
 
-    enum class Sort(val label: String) {
-        Catches("Catches"),
-        DoubleHooks("Double Hooks"),
-        Cocoons("Cocoons"),
-        Rarity("Rarity"),
-        Alphabetical("Alphabetical"),
-    }
+    /** Stable sort ids — keep in sync with the sort declarations in `FishingHud.kt`. */
+    const val SORT_CATCHES = "catches"
+    const val SORT_DOUBLE_HOOKS = "doubleHooks"
+    const val SORT_COCOONS = "cocoons"
+    const val SORT_RARITY = "rarity"
+    const val SORT_ALPHABETICAL = "alpha"
 
-    /**
-     * Live mutable record. UI mutates fields directly, then calls [markDirty].
-     *
-     * `showCatches` / `showDoubleHooks` / `showCocoons` are per-column visibility toggles.
-     * Hiding a column removes it from every row in the list AND from the [Sort] cycle's
-     * effective options. There's always at least one column showing because the toggle row
-     * refuses to flip the last enabled column off (see `FishingHud.toggleColumn`).
-     */
-    data class Settings(
-        var tab: Tab = Tab.Session,
-        var sort: Sort = Sort.Catches,
+    private data class Data(
+        var tab: TrackerTab = TrackerTab.Session,
+        var sortId: String = SORT_CATCHES,
         var scrollOffset: Float = 0f,
-        var showCatches: Boolean = true,
-        var showDoubleHooks: Boolean = true,
-        var showCocoons: Boolean = true,
-        /**
-         * Multi-select filter on raw `SeaCreature.variant` keys (e.g. `"WATER"`,
-         * `"LAVA_CRIMSON_ISLE"`). Empty set = show every variant (the default); otherwise
-         * only rows whose creature lives in one of these variants render. Persisted so the
-         * user's last picked filter sticks across sessions. The footer's "Show All" button
-         * resets this back to the empty set.
-         */
-        var categories: Set<String> = emptySet(),
-    ) {
-        /**
-         * Whether [sort] is currently selectable. Column-bound sorts (`Catches` / `DH` /
-         * `Cocoons`) hide when their column is toggled off — sorting by an invisible column
-         * silently shuffles the row order. `Rarity` and `Alphabetical` derive from the
-         * creature itself, not a column, so they're always visible.
-         */
-        fun isSortVisible(sort: Sort): Boolean =
-            when (sort) {
-                Sort.Catches -> showCatches
-                Sort.DoubleHooks -> showDoubleHooks
-                Sort.Cocoons -> showCocoons
-                Sort.Rarity, Sort.Alphabetical -> true
-            }
+        var filter: Set<String> = emptySet(),
+        var columnVisibility: MutableMap<String, Boolean> =
+            mutableMapOf(
+                COLUMN_CATCHES to true,
+                COLUMN_DOUBLE_HOOKS to true,
+                COLUMN_COCOONS to true,
+            ),
+    )
 
-        /** First visible sort key, falling back to [Sort.Alphabetical] (always visible). */
-        fun firstVisibleSort(): Sort = Sort.values().firstOrNull { isSortVisible(it) } ?: Sort.Alphabetical
-    }
-
-    @Volatile private var settings: Settings = Settings()
+    @Volatile private var data = Data()
 
     @Volatile private var dirty: Boolean = false
 
     @Volatile private var saving: Boolean = false
 
     /**
-     * Transient UI flags — whether each dropdown popup is currently open. Kept off the
-     * persisted [Settings] data class so they never serialize into `fishing_hud.json`; all
-     * dropdowns boot closed on a fresh client launch.
+     * Transient — popups boot closed every client launch. Kept off the persisted [Data]
+     * class so they never serialize.
      */
-    @Volatile var columnDropdownOpen: Boolean = false
+    @Volatile override var sortDropdownOpen: Boolean = false
 
-    @Volatile var sortDropdownOpen: Boolean = false
+    @Volatile override var columnDropdownOpen: Boolean = false
 
-    @Volatile var categoryDropdownOpen: Boolean = false
+    @Volatile override var filterDropdownOpen: Boolean = false
+
+    override var tab: TrackerTab
+        get() = data.tab
+        set(value) {
+            data.tab = value
+        }
+
+    override var sortId: String
+        get() = data.sortId
+        set(value) {
+            data.sortId = value
+        }
+
+    override var scrollOffset: Float
+        get() = data.scrollOffset
+        set(value) {
+            data.scrollOffset = value
+        }
+
+    override var filter: Set<String>
+        get() = data.filter
+        set(value) {
+            data.filter = value
+        }
+
+    override fun isColumnVisible(
+        columnId: String,
+        defaultVisible: Boolean,
+    ): Boolean = data.columnVisibility[columnId] ?: defaultVisible
+
+    override fun setColumnVisible(
+        columnId: String,
+        visible: Boolean,
+    ) {
+        data.columnVisibility[columnId] = visible
+        markDirty()
+    }
+
+    override fun markDirty() {
+        dirty = true
+    }
 
     fun init() {
         load()
@@ -113,12 +127,6 @@ object FishingHudSettings {
         )
     }
 
-    fun get(): Settings = settings
-
-    fun markDirty() {
-        dirty = true
-    }
-
     private fun load() {
         if (!file.exists()) {
             logger.info("No fishing_hud.json — starting from defaults")
@@ -130,17 +138,71 @@ object FishingHudSettings {
                 logger.warn("fishing_hud.json is not a JSON object — using defaults")
                 return
             }
-            settings = gson.fromJson(json, Settings::class.java) ?: Settings()
-            logger.info("Loaded fishing_hud settings: tab=${settings.tab} sort=${settings.sort}")
+            val obj = json.asJsonObject
+            // Legacy shape: had explicit `showCatches` / `showDoubleHooks` / `showCocoons`
+            // booleans + a `sort: "Catches"` enum-name string. Detect via the column flag
+            // existence and migrate to the new columnVisibility / sortId shape on the fly.
+            val isLegacy =
+                !obj.has("columnVisibility") && (obj.has("showCatches") || obj.has("showDoubleHooks") || obj.has("showCocoons"))
+            if (isLegacy) {
+                data = parseLegacy(obj)
+                dirty = true
+                logger.info(
+                    "Migrated legacy fishing_hud.json " +
+                        "(tab=${data.tab} sort=${data.sortId} cols=${data.columnVisibility})",
+                )
+                return
+            }
+            data = gson.fromJson(json, Data::class.java) ?: Data()
+            // Backfill any missing column ids in case a future version adds a column —
+            // unknown keys stay at their declared default for the affected column.
+            for (id in listOf(COLUMN_CATCHES, COLUMN_DOUBLE_HOOKS, COLUMN_COCOONS)) {
+                data.columnVisibility.putIfAbsent(id, true)
+            }
+            logger.info("Loaded fishing_hud settings: tab=${data.tab} sort=${data.sortId}")
         } catch (e: Exception) {
             logger.warn("Failed to read fishing_hud.json — using defaults", e)
         }
     }
 
+    private fun parseLegacy(obj: com.google.gson.JsonObject): Data {
+        val out = Data()
+        // tab (enum name)
+        out.tab = obj.get("tab")?.asString?.let { runCatching { TrackerTab.valueOf(it) }.getOrNull() } ?: TrackerTab.Session
+        // sort (legacy enum names: Catches / DoubleHooks / Cocoons / Rarity / Alphabetical)
+        out.sortId =
+            when (obj.get("sort")?.asString) {
+                "Catches" -> SORT_CATCHES
+                "DoubleHooks" -> SORT_DOUBLE_HOOKS
+                "Cocoons" -> SORT_COCOONS
+                "Rarity" -> SORT_RARITY
+                "Alphabetical" -> SORT_ALPHABETICAL
+                else -> SORT_CATCHES
+            }
+        out.scrollOffset = obj.get("scrollOffset")?.asFloat ?: 0f
+        val categories = obj.getAsJsonArray("categories")
+        // Legacy stored raw variant keys (e.g. `"LAVA_CRIMSON_ISLE"`); the framework now
+        // compares against display names from the dropdown (e.g. `"Lava Crimson Isle"`).
+        // Convert at migration time so the user's previous filter still matches rows.
+        out.filter =
+            if (categories != null) {
+                categories.mapNotNull { it.asString?.toDisplayName() }.toSet()
+            } else {
+                emptySet()
+            }
+        out.columnVisibility =
+            mutableMapOf(
+                COLUMN_CATCHES to (obj.get("showCatches")?.asBoolean ?: true),
+                COLUMN_DOUBLE_HOOKS to (obj.get("showDoubleHooks")?.asBoolean ?: true),
+                COLUMN_COCOONS to (obj.get("showCocoons")?.asBoolean ?: true),
+            )
+        return out
+    }
+
     private fun saveAsync() {
         saving = true
         dirty = false
-        val snapshot = settings.copy()
+        val snapshot = data.copy(columnVisibility = data.columnVisibility.toMutableMap())
         SoulExecutor.executor.submit {
             try {
                 file.parentFile?.mkdirs()
