@@ -275,7 +275,7 @@ all-time/session/festival). Per-creature data lives only in `stats.json` until v
 Do not ship any backend telemetry in v1. The user wants to see the in-game features first
 before deciding on event granularity / aggregation. When v2 happens:
 
-- Bridge will be a new `prompts/backend-fishing-stats.md` brief for SkyBackend.
+- Bridge will be a new `prompts/fishing/01-stats.md` brief for SkyBackend.
 - Data already exists in `PersistentStats` (per-creature maps, festival buckets) — telemetry
   will derive from periodic snapshots / deltas, not require schema changes.
 - Probable endpoint shape: `POST /fishing/snapshot` with the current per-profile data, or
