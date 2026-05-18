@@ -12,16 +12,16 @@ Soul is a **client-side Fabric mod** for Minecraft (Hypixel SkyBlock features), 
 
 ## Build & run
 
-PowerShell is the assumed shell.
+Bash (WSL/Linux) is the assumed shell. The project was developed on Windows; legacy `.bat` paths still work from WSL if `JAVA_HOME` points at a Linux JBR install, but the canonical invocations are now:
 
-```powershell
-.\gradlew.bat ":1.21.11:build"              # build active version (1.21.11)
-.\gradlew.bat buildAndCollect               # all versions → build/libs/<mod version>/
-.\gradlew.bat --refresh-dependencies        # after editing gradle.properties
-.\gradlew.bat :1.21.11:ktlintFormat         # auto-format touched files
+```bash
+./gradlew :1.21.11:build                 # build active version (1.21.11)
+./gradlew buildAndCollect                # all versions → build/libs/<mod version>/
+./gradlew --refresh-dependencies         # after editing gradle.properties
+./gradlew :1.21.11:ktlintFormat          # auto-format touched files
 ```
 
-If Gradle picks the wrong JDK: `$env:JAVA_HOME = "C:\Users\soul\.jdks\jbr-21.0.10"`. Required Java is **21**.
+If Gradle picks the wrong JDK: `export JAVA_HOME=$HOME/.jdks/jbr-21.0.10` (or wherever your JBR-for-Linux lives — any JDK 21 on `$PATH` works). Required Java is **21**.
 
 **Static analysis:** `ktlint` + `detekt` are wired with `ignoreFailures = true` — they print warnings during `:check` but never break the build. **There are no automated tests.** Don't invent or expect a `test` task.
 
@@ -37,12 +37,10 @@ Mod-side changes that need server-side counterparts (new endpoints, schema migra
 
 ```
 prompts/
-├── sync/         01-prompt.md, 02-status-endpoint.md, 03-defaults-changes.md
-├── realtime/     01-prompt.md, 02-token-ttl-fix.md
-├── presence/     01-migration.md, 02-online-fix.md
-├── mineshaft/    01-stats.md, 02-visit-warped-fields.md
 └── item-catalog/ 01-foundation.md, 02-admin-ui.md
 ```
+
+(Older feature subdirs — `sync/`, `realtime/`, `presence/`, `mineshaft/` — have shipped and been pruned. Recreate the same `<feature>/0N-<topic>.md` layout for any new backend handoff.)
 
 When the mod ships a change touching the backend contract, drop a numbered file under the right subdir (`prompts/<feature>/0N-<topic>.md`). New feature = new subdir; follow-ups = next number in that feature's subdir. `prompts/` is **gitignored** — keep your local prompts authoritative; the backend session reads them in WSL.
 
@@ -50,7 +48,7 @@ When the mod ships a change touching the backend contract, drop a numbered file 
 
 Push a `v*` tag to trigger the GitHub Actions release workflow:
 
-```powershell
+```bash
 git tag v2.1.0 && git push origin v2.1.0
 ```
 

@@ -1,9 +1,26 @@
 #
 # https://help.github.com/articles/dealing-with-line-endings/
 #
-# Linux start script should use lf
-/gradlew        text eol=lf
 
-# These are Windows script files and should use crlf
-*.bat           text eol=crlf
+# Default: all text files normalize to LF on commit, stay LF on checkout
+# regardless of the user's `core.autocrlf` setting (defends against the
+# Windows-side default rewriting source files to CRLF on clone).
+* text=auto eol=lf
 
+# Windows scripts must remain CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files — never text-normalize
+*.jar binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.ttf binary
+*.otf binary
+*.class binary
