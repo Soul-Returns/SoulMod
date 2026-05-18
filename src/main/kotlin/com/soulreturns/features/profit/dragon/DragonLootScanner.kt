@@ -65,6 +65,17 @@ object DragonLootScanner {
     private const val SCAN_INTERVAL_TICKS = 10
 
     /**
+     * Delay (ticks) after the first parsed loot stand before firing the profit-summary
+     * announcement to [DragonProfitAnnouncer]. 100 = 5 seconds. Long enough for a player
+     * still walking into the loot circle to load the rest of the stands (Hypixel only
+     * renders each within ~20 blocks of the local client), short enough that the
+     * announcement still feels real-time. Window is 30 s total, so even at this delay the
+     * scan has 25 s of buffer for stragglers to be folded into the live HUD — they just
+     * miss the announced number, by design.
+     */
+    private const val SUMMARY_DELAY_TICKS = 100
+
+    /**
      * `"<Item Display Name> xN"` → groups (`<Item Display Name>`, `N`). The `xN` suffix is
      * optional — a stand carrying a single item omits it entirely.
      */
@@ -97,6 +108,14 @@ object DragonLootScanner {
          * land in B's partition.
          */
         val killSource: KillSource,
+        /**
+         * Number of Summoning Eyes the **local player** placed for this specific kill.
+         * Snapshotted from [EyePlacementTracker.lastSpawnEyes] at [beginScan] time so
+         * back-to-back spawns can't overwrite it before the announcer fires. Used by
+         * [DragonProfitAnnouncer] to subtract per-kill eye cost from the gross drop value
+         * in the announced profit number.
+         */
+        val ownEyes: Long,
         val maxCounts: MutableMap<DragonDrop, Long> = mutableMapOf(),
         /**
          * Per-drop count already pushed to [DragonProfitTracker]. Each scan grants
@@ -107,6 +126,14 @@ object DragonLootScanner {
         /** Flips true on the first scan that found any loot — prevents double-grantKill. */
         var killGranted: Boolean = false,
         var ticksSinceStart: Int = 0,
+        /**
+         * Tick index at which the FIRST loot stand was parsed (i.e. the same tick
+         * `killGranted` flipped). -1 until that happens. Used to schedule a delayed
+         * profit-summary callback to [DragonProfitAnnouncer] — see [SUMMARY_DELAY_TICKS].
+         */
+        var firstLootAtTick: Int = -1,
+        /** One-shot guard so the announcer's `onDragonLootSummary` fires at most once per scan. */
+        var summaryFired: Boolean = false,
         /**
          * Distinct custom-name strings observed inside the radius during this scan
          * window — used for diagnostics when no loot is detected, so the log can tell us
@@ -124,6 +151,18 @@ object DragonLootScanner {
 
     @Volatile private var active: ActiveScan? = null
 
+    /**
+     * True while a scan window is open but no loot has been detected yet — i.e. the player
+     * hasn't walked close enough to the loot pile for Hypixel to render the armor stands.
+     * The HUD uses this to swap its scrollable list for a "Go near the loot to track it"
+     * instruction. Flips back to false as soon as the first loot stand is parsed (the same
+     * moment `killGranted` flips to true inside `grantPending`).
+     */
+    fun isScanActiveWithoutLoot(): Boolean {
+        val ctx = active ?: return false
+        return !ctx.killGranted
+    }
+
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register(
             ClientTickEvents.EndTick { _ ->
@@ -140,9 +179,10 @@ object DragonLootScanner {
     fun beginScan(dragonType: DragonType) {
         finalize(reason = "new kill overrides previous scan")
         val source = DragonProfitTracker.currentKillSource
-        active = ActiveScan(dragonType = dragonType, killSource = source)
+        val ownEyes = EyePlacementTracker.lastSpawnEyes
+        active = ActiveScan(dragonType = dragonType, killSource = source, ownEyes = ownEyes)
         logger.info(
-            "Dragon kill: ${dragonType.displayName} ($source) — scanning for loot " +
+            "Dragon kill: ${dragonType.displayName} ($source, $ownEyes own eye(s)) — scanning for loot " +
                 "(30 s window, re-centered on player)",
         )
     }
@@ -152,6 +192,21 @@ object DragonLootScanner {
         ctx.ticksSinceStart++
         if (ctx.ticksSinceStart % SCAN_INTERVAL_TICKS == 0) {
             scanOnce(ctx)
+        }
+        // Delayed profit-summary trigger — fires once, 5 s after the first stand parsed.
+        // `firstLootAtTick` is set inside [grantPending] on the kill-credit transition.
+        if (!ctx.summaryFired && ctx.firstLootAtTick >= 0 &&
+            ctx.ticksSinceStart - ctx.firstLootAtTick >= SUMMARY_DELAY_TICKS
+        ) {
+            ctx.summaryFired = true
+            // Snapshot to avoid mutation races if the announcer ever iterates async.
+            val snapshot = HashMap(ctx.grantedSoFar)
+            DragonProfitAnnouncer.onDragonLootSummary(
+                dragonType = ctx.dragonType,
+                killSource = ctx.killSource,
+                drops = snapshot,
+                ownEyes = ctx.ownEyes,
+            )
         }
         if (ctx.ticksSinceStart >= WINDOW_TICKS) {
             finalize(reason = "window expired")
@@ -219,6 +274,7 @@ object DragonLootScanner {
         if (grantedThisPass && !ctx.killGranted) {
             DragonProfitTracker.grantKill(ctx.dragonType, 1, ctx.killSource)
             ctx.killGranted = true
+            ctx.firstLootAtTick = ctx.ticksSinceStart
             logger.info(
                 "Dragon ${ctx.dragonType.displayName} (${ctx.killSource}) — first loot detected, kill credited",
             )

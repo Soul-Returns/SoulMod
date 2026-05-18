@@ -16,6 +16,10 @@ import com.soulreturns.util.SoulLogger
  *   `"Brace yourselves!"` insert on the final eye (`"☬ You placed a Summoning Eye! Brace yourselves! (8/8)"`).
  * - Other player's placement: `"☬ <name> placed a Summoning Eye! (N/8)"` — we ignore these
  *   so the cost only reflects what *this* player paid.
+ * - Own recovery: `"You recovered a Summoning Eye!"` — fires when the player right-clicks
+ *   one of their already-placed eyes to take it back. Decrements `pendingOwnEyes` by 1
+ *   (floored at 0). Only fires before the spawn message; once eyes turn into
+ *   "Remnants of the Eye" they're no longer recoverable.
  * - Spawn: `"☬ The <Type> Dragon has spawned!"` — title-case dragon type, not uppercase.
  *
  * **Attribution + TTL:** pending eyes accumulate from each "You placed" line. On the next
@@ -33,6 +37,15 @@ object EyePlacementTracker {
     private val OWN_PLACEMENT_REGEX = Regex("""^☬ You placed a Summoning Eye!""")
 
     /**
+     * `You recovered a Summoning Eye!` — fires when the player right-clicks one of their
+     * placed eyes to take it back. The leading `☬` glyph is **not** present in this line
+     * (verified in-game vs. the placement lines which do carry it), so we anchor on the
+     * stripped+trimmed body instead. Matches the full line, not `containsMatchIn`, to
+     * avoid accidentally firing on quoted/echoed party chat.
+     */
+    private val OWN_RECOVERY_REGEX = Regex("""^You recovered a Summoning Eye!$""")
+
+    /**
      * `^☬ The <Type> Dragon has spawned!` after color-strip. The exclamation is present in
      * every spawn line and the dragon name is title-cased ("Strong" not "STRONG").
      */
@@ -42,6 +55,17 @@ object EyePlacementTracker {
     @Volatile private var pendingOwnEyes: Long = 0L
 
     @Volatile private var pendingSince: Long = 0L
+
+    /**
+     * Own-eye count attributed to the most recent dragon spawn. Set inside [onChat]'s spawn
+     * branch (same value as `toGrant`). Survives across the gap between spawn and the kill's
+     * death banner, so [DragonLootScanner.beginScan] can snapshot it as the local player's
+     * eye contribution for that specific dragon. Reset whenever a new spawn message lands,
+     * which is strictly after the previous dragon has died (Hypixel won't allow eyes on a
+     * platform with an active dragon).
+     */
+    @Volatile var lastSpawnEyes: Long = 0L
+        private set
 
     fun register() {
         Events.subscribe(this)
@@ -63,6 +87,7 @@ object EyePlacementTracker {
             val toGrant = pendingOwnEyes
             pendingOwnEyes = 0L
             pendingSince = 0L
+            lastSpawnEyes = toGrant
             // Classify *this* spawn: ≥1 own eye placed → SUMMONED, else LOOTSHARE. The
             // source stays valid through to the death banner so loot is attributed to the
             // right partition by DragonLootScanner.
@@ -89,6 +114,19 @@ object EyePlacementTracker {
             }
             pendingOwnEyes++
             pendingSince = now
+            return
+        }
+
+        // 3. Own eye recovery — right-click on a placed eye returned it to inventory.
+        //    Floor at 0 in case the line ever fires without a matching prior placement
+        //    (regex regression, missed chat line, etc.) — better to under-count than to
+        //    wrap to negative. Clear `pendingSince` when the queue drains so the TTL
+        //    timer doesn't fire on stale state.
+        if (OWN_RECOVERY_REGEX.matches(clean)) {
+            if (pendingOwnEyes > 0L) {
+                pendingOwnEyes--
+                if (pendingOwnEyes == 0L) pendingSince = 0L
+            }
         }
     }
 

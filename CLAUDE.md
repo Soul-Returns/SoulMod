@@ -12,7 +12,7 @@ Soul is a **client-side Fabric mod** for Minecraft (Hypixel SkyBlock features), 
 
 ## Build & run
 
-Bash (WSL/Linux) is the assumed shell. The project was developed on Windows; legacy `.bat` paths still work from WSL if `JAVA_HOME` points at a Linux JBR install, but the canonical invocations are now:
+The canonical invocations (for a Linux checkout, or from IntelliJ on Windows):
 
 ```bash
 ./gradlew :1.21.11:build                 # build active version (1.21.11)
@@ -21,7 +21,21 @@ Bash (WSL/Linux) is the assumed shell. The project was developed on Windows; leg
 ./gradlew :1.21.11:ktlintFormat          # auto-format touched files
 ```
 
+The repo is checked out on the Windows side (`/mnt/c/Users/soul/projects/SoulMod` in WSL = `C:\Users\soul\projects\SoulMod` in Windows). The Linux `./gradlew` launcher does NOT work against this path — see the WSL recipe below for the working invocation.
+
 If Gradle picks the wrong JDK: `export JAVA_HOME=$HOME/.jdks/jbr-21.0.10` (or wherever your JBR-for-Linux lives — any JDK 21 on `$PATH` works). Required Java is **21**.
+
+**Claude / WSL → Windows build recipe.** This repo lives at `/mnt/c/Users/soul/projects/SoulMod` (a Windows checkout mounted via DrvFs). The Linux `./gradlew` launcher **does not work here** — Gradle's `FileHasher` throws `java.io.IOException: Input/output error` on `/mnt/c` paths the moment a build starts, regardless of `JAVA_HOME`. Use `cmd.exe` to drive the Windows-side launcher and the Windows-side JBR instead:
+
+```bash
+cmd.exe /c "set JAVA_HOME=C:\Users\soul\.jdks\jbr-21.0.11&&gradlew.bat :1.21.11:compileKotlin"
+```
+
+Two gotchas worth memorizing:
+- **No spaces around `&&`** in the `set` chain — cmd.exe folds trailing whitespace into the variable value, so `set JAVA_HOME=... && gradlew.bat` ends up with `JAVA_HOME` pointing at a non-existent path with a trailing space and gradlew fails with "invalid directory".
+- The default user task for "did my Kotlin change compile" is `:1.21.11:compileKotlin` — fastest signal, finishes in ~20-30 s warm. Use `:1.21.11:build` only when verifying the full mod jar (~minute+).
+
+The user runs builds via IntelliJ in normal flow; this recipe is specifically the path that works from a Claude-in-WSL shell.
 
 **Static analysis:** `ktlint` + `detekt` are wired with `ignoreFailures = true` — they print warnings during `:check` but never break the build. **There are no automated tests.** Don't invent or expect a `test` task.
 

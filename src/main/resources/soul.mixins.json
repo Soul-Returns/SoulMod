@@ -13,6 +13,7 @@
     "render.AbstractContainerScreenMixin",
     "render.EffectsInInventoryMixin",
     "render.ChatScreenMixin",
+    "render.ChatScreenRightClickCopyMixin",
     "render.ChatComponentMixin",
     "render.ChatComponentAddMessageMixin",
     "render.GlDebugMixin",

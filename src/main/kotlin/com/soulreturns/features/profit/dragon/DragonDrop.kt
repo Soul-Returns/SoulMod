@@ -28,7 +28,10 @@ import com.soulreturns.data.skyblock.SkyblockRarity
  *   dragons. Superior's signature weapon-tier drops are Dragon Horn + Pearlescent Dye.
  * - **Superior-only**: `DRAGON_HORN`, `PEARLESCENT_DYE`.
  * - **Young-only**: `DRAGON_SCALE`.
- * - **Unstable-only**: `DRAGON_NEST_TRAVEL_SCROLL`.
+ * - **Unstable-only**: `TRAVEL_SCROLL_TO_DRAGONS_NEST` (Hypixel id format is
+ *   `TRAVEL_SCROLL_TO_<DEST>` for every travel scroll; the in-game loot-stand text uses an
+ *   apostrophe — `"Travel Scroll to Dragon's Nest"` — which is what `byDisplayName` keys
+ *   against and must match the catalog's `displayName` exactly).
  * - **Universal materials** (every dragon): `ENDER_PEARL`, `ENCHANTED_ENDER_PEARL`,
  *   `DRAGON_CLAW`, **Draconic Shard**. The shard's bazaar product id is `SHARD_DRACONIC`
  *   — NOT `ATTRIBUTE_SHARD_DRAGON_ESSENCE` (NEU's internal name) and NOT the bare
@@ -326,9 +329,9 @@ enum class DragonDrop(
     ),
 
     // ─── Per-dragon exclusive drops ───
-    DRAGON_NEST_TRAVEL_SCROLL(
-        "DRAGON_NEST_TRAVEL_SCROLL",
-        "Dragon Nest Travel Scroll",
+    TRAVEL_SCROLL_TO_DRAGONS_NEST(
+        "TRAVEL_SCROLL_TO_DRAGONS_NEST",
+        "Travel Scroll to Dragon's Nest",
         SkyblockRarity.EPIC,
         setOf(DragonType.UNSTABLE),
     ),

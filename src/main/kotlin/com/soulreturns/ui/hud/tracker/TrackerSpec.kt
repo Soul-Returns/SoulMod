@@ -110,4 +110,23 @@ data class TrackerSpec<T : Any>(
      * to `"(no data yet)"`.
      */
     val emptyText: String = "(no data yet)",
+    /**
+     * When this returns true, [listOverride] is rendered in place of the default
+     * scrollable list AND the chip-line is suppressed for that frame. Used for transient
+     * "instructional" states — e.g. the dragon-profit HUD swaps the list for a "Go near
+     * the loot to track it" banner while a scan window is open but no loot has rendered
+     * yet. The override is expected to occupy the same vertical space as the default list
+     * so the panel doesn't visibly shrink/grow as the override toggles.
+     */
+    val shouldOverrideList: () -> Boolean = { false },
+    val listOverride: (@SoulComposable () -> Unit)? = null,
+    /**
+     * Optional fully-custom replacement for the auto-generated chip line. When non-null,
+     * the framework skips its own per-column chip rendering and invokes this composable
+     * instead. Used by trackers that need a multi-element layout the per-column chip API
+     * can't express — e.g. the dragon-profit HUD's two-cell SpaceBetween line with
+     * `Per dragon` flush-left and `Profit` flush-right. The override is responsible for
+     * its own Row / alignment / formatting.
+     */
+    val chipOverride: (@SoulComposable () -> Unit)? = null,
 )

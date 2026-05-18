@@ -27,6 +27,8 @@ import com.soulreturns.features.notifications.BackendNotificationCenter
 import com.soulreturns.features.notifications.ChatNotifications
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.features.profit.dragon.DragonDeathDetector
+import com.soulreturns.features.profit.dragon.DragonLegionAnnouncer
+import com.soulreturns.features.profit.dragon.DragonProfitAnnouncer
 import com.soulreturns.features.profit.dragon.DragonLootScanner
 import com.soulreturns.features.profit.dragon.DragonProfitTracker
 import com.soulreturns.features.profit.dragon.EyePlacementTracker
@@ -270,6 +272,8 @@ object Soul : ClientModInitializer {
         DragonDeathDetector.register()
         DragonLootScanner.register()
         EyePlacementTracker.register()
+        DragonLegionAnnouncer.register()
+        DragonProfitAnnouncer.register()
         DragonProfitHud.register()
     }
 

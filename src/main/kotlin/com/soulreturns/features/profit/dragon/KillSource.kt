@@ -20,11 +20,15 @@ enum class KillSource {
     LOOTSHARE,
     ;
 
-    /** Display label used in the Source picker dropdown. */
+    /**
+     * Display label used in chat / dev-command output (`"Summoned"`, `"Lootshare"`).
+     * **Deliberately implemented as `if/else` rather than `when (this)`** — Kotlin compiles
+     * enum-`when` into a synthetic `KillSource$WhenMappings` inner class with an ordinal
+     * mapping table, and Fabric's KnotClassLoader has been seen to fail to resolve that
+     * synthetic at runtime (`NoClassDefFoundError`). With only two variants the if/else is
+     * also marginally clearer; if a third variant is ever added, prefer `if/else if` chain
+     * over `when (this)` for the same reason.
+     */
     val displayName: String
-        get() =
-            when (this) {
-                SUMMONED -> "Summoned"
-                LOOTSHARE -> "Lootshare"
-            }
+        get() = if (this == SUMMONED) "Summoned" else "Lootshare"
 }

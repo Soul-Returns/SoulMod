@@ -67,9 +67,16 @@ fun <T : Any> TrackerHud(
         Column(gap = 6f, modifier = SoulModifier.Empty.fillMaxWidth()) {
             Header(spec, settings, interactive)
             HorizontalDivider()
-            RowList(spec, settings)
-            if (anyChipVisible(spec, settings)) {
-                ChipsLine(spec, settings)
+            val overrideList = spec.shouldOverrideList() && spec.listOverride != null
+            if (overrideList) {
+                spec.listOverride!!.invoke()
+            } else {
+                RowList(spec, settings)
+                if (spec.chipOverride != null) {
+                    spec.chipOverride.invoke()
+                } else if (anyChipVisible(spec, settings)) {
+                    ChipsLine(spec, settings)
+                }
             }
             if (interactive) {
                 HorizontalDivider()
@@ -489,7 +496,14 @@ private fun HorizontalDivider() {
 
 private const val SEPARATOR_HEIGHT = 1f
 private const val COLOR_PAUSED_RED = 0xFFFF5555.toInt()
-private const val LIST_HEIGHT = 140f
+
+/**
+ * Height of the row-list region. Exposed (rather than private) so trackers that
+ * register a [TrackerSpec.listOverride] can size their override composable to match,
+ * keeping the panel's vertical footprint stable across the toggle.
+ */
+const val TRACKER_LIST_HEIGHT = 140f
+internal const val LIST_HEIGHT = TRACKER_LIST_HEIGHT
 private const val FOOTER_DROPDOWN_MAX_HEIGHT = 156f
 private const val COLUMN_DIVIDER_WIDTH = 1f
 private const val COLUMN_DIVIDER_HEIGHT = 9f

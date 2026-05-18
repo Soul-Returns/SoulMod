@@ -6,6 +6,7 @@ import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.prices.PriceSource
 import com.soulreturns.data.skyblock.SkyblockApi
 import com.soulreturns.features.profit.dragon.DragonDrop
+import com.soulreturns.features.profit.dragon.DragonLootScanner
 import com.soulreturns.features.profit.dragon.DragonProfitHudSettings
 import com.soulreturns.features.profit.dragon.DragonProfitTracker
 import com.soulreturns.features.profit.dragon.DragonType
@@ -13,13 +14,18 @@ import com.soulreturns.features.profit.dragon.KillSource
 import com.soulreturns.gui.lib.HudHorizontalAnchor
 import com.soulreturns.gui.lib.HudVerticalAnchor
 import com.soulreturns.ui.composer.Arrangement
+import com.soulreturns.ui.composer.HorizontalAlignment
 import com.soulreturns.ui.composer.SoulComposable
 import com.soulreturns.ui.composer.SoulModifier
 import com.soulreturns.ui.composer.VerticalAlignment
 import com.soulreturns.ui.composer.fillMaxWidth
+import com.soulreturns.ui.composer.height
+import com.soulreturns.ui.composer.padding
+import com.soulreturns.ui.foundation.Column
 import com.soulreturns.ui.foundation.Dropdown
 import com.soulreturns.ui.foundation.Row
 import com.soulreturns.ui.foundation.Text
+import com.soulreturns.ui.hud.tracker.TRACKER_LIST_HEIGHT
 import com.soulreturns.ui.hud.tracker.TrackerColumn
 import com.soulreturns.ui.hud.tracker.TrackerHud
 import com.soulreturns.ui.hud.tracker.TrackerSort
@@ -63,12 +69,14 @@ object DragonProfitHud {
             id = HUD_ID,
             title = "Dragon Profit",
             width = 280,
-            // Tall enough to fit: header (title + Eyes placed line + tabs row, ~50 px),
-            // divider, scrollable list (140), chips line (~14), divider, footer (4 rows:
-            // Source / Filter+ShowAll / Sort+Columns / Reset, each ~27 px button + 6 px
-            // gap = ~33). The Source picker pushed the previous 360 over the edge and cut
-            // the Reset button. 420 leaves a few pixels of slack.
-            height = 420,
+            // Tall enough to fit: header (title + Dragons/LS row + Eyes-placed row + tabs
+            // row, ~64 px after the eye-line split), divider, scrollable list (140), chips
+            // line (~14), divider, footer (4 rows: Source / Filter+ShowAll / Sort+Columns /
+            // Reset, each ~27 px button + 6 px gap = ~33). The Source picker pushed the
+            // previous 360 over the edge and cut the Reset button; the Dragons/LS + Eyes
+            // split + cost annotation pushed 420 just over the edge again — 440 leaves a
+            // visible-pixel buffer below the Reset button.
+            height = 440,
             // Top-right by default — End-island players typically have the boss bar at top,
             // chat at bottom-left; right edge is the most consistent unused real estate.
             defaultAnchorX = 0.99,
@@ -116,6 +124,10 @@ object DragonProfitHud {
                             rows.sumOf { it.value } - eyeCost
                         },
                         formatCell = ::formatCoinsShort,
+                        // formatChipTotal is unused — the spec's [chipOverride] (ProfitChipLine)
+                        // renders the chip line directly. Keeping the field non-null for API
+                        // shape; ::formatCoinsShort is the natural fallback if chipOverride
+                        // is ever removed.
                         formatChipTotal = ::formatCoinsShort,
                         cellWidth = 56f,
                         isCaption = false,
@@ -157,9 +169,62 @@ object DragonProfitHud {
             filterPredicate = { _, _ -> true },
             onResetSession = { DragonProfitTracker.resetSession() },
             isVisible = ::isHudVisible,
-            headerExtra = { EyesPlacedLine() },
+            headerExtra = {
+                // Two stacked sub-lines — Dragons/LS counts on the first row, the eye-count
+                // summary on the second (`Eyes placed:` moved below the dragon counts per
+                // user preference, gives it room to grow with the cost annotation).
+                DragonsCountLine()
+                EyesPlacedLine()
+            },
             footerExtra = { SourcePicker() },
+            shouldOverrideList = DragonLootScanner::isScanActiveWithoutLoot,
+            listOverride = { ScanInstructionBanner() },
+            chipOverride = { ProfitChipLine() },
         )
+    }
+
+    /**
+     * Replaces the scrollable list while a dragon-death scan is open but no loot stand has
+     * rendered yet — Hypixel only sends loot armor-stand packets when the player is within
+     * ~20 blocks of their pile, so far-away tag-killers see an empty list and would
+     * otherwise wonder if the kill registered. Sized to [TRACKER_LIST_HEIGHT] so the panel
+     * footprint stays stable across the toggle.
+     */
+    @SoulComposable
+    private fun ScanInstructionBanner() {
+        Column(
+            modifier =
+                SoulModifier.Empty
+                    .fillMaxWidth()
+                    .height(TRACKER_LIST_HEIGHT)
+                    .padding(horizontal = 12f),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = HorizontalAlignment.Center,
+            gap = 4f,
+        ) {
+            Text(
+                text = "Go near the loot",
+                size = SoulTheme.typography.title.size,
+                color = SoulTheme.colors.accent,
+                font = SoulTheme.typography.title.font,
+            )
+            Text(
+                text = "to track it",
+                size = SoulTheme.typography.title.size,
+                color = SoulTheme.colors.accent,
+                font = SoulTheme.typography.title.font,
+            )
+            // Smaller dim hint — explains *why* the player needs to get close: Hypixel
+            // renders each loot armor-stand only when the local client is within ~20 blocks
+            // of it, and the pile is spread in a circle around the death point, so the far
+            // side won't show until the player walks deeper in.
+            Text(
+                text = "All loot nametags must be visible",
+                size = SoulTheme.typography.caption.size,
+                color = SoulTheme.colors.textDim,
+                font = SoulTheme.typography.body.font,
+            )
+        }
     }
 
     /**
@@ -205,60 +270,147 @@ object DragonProfitHud {
     private fun currentSourceFilter(): KillSource? = DragonProfitHudSettings.sourceFilter
 
     /**
-     * Renders `Eyes placed: N · Dragons: M` under the title.
-     *  - **Eyes placed** comes from [com.soulreturns.features.profit.dragon.EyePlacementTracker]
-     *    via [DragonProfitTracker.eyesPlacedFor]. Always SUMMONED (eyes are by definition
-     *    summoning), so the source filter doesn't affect this number.
-     *  - **Dragons** is the sum of `killsFor` across the current bucket filter (empty
-     *    filter = all 7 dragons) AND the current source filter — so the Lootshare-only
-     *    view shows just lootshare kills.
-     *
-     * Both respect the active Session/Total tab.
+     * Top header sub-line: `Dragons: X · LS: Y`. Always shows both partitions regardless of
+     * the Source-filter dropdown — gives at-a-glance own-vs-lootshare attribution. Bucket
+     * filter + active Session/Total tab are respected.
      */
     @SoulComposable
-    private fun EyesPlacedLine() {
+    private fun DragonsCountLine() {
         val tab = DragonProfitHudSettings.tab
         val buckets = currentBucketFilter().ifEmpty { DragonType.entries.toSet() }
-        val eyes = buckets.sumOf { DragonProfitTracker.eyesPlacedFor(it, tab) }
-        val sourceFilter = currentSourceFilter()
-        val dragons = buckets.sumOf { DragonProfitTracker.killsFor(it, tab, sourceFilter) }
+        val summonedDragons = buckets.sumOf { DragonProfitTracker.killsFor(it, tab, KillSource.SUMMONED) }
+        val lootshareDragons = buckets.sumOf { DragonProfitTracker.killsFor(it, tab, KillSource.LOOTSHARE) }
         Row(
             modifier = SoulModifier.Empty.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = VerticalAlignment.Center,
             gap = 6f,
         ) {
-            Text(
-                text = "Eyes placed:",
-                size = SoulTheme.typography.body.size,
-                color = SoulTheme.colors.textDim,
-                font = SoulTheme.typography.body.font,
-            )
-            Text(
-                text = String.format(Locale.ROOT, "%,d", eyes),
-                size = SoulTheme.typography.body.size,
-                color = SoulTheme.colors.text,
-                font = SoulTheme.typography.mono.font,
-            )
-            Text(
-                text = "·",
-                size = SoulTheme.typography.body.size,
-                color = SoulTheme.colors.textFaint,
-                font = SoulTheme.typography.body.font,
-            )
-            Text(
-                text = "Dragons:",
-                size = SoulTheme.typography.body.size,
-                color = SoulTheme.colors.textDim,
-                font = SoulTheme.typography.body.font,
-            )
-            Text(
-                text = String.format(Locale.ROOT, "%,d", dragons),
-                size = SoulTheme.typography.body.size,
-                color = SoulTheme.colors.text,
-                font = SoulTheme.typography.mono.font,
-            )
+            HeaderLabel("Dragons:")
+            HeaderValue(String.format(Locale.ROOT, "%,d", summonedDragons))
+            HeaderSeparator()
+            HeaderLabel("LS:")
+            HeaderValue(String.format(Locale.ROOT, "%,d", lootshareDragons))
         }
+    }
+
+    /**
+     * Second header sub-line: `Eyes placed: N (X)`. Parenthesized cost is `count × price(
+     * SUMMONING_EYE)` at instant-buy; omitted when count = 0 or the eye price hasn't loaded
+     * so the line never reads `"Eyes placed: 0 (0)"`. Always SUMMONED-only by definition
+     * (eyes are placed during summoning); source filter doesn't affect it.
+     */
+    @SoulComposable
+    private fun EyesPlacedLine() {
+        val tab = DragonProfitHudSettings.tab
+        val buckets = currentBucketFilter().ifEmpty { DragonType.entries.toSet() }
+        val eyes = buckets.sumOf { DragonProfitTracker.eyesPlacedFor(it, tab) }
+        val eyeCost = eyes * PriceCache.price("SUMMONING_EYE", PriceSource.BAZAAR_INSTANT_BUY)
+        val eyesText =
+            if (eyes > 0L && eyeCost > 0L) {
+                String.format(Locale.ROOT, "%,d (%s)", eyes, formatCoinsShort(eyeCost))
+            } else {
+                String.format(Locale.ROOT, "%,d", eyes)
+            }
+        Row(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = VerticalAlignment.Center,
+            gap = 6f,
+        ) {
+            HeaderLabel("Eyes placed:")
+            HeaderValue(eyesText)
+        }
+    }
+
+    /**
+     * Replacement for the framework's auto-generated chip line. Renders `Per dragon: <avg>`
+     * flush-left and `Profit: <total>` flush-right via SpaceBetween — the previous inline
+     * `Profit: X · Per dragon: Y` single-chip got swapped + split so each value gets the
+     * edge of the panel and reads cleaner at a glance. Both numbers respect the Source-
+     * filter dropdown and bucket filter via [currentSourceFilter] / [currentBucketFilter].
+     *
+     * Per-dragon arithmetic is the same as before: `total / killsFor(currentSourceFilter)`,
+     * with the suffix omitted entirely when the active partition has zero kills.
+     */
+    @SoulComposable
+    private fun ProfitChipLine() {
+        val tab = DragonProfitHudSettings.tab
+        val buckets = currentBucketFilter()
+        val bucketsExpanded = buckets.ifEmpty { DragonType.entries.toSet() }
+        val source = currentSourceFilter()
+        val kills = bucketsExpanded.sumOf { DragonProfitTracker.killsFor(it, tab, source) }
+        // Reuse the same total math the value column's totalValue exposes: gross sum minus
+        // eye cost only when the active source view includes SUMMONED kills.
+        val grossValue =
+            bucketsExpanded.sumOf { bucket ->
+                DragonProfitTracker.countsFor(tab, source)[bucket]?.entries?.sumOf { (drop, counts) ->
+                    PriceCache.price(drop.itemId, PriceSource.BAZAAR_INSTANT_BUY) * counts.amount
+                } ?: 0L
+            }
+        val eyeCost = if (source == KillSource.LOOTSHARE) 0L else eyeCostFor(tab, buckets)
+        val total = grossValue - eyeCost
+        Row(
+            modifier = SoulModifier.Empty.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = VerticalAlignment.Center,
+            gap = 6f,
+        ) {
+            // Left: Per dragon average. Skip entirely (empty Box) when the active partition
+            // has 0 kills, so the line still has the Profit cell anchored right via the
+            // SpaceBetween arrangement (otherwise SpaceBetween with one child = left-pin).
+            if (kills > 0L) {
+                ChipText("Per dragon: ${formatCoinsShort(total / kills)}")
+            } else {
+                Text(
+                    text = "",
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.accent,
+                    font = SoulTheme.typography.mono.font,
+                )
+            }
+            ChipText("Profit: ${formatCoinsShort(total)}")
+        }
+    }
+
+    @SoulComposable
+    private fun ChipText(text: String) {
+        Text(
+            text = text,
+            size = SoulTheme.typography.body.size,
+            color = SoulTheme.colors.accent,
+            font = SoulTheme.typography.mono.font,
+        )
+    }
+
+    @SoulComposable
+    private fun HeaderLabel(text: String) {
+        Text(
+            text = text,
+            size = SoulTheme.typography.body.size,
+            color = SoulTheme.colors.textDim,
+            font = SoulTheme.typography.body.font,
+        )
+    }
+
+    @SoulComposable
+    private fun HeaderValue(text: String) {
+        Text(
+            text = text,
+            size = SoulTheme.typography.body.size,
+            color = SoulTheme.colors.text,
+            font = SoulTheme.typography.mono.font,
+        )
+    }
+
+    @SoulComposable
+    private fun HeaderSeparator() {
+        Text(
+            text = "·",
+            size = SoulTheme.typography.body.size,
+            color = SoulTheme.colors.textFaint,
+            font = SoulTheme.typography.body.font,
+        )
     }
 
     fun register() {
@@ -343,4 +495,5 @@ object DragonProfitHud {
             else -> String.format(Locale.ROOT, "%s%.1fB", sign, abs / 1_000_000_000.0)
         }
     }
+
 }

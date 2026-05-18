@@ -56,7 +56,16 @@ public class SoulConfigModel {
 
     public static class General {
         @Nest public Ui ui = new Ui();
+        @Nest public Chat chat = new Chat();
         @Nest public Fixes fixes = new Fixes();
+    }
+
+    public static class Chat {
+        // Right-click any chat message to copy it to the clipboard. Plain click → message
+        // plain text. Shift+click → only the line under the cursor (for multi-line server
+        // messages). Ctrl+click → full message with §-color codes preserved. Default OFF —
+        // opt-in per the project's feature policy.
+        public boolean enableRightClickCopy = false;
     }
 
     public static class Render {
@@ -205,6 +214,23 @@ public class SoulConfigModel {
         // Default OFF — every user-facing feature in this mod is opt-in. See the policy notes
         // in the FishingHud section above.
         public boolean showProfitHud = false;
+        // When ON, the mod fires a Legion announcement on every dragon-down banner. The
+        // [sendLegionToPartyChat] sub-toggle decides whether it goes to /pc or just the
+        // local client chat. Default OFF — opt-in feature policy.
+        public boolean sendLegionOnDeath = false;
+        // Sub-toggle for [sendLegionOnDeath]. ON = `/pc Legion: N players (X.XX%)` (skipped
+        // when not in a party — Hypixel silently drops /pc otherwise). OFF = show the same
+        // line in the player's own chat only (no broadcast). Default ON — party chat is
+        // the more useful default for shared-loot situations.
+        public boolean sendLegionToPartyChat = true;
+        // When ON, the mod fires a per-dragon profit announcement 5 seconds after the
+        // first loot stand is parsed for that kill — long enough for the player to walk
+        // closer and load most stragglers. The [sendDragonProfitToPartyChat] sub-toggle
+        // decides party-vs-local. Default OFF — opt-in.
+        public boolean sendDragonProfit = false;
+        // Sub-toggle for [sendDragonProfit]. Same semantics as [sendLegionToPartyChat].
+        // Default ON.
+        public boolean sendDragonProfitToPartyChat = true;
     }
 
     public static class Seasonings {

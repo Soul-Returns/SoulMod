@@ -260,6 +260,8 @@ internal object ConfigSections {
         mapOf(
             "dev.debug.logging.logRealtime" to 2,
             "general.ui.hudTextShadowSize" to 1,
+            "combat.dragons.sendLegionToPartyChat" to 1,
+            "combat.dragons.sendDragonProfitToPartyChat" to 1,
         )
 
     /**
@@ -284,6 +286,8 @@ internal object ConfigSections {
             "farming.seasonings.showPerHour" to { cfg.farming.seasonings.enableTracker() },
             "mining.mineshaft.lapisCorpseThreshold" to { cfg.mining.mineshaft.enableLapisPtme() },
             "mining.mineshaft.autoShareLittlefootWaypoint" to { cfg.mining.mineshaft.enableLittlefootPtme() },
+            "combat.dragons.sendLegionToPartyChat" to { cfg.combat.dragons.sendLegionOnDeath() },
+            "combat.dragons.sendDragonProfitToPartyChat" to { cfg.combat.dragons.sendDragonProfit() },
             "sync.syncConfig" to { cfg.sync.enabled() },
             "sync.syncGuiLayout" to { cfg.sync.enabled() },
             "sync.syncStats" to { cfg.sync.enabled() },
@@ -314,6 +318,8 @@ internal object ConfigSections {
             "dev.debug.debugMode",
             "dev.debug.logToFile",
             "dev.debug.logging.logBackend",
+            "combat.dragons.sendLegionOnDeath",
+            "combat.dragons.sendDragonProfit",
         )
 
     /** String fields rendered as keybind pickers (with capture mode) instead of textboxes. */

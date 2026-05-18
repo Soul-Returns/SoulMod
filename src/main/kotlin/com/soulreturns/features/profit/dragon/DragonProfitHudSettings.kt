@@ -57,21 +57,20 @@ object DragonProfitHudSettings : TrackerSettings {
     /** Transient — the kill-source picker's open/closed state. Never persisted. */
     @Volatile var sourceDropdownOpen: Boolean = false
 
-    /** Persisted source-filter accessor — translates the `"ALL"` sentinel to `null`. */
+    /**
+     * Persisted source-filter accessor — translates the `"ALL"` sentinel to `null`. Both
+     * branches deliberately avoid `when (value: KillSource?)`: Kotlin compiles enum-`when`
+     * into a synthetic `<Class>$WhenMappings` inner class with an `int[]` ordinal table.
+     * Fabric's KnotClassLoader has shipped at least one case where that synthetic isn't
+     * resolved at runtime under remap/refMap conditions (`NoClassDefFoundError:
+     * DragonProfitHudSettings$WhenMappings` on `setSourceFilter`). Reducing to a `name`
+     * round-trip removes the enum-`when` entirely and the synthetic class isn't emitted.
+     * The String-keyed `when` in older versions was fine too — only the enum side blew up.
+     */
     var sourceFilter: KillSource?
-        get() =
-            when (data.sourceFilter) {
-                "SUMMONED" -> KillSource.SUMMONED
-                "LOOTSHARE" -> KillSource.LOOTSHARE
-                else -> null
-            }
+        get() = KillSource.entries.firstOrNull { it.name == data.sourceFilter }
         set(value) {
-            data.sourceFilter =
-                when (value) {
-                    null -> "ALL"
-                    KillSource.SUMMONED -> "SUMMONED"
-                    KillSource.LOOTSHARE -> "LOOTSHARE"
-                }
+            data.sourceFilter = value?.name ?: "ALL"
             markDirty()
         }
 
