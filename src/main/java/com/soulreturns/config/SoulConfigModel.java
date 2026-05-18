@@ -227,11 +227,12 @@ public class SoulConfigModel {
         // [sendLegionToPartyChat] sub-toggle decides whether it goes to /pc or just the
         // local client chat. Default OFF — opt-in feature policy.
         public boolean sendLegionOnDeath = false;
-        // Sub-toggle for [sendLegionOnDeath]. ON = `/pc Legion: N players (X.XX%)` (skipped
-        // when not in a party — Hypixel silently drops /pc otherwise). OFF = show the same
-        // line in the player's own chat only (no broadcast). Default ON — party chat is
-        // the more useful default for shared-loot situations.
-        public boolean sendLegionToPartyChat = true;
+        // Sub-toggle for [sendLegionOnDeath]. ON = `/pc Legion: N players (X.XX%)` (falls
+        // back to local chat when not in a party — Hypixel silently drops /pc otherwise).
+        // OFF = show the same line in the player's own chat only (no broadcast). Default
+        // OFF — broadcasting your legion stats to party chat on every dragon kill is the
+        // noisier choice; opt in deliberately.
+        public boolean sendLegionToPartyChat = false;
         // When ON, the mod fires a per-dragon profit announcement 5 seconds after the
         // first loot stand is parsed for that kill — long enough for the player to walk
         // closer and load most stragglers. The [sendDragonProfitToPartyChat] sub-toggle
@@ -240,6 +241,19 @@ public class SoulConfigModel {
         // Sub-toggle for [sendDragonProfit]. Same semantics as [sendLegionToPartyChat].
         // Default ON.
         public boolean sendDragonProfitToPartyChat = true;
+        // Pricing source for items the player BUYS (Summoning Eyes — drives the "Eyes
+        // placed: N (cost)" header annotation and the eye-cost subtraction inside Profit /
+        // Per dragon). ON = instant-buy (ASK side, higher) — what you pay if you hit a
+        // sell-order. OFF = buy-order (BID side, lower) — what you'd pay placing a buy
+        // offer. Default ON since most players instant-buy eyes on the way in.
+        public boolean eyePriceInstantBuy = true;
+        // Pricing source for items the player SELLS (loot drops — drives the per-row
+        // "Coins" column and the Profit total). ON = sell-offer (ASK side, higher) — what
+        // your offer fills at. OFF = instant-sell (BID side, lower) — what you'd get by
+        // hitting a buy-order. Default ON since most players sell-offer loot for the
+        // better price. Same toggles flow into [DragonProfitAnnouncer]'s chat output so
+        // the announcement matches what the HUD shows.
+        public boolean lootPriceSellOffer = true;
     }
 
     public static class Seasonings {

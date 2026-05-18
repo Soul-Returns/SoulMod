@@ -2,6 +2,7 @@ package com.soulreturns.features.profit.dragon
 
 import com.soulreturns.core.events.Events
 import com.soulreturns.core.events.HandleEvent
+import com.soulreturns.data.location.LocationApi
 import com.soulreturns.data.model.ChatMessage
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SoulLogger
@@ -73,6 +74,9 @@ object EyePlacementTracker {
 
     @HandleEvent
     fun onChat(event: ChatMessage) {
+        // Eyes can only be placed in Dragon's Nest, but gate defensively so a chat-line
+        // false positive elsewhere (echoed message, custom server) can't poison state.
+        if (!LocationApi.isInSublocation("Dragon's Nest")) return
         val clean = MessageDetector.stripColorCodes(event.raw).trim()
 
         // 1. Spawn — flush pending eyes to that dragon, classify the kill source, and

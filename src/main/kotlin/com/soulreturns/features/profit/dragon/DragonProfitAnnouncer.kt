@@ -4,7 +4,6 @@ import com.soulreturns.config.cfg
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.prices.PriceSource
 import com.soulreturns.features.party.PartyManager
-import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.soulChat
 import com.soulreturns.util.withOutgoingPrefix
@@ -25,9 +24,10 @@ import java.util.Locale
  * Routing follows the [cfg.combat.dragons.sendDragonProfit] master toggle and the
  * [cfg.combat.dragons.sendDragonProfitToPartyChat] sub-toggle:
  *  - master OFF → no announcement at all
- *  - master ON, sub ON → `/pc <Type> profit: <net> coins (gross <gross> − <eyeCost> eyes)`
- *    (skipped when solo — Hypixel drops /pc silently otherwise)
- *  - master ON, sub OFF → local `[Soul] <Type> profit: <net> coins (…)` only
+ *  - master ON, sub ON, in party → `/pc <Type> Dragon profit: <net> coins (gross <gross> − <eyeCost> eyes)`
+ *  - master ON, sub ON, solo → local `[Soul] <Type> Dragon profit: …` (fall-back — Hypixel
+ *    silently drops /pc when not in a party, so we never blind-send)
+ *  - master ON, sub OFF → local `[Soul] <Type> Dragon profit: …` always
  *
  * The breakdown is omitted when `ownEyes == 0` (lootshare kills, or summoned-but-no-own-eyes
  * edge case) — just `"<Type> profit: <gross> coins"`. Keeps the line short for the common
@@ -65,16 +65,29 @@ object DragonProfitAnnouncer {
     ) {
         if (!cfg.combat.dragons.sendDragonProfit()) return
         val player = Minecraft.getInstance().player ?: return
-        val toParty = cfg.combat.dragons.sendDragonProfitToPartyChat()
-        if (toParty && !PartyManager.isInParty()) {
-            DebugLogger.logFeatureEvent("DragonProfitAnnouncer: ${dragonType.displayName} kill but not in a party — skipping /pc")
-            return
-        }
+        val toParty = cfg.combat.dragons.sendDragonProfitToPartyChat() && PartyManager.isInParty()
+        // Pricing sides follow the same `cfg.combat.dragons.{eyePriceInstantBuy,
+        // lootPriceSellOffer}` toggles the HUD reads, so the announced number matches
+        // what the player sees on the panel. ON = ASK side (instant-buy / sell-offer
+        // — same numeric value, higher); OFF = BID side (buy-order / instant-sell —
+        // lower).
+        val lootSource =
+            if (cfg.combat.dragons.lootPriceSellOffer()) {
+                PriceSource.BAZAAR_INSTANT_BUY
+            } else {
+                PriceSource.BAZAAR_INSTANT_SELL
+            }
+        val eyeSource =
+            if (cfg.combat.dragons.eyePriceInstantBuy()) {
+                PriceSource.BAZAAR_INSTANT_BUY
+            } else {
+                PriceSource.BAZAAR_INSTANT_SELL
+            }
         val gross =
             drops.entries.sumOf { (drop, count) ->
-                PriceCache.price(drop.itemId, PriceSource.BAZAAR_INSTANT_BUY) * count
+                PriceCache.price(drop.itemId, lootSource) * count
             }
-        val eyeUnitPrice = PriceCache.price("SUMMONING_EYE", PriceSource.BAZAAR_INSTANT_BUY)
+        val eyeUnitPrice = PriceCache.price("SUMMONING_EYE", eyeSource)
         val eyeCost = ownEyes * eyeUnitPrice
         val net = gross - eyeCost
         // `dragonType.displayName` is the bare type name ("Old", "Young"); chat messaging

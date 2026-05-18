@@ -3,9 +3,9 @@ package com.soulreturns.features.profit.dragon
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.core.events.HandleEvent
+import com.soulreturns.data.location.LocationApi
 import com.soulreturns.data.model.ChatMessage
 import com.soulreturns.features.party.PartyManager
-import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SkyblockItemUtils
 import com.soulreturns.util.SoulLogger
@@ -27,9 +27,11 @@ import java.util.Locale
  * them as parallel subscribers also means flipping `sendLegionOnDeath` off while leaving
  * profit tracking on (or vice-versa) is a clean, isolated change.
  *
- * **Gating chain:** toggle on → in The End is implicitly enforced because dragons don't
- * die anywhere else → [PartyManager.isInParty] (Hypixel silently drops `/pc` when solo,
- * per the `Hypixel SkyBlock conventions` block in CLAUDE.md, so always check first).
+ * **Gating chain:** master toggle on → in The End is implicitly enforced because dragons
+ * don't die anywhere else. Sub-toggle [cfg.combat.dragons.sendLegionToPartyChat] picks the
+ * destination: ON → `/pc` when in a party, **falls back to local `[Soul]` chat when solo**
+ * (Hypixel silently drops `/pc` outside a party per the `Hypixel SkyBlock conventions`
+ * block in CLAUDE.md, so we never blind-send); OFF → local `[Soul]` chat always.
  * No LOS/ToS concern — nearby-player count is read from the loaded entity list, not from
  * through-wall data, and even unrelated mods publish stats like this freely.
  *
@@ -76,32 +78,27 @@ object DragonLegionAnnouncer {
         if (clientTick < p.sendAtTick) return
         pending = null
         val player = Minecraft.getInstance().player ?: return
-        if (p.toParty) {
-            // Re-check party status at send time — the player may have left between trigger
-            // and send. /pc would silently drop otherwise; better to log + skip.
-            if (!PartyManager.isInParty()) {
-                DebugLogger.logFeatureEvent("DragonLegionAnnouncer: party gone before delayed send — skipping")
-                return
-            }
+        if (p.toParty && PartyManager.isInParty()) {
             player.connection.sendCommand("pc ${withOutgoingPrefix(p.msg)}")
             logger.info("Sent /pc on dragon down (delayed): ${p.msg}")
         } else {
+            // Either the sub-toggle is off, or the player isn't in a party (or left between
+            // trigger and send). Fall back to local `[Soul]` chat — /pc would silently drop.
             soulChat(p.msg)
-            logger.info("Sent local chat on dragon down (delayed, party-chat sub-toggle off): ${p.msg}")
+            logger.info("Sent local chat on dragon down (delayed, toParty=${p.toParty}): ${p.msg}")
         }
     }
 
     @HandleEvent
     fun onChat(event: ChatMessage) {
         if (!cfg.combat.dragons.sendLegionOnDeath()) return
+        // Same Dragon's Nest gate as [DragonDeathDetector] — keeps M7 dragon kills from
+        // triggering an "end dragon" legion announcement.
+        if (!LocationApi.isInSublocation("Dragon's Nest")) return
         val clean = MessageDetector.stripColorCodes(event.raw).trim()
         if (!DEATH_REGEX.matches(clean)) return
         val player = Minecraft.getInstance().player ?: return
         val toParty = cfg.combat.dragons.sendLegionToPartyChat()
-        if (toParty && !PartyManager.isInParty()) {
-            DebugLogger.logFeatureEvent("DragonLegionAnnouncer: dragon down but not in a party — skipping /pc")
-            return
-        }
         val count = countNearbyPlayers(player)
         val totalLevel = SkyblockItemUtils.summedArmorEnchantLevel(player, ENCHANT_ID)
         val cappedCount = count.coerceAtMost(PLAYER_CAP)

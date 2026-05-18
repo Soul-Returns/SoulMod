@@ -2,6 +2,7 @@ package com.soulreturns.features.profit.dragon
 
 import com.soulreturns.core.events.Events
 import com.soulreturns.core.events.HandleEvent
+import com.soulreturns.data.location.LocationApi
 import com.soulreturns.data.model.ChatMessage
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SoulLogger
@@ -38,6 +39,10 @@ object DragonDeathDetector {
 
     @HandleEvent
     fun onChat(event: ChatMessage) {
+        // Sublocation gate: the same "<TYPE> DRAGON DOWN!" banner could fire inside
+        // Catacombs Master Mode F7 (which spawns dragons too); restricting to Dragon's
+        // Nest keeps tracker/scanner state from being poisoned by dungeon kills.
+        if (!LocationApi.isInSublocation("Dragon's Nest")) return
         val clean = MessageDetector.stripColorCodes(event.raw).trim()
         val match = DEATH_REGEX.matchEntire(clean) ?: return
         val typeName = match.groupValues[1]

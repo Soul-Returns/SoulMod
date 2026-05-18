@@ -1,5 +1,6 @@
 package com.soulreturns.ui.hud
 
+import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.config.cfg
 import com.soulreturns.data.location.LocationApi
 import com.soulreturns.data.prices.PriceCache
@@ -22,6 +23,8 @@ import com.soulreturns.ui.composer.fillMaxWidth
 import com.soulreturns.ui.composer.height
 import com.soulreturns.ui.composer.padding
 import com.soulreturns.ui.composer.tooltip
+import com.soulreturns.ui.composer.weight
+import com.soulreturns.ui.foundation.Button
 import com.soulreturns.ui.foundation.Column
 import com.soulreturns.ui.foundation.Dropdown
 import com.soulreturns.ui.foundation.Row
@@ -72,12 +75,11 @@ object DragonProfitHud {
             width = 280,
             // Tall enough to fit: header (title + Dragons/LS row + Eyes-placed row + tabs
             // row, ~64 px after the eye-line split), divider, scrollable list (140), chips
-            // line (~14), divider, footer (4 rows: Source / Filter+ShowAll / Sort+Columns /
-            // Reset, each ~27 px button + 6 px gap = ~33). The Source picker pushed the
-            // previous 360 over the edge and cut the Reset button; the Dragons/LS + Eyes
-            // split + cost annotation pushed 420 just over the edge again — 440 leaves a
-            // visible-pixel buffer below the Reset button.
-            height = 440,
+            // line (~14), divider, footer (5 rows: Source / Eye+Loot price toggles /
+            // Filter+ShowAll / Sort+Columns / Reset, each ~27 px button + 6 px gap = ~33).
+            // Bumped from 440 → 475 when the price-toggle row was added; one footer row =
+            // ~33 px + a small buffer.
+            height = 475,
             // Top-right by default — End-island players typically have the boss bar at top,
             // chat at bottom-left; right edge is the most consistent unused real estate.
             defaultAnchorX = 0.99,
@@ -177,7 +179,10 @@ object DragonProfitHud {
                 DragonsCountLine()
                 EyesPlacedLine()
             },
-            footerExtra = { SourcePicker() },
+            footerExtra = {
+                SourcePicker()
+                PriceModeRow()
+            },
             shouldOverrideList = DragonLootScanner::isScanActiveWithoutLoot,
             listOverride = { ScanInstructionBanner() },
             chipOverride = { ProfitChipLine() },
@@ -271,6 +276,66 @@ object DragonProfitHud {
     private fun currentSourceFilter(): KillSource? = DragonProfitHudSettings.sourceFilter
 
     /**
+     * Bazaar pricing source for items the player **buys** (Summoning Eyes). Driven by
+     * `cfg.combat.dragons.eyePriceInstantBuy`: `true` → instant-buy (ASK side, higher),
+     * `false` → buy-order (BID side, lower). Read at point of use everywhere — no caching.
+     */
+    private fun eyePriceSource(): PriceSource =
+        if (cfg.combat.dragons.eyePriceInstantBuy()) {
+            PriceSource.BAZAAR_INSTANT_BUY
+        } else {
+            PriceSource.BAZAAR_INSTANT_SELL
+        }
+
+    /**
+     * Bazaar pricing source for items the player **sells** (loot drops). Driven by
+     * `cfg.combat.dragons.lootPriceSellOffer`: `true` → sell-offer (ASK side — what your
+     * offer fills at, same numeric value as instant-buy), `false` → instant-sell (BID side,
+     * lower — what you'd get hitting a buy-order).
+     */
+    private fun lootPriceSource(): PriceSource =
+        if (cfg.combat.dragons.lootPriceSellOffer()) {
+            PriceSource.BAZAAR_INSTANT_BUY
+        } else {
+            PriceSource.BAZAAR_INSTANT_SELL
+        }
+
+    /**
+     * Footer row of two button-toggles: one picks the eye pricing mode (cost side), one
+     * picks the loot pricing mode (revenue side). Each button shows its current state in
+     * the label and flips it on click. Backed by `cfg.combat.dragons.eyePriceInstantBuy`
+     * / `lootPriceSellOffer` so the choice persists across sessions and feeds the chat
+     * announcer too.
+     */
+    @SoulComposable
+    private fun PriceModeRow() {
+        val eyeLabel = if (cfg.combat.dragons.eyePriceInstantBuy()) "Instant Buy" else "Buy Order"
+        val lootLabel = if (cfg.combat.dragons.lootPriceSellOffer()) "Sell Offer" else "Instant Sell"
+        Row(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f) {
+            Button(
+                label = "Eye: $eyeLabel",
+                onClick = {
+                    cfg.combat.dragons.eyePriceInstantBuy(!cfg.combat.dragons.eyePriceInstantBuy())
+                    SoulConfigHolder.INSTANCE.save()
+                },
+                modifier = SoulModifier.Empty.weight(1f),
+                centerLabel = true,
+                key = "$HUD_ID.eyePriceMode",
+            )
+            Button(
+                label = "Loot: $lootLabel",
+                onClick = {
+                    cfg.combat.dragons.lootPriceSellOffer(!cfg.combat.dragons.lootPriceSellOffer())
+                    SoulConfigHolder.INSTANCE.save()
+                },
+                modifier = SoulModifier.Empty.weight(1f),
+                centerLabel = true,
+                key = "$HUD_ID.lootPriceMode",
+            )
+        }
+    }
+
+    /**
      * Top header sub-line: `Dragons: X · LS: Y`. Always shows both partitions regardless of
      * the Source-filter dropdown — gives at-a-glance own-vs-lootshare attribution. Bucket
      * filter + active Session/Total tab are respected.
@@ -306,7 +371,7 @@ object DragonProfitHud {
         val tab = DragonProfitHudSettings.tab
         val buckets = currentBucketFilter().ifEmpty { DragonType.entries.toSet() }
         val eyes = buckets.sumOf { DragonProfitTracker.eyesPlacedFor(it, tab) }
-        val eyeCost = eyes * PriceCache.price("SUMMONING_EYE", PriceSource.BAZAAR_INSTANT_BUY)
+        val eyeCost = eyes * PriceCache.price("SUMMONING_EYE", eyePriceSource())
         val eyesText =
             if (eyes > 0L && eyeCost > 0L) {
                 String.format(Locale.ROOT, "%,d (%s)", eyes, formatCoinsShort(eyeCost))
@@ -346,7 +411,7 @@ object DragonProfitHud {
         val grossValue =
             bucketsExpanded.sumOf { bucket ->
                 DragonProfitTracker.countsFor(tab, source)[bucket]?.entries?.sumOf { (drop, counts) ->
-                    PriceCache.price(drop.itemId, PriceSource.BAZAAR_INSTANT_BUY) * counts.amount
+                    PriceCache.price(drop.itemId, lootPriceSource()) * counts.amount
                 } ?: 0L
             }
         val eyeCost = if (source == KillSource.LOOTSHARE) 0L else eyeCostFor(tab, buckets)
@@ -451,10 +516,14 @@ object DragonProfitHud {
     }
 
     private fun isHudVisible(): Boolean {
+        // Sublocation, not area: the HUD must stay hidden in other End sublocations
+        // (Voidgloom / enderman slayer, etc.) AND M7 Catacombs (which is a different
+        // area but also has dragons). Dragon's Nest is the unambiguous "we are fighting
+        // the seven End Dragons" signal — same gate every dragon chat listener uses.
         return cfg.combat.dragons.showProfitHud() &&
             cfg.dev.trackers.profitTrackers() &&
             SkyblockApi.isOnSkyblock &&
-            LocationApi.isInArea("The End")
+            LocationApi.isInSublocation("Dragon's Nest")
     }
 
     private fun buildRows(tab: TrackerTab): List<Row> {
@@ -469,7 +538,7 @@ object DragonProfitHud {
             }
         }
         return aggregated.map { (drop, amount) ->
-            val unitPrice = PriceCache.price(drop.itemId, PriceSource.BAZAAR_INSTANT_BUY)
+            val unitPrice = PriceCache.price(drop.itemId, lootPriceSource())
             Row(drop = drop, amount = amount, value = unitPrice * amount)
         }
     }
@@ -490,7 +559,7 @@ object DragonProfitHud {
         for (b in buckets) {
             val eyes = DragonProfitTracker.eyesPlacedFor(b, tab)
             if (eyes <= 0L) continue
-            sum += eyes * PriceCache.price("SUMMONING_EYE", PriceSource.BAZAAR_INSTANT_BUY)
+            sum += eyes * PriceCache.price("SUMMONING_EYE", eyePriceSource())
         }
         return sum
     }
