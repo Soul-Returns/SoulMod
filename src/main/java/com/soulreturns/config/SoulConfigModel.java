@@ -66,6 +66,15 @@ public class SoulConfigModel {
         // messages). Ctrl+click → full message with §-color codes preserved. Default OFF —
         // opt-in per the project's feature policy.
         public boolean enableRightClickCopy = false;
+        // Prefix the mod's outgoing conversational announcements (Double Hook response,
+        // Legion stats on dragon death, dragon profit) sent to /pc and /ac with `[Soul] `
+        // so other party / lobby members can see the message came from a Soul mod user.
+        // **Protocol messages are NOT prefixed by design** — !ptme alerts (LapisCorpseAlert
+        // / VanguardCorpseAlert / LittlefootAlert) and `x: N, y: N, z: N` waypoint shares
+        // stay clean so they remain parseable by other mods' regexes. Default ON — this is
+        // a sub-option of the chat-send features (not a user-facing feature itself), so
+        // the project's "sub-options stay ON when their master is OFF" rule applies.
+        public boolean prefixOutgoingMessages = true;
     }
 
     public static class Render {

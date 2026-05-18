@@ -7,6 +7,7 @@ import com.soulreturns.features.party.PartyManager
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.soulChat
+import com.soulreturns.util.withOutgoingPrefix
 import net.minecraft.client.Minecraft
 import java.util.Locale
 
@@ -24,12 +25,18 @@ import java.util.Locale
  * Routing follows the [cfg.combat.dragons.sendDragonProfit] master toggle and the
  * [cfg.combat.dragons.sendDragonProfitToPartyChat] sub-toggle:
  *  - master OFF → no announcement at all
- *  - master ON, sub ON → `/pc <Type> profit: <net> coins (gross <gross> − <eyeCost> eyes)` (skipped when solo)
+ *  - master ON, sub ON → `/pc <Type> profit: <net> coins (gross <gross> − <eyeCost> eyes)`
+ *    (skipped when solo — Hypixel drops /pc silently otherwise)
  *  - master ON, sub OFF → local `[Soul] <Type> profit: <net> coins (…)` only
  *
  * The breakdown is omitted when `ownEyes == 0` (lootshare kills, or summoned-but-no-own-eyes
  * edge case) — just `"<Type> profit: <gross> coins"`. Keeps the line short for the common
  * lootshare path where there's nothing to subtract.
+ *
+ * **No `/ac` (all-chat) path** — early prototype shipped one but ran into Hypixel's
+ * "You cannot say the same message twice!" anti-spam (two identical profit announcements
+ * within Hypixel's dedup window) plus public-spam concerns. Party chat / local-only is
+ * the supported set.
  *
  * Driven by direct call rather than the [com.soulreturns.core.events.Events] bus to avoid
  * adding a one-shot event type. The scanner already owns the lifecycle of the scan
@@ -70,11 +77,15 @@ object DragonProfitAnnouncer {
         val eyeUnitPrice = PriceCache.price("SUMMONING_EYE", PriceSource.BAZAAR_INSTANT_BUY)
         val eyeCost = ownEyes * eyeUnitPrice
         val net = gross - eyeCost
+        // `dragonType.displayName` is the bare type name ("Old", "Young"); chat messaging
+        // wants the full "Old Dragon" form so the message reads naturally for party
+        // members. The displayName itself stays bare elsewhere (logs, HUD filter labels)
+        // to avoid redundant "Dragon Old Dragon kill" phrasing in those contexts.
         val msg =
             if (ownEyes > 0L && eyeCost > 0L) {
                 String.format(
                     Locale.ROOT,
-                    "%s profit: %s coins (gross %s − %s for %d eye%s)",
+                    "%s Dragon profit: %s coins (gross %s − %s for %d eye%s)",
                     dragonType.displayName,
                     formatCoins(net),
                     formatCoins(gross),
@@ -86,13 +97,13 @@ object DragonProfitAnnouncer {
                 // Lootshare or summoned-with-no-own-eyes — no deduction segment, just gross.
                 String.format(
                     Locale.ROOT,
-                    "%s profit: %s coins",
+                    "%s Dragon profit: %s coins",
                     dragonType.displayName,
                     formatCoins(gross),
                 )
             }
         if (toParty) {
-            player.connection.sendCommand("pc $msg")
+            player.connection.sendCommand("pc ${withOutgoingPrefix(msg)}")
             logger.info("Sent /pc dragon-profit summary ($killSource, $ownEyes eyes): $msg")
         } else {
             soulChat(msg)

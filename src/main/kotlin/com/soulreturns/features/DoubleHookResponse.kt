@@ -8,6 +8,7 @@ import com.soulreturns.features.party.PartyManager
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SoulLogger
+import com.soulreturns.util.withOutgoingPrefix
 import net.minecraft.client.Minecraft
 
 private const val DOUBLE_HOOK_PATTERN = "Double Hook!"
@@ -34,6 +35,6 @@ object DoubleHookResponse {
 
         val text = cfg.fishing.chat.doubleHookMessageText()
         logger.info("Double Hook detected, sending party message: {}", text)
-        player.connection.sendCommand("pc $text")
+        player.connection.sendCommand("pc ${withOutgoingPrefix(text)}")
     }
 }

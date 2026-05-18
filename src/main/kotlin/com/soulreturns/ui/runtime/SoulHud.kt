@@ -426,6 +426,14 @@ object SoulHud {
             // expanded dropdown popup) — they paint after every sibling so they always
             // appear on top.
             com.soulreturns.ui.input.SoulInput.flushOverlays()
+            // Paint the hover tooltip (if any) ON TOP of overlays so a tooltip on a popup-
+            // option row still appears above the popup. Tooltips are bounded by the HUD's
+            // PIP texture (entry.width × entry.height) — for HUDs near the screen edge a
+            // tooltip can still get clipped by Mojang's PIP compositor; the flip-on-clip
+            // logic inside `paintTooltip` minimises this by switching anchor side.
+            com.soulreturns.ui.input.SoulInput.findHoveredTooltip()?.let {
+                paintTooltip(it, entry.width.toFloat(), entry.height.toFloat())
+            }
             // Capture the actual rendered size for /soul gui's selection-box geometry —
             // the registered (width, height) is a max bound; most HUDs render smaller.
             root.measured?.let { m -> SoulHudRegistry.recordMeasured(id, m.width, m.height) }
@@ -547,5 +555,74 @@ object SoulHud {
                 )
         others += updated
         GuiLayoutManager.setLayout(GuiLayout(others))
+    }
+
+    /**
+     * Multi-line tooltip painter for HUD panels. Splits [text] on `\n` and renders each
+     * line at body-size body-font in a [com.soulreturns.ui.theme.SoulTheme] panel-inset box
+     * with hollow border. Positioned below-right of the cursor by default; flips to left or
+     * above when the box would clip the HUD's PIP texture bounds.
+     *
+     * Diverges from [com.soulreturns.ui.runtime.SoulScreen]'s tooltip painter in that
+     * SoulScreen is single-line (consumers join newlines into spaces). This one is
+     * deliberately multi-line so HUD chips can show structured breakdowns like the dragon
+     * profit chip's `gross / eye-cost / net` rollup.
+     *
+     * Cursor coords come from [com.soulreturns.ui.input.SoulInput.cursorX/Y], which are
+     * already in the HUD-local composable space (the framework divides screen coords by
+     * [com.soulreturns.ui.input.SoulInput.panelScale] inside `startFrame`).
+     */
+    private fun paintTooltip(
+        text: String,
+        panelW: Float,
+        panelH: Float,
+    ) {
+        if (text.isEmpty()) return
+        val lines = text.split('\n')
+        val font = com.soulreturns.ui.theme.SoulTheme.typography.body.font
+        val size = com.soulreturns.ui.theme.SoulTheme.typography.body.size
+        val padH = 8f
+        val padV = 5f
+        val lineGap = 2f
+        var maxLineW = 0f
+        for (line in lines) {
+            val w = com.soulreturns.platform.render.nvg.NvgRenderer.textWidth(line, size, font)
+            if (w > maxLineW) maxLineW = w
+        }
+        val boxW = maxLineW + padH * 2f
+        val boxH = lines.size * size + (lines.size - 1) * lineGap + padV * 2f
+        val cursorOffsetX = 12f
+        val cursorOffsetY = 16f
+        var bx = com.soulreturns.ui.input.SoulInput.cursorX + cursorOffsetX
+        var by = com.soulreturns.ui.input.SoulInput.cursorY + cursorOffsetY
+        if (bx + boxW > panelW) bx = (com.soulreturns.ui.input.SoulInput.cursorX - cursorOffsetX - boxW).coerceAtLeast(0f)
+        if (by + boxH > panelH) by = (com.soulreturns.ui.input.SoulInput.cursorY - cursorOffsetY - boxH).coerceAtLeast(0f)
+        com.soulreturns.platform.render.nvg.NvgRenderer.rect(
+            bx,
+            by,
+            boxW,
+            boxH,
+            com.soulreturns.ui.theme.SoulTheme.colors.panelInset,
+            com.soulreturns.ui.theme.SoulTheme.dimens.radiusSmall,
+        )
+        com.soulreturns.platform.render.nvg.NvgRenderer.hollowRect(
+            bx,
+            by,
+            boxW,
+            boxH,
+            thickness = 1f,
+            color = 0xFF333333.toInt(),
+            radius = com.soulreturns.ui.theme.SoulTheme.dimens.radiusSmall,
+        )
+        for ((index, line) in lines.withIndex()) {
+            com.soulreturns.platform.render.nvg.NvgRenderer.text(
+                line,
+                bx + padH,
+                by + padV + index * (size + lineGap),
+                size,
+                com.soulreturns.ui.theme.SoulTheme.colors.text,
+                font,
+            )
+        }
     }
 }

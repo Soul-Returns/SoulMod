@@ -47,6 +47,8 @@
   "text.config.soul/config.group.general.chat": "Chat",
   "text.config.soul/config.option.general.chat.enableRightClickCopy": "Right-click to copy chat message",
   "text.config.soul/config.option.general.chat.enableRightClickCopy.tooltip": "Right-click any chat message (with the chat box open) to copy it to your clipboard. Shift+right-click: only the line under the cursor (for multi-line server banners). Ctrl+right-click: full message with §-color codes preserved. Default off.",
+  "text.config.soul/config.option.general.chat.prefixOutgoingMessages": "Prefix outgoing messages with [Soul]",
+  "text.config.soul/config.option.general.chat.prefixOutgoingMessages.tooltip": "Prefix the mod's conversational party / all-chat announcements (Double Hook response, Legion stats on dragon death, dragon profit) with [Soul] so other players can tell the message came from a Soul mod user. Protocol messages (!ptme alerts, waypoint shares) are NOT prefixed to keep them compatible with other mods' parsers. Default on.",
   "text.config.soul/config.group.general.fixes": "Fixes",
   "text.config.soul/config.group.render.hudScale": "HUD Scale",
   "text.config.soul/config.group.render.highlights": "Item Highlights",

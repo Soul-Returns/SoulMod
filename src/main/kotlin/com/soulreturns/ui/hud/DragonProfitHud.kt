@@ -21,6 +21,7 @@ import com.soulreturns.ui.composer.VerticalAlignment
 import com.soulreturns.ui.composer.fillMaxWidth
 import com.soulreturns.ui.composer.height
 import com.soulreturns.ui.composer.padding
+import com.soulreturns.ui.composer.tooltip
 import com.soulreturns.ui.foundation.Column
 import com.soulreturns.ui.foundation.Dropdown
 import com.soulreturns.ui.foundation.Row
@@ -350,6 +351,16 @@ object DragonProfitHud {
             }
         val eyeCost = if (source == KillSource.LOOTSHARE) 0L else eyeCostFor(tab, buckets)
         val total = grossValue - eyeCost
+        // Hover-tooltip breakdown for the Profit chip — shows the gross / eye-cost components
+        // that produced the net figure. Two lines: `Total: <gross>` and `Cost: <eyeCost>`.
+        // Empty tooltip when both are zero so we don't pop a meaningless box on a fresh
+        // session; the framework's `.tooltip("")` is a no-op so this collapses naturally.
+        val profitTooltip =
+            if (grossValue > 0L || eyeCost > 0L) {
+                "Total: ${formatCoinsShort(grossValue)}\nCost: ${formatCoinsShort(eyeCost)}"
+            } else {
+                ""
+            }
         Row(
             modifier = SoulModifier.Empty.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -369,17 +380,21 @@ object DragonProfitHud {
                     font = SoulTheme.typography.mono.font,
                 )
             }
-            ChipText("Profit: ${formatCoinsShort(total)}")
+            ChipText("Profit: ${formatCoinsShort(total)}", tooltip = profitTooltip)
         }
     }
 
     @SoulComposable
-    private fun ChipText(text: String) {
+    private fun ChipText(
+        text: String,
+        tooltip: String = "",
+    ) {
         Text(
             text = text,
             size = SoulTheme.typography.body.size,
             color = SoulTheme.colors.accent,
             font = SoulTheme.typography.mono.font,
+            modifier = SoulModifier.Empty.tooltip(tooltip),
         )
     }
 

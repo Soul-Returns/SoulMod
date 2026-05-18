@@ -10,6 +10,7 @@ import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SkyblockItemUtils
 import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.soulChat
+import com.soulreturns.util.withOutgoingPrefix
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.world.entity.player.Player
@@ -82,7 +83,7 @@ object DragonLegionAnnouncer {
                 DebugLogger.logFeatureEvent("DragonLegionAnnouncer: party gone before delayed send — skipping")
                 return
             }
-            player.connection.sendCommand("pc ${p.msg}")
+            player.connection.sendCommand("pc ${withOutgoingPrefix(p.msg)}")
             logger.info("Sent /pc on dragon down (delayed): ${p.msg}")
         } else {
             soulChat(p.msg)

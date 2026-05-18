@@ -1,6 +1,7 @@
 package com.soulreturns.features.chat
 
 import com.soulreturns.config.cfg
+import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.soulChat
 import com.soulreturns.util.toLegacyText
@@ -121,9 +122,15 @@ object ChatRightClickCopy {
         val targetTime = line.addedTime()
         val batch = chat.allMessages.filter { it.addedTime() == targetTime }
         if (batch.isEmpty()) return null
-        // allMessages is prepended-most-recent-first; reverse for reading order.
+        // allMessages is prepended-most-recent-first; reverse for reading order. For
+        // plain-text mode (withCodes == false) we must strip `§<char>` sequences from the
+        // result: Hypixel often embeds color codes directly in a TextComponent's literal
+        // content (rather than encoding color purely through Mojang's Style tree), so
+        // `Component.string` for `§9Party §8> §b…` returns the raw text **with** codes.
+        // The strip catches all single-char `§.` codes including Hypixel's non-vanilla
+        // ones (§y / §u / §x scoreboard keys), matching MessageDetector's behavior.
         return batch.asReversed().joinToString("\n") { msg ->
-            if (withCodes) msg.content().toLegacyText() else msg.content().string
+            if (withCodes) msg.content().toLegacyText() else MessageDetector.stripColorCodes(msg.content().string)
         }
     }
 
