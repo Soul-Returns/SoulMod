@@ -33,6 +33,7 @@ import com.soulreturns.features.profit.dragon.DragonLootScanner
 import com.soulreturns.features.profit.dragon.DragonProfitAnnouncer
 import com.soulreturns.features.profit.dragon.DragonProfitTracker
 import com.soulreturns.features.profit.dragon.EyePlacementTracker
+import com.soulreturns.features.sacks.SackChatReader
 import com.soulreturns.features.sacks.SackGuiReader
 import com.soulreturns.features.sacks.SackState
 import com.soulreturns.gui.lib.GuiLayoutManager
@@ -280,6 +281,7 @@ object Soul : ClientModInitializer {
         SackState.init()
         com.soulreturns.data.skyblock.SkyblockProfileLoader.register()
         SackGuiReader.register()
+        SackChatReader.register()
 
         // Profit trackers — price cache must start before the tracker registers its HUD so
         // the first frame after registration can render real prices. PriceCache.start is

@@ -4,6 +4,7 @@ import com.soulreturns.Soul
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.model.ChatMessage
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents
+import net.minecraft.network.chat.Component
 
 /**
  * Central message handler that distinguishes between server and player messages,
@@ -54,20 +55,20 @@ object MessageHandler {
         // Player-style chat messages (signed). Hypixel doesn't generally use signed chat,
         // but we hook both channels for completeness — same downstream handler.
         ClientReceiveMessageEvents.CHAT.register { message, _, _, _, _ ->
-            handleMessage(message.string)
+            handleMessage(message.string, message)
         }
         ClientReceiveMessageEvents.CHAT_CANCELED.register { message, _, _, _, _ ->
-            handleMessage(message.string)
+            handleMessage(message.string, message)
         }
 
         // System / disguised messages (the dominant channel on Hypixel).
         ClientReceiveMessageEvents.GAME.register { message, overlay ->
             if (overlay) return@register // Ignore action bar / overlay lines
-            handleMessage(message.string)
+            handleMessage(message.string, message)
         }
         ClientReceiveMessageEvents.GAME_CANCELED.register { message, overlay ->
             if (overlay) return@register
-            handleMessage(message.string)
+            handleMessage(message.string, message)
         }
 
         isRegistered = true
@@ -109,10 +110,13 @@ object MessageHandler {
      * @param message The message to process
      */
     fun simulateMessage(message: String) {
-        handleMessage(message)
+        handleMessage(message, null)
     }
 
-    private fun handleMessage(raw: String) {
+    private fun handleMessage(
+        raw: String,
+        component: Component?,
+    ) {
         try {
             val trimmed = raw.trim()
 
@@ -130,7 +134,7 @@ object MessageHandler {
                 }
 
             // Publish typed event for new event-driven subscribers.
-            Events.publish(ChatMessage(trimmed, source))
+            Events.publish(ChatMessage(trimmed, source, component))
 
             // Legacy callback API — kept for backwards compatibility while features migrate.
             val handlers = if (source == ChatMessage.Source.PLAYER) playerMessageHandlers else serverMessageHandlers
