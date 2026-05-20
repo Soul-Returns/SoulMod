@@ -17,6 +17,7 @@ import net.minecraft.nbt.NbtOps
 import net.minecraft.resources.RegistryOps
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.scores.DisplaySlot
@@ -105,20 +106,31 @@ object DevKeybindHandler {
             return
         }
         val menu = screen.menu
+        // Identity-compare slot.container against the player's Inventory — every menu type
+        // exposes the same Inventory instance for the bottom 36 hotbar+inventory+offhand
+        // slots, so this filter is uniform across chests, anvils, beacons, and Hypixel-
+        // custom GUIs without needing per-menu-class dispatch.
+        val playerInv: Inventory? = mc.player?.inventory
+        val slotsArr = JsonArray()
+        for ((idx, slot) in menu.slots.withIndex()) {
+            if (playerInv != null && slot.container === playerInv) continue
+            val stack = slot.item
+            if (stack.isEmpty) continue
+            slotsArr.add(itemToJson(stack).apply { addProperty("slot", idx) })
+        }
+        if (slotsArr.size() == 0) {
+            soulChat("§7Open container has no non-player slots.")
+            return
+        }
         val obj =
             JsonObject().apply {
                 addProperty("title", screen.title.string)
                 addProperty("menuClass", menu::class.java.simpleName)
                 addProperty("slotCount", menu.slots.size)
+                addProperty("playerInventoryIncluded", false)
             }
-        val slotsArr = JsonArray()
-        for ((idx, slot) in menu.slots.withIndex()) {
-            val stack = slot.item
-            if (stack.isEmpty) continue
-            slotsArr.add(itemToJson(stack).apply { addProperty("slot", idx) })
-        }
         obj.add("slots", slotsArr)
-        copyToClipboard(obj, "container (${slotsArr.size()} non-empty slots)")
+        copyToClipboard(obj, "container (${slotsArr.size()} non-empty chest slots)")
     }
 
     private fun copyItemUnderCursor() {

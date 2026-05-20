@@ -47,6 +47,12 @@ import net.minecraft.network.chat.Component
  *  - `/soul dev resetDragonProfit`                               → wipe all dragon profit data (session + persisted)
  *  - `/soul dev refreshPrices`                                   → force an immediate bazaar + lowest-BIN refetch (synchronous, echoes counts)
  *  - `/soul dev getPrice <itemId>`                               → print the cached bazaar buy / sell / lowest-BIN price for one item id
+ *  - `/soul dev sackGet <itemId>`                                → print the active profile's recorded sack count for one item id
+ *  - `/soul dev sackDump`                                        → dump top 30 sack entries (active profile) sorted by count
+ *  - `/soul dev sackReset`                                       → wipe the active profile's sack state
+ *  - `/soul dev loadProfile`                                     → force a Hypixel /skyblock/profiles fetch for the current SkyBlock profile (seeds sacks)
+ *  - `/soul dev catalogStatus`                                   → print item catalog size + last-applied updatedAt
+ *  - `/soul dev refreshCatalog`                                  → force a /items refetch (bypasses Mercure invalidate wait)
  */
 object DevSubcommand : SoulSubcommand {
     override fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
@@ -328,6 +334,70 @@ object DevSubcommand : SoulSubcommand {
                         soulChat("  §7Bazaar buy:  §f${formatLong(buy)}")
                         soulChat("  §7Bazaar sell: §f${formatLong(sell)}")
                         soulChat("  §7Lowest BIN:  §f${formatLong(bin)}")
+                    }
+                },
+            )
+
+            // Sack-state diagnostics.
+            then(
+                literal("sackGet") {
+                    stringArg("itemId") { _, itemId ->
+                        val count = com.soulreturns.features.sacks.SackState.get(itemId)
+                        soulChat("§7Sack[§f$itemId§7]: §a${formatLong(count)}")
+                    }
+                },
+            )
+            then(
+                literal("sackDump") {
+                    runs { _ ->
+                        val all = com.soulreturns.features.sacks.SackState.getAll()
+                        if (all.isEmpty()) {
+                            soulChat("§7Sack state empty (active profile has no recorded items).")
+                            return@runs
+                        }
+                        val top = all.entries.sortedByDescending { it.value }.take(30)
+                        soulChat("§7Sack state — top ${top.size}/${all.size} items, active profile:")
+                        for ((id, count) in top) {
+                            soulChat("  §f$id §7→ §a${formatLong(count)}")
+                        }
+                    }
+                },
+            )
+            then(
+                literal("sackReset") {
+                    runs { _ ->
+                        com.soulreturns.features.sacks.SackState.resetActiveProfile()
+                        soulChat("§aSack state wiped for active profile.")
+                    }
+                },
+            )
+            // Force a Hypixel /skyblock/profiles fetch for the current SkyBlock profile,
+            // bypassing the wait for the next ProfileChanged event. Useful for verifying
+            // the API loader without restarting / switching profiles.
+            then(
+                literal("loadProfile") {
+                    runs { _ ->
+                        val status = com.soulreturns.data.skyblock.SkyblockProfileLoader.loadActiveNow()
+                        soulChat("§7Profile load: §f$status")
+                    }
+                },
+            )
+            // Item catalog diagnostics — print the in-memory snapshot size + last
+            // backend-reported updatedAt timestamp. Useful for verifying the disk cache
+            // loaded and the async fetch succeeded after launch.
+            then(
+                literal("catalogStatus") {
+                    runs { _ ->
+                        soulChat("§7${com.soulreturns.data.items.ItemCatalogClient.status()}")
+                    }
+                },
+            )
+            // Force a /items refetch without waiting for the next Mercure invalidate.
+            then(
+                literal("refreshCatalog") {
+                    runs { _ ->
+                        com.soulreturns.data.items.ItemCatalogClient.refreshAsync()
+                        soulChat("§7Catalog refresh dispatched.")
                     }
                 },
             )

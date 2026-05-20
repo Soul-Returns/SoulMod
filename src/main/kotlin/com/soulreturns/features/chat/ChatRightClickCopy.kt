@@ -1,5 +1,8 @@
 package com.soulreturns.features.chat
 
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
 import com.soulreturns.config.cfg
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SoulLogger
@@ -10,6 +13,7 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.ActiveTextCollector
 import net.minecraft.client.gui.TextAlignment
 import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.HoverEvent
 import net.minecraft.util.FormattedCharSequence
 import org.joml.Matrix3x2f
 import org.joml.Vector2f
@@ -17,13 +21,17 @@ import org.joml.Vector2f
 /**
  * Right-click in chat → copy to clipboard. Invoked by `ChatScreenRightClickCopyMixin`
  * at the HEAD of `ChatScreen.mouseClicked` whenever the right mouse button (button == 1)
- * fires. Three modes selected via modifier keys at click time:
+ * fires. Four modes selected via modifier keys at click time:
  *
  *  - **Plain right-click** — full source message under the cursor, plain text (no §-codes).
  *    For multi-line server banners (Hypixel welcome / fire-sale messages that embed `\n`)
  *    this includes every visible row of the same source `GuiMessage`.
  *  - **Shift + right-click** — only the single visible line under the cursor, plain text.
  *  - **Ctrl + right-click** — full source message with §-color codes preserved.
+ *  - **Alt + right-click** — JSON envelope: `{message, messagePlain, lines: [{text, tooltip?}]}`
+ *    capturing the §-coded message AND any hover-tooltip components attached to its
+ *    line(s). Used to inspect multi-part Hypixel chat (e.g. `[Sacks] +30 items` whose
+ *    per-item breakdown lives in the line's hover tooltip).
  *
  * **Resolution path** (1.21.11):
  *  1. Walk visible chat lines via [ChatComponent.captureClickableText], feeding a custom
@@ -40,6 +48,7 @@ import org.joml.Vector2f
  */
 object ChatRightClickCopy {
     private val logger = SoulLogger("Soul/ChatCopy")
+    private val gson = GsonBuilder().setPrettyPrinting().create()
 
     /** Font line height — used for line-bbox hit tests in the collector. */
     private const val LINE_HEIGHT_PX = 9
@@ -57,6 +66,7 @@ object ChatRightClickCopy {
         y: Double,
         shift: Boolean,
         ctrl: Boolean,
+        alt: Boolean,
     ): Boolean {
         if (!isEnabled()) return false
         val mc = Minecraft.getInstance()
@@ -76,8 +86,11 @@ object ChatRightClickCopy {
         chat.captureClickableText(finder, screenHeight, guiTicks, true)
         val fcs = finder.hit ?: return false
 
+        // Alt takes priority over Shift/Ctrl combinations — it's the diagnostic dump mode
+        // and shouldn't be silently downgraded if the user happens to be holding Shift.
         val toCopy: String =
             when {
+                alt -> buildTooltipEnvelope(chat, fcs) ?: fcs.toPlainText()
                 shift -> fcs.toPlainText()
                 ctrl -> resolveFullMessageText(chat, fcs, withCodes = true) ?: fcs.toPlainText()
                 else -> resolveFullMessageText(chat, fcs, withCodes = false) ?: fcs.toPlainText()
@@ -87,6 +100,7 @@ object ChatRightClickCopy {
         mc.keyboardHandler.setClipboard(toCopy)
         val label =
             when {
+                alt -> "message with tooltips (JSON)"
                 shift -> "line"
                 ctrl -> "message with color codes"
                 else -> "message"
@@ -118,20 +132,100 @@ object ChatRightClickCopy {
         fcs: FormattedCharSequence,
         withCodes: Boolean,
     ): String? {
+        val batch = resolveBatch(chat, fcs) ?: return null
+        // For plain-text mode (withCodes == false) we must strip `§<char>` sequences from
+        // the result: Hypixel often embeds color codes directly in a TextComponent's
+        // literal content (rather than encoding color purely through Mojang's Style tree),
+        // so `Component.string` for `§9Party §8> §b…` returns the raw text **with** codes.
+        // The strip catches all single-char `§.` codes including Hypixel's non-vanilla
+        // ones (§y / §u / §x scoreboard keys), matching MessageDetector's behavior.
+        return batch.joinToString("\n") { msg ->
+            if (withCodes) msg.content().toLegacyText() else MessageDetector.stripColorCodes(msg.content().string)
+        }
+    }
+
+    /**
+     * Locate the same-`addedTime` batch as the clicked line and return it in natural
+     * arrival order (oldest first). `allMessages` is prepended-most-recent-first, so the
+     * filter has to be reversed before consumers see it.
+     */
+    private fun resolveBatch(
+        chat: net.minecraft.client.gui.components.ChatComponent,
+        fcs: FormattedCharSequence,
+    ): List<GuiMessage>? {
         val line = chat.trimmedMessages.firstOrNull { it.content() === fcs } ?: return null
         val targetTime = line.addedTime()
         val batch = chat.allMessages.filter { it.addedTime() == targetTime }
         if (batch.isEmpty()) return null
-        // allMessages is prepended-most-recent-first; reverse for reading order. For
-        // plain-text mode (withCodes == false) we must strip `§<char>` sequences from the
-        // result: Hypixel often embeds color codes directly in a TextComponent's literal
-        // content (rather than encoding color purely through Mojang's Style tree), so
-        // `Component.string` for `§9Party §8> §b…` returns the raw text **with** codes.
-        // The strip catches all single-char `§.` codes including Hypixel's non-vanilla
-        // ones (§y / §u / §x scoreboard keys), matching MessageDetector's behavior.
-        return batch.asReversed().joinToString("\n") { msg ->
-            if (withCodes) msg.content().toLegacyText() else MessageDetector.stripColorCodes(msg.content().string)
+        return batch.asReversed()
+    }
+
+    /**
+     * Build the Alt-RC JSON envelope: top-level joins of the full batch (with and without
+     * codes) plus a per-line breakdown carrying any hover-tooltip the line's root
+     * component declared. Used as the diagnostic protocol surface for the future sack
+     * chat reader — Hypixel's `[Sacks] +N items` lines carry the per-item breakdown as
+     * a `HoverEvent.ShowText` value on the root Component, and this dump is how we
+     * empirically capture its shape before writing the parser.
+     *
+     * Tooltip strategy is **first non-null per line**: multiple hover-bearing siblings on
+     * a single chat line are rare (only clickable usernames in the middle of a sentence
+     * carry their own hover), and we prefer the root-level tooltip Hypixel uses for
+     * structured batch reports. Lines with no hover omit the `tooltip` field entirely
+     * (terse JSON for grepping).
+     */
+    private fun buildTooltipEnvelope(
+        chat: net.minecraft.client.gui.components.ChatComponent,
+        fcs: FormattedCharSequence,
+    ): String? {
+        val batch = resolveBatch(chat, fcs) ?: return null
+        val linesArr = JsonArray()
+        val codedParts = ArrayList<String>(batch.size)
+        val plainParts = ArrayList<String>(batch.size)
+        for (msg in batch) {
+            val content = msg.content()
+            val coded = content.toLegacyText()
+            val plain = MessageDetector.stripColorCodes(content.string)
+            codedParts += coded
+            plainParts += plain
+            val lineObj =
+                JsonObject().apply {
+                    addProperty("text", coded)
+                }
+            extractFirstHoverText(content)?.let { hover ->
+                lineObj.addProperty("tooltip", hover.toLegacyText())
+            }
+            linesArr.add(lineObj)
         }
+        val obj =
+            JsonObject().apply {
+                addProperty("message", codedParts.joinToString("\n"))
+                addProperty("messagePlain", plainParts.joinToString("\n"))
+                add("lines", linesArr)
+            }
+        return gson.toJson(obj)
+    }
+
+    /**
+     * Walk a [Component] tree depth-first and return the first `HoverEvent.ShowText`
+     * value encountered, or null if no such hover exists. Recursion mirrors the natural
+     * `siblings` traversal order so root-level hovers (Hypixel's normal placement) are
+     * found before per-segment hovers (clickable usernames mid-line).
+     *
+     * Pattern-matches on `HoverEvent.ShowText` via `is` rather than a `when (hover)` on
+     * the sealed interface — the latter emits a `$WhenMappings` synthetic that Fabric's
+     * KnotClassLoader can fail to resolve at runtime (see CLAUDE.md note on enum/sealed
+     * `when` subjects). `HoverEvent.ShowItem` and `HoverEvent.ShowEntity` are intentionally
+     * ignored for v1; chat tooltip data we care about lives in ShowText.
+     */
+    private fun extractFirstHoverText(component: Component): Component? {
+        val hover = component.style.hoverEvent
+        if (hover is HoverEvent.ShowText) return hover.value()
+        for (sibling in component.siblings) {
+            val found = extractFirstHoverText(sibling)
+            if (found != null) return found
+        }
+        return null
     }
 
     /**

@@ -29,11 +29,12 @@ import static com.soulreturns.config.SoulConfigHolderKt.getCfg;
  *
  * <p><b>Modifiers.</b> {@code MouseButtonEvent} implements {@code InputWithModifiers}
  * (records the GLFW modifier bitmask at click time via {@code hasShiftDown()} /
- * {@code hasControlDown()}). The old {@code Screen.hasShiftDown()} static helpers were
- * removed in 1.21.11. Three intended combos: plain → full message plain text;
- * Shift → single visible line plain text; Ctrl → full message with §-color codes.
- * Implemented inside {@link ChatRightClickCopy#handleRightClick}; this mixin only
- * collects + forwards the modifier state.
+ * {@code hasControlDown()} / {@code hasAltDown()}). The old {@code Screen.hasShiftDown()}
+ * static helpers were removed in 1.21.11. Four intended combos: plain → full message
+ * plain text; Shift → single visible line plain text; Ctrl → full message with §-color
+ * codes; Alt → JSON envelope including any hover-tooltip components. Implemented inside
+ * {@link ChatRightClickCopy#handleRightClick}; this mixin only collects + forwards the
+ * modifier state.
  */
 @Mixin(ChatScreen.class)
 public class ChatScreenRightClickCopyMixin {
@@ -57,7 +58,8 @@ public class ChatScreenRightClickCopyMixin {
 
         boolean shift = click.hasShiftDown();
         boolean ctrl = click.hasControlDown();
-        boolean handled = ChatRightClickCopy.INSTANCE.handleRightClick(x, y, shift, ctrl);
+        boolean alt = click.hasAltDown();
+        boolean handled = ChatRightClickCopy.INSTANCE.handleRightClick(x, y, shift, ctrl, alt);
         if (handled) {
             cir.setReturnValue(true);
         }

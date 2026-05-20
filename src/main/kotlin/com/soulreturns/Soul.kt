@@ -3,6 +3,7 @@ package com.soulreturns
 import com.soulreturns.commands.SoulCommand
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.data.fishing.SeaCreatureCatalog
+import com.soulreturns.data.items.ItemCatalogClient
 import com.soulreturns.data.location.LocationReader
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.skyblock.FishingFestivalState
@@ -28,10 +29,12 @@ import com.soulreturns.features.notifications.ChatNotifications
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.features.profit.dragon.DragonDeathDetector
 import com.soulreturns.features.profit.dragon.DragonLegionAnnouncer
-import com.soulreturns.features.profit.dragon.DragonProfitAnnouncer
 import com.soulreturns.features.profit.dragon.DragonLootScanner
+import com.soulreturns.features.profit.dragon.DragonProfitAnnouncer
 import com.soulreturns.features.profit.dragon.DragonProfitTracker
 import com.soulreturns.features.profit.dragon.EyePlacementTracker
+import com.soulreturns.features.sacks.SackGuiReader
+import com.soulreturns.features.sacks.SackState
 import com.soulreturns.gui.lib.GuiLayoutManager
 import com.soulreturns.platform.http.PresenceService
 import com.soulreturns.platform.realtime.RealtimeClient
@@ -260,6 +263,23 @@ object Soul : ClientModInitializer {
 
         // Notifications
         ChatNotifications.register()
+
+        // Item catalog — backend-served, loads cache from disk synchronously then fetches
+        // async. Subscribes to SyncInvalidate(kind="items") for live admin-edit propagation.
+        // Init here (early in registerFeatures) so any downstream feature can read the
+        // catalog right away; lookups return null gracefully when the disk cache is missing
+        // and the first network fetch hasn't completed yet.
+        ItemCatalogClient.init()
+
+        // Sacks — state is authoritative source of truth, GUI reader populates it on every
+        // sack-screen open. Init order: state first (handles ProfileChanged for legacy
+        // promotion), then Hypixel-API loader (replaces active profile state on every
+        // ProfileChanged), then GUI reader (publishes per-sack snapshots into the state).
+        // The state's own ProfileChanged subscriber runs before the loader's by virtue
+        // of init order — legacy bucket promotes first, then the API fetch overwrites.
+        SackState.init()
+        com.soulreturns.data.skyblock.SkyblockProfileLoader.register()
+        SackGuiReader.register()
 
         // Profit trackers — price cache must start before the tracker registers its HUD so
         // the first frame after registration can render real prices. PriceCache.start is
