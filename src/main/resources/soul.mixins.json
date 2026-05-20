@@ -18,7 +18,8 @@
     "render.ChatComponentAddMessageMixin",
     "render.GlDebugMixin",
     "render.PlayerTabOverlayMixin",
-    "render.GameRendererMixin"
+    "render.GameRendererMixin",
+    "render.LightningFlashMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -248,6 +248,14 @@ object PartyManager {
         partyListDashesSeen = 0
     }
 
+    // Hypixel separates entries on `Party Members:` / `Party Moderators:` with the
+    // online/offline bullet itself (`[MVP++] A ● [MVP+] B ●`) — no comma between entries.
+    // Split on bullets first, then on `, ` for safety in case the format ever switches back.
+    private val LIST_ENTRY_SPLIT = Regex("\\s*[●○]\\s*")
+
+    private fun splitListEntries(section: String): List<String> =
+        section.split(LIST_ENTRY_SPLIT).flatMap { it.split(", ") }
+
     // Listeners
 
     fun addListener(listener: (PartyEvent) -> Unit) {
@@ -347,6 +355,9 @@ object PartyManager {
 
             clean.endsWith(" has been removed from the party.") ->
                 handleMemberRemoved(clean)
+
+            clean.endsWith(" was removed from your party because they disconnected.") ->
+                handleMemberDisconnected(clean)
 
             clean.startsWith("You have been kicked from the party by ") ->
                 handleYouKicked(clean)
@@ -644,6 +655,27 @@ object PartyManager {
         }
     }
 
+    private fun handleMemberDisconnected(line: String) {
+        // Example: "[MVP+] PogFrogy was removed from your party because they disconnected."
+        // Treated as a passive leave — fires MemberLeft, not MemberKicked.
+        val display = line.removeSuffix(" was removed from your party because they disconnected.").trim()
+        val name = extractUsername(display) ?: display
+
+        val state = currentState ?: return
+        val removed = state.members.remove(name.lowercase())
+        state.lastUpdatedAt = System.currentTimeMillis()
+
+        if (removed != null) {
+            DebugLogger.logFeatureEvent("Party member disconnected: $display (remaining=${state.size})")
+            fire(PartyEvent.MemberLeft(name, if (state.members.isEmpty()) null else state))
+        }
+
+        if (removed?.role == PartyRole.LEADER || state.members.isEmpty()) {
+            currentState = null
+            fire(PartyEvent.PartyDisbanded(state, PartyDisbandReason.LEFT_PARTY))
+        }
+    }
+
     private fun handleMemberRemoved(line: String) {
         // Example: "[MVP+] Thyla has been removed from the party."
         val display = line.removeSuffix(" has been removed from the party.").trim()
@@ -774,13 +806,8 @@ object PartyManager {
             val membersSection = line.removePrefix("Party Members:").trim()
             if (membersSection.isEmpty()) return
 
-            val parts = membersSection.split(", ")
-            for (part in parts) {
-                val display =
-                    part
-                        .trim()
-                        .removeSuffix(" ●")
-                        .trim()
+            for (part in splitListEntries(membersSection)) {
+                val display = part.trim()
                 if (display.isEmpty()) continue
                 val name = extractUsername(display) ?: display
                 if (listParsedMembers.none { it.name.equals(name, ignoreCase = true) }) {
@@ -800,13 +827,8 @@ object PartyManager {
             val moderatorsSection = line.removePrefix("Party Moderators:").trim()
             if (moderatorsSection.isEmpty()) return
 
-            val parts = moderatorsSection.split(", ")
-            for (part in parts) {
-                val display =
-                    part
-                        .trim()
-                        .removeSuffix(" ●")
-                        .trim()
+            for (part in splitListEntries(moderatorsSection)) {
+                val display = part.trim()
                 if (display.isEmpty()) continue
                 val name = extractUsername(display) ?: display
                 if (listParsedMembers.none { it.name.equals(name, ignoreCase = true) }) {

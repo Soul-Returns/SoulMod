@@ -75,7 +75,7 @@ object PartyHud {
                     return@Column
                 }
 
-                val leaderDisplay = state.leader?.displayName ?: state.leader?.name ?: "Unknown"
+                val leaderDisplay = state.leader?.name ?: "Unknown"
                 Text(
                     text = "Leader: $leaderDisplay",
                     size = SoulTheme.typography.body.size,
@@ -89,23 +89,23 @@ object PartyHud {
                     font = SoulTheme.typography.body.font,
                 )
 
-                val memberNames =
-                    state.members.values
-                        .filter { it.role != PartyRole.LEADER }
-                        .joinToString(", ") { it.displayName }
-                if (memberNames.isNotBlank()) {
+                val nonLeaderMembers =
+                    state.members.values.filter { it.role != PartyRole.LEADER }
+                if (nonLeaderMembers.isNotEmpty()) {
                     Text(
                         text = "Members:",
                         size = SoulTheme.typography.body.size,
                         color = SoulTheme.colors.textDim,
                         font = SoulTheme.typography.body.font,
                     )
-                    Text(
-                        text = memberNames,
-                        size = SoulTheme.typography.body.size,
-                        color = SoulTheme.colors.text,
-                        font = SoulTheme.typography.body.font,
-                    )
+                    nonLeaderMembers.forEach { member ->
+                        Text(
+                            text = member.name,
+                            size = SoulTheme.typography.body.size,
+                            color = SoulTheme.colors.text,
+                            font = SoulTheme.typography.body.font,
+                        )
+                    }
                 }
 
                 val invites = PartyManager.getPendingInvites()

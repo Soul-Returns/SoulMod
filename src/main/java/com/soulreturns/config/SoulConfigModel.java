@@ -87,6 +87,7 @@ public class SoulConfigModel {
         public boolean oldSneakHeight = false;
         public boolean hideEffectsInInventory = false;
         public boolean hideEffectsInHud = false;
+        public boolean hideLightningFlash = false;
     }
 
     public static class HudScale {

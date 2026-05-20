@@ -154,12 +154,20 @@ object MessageHandler {
 object MessageDetector {
     /**
      * Detects if a message is from a player rather than the server.
-     * Player messages typically contain:
-     * - Rank prefixes like [MVP++], [VIP], etc. (with or without color codes)
-     * - Party chat prefix: "Party >"
-     * - Guild chat prefix: "Guild >"
-     * - Colon followed by player message (e.g., "PlayerName: message")
-     * - Player name patterns with ranks
+     * Player messages match in this order:
+     * - Channel prefix: `Party >` / `Guild >` / `Officer >`
+     * - Rank bracket somewhere on the line, followed by `:` (covers global public chat
+     *   with a rank like `[MVP+] Name: msg` and any non-channel rank-prefixed chat)
+     * - Lobby + optional rank: `[123] [rank?] name: …` (covers BOTH ranked and unranked
+     *   players in lobby / global chat where Hypixel prepends a SkyBlock level / lobby#)
+     * - Unranked public chat: line begins with `Username: <letter…>` (identifier + `: `
+     *   at offset 0, content after the colon must NOT start with `[+-]<digit>` — that
+     *   excludes SkyBlock skill XP gains like `Runecrafting: +582 XP`)
+     *
+     * The fallback is anchored to the start so a noun-before-colon mid-sentence
+     * (`Latest update:`, `New buff:`, `playing on profile:`) doesn't qualify. The
+     * `+digit` / `-digit` exclusion specifically catches Hypixel's `<Skill>: +<N> XP`
+     * format and similar `+stat` / `-stat` system lines.
      *
      * @param message The message to check (can include Minecraft color codes)
      * @return true if the message appears to be from a player, false if from server
@@ -182,13 +190,17 @@ object MessageDetector {
             // Followed by a colon (indicating player sent message)
             stripped.matches(".*\\[(VIP|MVP|MOD|ADMIN|HELPER|YOUTUBE|PIG).*?].*:.*".toRegex(RegexOption.IGNORE_CASE)) -> true
 
-            // Lobby number pattern like "[505]" followed by rank and colon
-            stripped.matches(".*\\[\\d+].*\\[.*?].*:.*".toRegex()) -> true
+            // Lobby/level number prefix like "[18]" optionally followed by a rank bracket,
+            // then "Name: msg". Both ranked AND unranked players in lobby/global chat
+            // (the `[\d+]` bracket Hypixel prepends is the player's SkyBlock level / the
+            // lobby number; the rank bracket is only present for ranked players).
+            stripped.matches("\\[\\d+] (?:\\[.*?] )?[a-zA-Z0-9_]{3,16}: .*".toRegex()) -> true
 
-            // Generic pattern: looks like "SomeName: message" (name followed by colon)
-            // But exclude if it's clearly a server announcement (e.g., starts with special chars)
-            stripped.matches(".*[a-zA-Z0-9_]{3,16}\\s*:.*".toRegex()) &&
-                !stripped.matches("^[^a-zA-Z0-9]*(?:DOUBLE|TRIPLE|RARE|LEGENDARY|SPECIAL|EVENT).*".toRegex(RegexOption.IGNORE_CASE)) -> true
+            // Unranked public chat: line begins with "Username: <letter…>".
+            // The (?![+\\-]\\d) lookahead excludes SkyBlock skill XP messages like
+            // "Runecrafting: +582 XP" — Hypixel prefixes those gains with `+`/`-` and a
+            // digit, which is never how player chat starts.
+            stripped.matches("[a-zA-Z0-9_]{3,16}: (?![+\\-]\\d).*".toRegex()) -> true
 
             else -> false
         }
