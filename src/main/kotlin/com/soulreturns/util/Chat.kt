@@ -28,5 +28,4 @@ fun soulChat(message: String) {
  * Returns the original [body] (no allocation) when the toggle is off, so it's safe to
  * route every conversational send through this helper unconditionally.
  */
-fun withOutgoingPrefix(body: String): String =
-    if (cfg.general.chat.prefixOutgoingMessages()) "[Soul] $body" else body
+fun withOutgoingPrefix(body: String): String = if (cfg.general.chat.prefixOutgoingMessages()) "[Soul] $body" else body

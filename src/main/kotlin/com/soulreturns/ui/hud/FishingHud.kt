@@ -158,6 +158,7 @@ object FishingHud {
                 }
             },
             onResetSession = { FishingTracker.resetSession() },
+            scrollableList = { cfg.fishing.fishingHud.scrollableList() },
             isVisible = {
                 cfg.fishing.fishingHud.showHud() &&
                     cfg.dev.trackers.fishingTracker() &&
@@ -228,22 +229,18 @@ object FishingHud {
     // ───────────────────── row assembly ─────────────────────
 
     private fun buildRows(tab: TrackerTab): List<CreatureRow> {
-        val catches: Map<String, Long>
-        val doubleHooks: Map<String, Long>
-        val cocoons: Map<String, Long>
-        when (tab) {
-            TrackerTab.Session -> {
-                catches = FishingTracker.sessionCatchesByCreature
-                doubleHooks = FishingTracker.sessionDoubleHooksByCreature
-                cocoons = FishingTracker.sessionCocoonsByCreature
-            }
-            TrackerTab.Total -> {
-                val stats = PersistentStats.current
-                catches = stats.catchesByCreature
-                doubleHooks = stats.doubleHooksByCreature
-                cocoons = stats.cocoonsByCreature
-            }
-        }
+        // if/else over an enum (rather than `when (tab)`) avoids Kotlin's synthetic
+        // `$WhenMappings` class — see CLAUDE.md "Avoid `when (enumValue)`". The Fishing HUD
+        // doesn't include `Event` in its spec.tabs list, so we only care about Session vs
+        // not-Session here; treating any non-Session tab as Total is safe — the framework
+        // snaps settings.tab to a value in spec.tabs on render.
+        val session = tab == TrackerTab.Session
+        val catches: Map<String, Long> =
+            if (session) FishingTracker.sessionCatchesByCreature else PersistentStats.current.catchesByCreature
+        val doubleHooks: Map<String, Long> =
+            if (session) FishingTracker.sessionDoubleHooksByCreature else PersistentStats.current.doubleHooksByCreature
+        val cocoons: Map<String, Long> =
+            if (session) FishingTracker.sessionCocoonsByCreature else PersistentStats.current.cocoonsByCreature
         val names = (catches.keys + doubleHooks.keys + cocoons.keys).toSet()
         return names.map { name ->
             val creature = SeaCreatureCatalog.byName(name)
@@ -261,12 +258,10 @@ object FishingHud {
 
     // ───────────────────── totals for chips ─────────────────────
 
+    // if/else over enum (not when) — see [buildRows] for the WhenMappings rationale.
     private fun totalCatchesRolledUp(tab: TrackerTab): Long {
         val base =
-            when (tab) {
-                TrackerTab.Session -> FishingTracker.sessionCatches
-                TrackerTab.Total -> PersistentStats.current.catchesAllTime
-            }
+            if (tab == TrackerTab.Session) FishingTracker.sessionCatches else PersistentStats.current.catchesAllTime
         val dh = totalDoubleHooks(tab)
         val cc = totalCocoons(tab)
         val hudCfg = cfg.fishing.fishingHud
@@ -276,14 +271,8 @@ object FishingHud {
     }
 
     private fun totalDoubleHooks(tab: TrackerTab): Long =
-        when (tab) {
-            TrackerTab.Session -> FishingTracker.sessionDoubleHooks
-            TrackerTab.Total -> PersistentStats.current.doubleHooksAllTime
-        }
+        if (tab == TrackerTab.Session) FishingTracker.sessionDoubleHooks else PersistentStats.current.doubleHooksAllTime
 
     private fun totalCocoons(tab: TrackerTab): Long =
-        when (tab) {
-            TrackerTab.Session -> FishingTracker.sessionCocoons
-            TrackerTab.Total -> PersistentStats.current.cocoonsAllTime
-        }
+        if (tab == TrackerTab.Session) FishingTracker.sessionCocoons else PersistentStats.current.cocoonsAllTime
 }

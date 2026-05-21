@@ -171,6 +171,7 @@ object DragonProfitHud {
             // would do.
             filterPredicate = { _, _ -> true },
             onResetSession = { DragonProfitTracker.resetSession() },
+            scrollableList = { cfg.combat.dragons.scrollableList() },
             isVisible = ::isHudVisible,
             headerExtra = {
                 // Two stacked sub-lines — Dragons/LS counts on the first row, the eye-count
@@ -579,5 +580,4 @@ object DragonProfitHud {
             else -> String.format(Locale.ROOT, "%s%.1fB", sign, abs / 1_000_000_000.0)
         }
     }
-
 }

@@ -171,6 +171,10 @@ public class SoulConfigModel {
         // flipping showHud on. The Welcome page's "Quick Settings" + the Fishing → Fishing
         // HUD page are the obvious places to enable it.
         public boolean showHud = false;
+        // When true (default) the per-creature list renders inside a fixed-height
+        // scrollable region. When false it renders as a complete list and the panel grows
+        // with the row count. Live toggle — no restart needed.
+        public boolean scrollableList = true;
         public boolean showFestivalTimer = true;
         // When true the Catches column / total includes Double Hook counts as well, so a
         // creature catch that was also a double hook is counted twice (once for catches,
@@ -218,12 +222,34 @@ public class SoulConfigModel {
 
     public static class Combat {
         @Nest public Dragons dragons = new Dragons();
+        @Nest public Diana diana = new Diana();
+    }
+
+    public static class Diana {
+        // Show the Mythological Mob HUD overlay (counts the mobs you dig out during Mayor
+        // Diana's Mythological Ritual). Tracking always runs as long as the tracker master
+        // toggle below is on. Default off — opt-in feature policy.
+        public boolean showMobHud = false;
+        // When true the Count column / Mobs total / Mobs/hr rate include Cocoon counts as
+        // well, so a mob you cocooned counts toward your headline mobs total. Default off —
+        // cocoons are a distinct kill-outcome and most users keep them separate. Affects
+        // both per-mob rows AND the bottom totals row so the numbers stay consistent.
+        public boolean addCocoonsToTotal = false;
+        // Default OFF for this tracker (vs. ON for Fishing / Dragon) — the Mythological
+        // catalog is small (12 mobs) and the panel is most readable as a full list rather
+        // than a scrollable region pinched into the same vertical slot. Flip to true if
+        // you want the fixed-height scrollable look.
+        public boolean scrollableList = false;
     }
 
     public static class Dragons {
         // Default OFF — every user-facing feature in this mod is opt-in. See the policy notes
         // in the FishingHud section above.
         public boolean showProfitHud = false;
+        // When true (default) the per-drop list renders inside a fixed-height scrollable
+        // region. When false it renders as a complete list and the panel grows with the
+        // row count.
+        public boolean scrollableList = true;
         // When ON, the mod fires a Legion announcement on every dragon-down banner. The
         // [sendLegionToPartyChat] sub-toggle decides whether it goes to /pc or just the
         // local client chat. Default OFF — opt-in feature policy.
@@ -308,6 +334,10 @@ public class SoulConfigModel {
         // because trackers only accumulate data when the player is actively in their domain
         // (e.g. in The End for dragon profit) — no cost when idle.
         public boolean profitTrackers = true;
+        // Master switch for the chat-driven Mythological mob tracker (counts mobs dug out
+        // during Mayor Diana's Mythological Ritual). Off ⇒ no chat parsing, no stat writes.
+        // Default on — only fires when the relevant chat lines arrive, no idle cost.
+        public boolean mythologicalTracker = true;
     }
 
     public static class Data {

@@ -9,6 +9,8 @@ import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.skyblock.FishingFestivalState
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.dev.DevKeybindHandler
+import com.soulreturns.features.diana.MythologicalActivityTimer
+import com.soulreturns.features.diana.MythologicalMobTracker
 import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.seasoning.HarvestFeastReader
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
@@ -49,6 +51,7 @@ import com.soulreturns.ui.hud.DragonProfitHud
 import com.soulreturns.ui.hud.FishingHud
 import com.soulreturns.ui.hud.LegionHud
 import com.soulreturns.ui.hud.MineshaftCorpsesHud
+import com.soulreturns.ui.hud.MythologicalHud
 import com.soulreturns.ui.hud.PartyHud
 import com.soulreturns.ui.hud.SeasoningHud
 import com.soulreturns.update.UpdateChecker
@@ -105,6 +108,11 @@ object Soul : ClientModInitializer {
 
         // Start polling Hypixel SkyBlock profile (publishes ProfileChanged — drives PersistentStats keying).
         com.soulreturns.data.profile.ProfileReader.register()
+
+        // Start polling Hypixel SkyBlock mayor / minister so the Mythological tracker's
+        // Event tab knows which mayor term to bucket kills under. Polls every 15 min on
+        // its own daemon thread — no work runs until a feature reads MayorState.current*.
+        com.soulreturns.data.skyblock.MayorState.start()
 
         // Load persisted auth token so we don't re-authenticate on every launch.
         com.soulreturns.platform.http.BackendAuth.loadCached()
@@ -297,6 +305,14 @@ object Soul : ClientModInitializer {
         DragonLegionAnnouncer.register()
         DragonProfitAnnouncer.register()
         DragonProfitHud.register()
+
+        // Diana / Mythological mob tracker — timer must register before tracker so the
+        // tracker's first chat event lands after the timer is already subscribed (the
+        // catalog's isDigOutLine drives the timer; the tracker's chat handler then runs
+        // independently and reads the timer's accumulated state on render).
+        MythologicalActivityTimer.register()
+        MythologicalMobTracker.init()
+        MythologicalHud.register()
     }
 
     fun reloadFeatures() {

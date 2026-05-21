@@ -45,6 +45,13 @@ data class TrackerSpec<T : Any>(
     val columns: List<TrackerColumn<T>>,
     val sorts: List<TrackerSort<T>>,
     /**
+     * Tabs rendered in the header strip — defaults to the canonical `[Session, Total]` pair
+     * (matches every general / profit tracker shipped before the Mythological tracker). A
+     * tracker that also wants the per-mayor-term `Event` bucket passes
+     * `[Session, Event, Total]` here. Tab order is the display order.
+     */
+    val tabs: List<TrackerTab> = listOf(TrackerTab.Session, TrackerTab.Total),
+    /**
      * Build the list of rows for the active tab. Called every frame inside the composable,
      * so it must be cheap — read pre-aggregated maps from the tracker singleton, don't
      * walk Minecraft state here.
@@ -110,6 +117,17 @@ data class TrackerSpec<T : Any>(
      * to `"(no data yet)"`.
      */
     val emptyText: String = "(no data yet)",
+    /**
+     * When `true` (default) the row list renders inside a fixed-height [ScrollableList]
+     * with a vertical scrollbar — the panel's footprint stays constant regardless of how
+     * many rows accumulate. When `false` the list renders as a plain [Column] and the
+     * panel grows / shrinks dynamically with the row count.
+     *
+     * Trackers wire a `cfg.*.scrollableList` lambda here so users can toggle live without
+     * a config-screen rebuild. Lambda (not a plain `Boolean`) so changes take effect on
+     * the next frame.
+     */
+    val scrollableList: () -> Boolean = { true },
     /**
      * When this returns true, [listOverride] is rendered in place of the default
      * scrollable list AND the chip-line is suppressed for that frame. Used for transient

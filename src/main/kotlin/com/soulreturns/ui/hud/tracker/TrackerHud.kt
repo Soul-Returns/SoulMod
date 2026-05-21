@@ -137,11 +137,20 @@ private fun <T : Any> Header(
                 Box {}
             }
             if (interactive) {
+                val tabs = spec.tabs
+                // Snap settings.tab to a valid entry in the spec's tab list so trackers that
+                // shrink their tab set (e.g. a future toggle) don't strand the user on a
+                // hidden tab.
+                if (settings.tab !in tabs) {
+                    settings.tab = tabs.first()
+                    settings.markDirty()
+                }
+                val selectedIndex = tabs.indexOf(settings.tab).coerceAtLeast(0)
                 Tabs(
-                    options = TrackerTab.values().map { it.name },
-                    selectedIndex = settings.tab.ordinal,
+                    options = tabs.map { it.name },
+                    selectedIndex = selectedIndex,
                     onSelect = { idx ->
-                        val newTab = TrackerTab.values()[idx]
+                        val newTab = tabs[idx]
                         if (newTab != settings.tab) {
                             settings.tab = newTab
                             settings.scrollOffset = 0f
@@ -170,25 +179,44 @@ private fun <T : Any> RowList(
     settings: TrackerSettings,
 ) {
     val rows = buildRows(spec, settings)
-    ScrollableList(
-        scrollOffset = settings.scrollOffset,
-        onScroll = { newOffset ->
-            settings.scrollOffset = newOffset
-            settings.markDirty()
-        },
-        modifier = SoulModifier.Empty.fillMaxWidth().height(LIST_HEIGHT),
-        gap = 2f,
-        key = "${spec.id}.scroll",
-    ) {
-        if (rows.isEmpty()) {
-            Text(
-                text = spec.emptyText,
-                size = SoulTheme.typography.body.size,
-                color = SoulTheme.colors.textFaint,
-                font = SoulTheme.typography.body.font,
-            )
-        } else {
-            rows.forEach { row -> RenderRow(spec, settings, row) }
+    if (spec.scrollableList()) {
+        ScrollableList(
+            scrollOffset = settings.scrollOffset,
+            onScroll = { newOffset ->
+                settings.scrollOffset = newOffset
+                settings.markDirty()
+            },
+            modifier = SoulModifier.Empty.fillMaxWidth().height(LIST_HEIGHT),
+            gap = 2f,
+            key = "${spec.id}.scroll",
+        ) {
+            if (rows.isEmpty()) {
+                Text(
+                    text = spec.emptyText,
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.textFaint,
+                    font = SoulTheme.typography.body.font,
+                )
+            } else {
+                rows.forEach { row -> RenderRow(spec, settings, row) }
+            }
+        }
+    } else {
+        // Non-scrollable: every row renders in a Column with no height constraint, so
+        // the panel grows / shrinks with the row count. The framework's parent Surface is
+        // already content-sized vertically — only the ScrollableList branch above pins a
+        // fixed [LIST_HEIGHT].
+        Column(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 2f) {
+            if (rows.isEmpty()) {
+                Text(
+                    text = spec.emptyText,
+                    size = SoulTheme.typography.body.size,
+                    color = SoulTheme.colors.textFaint,
+                    font = SoulTheme.typography.body.font,
+                )
+            } else {
+                rows.forEach { row -> RenderRow(spec, settings, row) }
+            }
         }
     }
 }

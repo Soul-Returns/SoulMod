@@ -253,8 +253,7 @@ object PartyManager {
     // Split on bullets first, then on `, ` for safety in case the format ever switches back.
     private val LIST_ENTRY_SPLIT = Regex("\\s*[●○]\\s*")
 
-    private fun splitListEntries(section: String): List<String> =
-        section.split(LIST_ENTRY_SPLIT).flatMap { it.split(", ") }
+    private fun splitListEntries(section: String): List<String> = section.split(LIST_ENTRY_SPLIT).flatMap { it.split(", ") }
 
     // Listeners
 
