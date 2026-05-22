@@ -54,6 +54,7 @@ object MythologicalHud {
         val rarityOrdinal: Int,
         val count: Long,
         val cocoons: Long,
+        val lootshare: Long,
         /**
          * This row's share of the panel's headline total, in **tenths of a percent**
          * (e.g. `125` = 12.5 %). Precomputed at build time because `cellValue` only sees
@@ -90,6 +91,16 @@ object MythologicalHud {
                         // still works if the override is removed.
                         totalValue = { rows, _ -> rows.sumOf { it.cocoons } },
                         formatCell = { String.format(Locale.ROOT, "%,d CC", it) },
+                        isCaption = true,
+                    ),
+                    TrackerColumn(
+                        id = MythologicalHudSettings.COLUMN_LOOTSHARE,
+                        chipLabel = "LS",
+                        toggleLabel = "Lootshare",
+                        defaultVisible = true,
+                        cellValue = { row, _ -> row.lootshare },
+                        totalValue = { rows, _ -> rows.sumOf { it.lootshare } },
+                        formatCell = { String.format(Locale.ROOT, "%,d LS", it) },
                         isCaption = true,
                     ),
                     TrackerColumn(
@@ -137,6 +148,12 @@ object MythologicalHud {
                         label = "Cocoons",
                         comparator = compareByDescending { it.cocoons },
                         requiresColumnId = MythologicalHudSettings.COLUMN_COCOONS,
+                    ),
+                    TrackerSort(
+                        id = MythologicalHudSettings.SORT_LOOTSHARE,
+                        label = "Lootshare",
+                        comparator = compareByDescending { it.lootshare },
+                        requiresColumnId = MythologicalHudSettings.COLUMN_LOOTSHARE,
                     ),
                     TrackerSort(
                         id = MythologicalHudSettings.SORT_PERCENT,
@@ -298,33 +315,39 @@ object MythologicalHud {
         // if/else over enum — see [ChipLine] for the WhenMappings rationale.
         val counts: Map<String, Long>
         val cocoons: Map<String, Long>
+        val lootshare: Map<String, Long>
         if (tab == TrackerTab.Session) {
             counts = MythologicalMobTracker.sessionByMob
             cocoons = MythologicalMobTracker.sessionCocoonsByMob
+            lootshare = MythologicalMobTracker.sessionLootshareByMob
         } else if (tab == TrackerTab.Event) {
             counts = MythologicalMobTracker.eventByMob()
             cocoons = MythologicalMobTracker.eventCocoonsByMob()
+            lootshare = MythologicalMobTracker.eventLootshareByMob()
         } else {
             counts = MythologicalMobTracker.totalByMob()
             cocoons = MythologicalMobTracker.totalCocoonsByMob()
+            lootshare = MythologicalMobTracker.totalLootshareByMob()
         }
         val addCC = cfg.combat.diana.addCocoonsToTotal()
         // Headline denominator matches the chip's `Mobs:` value — the user's mental model
-        // is "% of the number I see at the bottom of the panel".
+        // is "% of the number I see at the bottom of the panel". Lootshare counts are
+        // NOT in the denominator (per design, kills + lootshare are mutually-exclusive
+        // views of the same mob; rolling lootshare into the % would double-weight).
         val grandTotal =
             MythologicalMobCatalog.all().sumOf { mob ->
                 val c = counts[mob.name] ?: 0L
                 val cc = cocoons[mob.name] ?: 0L
                 c + if (addCC) cc else 0L
             }
-        // Hide rows where BOTH counts are 0 — a mob with cocoons but no dig-out kills still
-        // earns its row (rare but possible if a cocooned spawn was attributed to someone
-        // else's dig). Mobs with no engagement at all stay hidden.
+        // Hide rows where ALL three counts are 0 — a mob with any engagement (kills,
+        // cocoons, or lootshare) earns its row. Mobs untouched this scope stay hidden.
         return MythologicalMobCatalog.all()
             .mapNotNull { mob ->
                 val count = counts[mob.name] ?: 0L
                 val cocoonCount = cocoons[mob.name] ?: 0L
-                if (count <= 0L && cocoonCount <= 0L) return@mapNotNull null
+                val lootshareCount = lootshare[mob.name] ?: 0L
+                if (count <= 0L && cocoonCount <= 0L && lootshareCount <= 0L) return@mapNotNull null
                 val rowEffective = count + if (addCC) cocoonCount else 0L
                 val pctTenths = if (grandTotal > 0L) rowEffective * 1000L / grandTotal else 0L
                 MobRow(
@@ -334,6 +357,7 @@ object MythologicalHud {
                     rarityOrdinal = SkyblockRarity.forName(mob.rarity)?.ordinal ?: -1,
                     count = count,
                     cocoons = cocoonCount,
+                    lootshare = lootshareCount,
                     percentTenths = pctTenths,
                 )
             }

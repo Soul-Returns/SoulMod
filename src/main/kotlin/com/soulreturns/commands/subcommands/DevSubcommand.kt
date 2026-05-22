@@ -4,12 +4,13 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.soulreturns.config.SoulConfigHolder
+import com.soulreturns.data.drops.DropCatalogClient
+import com.soulreturns.data.drops.DropResolver
 import com.soulreturns.data.location.LocationApi
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.profile.ProfileApi
 import com.soulreturns.data.skyblock.SkyblockApi
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
-import com.soulreturns.features.profit.dragon.DragonDrop
 import com.soulreturns.features.profit.dragon.DragonProfitTracker
 import com.soulreturns.features.profit.dragon.DragonType
 import com.soulreturns.features.profit.dragon.KillSource
@@ -51,8 +52,9 @@ import net.minecraft.network.chat.Component
  *  - `/soul dev sackDump`                                        → dump top 30 sack entries (active profile) sorted by count
  *  - `/soul dev sackReset`                                       → wipe the active profile's sack state
  *  - `/soul dev loadProfile`                                     → force a Hypixel /skyblock/profiles fetch for the current SkyBlock profile (seeds sacks)
- *  - `/soul dev catalogStatus`                                   → print item catalog size + last-applied updatedAt
- *  - `/soul dev refreshCatalog`                                  → force a /items refetch (bypasses Mercure invalidate wait)
+ *  - `/soul dev catalogStatus`                                   → print item + drop catalog sizes + last-applied updatedAt for each
+ *  - `/soul dev refreshCatalog`                                  → force a refetch of every backend-served catalog (items, drops, mobs, sea creatures, aliases) — bypasses the Mercure invalidate wait
+ *  - `/soul dev realtimeStatus`                                  → print Mercure SSE connection state (started / connected / topics / events received / last error)
  */
 object DevSubcommand : SoulSubcommand {
     override fun register(): LiteralArgumentBuilder<FabricClientCommandSource> {
@@ -389,15 +391,62 @@ object DevSubcommand : SoulSubcommand {
                 literal("catalogStatus") {
                     runs { _ ->
                         soulChat("§7${com.soulreturns.data.items.ItemCatalogClient.status()}")
+                        soulChat("§7${DropCatalogClient.status()}")
+                        val mobs = com.soulreturns.data.skyblock.MythologicalMobCatalogClient.snapshot
+                        soulChat("§7MobCatalog (mythological): ${mobs.mobs.size} mobs, updatedAt=${mobs.updatedAt}")
+                        val sea = com.soulreturns.data.fishing.SeaCreatureCatalogClient.snapshot
+                        soulChat("§7SeaCreatureCatalog: ${sea.creatures.size} creatures, updatedAt=${sea.updatedAt}")
+                        val aliases = com.soulreturns.data.items.ItemNameAliasClient.snapshot()
+                        soulChat("§7AliasTable: ${aliases.aliases.size} aliases, updatedAt=${aliases.updatedAt}")
                     }
                 },
             )
-            // Force a /items refetch without waiting for the next Mercure invalidate.
+            // Diagnose the realtime / Mercure connection. Reports whether the daemon
+            // thread is running, the topics issued by the backend, the last successful
+            // connect, the last error if any, and total events received this session.
+            then(
+                literal("realtimeStatus") {
+                    runs { _ ->
+                        val s = com.soulreturns.platform.realtime.RealtimeClient.status()
+                        soulChat("§7Realtime: started=§f${s.started}§7 running=§f${s.running}")
+                        if (s.hubUrl != null) soulChat("§7  hub: §f${s.hubUrl}")
+                        soulChat("§7  topics (${s.topics.size}):")
+                        if (s.topics.isEmpty()) {
+                            soulChat("§c    <none>")
+                        } else {
+                            s.topics.forEach { topic -> soulChat("§7    - §f$topic") }
+                        }
+                        val now = System.currentTimeMillis()
+                        if (s.lastConnectedAt > 0L) {
+                            soulChat("§7  connected ago: §f${(now - s.lastConnectedAt) / 1000}s")
+                        } else {
+                            soulChat("§c  never connected")
+                        }
+                        if (s.lastDisconnectedAt > 0L) {
+                            soulChat("§7  disconnected ago: §f${(now - s.lastDisconnectedAt) / 1000}s")
+                        }
+                        if (s.lastConnectError != null) {
+                            soulChat("§c  last error: §f${s.lastConnectError}")
+                        }
+                        soulChat("§7  events received: §f${s.eventsReceived}")
+                        if (s.lastEventType != null) {
+                            soulChat("§7  last event: §f${s.lastEventType}§7 (${(now - s.lastEventAt) / 1000}s ago)")
+                        }
+                    }
+                },
+            )
+            // Force a refetch of every backend-served catalog. Bypasses the Mercure
+            // invalidate wait so you don't have to make an admin-edit to pull a fresh
+            // copy. All five clients run their refresh in parallel on `SoulExecutor`.
             then(
                 literal("refreshCatalog") {
                     runs { _ ->
                         com.soulreturns.data.items.ItemCatalogClient.refreshAsync()
-                        soulChat("§7Catalog refresh dispatched.")
+                        DropCatalogClient.refreshAsync()
+                        com.soulreturns.data.skyblock.MythologicalMobCatalogClient.refreshAsync()
+                        com.soulreturns.data.fishing.SeaCreatureCatalogClient.refreshAsync()
+                        com.soulreturns.data.items.ItemNameAliasClient.refreshAsync()
+                        soulChat("§7Catalog refresh dispatched for items / drops / mobs / sea creatures / aliases.")
                     }
                 },
             )
@@ -418,15 +467,10 @@ object DevSubcommand : SoulSubcommand {
                     soulChat("§cUnknown dragon type '§f$dragonTypeName§c'. Valid: §7$opts")
                     return
                 }
-        val drop =
-            DragonDrop.byId(dropIdName.uppercase())
-                ?: run {
-                    val opts = DragonDrop.entries.filter { bucket in it.dragonTypes }.joinToString(", ") { it.name }
-                    soulChat("§cUnknown drop id '§f$dropIdName§c'. Valid for ${bucket.displayName}: §7$opts")
-                    return
-                }
-        DragonProfitTracker.grantDrop(bucket, drop, amount.toLong())
-        soulChat("§aGranted §f$amount§a × §f${drop.displayName}§a to §f${bucket.displayName}§a.")
+        val itemId = resolveDropItemId(bucket, dropIdName) ?: return
+        DragonProfitTracker.grantDrop(bucket, itemId, amount.toLong())
+        val display = DropResolver.displayName(bucket.sourceId, itemId)
+        soulChat("§aGranted §f$amount§a × §f$display§a to §f${bucket.displayName}§a.")
     }
 
     private fun executeGrantDragonDropAs(
@@ -449,18 +493,32 @@ object DevSubcommand : SoulSubcommand {
                     soulChat("§cUnknown dragon type '§f$dragonTypeName§c'. Valid: §7$opts")
                     return
                 }
-        val drop =
-            DragonDrop.byId(dropIdName.uppercase())
-                ?: run {
-                    val opts = DragonDrop.entries.filter { bucket in it.dragonTypes }.joinToString(", ") { it.name }
-                    soulChat("§cUnknown drop id '§f$dropIdName§c'. Valid for ${bucket.displayName}: §7$opts")
-                    return
-                }
-        DragonProfitTracker.grantDrop(bucket, drop, amount.toLong(), source)
+        val itemId = resolveDropItemId(bucket, dropIdName) ?: return
+        DragonProfitTracker.grantDrop(bucket, itemId, amount.toLong(), source)
+        val display = DropResolver.displayName(bucket.sourceId, itemId)
         soulChat(
-            "§aGranted §f$amount§a × §f${drop.displayName}§a to §f${bucket.displayName}§a " +
+            "§aGranted §f$amount§a × §f$display§a to §f${bucket.displayName}§a " +
                 "as §f${source.displayName}§a.",
         )
+    }
+
+    /**
+     * Resolve a user-typed drop identifier against the backend drop catalog for [bucket].
+     * Accepts the canonical item id verbatim (`PROTECTOR_FRAGMENT`, `ENDER_DRAGON;4`) — case
+     * preserved because pet ids are case-sensitive. Lists the available item ids when nothing
+     * matches.
+     */
+    private fun resolveDropItemId(
+        bucket: DragonType,
+        userInput: String,
+    ): String? {
+        val available = DropCatalogClient.dropsFrom(bucket.sourceId).map { it.itemId }
+        if (userInput in available) return userInput
+        val upper = userInput.uppercase()
+        if (upper in available) return upper
+        val opts = available.joinToString(", ")
+        soulChat("§cUnknown drop id '§f$userInput§c'. Valid for ${bucket.displayName}: §7$opts")
+        return null
     }
 
     private fun executeGrantDragonEye(

@@ -53,6 +53,55 @@ object RealtimeClient {
     private val running = AtomicBoolean(false)
     private val thread = AtomicReference<Thread?>(null)
 
+    // ─── Observable state for `/soul dev realtimeStatus` ───
+    @Volatile private var lastConnectedAt: Long = 0L
+
+    @Volatile private var lastDisconnectedAt: Long = 0L
+
+    @Volatile private var lastConnectError: String? = null
+
+    @Volatile private var currentHubUrl: String? = null
+
+    @Volatile private var currentTopics: List<String> = emptyList()
+
+    @Volatile private var eventsReceived: Long = 0L
+
+    @Volatile private var lastEventType: String? = null
+
+    @Volatile private var lastEventAt: Long = 0L
+
+    /**
+     * Public-read accessor for `/soul dev realtimeStatus`. Snapshots the connection
+     * lifecycle so an operator can tell if the mod is connected, what topics it's
+     * subscribed to, and whether anything has been received.
+     */
+    data class Status(
+        val started: Boolean,
+        val running: Boolean,
+        val hubUrl: String?,
+        val topics: List<String>,
+        val lastConnectedAt: Long,
+        val lastDisconnectedAt: Long,
+        val lastConnectError: String?,
+        val eventsReceived: Long,
+        val lastEventType: String?,
+        val lastEventAt: Long,
+    )
+
+    fun status(): Status =
+        Status(
+            started = started.get(),
+            running = running.get(),
+            hubUrl = currentHubUrl,
+            topics = currentTopics,
+            lastConnectedAt = lastConnectedAt,
+            lastDisconnectedAt = lastDisconnectedAt,
+            lastConnectError = lastConnectError,
+            eventsReceived = eventsReceived,
+            lastEventType = lastEventType,
+            lastEventAt = lastEventAt,
+        )
+
     fun start(enabled: () -> Boolean) {
         if (!started.compareAndSet(false, true)) return
         if (!enabled()) {
@@ -155,16 +204,27 @@ object RealtimeClient {
                 .header("User-Agent", SoulHttp.userAgent())
                 .build()
 
+        currentHubUrl = token.hubUrl
+        currentTopics = token.topics
         debugInfo("Realtime: connecting to $uri (${token.topics.size} topic(s))")
         val response: HttpResponse<java.io.InputStream> =
-            SoulHttp.client.send(request, HttpResponse.BodyHandlers.ofInputStream())
+            try {
+                SoulHttp.client.send(request, HttpResponse.BodyHandlers.ofInputStream())
+            } catch (e: Exception) {
+                lastConnectError = "send: ${e.javaClass.simpleName}: ${e.message}"
+                throw e
+            }
         if (response.statusCode() !in 200..299) {
+            lastConnectError = "HTTP ${response.statusCode()}"
             throw java.io.IOException("Mercure returned HTTP ${response.statusCode()}")
         }
+        lastConnectError = null
+        lastConnectedAt = System.currentTimeMillis()
         debugInfo("Realtime: connected.")
         BufferedReader(InputStreamReader(response.body(), StandardCharsets.UTF_8)).use { reader ->
             MercureSseReader.readLoop(reader) { event -> dispatch(event.data) }
         }
+        lastDisconnectedAt = System.currentTimeMillis()
         debugInfo("Realtime: server closed connection.")
     }
 
@@ -205,6 +265,9 @@ object RealtimeClient {
         }
         val payload =
             obj.get("data")?.takeIf { it.isJsonObject }?.asJsonObject ?: JsonObject()
+        eventsReceived++
+        lastEventType = type
+        lastEventAt = System.currentTimeMillis()
         debugInfo("Realtime: dispatched type='$type'")
         when (type) {
             "sync-invalidate" -> {

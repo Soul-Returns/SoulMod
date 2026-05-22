@@ -1,6 +1,7 @@
 package com.soulreturns.features.profit.dragon
 
 import com.soulreturns.config.cfg
+import com.soulreturns.data.drops.DropResolver
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.prices.PriceSource
 import com.soulreturns.features.party.PartyManager
@@ -60,7 +61,7 @@ object DragonProfitAnnouncer {
     fun onDragonLootSummary(
         dragonType: DragonType,
         killSource: KillSource,
-        drops: Map<DragonDrop, Long>,
+        drops: Map<String, Long>,
         ownEyes: Long,
     ) {
         if (!cfg.combat.dragons.sendDragonProfit()) return
@@ -72,11 +73,14 @@ object DragonProfitAnnouncer {
         // — same numeric value, higher); OFF = BID side (buy-order / instant-sell —
         // lower).
         val lootSource =
-            if (cfg.combat.dragons.lootPriceSellOffer()) {
+            if (cfg.combat.dragons.lootPriceUseNpc()) {
+                PriceSource.NPC
+            } else if (cfg.combat.dragons.lootPriceSellOffer()) {
                 PriceSource.BAZAAR_INSTANT_BUY
             } else {
                 PriceSource.BAZAAR_INSTANT_SELL
             }
+        val useNpcFloor = cfg.dev.trackers.useNpcPriceIfHigher()
         val eyeSource =
             if (cfg.combat.dragons.eyePriceInstantBuy()) {
                 PriceSource.BAZAAR_INSTANT_BUY
@@ -84,8 +88,12 @@ object DragonProfitAnnouncer {
                 PriceSource.BAZAAR_INSTANT_SELL
             }
         val gross =
-            drops.entries.sumOf { (drop, count) ->
-                PriceCache.price(drop.itemId, lootSource) * count
+            drops.entries.sumOf { (itemId, count) ->
+                PriceCache.priceWithNpcFloor(
+                    DropResolver.priceLookupId(itemId),
+                    lootSource,
+                    useNpcFloor,
+                ) * count
             }
         val eyeUnitPrice = PriceCache.price("SUMMONING_EYE", eyeSource)
         val eyeCost = ownEyes * eyeUnitPrice

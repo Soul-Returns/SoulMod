@@ -36,25 +36,24 @@ object MythologicalMobCatalog {
         val rarity: String,
     )
 
-    // Rarities mirror the Griffin Pet drop-rarity tiers Hypixel uses in-game (the table the
-    // user surfaces in the SkyBlock guide UI). Two mobs per tier, COMMON → MYTHIC.
-    private val mobs: List<Mob> =
-        listOf(
-            Mob("Minos Hunter", "Minos Hunter", "COMMON"),
-            Mob("Siamese Lynxes", "Siamese Lynxes", "COMMON"),
-            Mob("Stranded Nymph", "Stranded Nymph", "UNCOMMON"),
-            Mob("Cretan Bull", "Cretan Bull", "UNCOMMON"),
-            Mob("Harpy", "Harpy", "RARE"),
-            Mob("Gaia Construct", "Gaia Construct", "RARE"),
-            Mob("Minotaur", "Minotaur", "EPIC"),
-            Mob("Minos Champion", "Minos Champion", "EPIC"),
-            Mob("Sphinx", "Sphinx", "LEGENDARY"),
-            Mob("Minos Inquisitor", "Minos Inquisitor", "LEGENDARY"),
-            Mob("Manticore", "Manticore", "MYTHIC"),
-            Mob("King Minos", "King Minos", "MYTHIC"),
-        )
+    /**
+     * Read-through accessor that resolves the catalog from
+     * [MythologicalMobCatalogClient]'s in-memory snapshot. The client backs its snapshot
+     * with a disk cache so even an offline first launch returns useful data (after the
+     * first successful fetch ever). Rebuilds on every call — cheap (12 mobs today, no
+     * realistic growth path past 50).
+     *
+     * `displayName` from the backend serves as the chat-line noun (the dig-out catalog
+     * matches against it directly); `name` and `displayName` are the same for every mob
+     * today and the dual field is kept for the optional plural-normalisation hook noted
+     * in the [Mob] kdoc.
+     */
+    private fun currentMobs(): List<Mob> =
+        MythologicalMobCatalogClient.snapshot.mobs.map { entry ->
+            Mob(name = entry.displayName, displayName = entry.displayName, rarity = entry.rarity)
+        }
 
-    private val byName: Map<String, Mob> = mobs.associateBy { it.name }
+    private fun currentByName(): Map<String, Mob> = currentMobs().associateBy { it.name }
 
     // "You dug out (a|an|the)? <Name>!" anchored against the post-prefix tail. Non-greedy
     // noun + no `$` anchor on purpose — third-party chat-counter mods append arbitrary
@@ -99,7 +98,7 @@ object MythologicalMobCatalog {
                 ?: DIG_OUT_TAIL_NO_ARTICLE.find(tail)
                 ?: return null
         val name = match.groupValues[1]
-        return byName[name]
+        return currentByName()[name]
     }
 
     /**
@@ -114,7 +113,7 @@ object MythologicalMobCatalog {
         val match = COCOON_TAIL.find(strippedLine) ?: return null
         val raw = match.groupValues[1]
         val name = stripCocoonPrefix(raw)
-        return byName[name]
+        return currentByName()[name]
     }
 
     private fun stripCocoonPrefix(raw: String): String {
@@ -136,9 +135,9 @@ object MythologicalMobCatalog {
     }
 
     /** All canonical mob names — used to seed empty-HUD rows so the panel isn't blank pre-first-kill. */
-    fun all(): List<Mob> = mobs
+    fun all(): List<Mob> = currentMobs()
 
-    fun byName(name: String): Mob? = byName[name]
+    fun byName(name: String): Mob? = currentByName()[name]
 
     private val FLAVOUR_PREFIX = Regex("""^[A-Za-z][A-Za-z !']*?!\s+(?=You dug out)""")
 

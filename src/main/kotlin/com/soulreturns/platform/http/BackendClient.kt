@@ -22,15 +22,23 @@ object BackendClient {
 
     fun get(
         endpoint: String,
-        intent: String? = null
+        intent: String? = null,
+        bypassCache: Boolean = false,
     ): CompletableFuture<Result> =
         CompletableFuture.supplyAsync({
-            cache[endpoint]?.let { entry ->
-                if (entry.expiresAt.isAfter(Instant.now())) {
-                    SoulExecutor.log("Cache hit for $endpoint")
-                    return@supplyAsync Result.Ok(entry.json, entry.expiresAt)
-                }
+            if (bypassCache) {
+                // Evict before the network call so a concurrent non-bypass reader doesn't
+                // see stale data while we're fetching. The fresh response repopulates the
+                // cache for the next non-bypass caller.
                 cache.remove(endpoint)
+            } else {
+                cache[endpoint]?.let { entry ->
+                    if (entry.expiresAt.isAfter(Instant.now())) {
+                        SoulExecutor.log("Cache hit for $endpoint")
+                        return@supplyAsync Result.Ok(entry.json, entry.expiresAt)
+                    }
+                    cache.remove(endpoint)
+                }
             }
 
             val token =

@@ -59,6 +59,13 @@ object MythologicalMobTracker {
     @Volatile var sessionCocoonsTotal: Long = 0L
         private set
 
+    /** Per-mob session lootshare counts — nearby mob the player damaged died without an own-dig credit. */
+    @Volatile var sessionLootshareByMob: Map<String, Long> = emptyMap()
+        private set
+
+    @Volatile var sessionLootshareTotal: Long = 0L
+        private set
+
     /**
      * Persisted state. `totalByMob` accumulates across every mayor; `eventBuckets` is
      * `mayorTermKey -> mob name -> count` so historical Diana terms (and any other mayor
@@ -78,6 +85,11 @@ object MythologicalMobTracker {
         var totalCocoonsAll: Long = 0L,
         /** Per-mob cocoon counts per mayor term — Event tab cocoon view. */
         var eventCocoonsByMayor: MutableMap<String, MutableMap<String, Long>> = mutableMapOf(),
+        /** Per-mob lootshare totals across every mayor. */
+        var totalLootshareByMob: MutableMap<String, Long> = mutableMapOf(),
+        var totalLootshareAll: Long = 0L,
+        /** Per-mob lootshare counts per mayor term — Event tab lootshare view. */
+        var eventLootshareByMayor: MutableMap<String, MutableMap<String, Long>> = mutableMapOf(),
     )
 
     @Volatile private var data = Data()
@@ -141,6 +153,8 @@ object MythologicalMobTracker {
         sessionTotal = 0L
         sessionCocoonsByMob = emptyMap()
         sessionCocoonsTotal = 0L
+        sessionLootshareByMob = emptyMap()
+        sessionLootshareTotal = 0L
         MythologicalActivityTimer.resetSession()
     }
 
@@ -174,6 +188,36 @@ object MythologicalMobTracker {
     fun totalCocoonsByMob(): Map<String, Long> = data.totalCocoonsByMob.toMap()
 
     fun totalCocoonsAll(): Long = data.totalCocoonsAll
+
+    /** Per-mob lootshare counts in the current Event bucket. Empty when no mayor known. */
+    fun eventLootshareByMob(): Map<String, Long> {
+        val key = MayorState.currentMayorKey() ?: return emptyMap()
+        return data.eventLootshareByMayor[key]?.toMap() ?: emptyMap()
+    }
+
+    fun eventLootshareTotal(): Long = eventLootshareByMob().values.sum()
+
+    fun totalLootshareByMob(): Map<String, Long> = data.totalLootshareByMob.toMap()
+
+    fun totalLootshareAll(): Long = data.totalLootshareAll
+
+    /**
+     * Record one lootshare event for [mobName]. Fired by [DianaLootshareDetector] when a
+     * nearby mob the player damaged dies without the player's own dig credit. Doesn't
+     * also bump the kill counter — kills and lootshare are mutually exclusive views of
+     * the same mob death (player's own dig vs someone else's dig).
+     */
+    fun recordLootshare(mobName: String) {
+        sessionLootshareByMob = sessionLootshareByMob + (mobName to ((sessionLootshareByMob[mobName] ?: 0L) + 1L))
+        sessionLootshareTotal += 1L
+        data.totalLootshareByMob[mobName] = (data.totalLootshareByMob[mobName] ?: 0L) + 1L
+        data.totalLootshareAll += 1L
+        MayorState.currentMayorKey()?.let { key ->
+            val bucket = data.eventLootshareByMayor.getOrPut(key) { mutableMapOf() }
+            bucket[mobName] = (bucket[mobName] ?: 0L) + 1L
+        }
+        dirty = true
+    }
 
     @HandleEvent
     fun onChat(event: ChatMessage) {
@@ -243,12 +287,26 @@ object MythologicalMobTracker {
     private fun saveAsync() {
         saving = true
         dirty = false
+        // `data.copy(...)` so scalar fields (totalAll, totalActiveMs, totalCocoonsAll) and
+        // any future Data field are carried through unchanged. The earlier explicit-arg
+        // form silently zeroed every field omitted from the call site — so adding the
+        // active-time + cocoon fields didn't persist them.
         val snapshot =
-            Data(
+            data.copy(
                 totalByMob = data.totalByMob.toMutableMap(),
-                totalAll = data.totalAll,
                 eventBuckets =
                     data.eventBuckets
+                        .mapValues { (_, v) -> v.toMutableMap() }
+                        .toMutableMap(),
+                eventActiveMsByMayor = data.eventActiveMsByMayor.toMutableMap(),
+                totalCocoonsByMob = data.totalCocoonsByMob.toMutableMap(),
+                eventCocoonsByMayor =
+                    data.eventCocoonsByMayor
+                        .mapValues { (_, v) -> v.toMutableMap() }
+                        .toMutableMap(),
+                totalLootshareByMob = data.totalLootshareByMob.toMutableMap(),
+                eventLootshareByMayor =
+                    data.eventLootshareByMayor
                         .mapValues { (_, v) -> v.toMutableMap() }
                         .toMutableMap(),
             )

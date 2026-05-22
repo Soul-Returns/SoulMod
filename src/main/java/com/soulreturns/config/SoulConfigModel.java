@@ -230,6 +230,9 @@ public class SoulConfigModel {
         // Diana's Mythological Ritual). Tracking always runs as long as the tracker master
         // toggle below is on. Default off — opt-in feature policy.
         public boolean showMobHud = false;
+        // Show the Mythological Profit HUD overlay (counts treasure-burrow drops + per-mob
+        // drops once admins curate them). Default off — opt-in.
+        public boolean showProfitHud = false;
         // When true the Count column / Mobs total / Mobs/hr rate include Cocoon counts as
         // well, so a mob you cocooned counts toward your headline mobs total. Default off —
         // cocoons are a distinct kill-outcome and most users keep them separate. Affects
@@ -240,6 +243,13 @@ public class SoulConfigModel {
         // than a scrollable region pinched into the same vertical slot. Flip to true if
         // you want the fixed-height scrollable look.
         public boolean scrollableList = false;
+        // Pricing source for Mythological loot drops. ON = sell-offer (ASK side, higher);
+        // OFF = instant-sell (BID side, lower). Same semantics as the Dragon tracker's
+        // matching field. Ignored when [lootPriceUseNpc] is on. Default ON.
+        public boolean lootPriceSellOffer = true;
+        // When true, value loot at NPC sell price. Mirrors the Dragon tracker's matching
+        // field — Ironman-focused. Default off.
+        public boolean lootPriceUseNpc = false;
     }
 
     public static class Dragons {
@@ -279,8 +289,13 @@ public class SoulConfigModel {
         // your offer fills at. OFF = instant-sell (BID side, lower) — what you'd get by
         // hitting a buy-order. Default ON since most players sell-offer loot for the
         // better price. Same toggles flow into [DragonProfitAnnouncer]'s chat output so
-        // the announcement matches what the HUD shows.
+        // the announcement matches what the HUD shows. Ignored when [lootPriceUseNpc] is on.
         public boolean lootPriceSellOffer = true;
+        // When true, value loot drops at NPC sell price (the catalog's `npc_sell_price`)
+        // instead of bazaar / AH. Primary use case is Ironman players who can't trade. The
+        // HUD's "Loot:" button cycles SellOffer → InstantSell → NPC, so this is one of
+        // three states the same button surfaces. Default off.
+        public boolean lootPriceUseNpc = false;
     }
 
     public static class Seasonings {
@@ -338,6 +353,12 @@ public class SoulConfigModel {
         // during Mayor Diana's Mythological Ritual). Off ⇒ no chat parsing, no stat writes.
         // Default on — only fires when the relevant chat lines arrive, no idle cost.
         public boolean mythologicalTracker = true;
+        // Global "NPC floor" for every profit tracker's loot price. When on, each loot
+        // price lookup returns max(primary_source, npc_sell_price) so the player gets the
+        // higher of the two for any item with an NPC value. Useful when NPC > bazaar
+        // (early-game pets, niche drops). Per-tracker NPC mode is unaffected (it's already
+        // NPC). Default off.
+        public boolean useNpcPriceIfHigher = false;
     }
 
     public static class Data {

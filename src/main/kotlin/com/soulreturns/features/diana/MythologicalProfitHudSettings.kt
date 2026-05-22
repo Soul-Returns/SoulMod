@@ -10,45 +10,30 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.loader.api.FabricLoader
 import java.io.File
 
-/**
- * Persisted UI state for the Mythological mob HUD — active tab, sort, scroll offset, column
- * visibility, and rarity filter. Stored at `config/soul/mythological_hud.json` with the
- * same tick-debounced atomic-write loop as the Fishing / Dragon HUD settings.
- *
- * Not profile-keyed — UI preferences live across SkyBlock profiles.
- */
-object MythologicalHudSettings : TrackerSettings {
+/** Persisted UI state for the Mythological profit HUD. Stored at `config/soul/mythological_profit_hud.json`. */
+object MythologicalProfitHudSettings : TrackerSettings {
     private val logger = SoulLogger("Soul/Diana")
     private val gson = GsonBuilder().setPrettyPrinting().create()
     private val file: File by lazy {
-        File(FabricLoader.getInstance().configDir.toFile(), "soul/mythological_hud.json")
+        File(FabricLoader.getInstance().configDir.toFile(), "soul/mythological_profit_hud.json")
     }
 
-    /** Stable column ids — keep in sync with the column declarations in `MythologicalHud.kt`. */
-    const val COLUMN_COUNT = "count"
-    const val COLUMN_COCOONS = "cocoons"
-    const val COLUMN_LOOTSHARE = "lootshare"
-    const val COLUMN_PERCENT = "percent"
-
-    /** Stable sort ids — keep in sync with the sort declarations in `MythologicalHud.kt`. */
-    const val SORT_COUNT = "count"
-    const val SORT_COCOONS = "cocoons"
-    const val SORT_LOOTSHARE = "lootshare"
-    const val SORT_PERCENT = "percent"
+    const val COLUMN_AMOUNT = "amount"
+    const val COLUMN_VALUE = "value"
+    const val SORT_VALUE = "value"
+    const val SORT_AMOUNT = "amount"
     const val SORT_RARITY = "rarity"
     const val SORT_ALPHABETICAL = "alpha"
 
     private data class Data(
         var tab: TrackerTab = TrackerTab.Session,
-        var sortId: String = SORT_COUNT,
+        var sortId: String = SORT_VALUE,
         var scrollOffset: Float = 0f,
         var filter: Set<String> = emptySet(),
         var columnVisibility: MutableMap<String, Boolean> =
             mutableMapOf(
-                COLUMN_COUNT to true,
-                COLUMN_COCOONS to true,
-                COLUMN_LOOTSHARE to true,
-                COLUMN_PERCENT to true,
+                COLUMN_AMOUNT to true,
+                COLUMN_VALUE to true,
             ),
     )
 
@@ -120,23 +105,15 @@ object MythologicalHudSettings : TrackerSettings {
     }
 
     private fun load() {
-        if (!file.exists()) {
-            logger.info("No mythological_hud.json — starting from defaults")
-            return
-        }
+        if (!file.exists()) return
         try {
             val json = JsonParser.parseReader(file.reader())
-            if (!json.isJsonObject) {
-                logger.warn("mythological_hud.json is not a JSON object — using defaults")
-                return
-            }
+            if (!json.isJsonObject) return
             data = gson.fromJson(json, Data::class.java) ?: Data()
-            data.columnVisibility.putIfAbsent(COLUMN_COUNT, true)
-            data.columnVisibility.putIfAbsent(COLUMN_COCOONS, true)
-            data.columnVisibility.putIfAbsent(COLUMN_LOOTSHARE, true)
-            data.columnVisibility.putIfAbsent(COLUMN_PERCENT, true)
+            data.columnVisibility.putIfAbsent(COLUMN_AMOUNT, true)
+            data.columnVisibility.putIfAbsent(COLUMN_VALUE, true)
         } catch (e: Exception) {
-            logger.warn("Failed to read mythological_hud.json — using defaults", e)
+            logger.warn("Failed to read mythological_profit_hud.json — using defaults", e)
         }
     }
 
@@ -156,7 +133,7 @@ object MythologicalHudSettings : TrackerSettings {
                     tmp.delete()
                 }
             } catch (e: Exception) {
-                logger.warn("Failed to persist mythological_hud.json", e)
+                logger.warn("Failed to persist mythological_profit_hud.json", e)
                 dirty = true
             } finally {
                 saving = false

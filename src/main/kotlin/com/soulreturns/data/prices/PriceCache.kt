@@ -109,20 +109,50 @@ object PriceCache {
         itemId: String,
         source: PriceSource = PriceSource.BAZAAR_INSTANT_BUY,
     ): Long {
+        // if/else on enum, not `when` — sealed-class / enum subjects trigger the synthetic
+        // `$WhenMappings` class that Fabric's KnotClassLoader can fail to resolve at
+        // runtime (see CLAUDE.md). Verbose but trap-proof.
         val primary =
-            when (source) {
-                PriceSource.BAZAAR_INSTANT_BUY -> bazaarMap[itemId]?.instantBuy ?: 0L
-                PriceSource.BAZAAR_INSTANT_SELL -> bazaarMap[itemId]?.instantSell ?: 0L
-                PriceSource.LOWEST_BIN -> lowestBinMap[itemId] ?: 0L
+            if (source == PriceSource.BAZAAR_INSTANT_BUY) {
+                bazaarMap[itemId]?.instantBuy ?: 0L
+            } else if (source == PriceSource.BAZAAR_INSTANT_SELL) {
+                bazaarMap[itemId]?.instantSell ?: 0L
+            } else if (source == PriceSource.LOWEST_BIN) {
+                lowestBinMap[itemId] ?: 0L
+            } else {
+                // NPC — read from the item catalog; null for items without an NPC value.
+                com.soulreturns.data.items.ItemCatalogClient.byId(itemId)?.npcSellPrice ?: 0L
             }
         if (primary > 0L) return primary
-        // Fallback chain — see kdoc above.
-        return when (source) {
-            PriceSource.BAZAAR_INSTANT_BUY, PriceSource.BAZAAR_INSTANT_SELL ->
-                lowestBinMap[itemId] ?: 0L
-            PriceSource.LOWEST_BIN ->
-                bazaarMap[itemId]?.instantBuy ?: 0L
+        // Fallback chain — see kdoc above. NPC misses fall back to bazaar (so the price
+        // surface stays useful for non-ironman runs that happen to query NPC).
+        return if (source == PriceSource.BAZAAR_INSTANT_BUY || source == PriceSource.BAZAAR_INSTANT_SELL) {
+            lowestBinMap[itemId] ?: 0L
+        } else if (source == PriceSource.LOWEST_BIN) {
+            bazaarMap[itemId]?.instantBuy ?: 0L
+        } else {
+            // NPC fall-through to bazaar instant-buy (parity with LOWEST_BIN fallback).
+            bazaarMap[itemId]?.instantBuy ?: 0L
         }
+    }
+
+    /**
+     * Returns the price at [primarySource]. When [useNpcFloor] is true AND the NPC sell
+     * price for [itemId] is higher than the primary, returns the NPC price instead.
+     * Implements the global `cfg.dev.trackers.useNpcPriceIfHigher` toggle uniformly for
+     * every tracker — keeps the per-tracker code thin and the floor logic in one place.
+     *
+     * Passing `primarySource = NPC` short-circuits the comparison (you're already on NPC).
+     */
+    fun priceWithNpcFloor(
+        itemId: String,
+        primarySource: PriceSource,
+        useNpcFloor: Boolean,
+    ): Long {
+        val primary = price(itemId, primarySource)
+        if (!useNpcFloor || primarySource == PriceSource.NPC) return primary
+        val npc = price(itemId, PriceSource.NPC)
+        return if (npc > primary) npc else primary
     }
 
     /** Diagnostic snapshot used by `/soul dev refreshPrices`. */

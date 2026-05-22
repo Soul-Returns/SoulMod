@@ -17,12 +17,13 @@ package com.soulreturns.data.prices
  *   INSTANT_SELL is lower).
  * - [LOWEST_BIN] — minimum auction-house BIN from Elite's mirror. Used for items that
  *   never appear on the bazaar (most pets, weapons, armor).
- *
- * NPC sell prices aren't tracked yet — Hypixel's `/v2/resources/skyblock/items` would be
- * the source if we ever want a fourth tier.
+ * - [NPC] — NPC vendor sell price from Hypixel's `/v2/resources/skyblock/items`. Primary
+ *   value for Ironman players (can't use bazaar / AH). Returns 0 for items without an NPC
+ *   sell value in the catalog (most loot drops have one; pets / shards / synthetics don't).
  */
 enum class PriceSource {
     BAZAAR_INSTANT_BUY,
     BAZAAR_INSTANT_SELL,
     LOWEST_BIN,
+    NPC,
 }

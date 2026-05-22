@@ -3,6 +3,7 @@ package com.soulreturns.features.sacks
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.items.ItemCatalogClient
 import com.soulreturns.data.model.ChatMessage
+import com.soulreturns.data.model.SackDeltasApplied
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SoulLogger
 import net.minecraft.network.chat.Component
@@ -100,6 +101,9 @@ object SackChatReader {
             return
         }
         SackState.applyDeltas(parsed.deltas)
+        // Republish so downstream features (Diana loot watcher, future profit attributions
+        // for other domains) can react without re-parsing the chat line.
+        Events.publish(SackDeltasApplied(parsed.deltas))
         val expectedTotal = headerMatch.groupValues[2].toLongOrNull() ?: 0L
         if (parsed.actualMagnitudeTotal != expectedTotal) {
             logger.info(
@@ -134,12 +138,15 @@ object SackChatReader {
             val count = countRaw.toLongOrNull() ?: continue
             magnitudeTotal += count
             val delta = if (sign == "-") -count else count
-            val entry = ItemCatalogClient.byDisplayName(displayName)
-            if (entry == null) {
+            // ItemNameResolver: alias table first → item-catalog 1:1 fallback. Lets admins
+            // curate Hypixel's shorthand sack-tooltip strings (`Ench. Ender Pearl`, etc.)
+            // without a mod release.
+            val itemId = com.soulreturns.data.items.ItemNameResolver.resolve(displayName)
+            if (itemId == null) {
                 unknown.add(displayName)
                 continue
             }
-            out.merge(entry.id, delta, Long::plus)
+            out.merge(itemId, delta, Long::plus)
         }
         return ParsedDeltas(out, magnitudeTotal, unknown)
     }

@@ -40,6 +40,41 @@ object SkyblockItemUtils {
     }
 
     /**
+     * Returns the bazaar-compatible price-lookup id for [stack]. For most items this is
+     * identical to [getSkyblockId]. For enchanted books with a single enchant in NBT, it
+     * returns the bazaar's `ENCHANTMENT_<NAME>_<LEVEL>` form so price lookups + inventory
+     * deltas + drop attribution treat every (enchant, level) pair as its own item.
+     *
+     * **Multi-enchant books** (rare — usually only from Anvil combines, not from drops)
+     * return null: the bazaar has no combined-enchantment product id, and treating a
+     * multi-enchant book as one of its enchants would over-credit. The caller's choice
+     * what to do with null — `DianaLootWatcher` skips, `PriceCache` returns 0.
+     *
+     * **No-enchant Enchanted Book stacks** (broken / placeholder NBT) return the bare
+     * `"ENCHANTED_BOOK"` so the row isn't lost entirely — the price won't resolve from
+     * bazaar but it shows up in inventory counts.
+     */
+    fun getPriceLookupId(stack: ItemStack?): String? {
+        if (stack == null || stack.isEmpty) return null
+        val baseId = getSkyblockId(stack) ?: return null
+        if (baseId != "ENCHANTED_BOOK") return baseId
+        return try {
+            val customData = stack.get(DataComponents.CUSTOM_DATA) ?: return baseId
+            val nbt = customData.copyTag()
+            val enchantments = nbt.getCompoundOrEmpty("enchantments")
+            val keys = enchantments.keySet()
+            // Bazaar has no combined-enchant product — multi-enchant books don't price.
+            if (keys.size != 1) return if (keys.isEmpty()) baseId else null
+            val name = keys.first()
+            val level = enchantments.getIntOr(name, 0)
+            if (level <= 0) return baseId
+            "ENCHANTMENT_${name.uppercase()}_$level"
+        } catch (e: Exception) {
+            baseId
+        }
+    }
+
+    /**
      * Look up a Skyblock-style enchant level (`components.custom_data.enchantments.<id>`) on
      * [stack]. Returns `0` when the enchant is absent, the NBT is malformed, or the stack is
      * empty — callers can treat the result as "level (or 0 = not present)".

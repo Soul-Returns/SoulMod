@@ -2,11 +2,12 @@ package com.soulreturns.ui.hud
 
 import com.soulreturns.config.SoulConfigHolder
 import com.soulreturns.config.cfg
+import com.soulreturns.data.drops.DropResolver
 import com.soulreturns.data.location.LocationApi
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.prices.PriceSource
 import com.soulreturns.data.skyblock.SkyblockApi
-import com.soulreturns.features.profit.dragon.DragonDrop
+import com.soulreturns.data.skyblock.SkyblockRarity
 import com.soulreturns.features.profit.dragon.DragonLootScanner
 import com.soulreturns.features.profit.dragon.DragonProfitHudSettings
 import com.soulreturns.features.profit.dragon.DragonProfitTracker
@@ -62,7 +63,11 @@ object DragonProfitHud {
 
     /** Aggregated row — one per unique drop across the currently-filtered buckets. */
     data class Row(
-        val drop: DragonDrop,
+        val itemId: String,
+        /** Resolved display name from [DropResolver] — per-source override → catalog → itemId. */
+        val displayName: String,
+        /** Resolved rarity from [DropResolver]. */
+        val rarity: SkyblockRarity,
         val amount: Long,
         /** Per-row gross value (price × amount). Eye cost is subtracted only at the chip level. */
         val value: Long,
@@ -153,18 +158,18 @@ object DragonProfitHud {
                     TrackerSort(
                         id = "rarity",
                         label = "Rarity",
-                        comparator = compareByDescending<Row> { it.drop.rarity.ordinal }.thenBy { it.drop.displayName },
+                        comparator = compareByDescending<Row> { it.rarity.ordinal }.thenBy { it.displayName },
                     ),
                     TrackerSort(
                         id = "alpha",
                         label = "Alphabetical",
-                        comparator = compareBy { it.drop.displayName },
+                        comparator = compareBy { it.displayName },
                     ),
                 ),
             rowsProvider = ::buildRows,
-            rowKey = { it.drop.name },
-            rowLabel = { it.drop.displayName },
-            rowLabelColor = { it.drop.rarity.color },
+            rowKey = { it.itemId },
+            rowLabel = { it.displayName },
+            rowLabelColor = { it.rarity.color },
             filterVariants = { DragonType.entries.map { it.displayName } },
             // No per-row filter — buildRows already narrows by filter. Returning true keeps
             // every aggregated row visible regardless of what the framework's filter map
@@ -289,17 +294,23 @@ object DragonProfitHud {
         }
 
     /**
-     * Bazaar pricing source for items the player **sells** (loot drops). Driven by
-     * `cfg.combat.dragons.lootPriceSellOffer`: `true` → sell-offer (ASK side — what your
-     * offer fills at, same numeric value as instant-buy), `false` → instant-sell (BID side,
-     * lower — what you'd get hitting a buy-order).
+     * Pricing source for items the player **sells** (loot drops). Three states picked by
+     * the HUD's "Loot:" cycle button (and the matching config fields):
+     *  - `lootPriceUseNpc=true` → NPC sell price (Ironman-focused).
+     *  - else `lootPriceSellOffer=true` → BAZAAR_INSTANT_BUY (ASK side, sell-offer fills).
+     *  - else → BAZAAR_INSTANT_SELL (BID side, instant-sell).
      */
     private fun lootPriceSource(): PriceSource =
-        if (cfg.combat.dragons.lootPriceSellOffer()) {
+        if (cfg.combat.dragons.lootPriceUseNpc()) {
+            PriceSource.NPC
+        } else if (cfg.combat.dragons.lootPriceSellOffer()) {
             PriceSource.BAZAAR_INSTANT_BUY
         } else {
             PriceSource.BAZAAR_INSTANT_SELL
         }
+
+    /** Convenience read of the global "NPC floor" toggle — passed to price helpers. */
+    private fun npcFloorEnabled(): Boolean = cfg.dev.trackers.useNpcPriceIfHigher()
 
     /**
      * Footer row of two button-toggles: one picks the eye pricing mode (cost side), one
@@ -311,11 +322,18 @@ object DragonProfitHud {
     @SoulComposable
     private fun PriceModeRow() {
         val eyeLabel = if (cfg.combat.dragons.eyePriceInstantBuy()) "Instant Buy" else "Buy Order"
-        val lootLabel = if (cfg.combat.dragons.lootPriceSellOffer()) "Sell Offer" else "Instant Sell"
+        val lootLabel =
+            when {
+                cfg.combat.dragons.lootPriceUseNpc() -> "NPC"
+                cfg.combat.dragons.lootPriceSellOffer() -> "Sell Offer"
+                else -> "Instant Sell"
+            }
         Row(modifier = SoulModifier.Empty.fillMaxWidth(), gap = 6f) {
             Button(
                 label = "Eye: $eyeLabel",
                 onClick = {
+                    // Eye stays a 2-way toggle — there's no "Ironman buys eyes from NPC"
+                    // path (eyes aren't sold by an NPC), so no NPC option on this button.
                     cfg.combat.dragons.eyePriceInstantBuy(!cfg.combat.dragons.eyePriceInstantBuy())
                     SoulConfigHolder.INSTANCE.save()
                 },
@@ -326,13 +344,33 @@ object DragonProfitHud {
             Button(
                 label = "Loot: $lootLabel",
                 onClick = {
-                    cfg.combat.dragons.lootPriceSellOffer(!cfg.combat.dragons.lootPriceSellOffer())
+                    cycleLootPriceMode()
                     SoulConfigHolder.INSTANCE.save()
                 },
                 modifier = SoulModifier.Empty.weight(1f),
                 centerLabel = true,
                 key = "$HUD_ID.lootPriceMode",
             )
+        }
+    }
+
+    /**
+     * Cycle the loot pricing through three states by toggling the right bool pair:
+     * `Sell Offer → Instant Sell → NPC → Sell Offer`. Mirrors what the user sees in the
+     * "Loot:" button label.
+     */
+    private fun cycleLootPriceMode() {
+        val dragons = cfg.combat.dragons
+        if (dragons.lootPriceUseNpc()) {
+            // NPC → Sell Offer
+            dragons.lootPriceUseNpc(false)
+            dragons.lootPriceSellOffer(true)
+        } else if (dragons.lootPriceSellOffer()) {
+            // Sell Offer → Instant Sell
+            dragons.lootPriceSellOffer(false)
+        } else {
+            // Instant Sell → NPC
+            dragons.lootPriceUseNpc(true)
         }
     }
 
@@ -409,10 +447,15 @@ object DragonProfitHud {
         val kills = bucketsExpanded.sumOf { DragonProfitTracker.killsFor(it, tab, source) }
         // Reuse the same total math the value column's totalValue exposes: gross sum minus
         // eye cost only when the active source view includes SUMMONED kills.
+        val floor = npcFloorEnabled()
         val grossValue =
             bucketsExpanded.sumOf { bucket ->
-                DragonProfitTracker.countsFor(tab, source)[bucket]?.entries?.sumOf { (drop, counts) ->
-                    PriceCache.price(drop.itemId, lootPriceSource()) * counts.amount
+                DragonProfitTracker.countsFor(tab, source)[bucket]?.entries?.sumOf { (itemId, counts) ->
+                    PriceCache.priceWithNpcFloor(
+                        DropResolver.priceLookupId(itemId),
+                        lootPriceSource(),
+                        floor,
+                    ) * counts.amount
                 } ?: 0L
             }
         val eyeCost = if (source == KillSource.LOOTSHARE) 0L else eyeCostFor(tab, buckets)
@@ -530,17 +573,32 @@ object DragonProfitHud {
     private fun buildRows(tab: TrackerTab): List<Row> {
         val buckets = currentBucketFilter()
         val raw = DragonProfitTracker.countsFor(tab, sourceFilter = currentSourceFilter())
-        val aggregated = HashMap<DragonDrop, Long>()
+        // Aggregate per (sourceId, itemId) — the same itemId can carry different display
+        // overrides per source in theory; in practice dragon overrides are identical across
+        // sources for shared drops. Track first-seen sourceId for the resolution lookup so
+        // we don't have to re-iterate.
+        val aggregated = HashMap<String, Long>()
+        val firstSeenSourceId = HashMap<String, String>()
         for ((bucket, drops) in raw) {
             if (buckets.isNotEmpty() && bucket !in buckets) continue
-            for ((drop, counts) in drops) {
+            for ((itemId, counts) in drops) {
                 if (counts.amount <= 0L) continue
-                aggregated.merge(drop, counts.amount, Long::plus)
+                aggregated.merge(itemId, counts.amount, Long::plus)
+                firstSeenSourceId.putIfAbsent(itemId, bucket.sourceId)
             }
         }
-        return aggregated.map { (drop, amount) ->
-            val unitPrice = PriceCache.price(drop.itemId, lootPriceSource())
-            Row(drop = drop, amount = amount, value = unitPrice * amount)
+        val floor = npcFloorEnabled()
+        return aggregated.map { (itemId, amount) ->
+            val sourceId = firstSeenSourceId[itemId] ?: ""
+            val unitPrice =
+                PriceCache.priceWithNpcFloor(DropResolver.priceLookupId(itemId), lootPriceSource(), floor)
+            Row(
+                itemId = itemId,
+                displayName = DropResolver.displayName(sourceId, itemId),
+                rarity = DropResolver.rarity(sourceId, itemId),
+                amount = amount,
+                value = unitPrice * amount,
+            )
         }
     }
 

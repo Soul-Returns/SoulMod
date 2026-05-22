@@ -111,7 +111,11 @@ object ItemCatalogClient {
      * from under the rest of the mod.
      */
     fun refreshAsync() {
-        BackendClient.get(ENDPOINT, intent = "item-catalog-refresh").whenComplete { result, throwable ->
+        // bypassCache = true — the catalog client maintains its own snapshot already; the
+        // HTTP-level cache in BackendClient would otherwise return the prior payload for up
+        // to `X-Backend-Expire-In` seconds, silently masking admin edits propagated via the
+        // Mercure invalidate.
+        BackendClient.get(ENDPOINT, intent = "item-catalog-refresh", bypassCache = true).whenComplete { result, throwable ->
             if (throwable != null) {
                 logger.warn("Catalog fetch threw: ${throwable.message}", throwable)
                 return@whenComplete

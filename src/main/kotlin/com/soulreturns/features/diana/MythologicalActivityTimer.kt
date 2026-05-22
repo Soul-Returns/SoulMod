@@ -117,7 +117,10 @@ object MythologicalActivityTimer {
     /** Per-hour rate of [count] derived from an arbitrary active-time clock [ms]. Returns 0
      * until at least 60 s of active time have accumulated — short clocks produce wildly
      * misleading rates ("12,000 mobs/hour" after the first kill is noise). */
-    fun perHour(count: Long, ms: Long = totalMs): Long {
+    fun perHour(
+        count: Long,
+        ms: Long = totalMs
+    ): Long {
         if (ms < 60_000L) return 0L
         return (count.toDouble() / ms * 3_600_000.0).toLong()
     }

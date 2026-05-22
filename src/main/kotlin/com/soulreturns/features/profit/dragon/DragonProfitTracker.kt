@@ -3,6 +3,7 @@ package com.soulreturns.features.profit.dragon
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.soulreturns.data.drops.DropResolver
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.prices.PriceSource
 import com.soulreturns.platform.concurrent.SoulExecutor
@@ -18,38 +19,43 @@ import java.util.concurrent.ConcurrentHashMap
  * LOOTSHARE) so the HUD can show "what did I make from kills I summoned" separately from
  * "what did I make from kills I lootshared into someone else's nest."
  *
- * **Why this doesn't extend the generic `ProfitTracker<B, D>` base.** The base's one-axis
- * bucketing fits slayer / mineshaft style trackers (one boss type per kill, no co-op
- * attribution); dragons have a real second axis (kill source) that all per-kill state needs
- * to be partitioned along — drops, kill counts, eye costs. Forcing it into the generic
+ * **Drop dimension is the item id (`String`).** Pre-backend-migration this was a
+ * `DragonDrop` enum; the dragon drop list now lives in the backend's `DropSource` /
+ * `Drop` tables fronted by [com.soulreturns.data.drops.DropCatalogClient]. The tracker
+ * stores item ids verbatim; resolution of display name / rarity / price-lookup id happens
+ * at HUD render time via [DropResolver].
+ *
+ * **Why this doesn't extend the generic `ProfitTracker<B, D>` base.** Two-axis bucketing
+ * (DragonType × KillSource) doesn't fit the single-axis base. Forcing it into the generic
  * shape via `B = (DragonType, KillSource)` was tempting but every read path then needs to
  * collapse one axis, which was uglier than just owning the storage here. Future profit
  * trackers that don't need a partition can still use the generic base.
  *
  * **Eyes are only tracked under SUMMONED.** By definition: a player only places eyes when
- * they're contributing to a summoning, and the only kills counted as SUMMONED are ones
- * where they placed ≥ 1 eye. So `eyesPlaced[bucket]` lives on the summoned partition; the
- * lootshare partition has no eyes (and consequently zero ancillary cost in [profitFor]).
+ * they're contributing to a summoning. So `eyesPlaced[bucket]` lives on the summoned
+ * partition; the lootshare partition has no eyes (zero ancillary cost in [profitFor]).
  *
- * **Persistence:** `config/soul/dragon_profit.json`, schema v2.
+ * **Persistence:** `config/soul/dragon_profit.json`, schema v3.
  * ```jsonc
  * {
- *   "schemaVersion": 2,
+ *   "schemaVersion": 3,
  *   "summoned": { "kills": {...}, "drops": {...}, "eyes": {...} },
  *   "lootshare": { "kills": {...}, "drops": {...} }
  * }
  * ```
- * v1 files (single combined `kills`/`drops` block) migrate forward by treating all prior
- * data as summoned — the assumption that most past kills were summoner-attributed. Not
- * strictly accurate, but acceptable because (a) the tracker is brand-new with little or no
- * real data yet, and (b) future kills get properly attributed.
+ *  - **v1 → v3**: pre-2-axis schema. All prior data → summoned partition + enum-name → item-id rename.
+ *  - **v2 → v3**: two-axis schema with `DragonDrop` enum-name drop keys. Translate to item ids.
+ *
+ * The v2→v3 rename map ([ENUM_NAME_TO_ITEM_ID]) is the only place enum-name knowledge
+ * survives. Most entries are 1:1; the exceptions are the historic divergences
+ * (`DRACONIC_SHARD` → `SHARD_DRACONIC`, the two pet entries → `ENDER_DRAGON;<tier>`).
  */
 object DragonProfitTracker {
     private val logger = SoulLogger("Soul/Profit/DragonProfitTracker")
 
     private const val SUMMONING_EYE_ID = "SUMMONING_EYE"
     private const val SAVE_FILE_NAME = "dragon_profit.json"
-    private const val CURRENT_SCHEMA_VERSION = 2
+    private const val CURRENT_SCHEMA_VERSION = 3
 
     data class Counts(var amount: Long = 0L)
 
@@ -82,28 +88,50 @@ object DragonProfitTracker {
 
     @Volatile private var initialized: Boolean = false
 
+    /**
+     * Pre-backend-migration `DragonDrop` enum constant names → item ids. Only consulted
+     * during v1/v2 file migration. Most entries are identity (the enum name matched the
+     * item id by convention); the divergent ones are the historic edge cases. After the
+     * first save in v3 format this map is no longer consulted.
+     */
+    private val ENUM_NAME_TO_ITEM_ID: Map<String, String> =
+        mapOf(
+            "DRACONIC_SHARD" to "SHARD_DRACONIC",
+            "ENDER_DRAGON_PET_EPIC" to "ENDER_DRAGON;3",
+            "ENDER_DRAGON_PET_LEGENDARY" to "ENDER_DRAGON;4",
+            // Hypixel's items catalog ships this scroll under the `<LOCATION>_TRAVEL_SCROLL`
+            // family — the NEU / SkyHanni `TRAVEL_SCROLL_TO_<LOCATION>` convention doesn't
+            // exist in Hypixel's response. Rename so the persisted data lands on the id
+            // PriceCache + the drop catalog actually carry.
+            "TRAVEL_SCROLL_TO_DRAGONS_NEST" to "DRAGON_NEST_TRAVEL_SCROLL",
+            // Everything else uses the enum-name-as-id convention — fall-through in [renameEnumToItemId].
+        )
+
+    private fun renameEnumToItemId(enumName: String): String = ENUM_NAME_TO_ITEM_ID[enumName] ?: enumName
+
     private class PartitionedDrops {
-        private val byKey: ConcurrentHashMap<Key, ConcurrentHashMap<DragonDrop, Counts>> = ConcurrentHashMap()
+        // Key is (bucket, source); value maps item id → counts.
+        private val byKey: ConcurrentHashMap<Key, ConcurrentHashMap<String, Counts>> = ConcurrentHashMap()
 
         fun add(
             bucket: DragonType,
             source: KillSource,
-            drop: DragonDrop,
+            itemId: String,
             amount: Long,
         ) {
             byKey.getOrPut(Key(bucket, source)) { ConcurrentHashMap() }
-                .compute(drop) { _, prev -> (prev ?: Counts()).also { it.amount += amount } }
+                .compute(itemId) { _, prev -> (prev ?: Counts()).also { it.amount += amount } }
         }
 
         fun get(
             bucket: DragonType,
             source: KillSource,
-        ): Map<DragonDrop, Counts> = byKey[Key(bucket, source)]?.toMap() ?: emptyMap()
+        ): Map<String, Counts> = byKey[Key(bucket, source)]?.toMap() ?: emptyMap()
 
         fun clear() = byKey.clear()
 
-        fun snapshot(): Map<KillSource, Map<DragonType, Map<DragonDrop, Counts>>> {
-            val out = KillSource.entries.associateWith { mutableMapOf<DragonType, Map<DragonDrop, Counts>>() }
+        fun snapshot(): Map<KillSource, Map<DragonType, Map<String, Counts>>> {
+            val out = KillSource.entries.associateWith { mutableMapOf<DragonType, Map<String, Counts>>() }
             for ((key, drops) in byKey) {
                 out[key.source]!![key.bucket] = drops.toMap()
             }
@@ -157,19 +185,19 @@ object DragonProfitTracker {
     }
 
     /**
-     * Record [amount] of [drop] for [bucket]. Source defaults to [currentKillSource] which
-     * is set by [EyePlacementTracker] on each dragon spawn; passing an explicit [source]
-     * is used by `/soul dev grantDragonDropAs` for partition testing without real kills.
+     * Record [amount] of [itemId] for [bucket]. Source defaults to [currentKillSource]
+     * which is set by [EyePlacementTracker] on each dragon spawn; passing an explicit
+     * [source] is used by `/soul dev grantDragonDropAs` for partition testing.
      */
     fun grantDrop(
         bucket: DragonType,
-        drop: DragonDrop,
+        itemId: String,
         amount: Long = 1L,
         source: KillSource = currentKillSource,
     ) {
-        if (amount <= 0L) return
-        sessionDrops.add(bucket, source, drop, amount)
-        totalDrops.add(bucket, source, drop, amount)
+        if (amount <= 0L || itemId.isEmpty()) return
+        sessionDrops.add(bucket, source, itemId, amount)
+        totalDrops.add(bucket, source, itemId, amount)
         dirty = true
     }
 
@@ -198,14 +226,12 @@ object DragonProfitTracker {
         dirty = true
     }
 
-    /** Reset every session counter to 0. Persisted totals are untouched. */
     fun resetSession() {
         sessionDrops.clear()
         sessionKills.clear()
         sessionEyes.clear()
     }
 
-    /** Wipe both session AND total data. Used by `/soul dev resetDragonProfit`. */
     fun resetAll() {
         resetSession()
         totalDrops.clear()
@@ -215,25 +241,25 @@ object DragonProfitTracker {
     }
 
     /**
-     * Per-(bucket, drop) counts for [tab] filtered by [sourceFilter]. `null` = sum across
-     * both partitions ("All" view). Defensive-copy; iteration is safe without write locks.
+     * Per-(bucket, itemId) counts for [tab] filtered by [sourceFilter]. `null` = sum across
+     * both partitions ("All" view). Defensive copy; iteration is safe without write locks.
      */
     fun countsFor(
         tab: TrackerTab,
         sourceFilter: KillSource? = null,
-    ): Map<DragonType, Map<DragonDrop, Counts>> {
+    ): Map<DragonType, Map<String, Counts>> {
         val partition = if (tab == TrackerTab.Session) sessionDrops else totalDrops
-        val out = HashMap<DragonType, HashMap<DragonDrop, Counts>>()
+        val out = HashMap<DragonType, HashMap<String, Counts>>()
         for (bucket in DragonType.entries) {
             for (source in KillSource.entries) {
                 if (sourceFilter != null && sourceFilter != source) continue
                 val inner = partition.get(bucket, source)
                 if (inner.isEmpty()) continue
                 val bucketMap = out.getOrPut(bucket) { HashMap() }
-                for ((drop, counts) in inner) {
-                    val prev = bucketMap[drop]
+                for ((itemId, counts) in inner) {
+                    val prev = bucketMap[itemId]
                     if (prev == null) {
-                        bucketMap[drop] = Counts(amount = counts.amount)
+                        bucketMap[itemId] = Counts(amount = counts.amount)
                     } else {
                         prev.amount += counts.amount
                     }
@@ -256,7 +282,6 @@ object DragonProfitTracker {
         }
     }
 
-    /** Eyes placed for [bucket] in [tab]. Always summoned by definition — no source filter. */
     fun eyesPlacedFor(
         bucket: DragonType,
         tab: TrackerTab,
@@ -266,28 +291,37 @@ object DragonProfitTracker {
     }
 
     /**
-     * Sum of `amount × PriceCache.price(itemId, priceSource)` across (bucket, drop) pairs
-     * in [tab] matching [bucketFilter] (empty = all buckets) and [sourceFilter] (null =
-     * all sources). Eye cost is subtracted ONLY when [sourceFilter] is null or SUMMONED —
-     * lootshare-only views don't charge eyes since the player didn't place any.
+     * Sum of `amount × PriceCache.price(priceLookupId, priceSource)` across (bucket, itemId)
+     * pairs in [tab] matching [bucketFilter] (empty = all) and [sourceFilter] (null = all).
+     * Eye cost is subtracted ONLY when [sourceFilter] is null or SUMMONED — lootshare-only
+     * views don't charge eyes since the player didn't place any. Resolved price-lookup id
+     * comes from [DropResolver.priceLookupId] so attribute-shard-style `bazaarId` overrides
+     * are honored.
      */
     fun profitFor(
         tab: TrackerTab,
         bucketFilter: Set<DragonType> = emptySet(),
         sourceFilter: KillSource? = null,
         priceSource: PriceSource = PriceSource.BAZAAR_INSTANT_BUY,
+        useNpcFloor: Boolean = false,
     ): Long {
         val data = countsFor(tab, sourceFilter)
         var sum = 0L
         for ((bucket, drops) in data) {
             if (bucketFilter.isNotEmpty() && bucket !in bucketFilter) continue
-            for ((drop, counts) in drops) {
-                sum += PriceCache.price(drop.itemId, priceSource) * counts.amount
+            for ((itemId, counts) in drops) {
+                sum += PriceCache.priceWithNpcFloor(
+                    DropResolver.priceLookupId(itemId),
+                    priceSource,
+                    useNpcFloor,
+                ) * counts.amount
             }
-            // Charge eye cost only for views that include SUMMONED kills.
             if (sourceFilter == null || sourceFilter == KillSource.SUMMONED) {
                 val eyes = eyesPlacedFor(bucket, tab)
                 if (eyes > 0L) {
+                    // Eye cost uses the raw price — the NPC floor is for items the player
+                    // SELLS (loot), not items they BUY (eyes). Floor would only ever
+                    // increase the subtraction, making the floor user-hostile here.
                     sum -= eyes * PriceCache.price(SUMMONING_EYE_ID, priceSource)
                 }
             }
@@ -310,13 +344,18 @@ object DragonProfitTracker {
             }
             val root = json.asJsonObject
             val schema = root.get("schemaVersion")?.asInt ?: 1
-            if (schema == 1) {
-                loadV1(root)
-                // Re-save in v2 format on next save tick.
-                dirty = true
-                logger.info("Migrated v1 dragon_profit.json → v2 (all prior data → summoned partition)")
-            } else {
-                loadV2(root)
+            when {
+                schema == 1 -> {
+                    loadV1(root)
+                    dirty = true
+                    logger.info("Migrated v1 dragon_profit.json → v$CURRENT_SCHEMA_VERSION")
+                }
+                schema == 2 -> {
+                    loadV2OrV3(root, renameKeys = true)
+                    dirty = true
+                    logger.info("Migrated v2 dragon_profit.json → v$CURRENT_SCHEMA_VERSION (enum names → item ids)")
+                }
+                else -> loadV2OrV3(root, renameKeys = false)
             }
             logger.info("Loaded $SAVE_FILE_NAME (schema v$schema)")
         } catch (e: Exception) {
@@ -325,9 +364,6 @@ object DragonProfitTracker {
     }
 
     private fun loadV1(root: JsonObject) {
-        // v1 had `kills: {bucket: long}` + `drops: {bucket: {drop: long}}` at the top level
-        // and no source distinction. Treat all prior data as SUMMONED (heuristic: most
-        // dragon kills people remember are ones they summoned themselves).
         root.getAsJsonObject("kills")?.entrySet()?.forEach { (bucketName, e) ->
             val bucket = DragonType.byName(bucketName) ?: return@forEach
             totalKills.add(bucket, KillSource.SUMMONED, e.asLong)
@@ -335,13 +371,15 @@ object DragonProfitTracker {
         root.getAsJsonObject("drops")?.entrySet()?.forEach { (bucketName, dropsElement) ->
             val bucket = DragonType.byName(bucketName) ?: return@forEach
             dropsElement.asJsonObject.entrySet().forEach { (dropIdStr, amountElement) ->
-                val drop = DragonDrop.byId(dropIdStr) ?: return@forEach
-                totalDrops.add(bucket, KillSource.SUMMONED, drop, amountElement.asLong)
+                totalDrops.add(bucket, KillSource.SUMMONED, renameEnumToItemId(dropIdStr), amountElement.asLong)
             }
         }
     }
 
-    private fun loadV2(root: JsonObject) {
+    private fun loadV2OrV3(
+        root: JsonObject,
+        renameKeys: Boolean,
+    ) {
         for (source in KillSource.entries) {
             val block = root.getAsJsonObject(source.name.lowercase()) ?: continue
             block.getAsJsonObject("kills")?.entrySet()?.forEach { (bucketName, e) ->
@@ -350,12 +388,11 @@ object DragonProfitTracker {
             }
             block.getAsJsonObject("drops")?.entrySet()?.forEach { (bucketName, dropsElement) ->
                 val bucket = DragonType.byName(bucketName) ?: return@forEach
-                dropsElement.asJsonObject.entrySet().forEach { (dropIdStr, amountElement) ->
-                    val drop = DragonDrop.byId(dropIdStr) ?: return@forEach
-                    totalDrops.add(bucket, source, drop, amountElement.asLong)
+                dropsElement.asJsonObject.entrySet().forEach { (rawKey, amountElement) ->
+                    val itemId = if (renameKeys) renameEnumToItemId(rawKey) else rawKey
+                    totalDrops.add(bucket, source, itemId, amountElement.asLong)
                 }
             }
-            // Only SUMMONED carries eyes — read from the same block for forward compat.
             block.getAsJsonObject("eyes")?.entrySet()?.forEach { (bucketName, e) ->
                 val bucket = DragonType.byName(bucketName) ?: return@forEach
                 totalEyes.merge(bucket, e.asLong, Long::plus)
@@ -382,14 +419,12 @@ object DragonProfitTracker {
                     val dropsBlock = JsonObject()
                     dropsSnapshot[source]?.forEach { (bucket, drops) ->
                         val bucketObj = JsonObject()
-                        drops.forEach { (drop, counts) ->
-                            bucketObj.addProperty(drop.name, counts.amount)
+                        drops.forEach { (itemId, counts) ->
+                            bucketObj.addProperty(itemId, counts.amount)
                         }
                         dropsBlock.add(bucket.name, bucketObj)
                     }
                     block.add("drops", dropsBlock)
-                    // Eyes only attach to the SUMMONED block — lootshare has no eyes by
-                    // definition.
                     if (source == KillSource.SUMMONED) {
                         val eyesBlock = JsonObject()
                         eyesSnapshot.forEach { (bucket, count) ->

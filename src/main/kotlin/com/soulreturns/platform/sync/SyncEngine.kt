@@ -197,13 +197,12 @@ object SyncEngine {
         )
 
         // Realtime sync-invalidate: backend tells us a blob changed → reconcile that kind now,
-        // out of band with the 60 s polling cycle.
+        // out of band with the 60 s polling cycle. Filter silently on kinds that don't map
+        // to a SyncKind — every catalog client (items / drops / mobs / sea creatures /
+        // aliases) handles its own kind via a direct Events.subscribe<SyncInvalidate>;
+        // logging "unknown kind" for those would spam every admin-edit invalidate.
         Events.subscribe<SyncInvalidate> { event ->
-            val kind = SyncKind.entries.firstOrNull { it.key == event.kind }
-            if (kind == null) {
-                logger.info("Realtime invalidate for unknown kind '${event.kind}'; ignored.")
-                return@subscribe
-            }
+            val kind = SyncKind.entries.firstOrNull { it.key == event.kind } ?: return@subscribe
             reconcileNow(kind)
         }
 

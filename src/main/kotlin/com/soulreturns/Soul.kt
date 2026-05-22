@@ -2,15 +2,23 @@ package com.soulreturns
 
 import com.soulreturns.commands.SoulCommand
 import com.soulreturns.config.SoulConfigHolder
+import com.soulreturns.data.drops.DropCatalogClient
 import com.soulreturns.data.fishing.SeaCreatureCatalog
+import com.soulreturns.data.fishing.SeaCreatureCatalogClient
 import com.soulreturns.data.items.ItemCatalogClient
+import com.soulreturns.data.items.ItemNameAliasClient
 import com.soulreturns.data.location.LocationReader
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.skyblock.FishingFestivalState
+import com.soulreturns.data.skyblock.MythologicalMobCatalogClient
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.dev.DevKeybindHandler
+import com.soulreturns.features.diana.DianaLootWatcher
+import com.soulreturns.features.diana.DianaLootshareDetector
 import com.soulreturns.features.diana.MythologicalActivityTimer
 import com.soulreturns.features.diana.MythologicalMobTracker
+import com.soulreturns.features.diana.MythologicalProfitChatListener
+import com.soulreturns.features.diana.MythologicalProfitTracker
 import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.seasoning.HarvestFeastReader
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
@@ -52,6 +60,7 @@ import com.soulreturns.ui.hud.FishingHud
 import com.soulreturns.ui.hud.LegionHud
 import com.soulreturns.ui.hud.MineshaftCorpsesHud
 import com.soulreturns.ui.hud.MythologicalHud
+import com.soulreturns.ui.hud.MythologicalProfitHud
 import com.soulreturns.ui.hud.PartyHud
 import com.soulreturns.ui.hud.SeasoningHud
 import com.soulreturns.update.UpdateChecker
@@ -279,6 +288,19 @@ object Soul : ClientModInitializer {
         // catalog right away; lookups return null gracefully when the disk cache is missing
         // and the first network fetch hasn't completed yet.
         ItemCatalogClient.init()
+        // Drop catalog — same lifecycle as the item catalog. Profit trackers (dragon today,
+        // mythological forthcoming) resolve their per-source drop lists through this.
+        DropCatalogClient.init()
+        // Mythological mob catalog + Sea-creature catalog — backend-driven equivalents of
+        // what used to be hardcoded enums / bundled JSON. SeaCreatureCatalog.init()
+        // subscribes to its client's snapshot-change listener so a Mercure-driven refresh
+        // rebuilds its lookup maps automatically; the MythologicalMobCatalog object reads
+        // the client's snapshot on every lookup (cheap — 12 mobs).
+        MythologicalMobCatalogClient.init()
+        SeaCreatureCatalogClient.init()
+        // Alias table — chat-parser fallback for display-name → item-id when the catalog's
+        // 1:1 doesn't match. Cheap to ship; consumers fall back gracefully on empty.
+        ItemNameAliasClient.init()
 
         // Sacks — state is authoritative source of truth, GUI reader populates it on every
         // sack-screen open. Init order: state first (handles ProfileChanged for legacy
@@ -313,6 +335,22 @@ object Soul : ClientModInitializer {
         MythologicalActivityTimer.register()
         MythologicalMobTracker.init()
         MythologicalHud.register()
+
+        // Mythological profit tracker — own data layer + chat listener for treasure-burrow
+        // drops and burrow counts. The HUD reads the same backend drop catalog as Dragon.
+        MythologicalProfitTracker.init()
+        MythologicalProfitChatListener.register()
+        // Lootshare detector — listens to player attacks + entity unloads to fire
+        // lootshare credit + open the attribution window the loot watcher reads. Must
+        // register before the loot watcher so its hooks are live when the first attack
+        // arrives.
+        DianaLootshareDetector.register()
+        // Inventory + sack watcher feeds the mob-loot bucket (or lootshare bucket when
+        // the detector's window is open). Reads the watched-item set from the backend
+        // drop catalog (`mythological.mob_loot` source), so it stays dormant until an
+        // admin curates that list.
+        DianaLootWatcher.register()
+        MythologicalProfitHud.register()
     }
 
     fun reloadFeatures() {

@@ -22,6 +22,14 @@ enum class DragonType(
     SUPERIOR("Superior", 0xFFFFAA00.toInt()), // §6 gold (LEGENDARY)
     ;
 
+    /**
+     * Canonical drop-catalog source id for this dragon — `dragon.<lowercase enum name>`.
+     * Matches the seed data shipped by the backend's `app:drops:seed` command (see
+     * `prompts/profit-tracker/01-drop-catalog.md`). Used by every consumer that wants to
+     * pull the dragon's drop list out of [com.soulreturns.data.drops.DropCatalogClient].
+     */
+    val sourceId: String get() = "dragon.${name.lowercase()}"
+
     companion object {
         fun byName(name: String): DragonType? = entries.firstOrNull { it.name == name }
     }

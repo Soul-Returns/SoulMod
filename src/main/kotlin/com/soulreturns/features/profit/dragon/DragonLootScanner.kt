@@ -1,5 +1,6 @@
 package com.soulreturns.features.profit.dragon
 
+import com.soulreturns.data.drops.DropResolver
 import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.toLegacyText
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
@@ -116,13 +117,14 @@ object DragonLootScanner {
          * in the announced profit number.
          */
         val ownEyes: Long,
-        val maxCounts: MutableMap<DragonDrop, Long> = mutableMapOf(),
+        /** Item id → max count observed across scans. */
+        val maxCounts: MutableMap<String, Long> = mutableMapOf(),
         /**
-         * Per-drop count already pushed to [DragonProfitTracker]. Each scan grants
-         * `maxCounts[drop] - grantedSoFar[drop]` if positive, then bumps `grantedSoFar`
+         * Item id → count already pushed to [DragonProfitTracker]. Each scan grants
+         * `maxCounts[itemId] - grantedSoFar[itemId]` if positive, then bumps `grantedSoFar`
          * to match. Guarantees no double-counting even as `maxCounts` keeps climbing.
          */
-        val grantedSoFar: MutableMap<DragonDrop, Long> = mutableMapOf(),
+        val grantedSoFar: MutableMap<String, Long> = mutableMapOf(),
         /** Flips true on the first scan that found any loot — prevents double-grantKill. */
         var killGranted: Boolean = false,
         var ticksSinceStart: Int = 0,
@@ -247,9 +249,9 @@ object DragonLootScanner {
             // "Armor Stand" via vanilla naming — skip those without touching the regex.
             if (plain == "Armor Stand") continue
             ctx.seenNames.add(plain)
-            val (drop, count) = resolveStand(component, plain) ?: continue
-            val prev = ctx.maxCounts[drop] ?: 0L
-            if (count > prev) ctx.maxCounts[drop] = count
+            val (itemId, count) = resolveStand(ctx.dragonType, component, plain) ?: continue
+            val prev = ctx.maxCounts[itemId] ?: 0L
+            if (count > prev) ctx.maxCounts[itemId] = count
         }
         // Incremental grant — push any new deltas to the tracker so the HUD updates
         // ~500 ms after stands render, instead of waiting for window-close.
@@ -263,12 +265,12 @@ object DragonLootScanner {
      */
     private fun grantPending(ctx: ActiveScan) {
         var grantedThisPass = false
-        for ((drop, max) in ctx.maxCounts) {
-            val already = ctx.grantedSoFar[drop] ?: 0L
+        for ((itemId, max) in ctx.maxCounts) {
+            val already = ctx.grantedSoFar[itemId] ?: 0L
             val delta = max - already
             if (delta <= 0L) continue
-            DragonProfitTracker.grantDrop(ctx.dragonType, drop, delta, ctx.killSource)
-            ctx.grantedSoFar[drop] = max
+            DragonProfitTracker.grantDrop(ctx.dragonType, itemId, delta, ctx.killSource)
+            ctx.grantedSoFar[itemId] = max
             grantedThisPass = true
         }
         if (grantedThisPass && !ctx.killGranted) {
@@ -282,29 +284,31 @@ object DragonLootScanner {
     }
 
     /**
-     * Resolve a stand to (drop, count). Tries the pet pattern first (needs the §-colored
+     * Resolve a stand to (itemId, count). Tries the pet pattern first (needs the §-colored
      * text to discriminate rarity), then falls back to the standard `"<Name> [xN]"` plain-
-     * text parser keyed by [DragonDrop.byDisplayName].
+     * text parser. Display-name → item-id reverse lookup goes through [DropResolver],
+     * scoped to the dragon's drop-catalog source — that way the per-source
+     * `displayNameOverride` rows (e.g. `"Aspect of the Dragons"` plural → `ASPECT_OF_THE_DRAGON`)
+     * resolve correctly without hardcoded fallbacks here.
      */
     private fun resolveStand(
+        dragonType: DragonType,
         component: net.minecraft.network.chat.Component,
         plain: String,
-    ): Pair<DragonDrop, Long>? {
-        // Pet detection — only profitable to compute the colored text if the plain text
-        // has the `[Lvl N]` prefix shape, which is unique to pets.
+    ): Pair<String, Long>? {
         if (plain.startsWith("[Lvl ")) {
             val colored = component.toLegacyText()
-            val petDrop = parsePet(colored)
-            if (petDrop != null) return petDrop to 1L
+            val petItemId = parsePet(colored)
+            if (petItemId != null) return petItemId to 1L
         }
         val parsed = parseStandName(plain) ?: return null
         val (displayName, count) = parsed
-        val drop = DragonDrop.byDisplayName(displayName)
-        if (drop == null) {
-            logger.info("Unrecognised loot stand: '$displayName' (x$count) — add to DragonDrop catalog")
+        val itemId = DropResolver.findItemIdByDisplayName(dragonType.sourceId, displayName)
+        if (itemId == null) {
+            logger.info("Unrecognised loot stand: '$displayName' (x$count) — add to the backend drop catalog")
             return null
         }
-        return drop to count
+        return itemId to count
     }
 
     /**
@@ -322,16 +326,17 @@ object DragonLootScanner {
     }
 
     /**
-     * `§5` → EPIC pet, `§6` → LEGENDARY pet. Unknown rarity colors log and skip — better
-     * to leave a drop unrecorded than mis-attribute it.
+     * `§5` → EPIC pet (`ENDER_DRAGON;3`), `§6` → LEGENDARY pet (`ENDER_DRAGON;4`). NEU/Elite
+     * key the pet catalog by `ENDER_DRAGON;<tier>` and the backend's drop seed uses the same
+     * — no need to round-trip through DropResolver here, the id format is canonical.
      */
-    private fun parsePet(coloredName: String): DragonDrop? {
+    private fun parsePet(coloredName: String): String? {
         val match = PET_REGEX.matchEntire(coloredName) ?: return null
         return when (match.groupValues[1]) {
-            "5" -> DragonDrop.ENDER_DRAGON_PET_EPIC
-            "6" -> DragonDrop.ENDER_DRAGON_PET_LEGENDARY
+            "5" -> "ENDER_DRAGON;3"
+            "6" -> "ENDER_DRAGON;4"
             else -> {
-                logger.info("Unknown pet tier §${match.groupValues[1]} on Ender Dragon — add a DragonDrop entry if real")
+                logger.info("Unknown pet tier §${match.groupValues[1]} on Ender Dragon — extend the backend pet entries if real")
                 null
             }
         }
@@ -370,7 +375,10 @@ object DragonLootScanner {
         }
         // Loot was already granted incrementally inside [grantPending]; nothing more to
         // do here besides logging the final totals.
-        val summary = ctx.grantedSoFar.entries.joinToString(", ") { (d, c) -> "${d.displayName} x$c" }
+        val summary =
+            ctx.grantedSoFar.entries.joinToString(", ") { (itemId, c) ->
+                "${DropResolver.displayName(ctx.dragonType.sourceId, itemId)} x$c"
+            }
         logger.info("Dragon ${ctx.dragonType.displayName} (${ctx.killSource}) window closed ($reason) — $summary")
     }
 }
