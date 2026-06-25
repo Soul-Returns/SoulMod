@@ -3,6 +3,7 @@ package com.soulreturns.features.diana
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.soulreturns.core.events.Events
 import com.soulreturns.data.drops.DropCatalogClient
 import com.soulreturns.data.drops.DropResolver
 import com.soulreturns.data.prices.PriceCache
@@ -149,6 +150,11 @@ object MythologicalProfitTracker {
                 .compute(itemId) { _, prev -> (prev ?: Counts()).also { it.amount += amount } }
         }
         dirty = true
+        // Stats-tracker hook: only the lootshare bucket counts as a LOOTSHARE source for
+        // stat-reset purposes — everything else (mob_loot, treasure_burrow, attribute_shard)
+        // represents drops from the player's own activity.
+        val source = if (bucketId == LOOTSHARE_BUCKET) DianaEventSource.LOOTSHARE else DianaEventSource.OWN
+        Events.publish(MythologicalDropCredited(bucketId, itemId, amount, source))
     }
 
     fun grantKill(
@@ -194,6 +200,40 @@ object MythologicalProfitTracker {
         eventKillsByMayor.clear()
         eventBurrowsByMayor.clear()
         dirty = true
+    }
+
+    /**
+     * Bulk-import from an external mod's export. OVERWRITES the persisted totals —
+     * any prior recorded data is wiped and replaced. Session counters are also cleared.
+     * Per-mayor event partitions are NOT touched (Sbo's mayor-bucket schema doesn't map
+     * 1:1; the user's current mayor bucket will start fresh going forward).
+     *
+     * Caller is expected to gate behind a confirmation step.
+     */
+    fun importFromSbo(
+        dropsByBucket: Map<String, Map<String, Long>>,
+        totalBurrowsCount: Long,
+    ) {
+        sessionDrops.clear()
+        sessionKills.clear()
+        sessionBurrows = 0L
+        totalDrops.clear()
+        totalKills.clear()
+        for ((bucketId, drops) in dropsByBucket) {
+            if (bucketId.isEmpty()) continue
+            val bucketMap = ConcurrentHashMap<String, Counts>()
+            for ((itemId, amount) in drops) {
+                if (amount <= 0L || itemId.isEmpty()) continue
+                bucketMap[itemId] = Counts(amount = amount)
+            }
+            if (bucketMap.isNotEmpty()) totalDrops[bucketId] = bucketMap
+        }
+        totalBurrows = totalBurrowsCount.coerceAtLeast(0L)
+        dirty = true
+        val dropsAcrossBuckets = totalDrops.values.sumOf { it.size }
+        logger.info(
+            "Imported from Sbo (overwrite): $dropsAcrossBuckets distinct drops across ${totalDrops.size} buckets, totalBurrows=$totalBurrows",
+        )
     }
 
     /**

@@ -100,6 +100,8 @@
   "text.config.soul/config.option.combat.diana.scrollableList.tooltip": "When on, the per-mob list renders inside a fixed-height scrollable region. When off (default for the Mythological tracker), the full list renders and the panel grows / shrinks with the row count.",
   "text.config.soul/config.option.combat.diana.showProfitHud": "Show Mythological Profit HUD",
   "text.config.soul/config.option.combat.diana.showProfitHud.tooltip": "Show the Mythological Profit HUD overlay — tracks treasure-burrow drops (Griffin Feather + future fragments + coins) plus per-mob drops once admins seed them. Position with /soul gui. Tracking always runs as long as the tracker master toggle is on. Default off.",
+  "text.config.soul/config.option.combat.diana.showStatsHud": "Show Diana Stats HUD",
+  "text.config.soul/config.option.combat.diana.showStatsHud.tooltip": "Show the Diana Stats HUD overlay — per-row counters of the form 'Mobs since <Item>' that reset when a specific drop is received (with an optional parallel '[LS]' counter resetting on lootshare drops). Rows are currently hardcoded; a backend-driven editor lands later. Position with /soul gui. Default off.",
   "text.config.soul/config.option.combat.diana.lootPriceSellOffer": "Loot price: Sell Offer",
   "text.config.soul/config.option.combat.diana.lootPriceSellOffer.tooltip": "How Mythological loot drops are valued. On = sell-offer (ASK side, higher). Off = instant-sell (BID side, lower). Ignored when 'Loot price: NPC' is on. Toggle on the HUD via the Loot button. Default on.",
   "text.config.soul/config.option.combat.diana.lootPriceUseNpc": "Loot price: NPC",

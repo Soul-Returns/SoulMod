@@ -10,6 +10,7 @@ import com.soulreturns.data.items.ItemNameAliasClient
 import com.soulreturns.data.location.LocationReader
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.skyblock.FishingFestivalState
+import com.soulreturns.data.skyblock.DianaStatsCatalogClient
 import com.soulreturns.data.skyblock.MythologicalMobCatalogClient
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.dev.DevKeybindHandler
@@ -19,6 +20,7 @@ import com.soulreturns.features.diana.MythologicalActivityTimer
 import com.soulreturns.features.diana.MythologicalMobTracker
 import com.soulreturns.features.diana.MythologicalProfitChatListener
 import com.soulreturns.features.diana.MythologicalProfitTracker
+import com.soulreturns.features.diana.MythologicalStatsTracker
 import com.soulreturns.features.farming.FarmingTimer
 import com.soulreturns.features.farming.seasoning.HarvestFeastReader
 import com.soulreturns.features.farming.seasoning.SeasoningTracker
@@ -55,6 +57,7 @@ import com.soulreturns.platform.sync.SyncedArtifact
 import com.soulreturns.render.RoundRectRenderer
 import com.soulreturns.stats.PersistentStats
 import com.soulreturns.ui.hud.BobbinHud
+import com.soulreturns.ui.hud.DianaStatsHud
 import com.soulreturns.ui.hud.DragonProfitHud
 import com.soulreturns.ui.hud.FishingHud
 import com.soulreturns.ui.hud.LegionHud
@@ -297,6 +300,7 @@ object Soul : ClientModInitializer {
         // rebuilds its lookup maps automatically; the MythologicalMobCatalog object reads
         // the client's snapshot on every lookup (cheap — 12 mobs).
         MythologicalMobCatalogClient.init()
+        DianaStatsCatalogClient.init()
         SeaCreatureCatalogClient.init()
         // Alias table — chat-parser fallback for display-name → item-id when the catalog's
         // 1:1 doesn't match. Cheap to ship; consumers fall back gracefully on empty.
@@ -351,6 +355,13 @@ object Soul : ClientModInitializer {
         // admin curates that list.
         DianaLootWatcher.register()
         MythologicalProfitHud.register()
+
+        // Diana stats tracker + HUD — listens for kill/drop events emitted by the mob
+        // and profit trackers above, so it must initialise AFTER them so the event-bus
+        // subscriptions are in place when the first publish fires. Row catalog is
+        // currently hardcoded; backend-driven version is a follow-up.
+        MythologicalStatsTracker.init()
+        DianaStatsHud.register()
     }
 
     fun reloadFeatures() {

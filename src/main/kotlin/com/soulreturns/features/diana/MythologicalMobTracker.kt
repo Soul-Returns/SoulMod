@@ -217,6 +217,7 @@ object MythologicalMobTracker {
             bucket[mobName] = (bucket[mobName] ?: 0L) + 1L
         }
         dirty = true
+        Events.publish(MythologicalMobKilled(mobName, DianaEventSource.LOOTSHARE))
     }
 
     @HandleEvent
@@ -261,6 +262,52 @@ object MythologicalMobTracker {
             bucket[mobName] = (bucket[mobName] ?: 0L) + 1L
         }
         dirty = true
+        Events.publish(MythologicalMobKilled(mobName, DianaEventSource.OWN))
+    }
+
+    /**
+     * Bulk-import from an external mod's export (e.g. `/soul importSboData`).
+     * **OVERWRITES** the current totals — any prior recorded data is wiped and replaced
+     * by the supplied values. Session counters are also cleared so the HUD reflects the
+     * fresh baseline immediately. Persisted with the next tick-debounced save.
+     *
+     * Caller is expected to gate behind a confirmation step — this is destructive.
+     */
+    fun importFromSbo(
+        ownKillsByMob: Map<String, Long>,
+        lootshareByMob: Map<String, Long>,
+        cocoonsByMob: Map<String, Long>,
+        totalActiveMs: Long,
+    ) {
+        data.totalByMob.clear()
+        data.totalByMob.putAll(ownKillsByMob.filterValues { it > 0L })
+        data.totalAll = data.totalByMob.values.sum()
+
+        data.totalLootshareByMob.clear()
+        data.totalLootshareByMob.putAll(lootshareByMob.filterValues { it > 0L })
+        data.totalLootshareAll = data.totalLootshareByMob.values.sum()
+
+        data.totalCocoonsByMob.clear()
+        data.totalCocoonsByMob.putAll(cocoonsByMob.filterValues { it > 0L })
+        data.totalCocoonsAll = data.totalCocoonsByMob.values.sum()
+
+        data.totalActiveMs = totalActiveMs.coerceAtLeast(0L)
+
+        // Clear session counters so the HUD shows the imported totals cleanly. Per-mayor
+        // event buckets are NOT touched — Sbo's mayor-bucket schema doesn't map 1:1.
+        sessionByMob = emptyMap()
+        sessionTotal = 0L
+        sessionLootshareByMob = emptyMap()
+        sessionLootshareTotal = 0L
+        sessionCocoonsByMob = emptyMap()
+        sessionCocoonsTotal = 0L
+
+        dirty = true
+        logger.info(
+            "Imported from Sbo (overwrite): kills=${data.totalAll}, " +
+                "lootshare=${data.totalLootshareAll}, cocoons=${data.totalCocoonsAll}, " +
+                "activeMs=${data.totalActiveMs}",
+        )
     }
 
     private fun load() {

@@ -5,6 +5,7 @@ import com.soulreturns.commands.subcommands.CheckForUpdatesSubcommand
 import com.soulreturns.commands.subcommands.ConfigSubcommand
 import com.soulreturns.commands.subcommands.DevSubcommand
 import com.soulreturns.commands.subcommands.GuiSubcommand
+import com.soulreturns.commands.subcommands.ImportSboDataSubcommand
 import com.soulreturns.config.gui.SoulConfigScreen
 import com.soulreturns.util.DebugLogger
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager
@@ -25,6 +26,8 @@ object SoulCommand {
                     .then(CheckForUpdatesSubcommand.register())
                     .then(ConfigSubcommand.register())
                     .then(DevSubcommand.register())
+                    .then(ImportSboDataSubcommand.register())
+                    .then(ImportSboDataSubcommand.registerConfirm())
             )
         }
     }

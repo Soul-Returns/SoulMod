@@ -233,6 +233,10 @@ public class SoulConfigModel {
         // Show the Mythological Profit HUD overlay (counts treasure-burrow drops + per-mob
         // drops once admins curate them). Default off — opt-in.
         public boolean showProfitHud = false;
+        // Show the Diana Stats HUD overlay (per-row counters of the form "Mobs since X" /
+        // "Mob since Item" that reset when a specific drop item lands). Rows currently
+        // hardcoded; backend-driven catalog coming in a follow-up. Default off.
+        public boolean showStatsHud = false;
         // When true the Count column / Mobs total / Mobs/hr rate include Cocoon counts as
         // well, so a mob you cocooned counts toward your headline mobs total. Default off —
         // cocoons are a distinct kill-outcome and most users keep them separate. Affects

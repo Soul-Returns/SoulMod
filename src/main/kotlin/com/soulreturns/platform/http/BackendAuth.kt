@@ -126,7 +126,7 @@ object BackendAuth {
                     mapOf(
                         "x-minecraft-username" to username,
                         "x-minecraft-server" to serverId,
-                    )
+                    ),
             )
 
         return if (response.statusCode() in 200..299 && response.body().isNotBlank()) {
