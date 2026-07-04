@@ -88,6 +88,10 @@ public class SoulConfigModel {
         public boolean hideEffectsInInventory = false;
         public boolean hideEffectsInHud = false;
         public boolean hideLightningFlash = false;
+        // Hide decorative foliage (grass, ferns, flowers, bushes — see HideFoliage.shouldHide).
+        // Anticheat-safe: block interactions stay vanilla; crops unaffected; auto-disabled on
+        // the Garden and the private island where foliage is a farmed resource.
+        public boolean hideFoliage = false;
     }
 
     public static class HudScale {

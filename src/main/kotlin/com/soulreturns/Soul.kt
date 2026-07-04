@@ -9,8 +9,8 @@ import com.soulreturns.data.items.ItemCatalogClient
 import com.soulreturns.data.items.ItemNameAliasClient
 import com.soulreturns.data.location.LocationReader
 import com.soulreturns.data.prices.PriceCache
-import com.soulreturns.data.skyblock.FishingFestivalState
 import com.soulreturns.data.skyblock.DianaStatsCatalogClient
+import com.soulreturns.data.skyblock.FishingFestivalState
 import com.soulreturns.data.skyblock.MythologicalMobCatalogClient
 import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.dev.DevKeybindHandler
@@ -45,6 +45,7 @@ import com.soulreturns.features.profit.dragon.DragonLootScanner
 import com.soulreturns.features.profit.dragon.DragonProfitAnnouncer
 import com.soulreturns.features.profit.dragon.DragonProfitTracker
 import com.soulreturns.features.profit.dragon.EyePlacementTracker
+import com.soulreturns.features.qol.HideFoliage
 import com.soulreturns.features.sacks.SackChatReader
 import com.soulreturns.features.sacks.SackGuiReader
 import com.soulreturns.features.sacks.SackState
@@ -248,6 +249,8 @@ object Soul : ClientModInitializer {
     fun registerFeatures() {
         DoubleHookResponse.register()
         DonExpresso.register()
+        // QoL — hide-foliage tick watcher (re-meshes chunks when the effective state flips)
+        HideFoliage.register()
         // Mineshaft — state object must register before consumers (LapisCorpseAlert, MineshaftCorpsesHud)
         // so the per-tick tab-list scan is fresh when they read it.
         MineshaftCorpses.register()

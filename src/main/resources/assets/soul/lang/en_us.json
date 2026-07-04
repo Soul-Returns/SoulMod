@@ -155,6 +155,8 @@
   "text.config.soul/config.option.render.hideEffectsInHud.tooltip": "Hide the active status-effect icons that appear in the top-right corner of the screen during gameplay.",
   "text.config.soul/config.option.render.hideLightningFlash": "Hide Lightning Flash",
   "text.config.soul/config.option.render.hideLightningFlash.tooltip": "Suppress the bright scene-wide flash that lightning strikes apply to the world's lightmap. The lightning bolt, thunder sound, and damage are unaffected — only the white blast is hidden.",
+  "text.config.soul/config.option.render.hideFoliage": "Hide Foliage",
+  "text.config.soul/config.option.render.hideFoliage.tooltip": "Hide grass, ferns, flowers and bushes — invisible and silent, mobs in foliage stay hittable. Block interactions stay vanilla (anticheat-safe), crops are unaffected, and the feature auto-disables on the Garden and your private island.",
 
   "text.config.soul/config.option.render.hudScale.tabListScale": "Tab List Scale",
   "text.config.soul/config.option.render.hudScale.hotbarScale": "Hotbar Scale",

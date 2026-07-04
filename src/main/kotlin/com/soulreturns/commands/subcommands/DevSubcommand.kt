@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.soulreturns.config.SoulConfigHolder
+import com.soulreturns.config.cfg
 import com.soulreturns.data.drops.DropCatalogClient
 import com.soulreturns.data.drops.DropResolver
 import com.soulreturns.data.location.LocationApi
@@ -14,6 +15,7 @@ import com.soulreturns.features.farming.seasoning.SeasoningTracker
 import com.soulreturns.features.profit.dragon.DragonProfitTracker
 import com.soulreturns.features.profit.dragon.DragonType
 import com.soulreturns.features.profit.dragon.KillSource
+import com.soulreturns.features.qol.HideFoliage
 import com.soulreturns.platform.sync.SyncEngine
 import com.soulreturns.platform.sync.SyncKind
 import com.soulreturns.stats.PersistentStats
@@ -33,6 +35,7 @@ import net.minecraft.network.chat.Component
  *  - `/soul dev getArea`                                  → SkyBlock island from the tab list
  *  - `/soul dev getSubLocation`                           → sublocation from the scoreboard sidebar
  *  - `/soul dev getSkyblock`                              → SkyblockApi.isOnSkyblock + raw sidebar title (debug detection misses)
+ *  - `/soul dev getFoliage`                               → hide-foliage toggle + location-gating state
  *  - `/soul dev getProfile`                               → active SkyBlock profile from the tab list
  *  - `/soul dev listStatProfiles`                         → all profile slots in stats.json, marking the active one
  *  - `/soul dev resetSeasonings`                          → reset seasoning total to 0 (persisted)
@@ -95,6 +98,19 @@ object DevSubcommand : SoulSubcommand {
                         soulChat(
                             "§7On SkyBlock: ${if (onSb) "§atrue" else "§cfalse"} " +
                                 "§7(sidebar title: §f${rawTitle.take(64)}§7)"
+                        )
+                    }
+                }
+            )
+            then(
+                literal("getFoliage") {
+                    runs { _ ->
+                        val enabled = cfg.render.hideFoliage()
+                        val active = HideFoliage.isActive()
+                        val area = LocationApi.currentArea ?: "<unknown>"
+                        soulChat(
+                            "§7Hide foliage: enabled=${if (enabled) "§atrue" else "§cfalse"} " +
+                                "§7active=${if (active) "§atrue" else "§cfalse"} §7(area: §f$area§7)"
                         )
                     }
                 }

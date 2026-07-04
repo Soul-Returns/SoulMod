@@ -32,7 +32,7 @@ internal object ConfigSections {
                             "Tooltips" to setOf("hideHeldItemTooltip", "showSkyblockIdInTooltip"),
                             "Player Rendering" to setOf("oldSneakHeight"),
                             "Status Effects" to setOf("hideEffectsInInventory", "hideEffectsInHud"),
-                            "World" to setOf("hideLightningFlash"),
+                            "World" to setOf("hideLightningFlash", "hideFoliage"),
                         ),
                     "highlights" to
                         listOf(
