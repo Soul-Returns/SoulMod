@@ -49,10 +49,12 @@ import kotlin.math.abs
  * A short spawn grace ([GRACE_TICKS]) avoids flicker while a freshly-tracked fake waits for its
  * nameplate's spawn packet.
  *
- * Hidden entities are culled from rendering (`EntityRenderDispatcherMixin`) and from the
+ * Hidden entities are culled from rendering (`EntityRenderDispatcherMixin`), from the
  * crosshair/projectile pick (`LivingEntityMixin.isPickable`) so clicks pass through the statue
- * to the live mob behind it. Server-side these entities are already dead — hiding a corpse can't
- * be abused (nothing to act on), mirroring hide-foliage's anticheat-safe stance.
+ * to the live mob behind it, and from sprint particles (`EntityMixin.canSpawnSprintParticle`) —
+ * the frozen fake keeps its sprinting flag set, so it would otherwise emit block crumbs at its
+ * feet every tick. Server-side these entities are already dead — hiding a corpse can't be
+ * abused (nothing to act on), mirroring hide-foliage's anticheat-safe stance.
  */
 object HideStuckDianaMobs {
     /** Ticks a fake player must exist before it may be hidden (waits out spawn-packet ordering). */

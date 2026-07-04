@@ -6,6 +6,7 @@
   ],
   "client": [
     "ClientPacketListenerMixin",
+    "EntityMixin",
     "LivingEntityMixin",
     "LocalPlayerMixin",
     "MultiPlayerGameModeMixin",
