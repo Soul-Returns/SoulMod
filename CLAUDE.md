@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository overview
 
+> **LEGACY REPO (as of July 2026).** Active development moved to the rewritten mod at `../Soul` (`/mnt/c/Users/soul/projects/Soul`, targeting MC 26.x). This repo gets **no main-feature updates and no new public releases** — the user keeps it building for their own gameplay for a few more weeks. Expected change shape: selective backports of individual features from the new mod (e.g. Hide Foliage, Hide Stuck Diana Mobs). When backporting, verify mixin target signatures against 1.21.11 Mojmap — the new mod's MC version differs (e.g. `Player.isPickable` doesn't exist in 1.21.11 bytecode; the override lives on `LivingEntity`).
+
 Soul is a **client-side Fabric mod** for Minecraft (Hypixel SkyBlock features), written in **Kotlin**. **Java is used only for Mixin classes** and for `SoulConfigModel.java` (consumed by an annotation processor) and `RenderHelper.java` (Java statics callable from Mixins). Mod ID is `soul`, package root is `com.soulreturns`. Stonecutter is used to maintain a single source tree across Minecraft versions; only `1.21.11` is currently active.
 
 **Mappings: Mojang Mappings (`loom.officialMojangMappings()`).** The codebase migrated off Yarn — `Minecraft` (not `MinecraftClient`), `GuiGraphics` (not `DrawContext`), `Component` (not `Text`), `Player` (not `PlayerEntity`), `MouseButtonEvent` (not `Click`), etc. New code must follow Mojang naming. `Identifier` happens to remain `Identifier` in Mojmap 1.21.11 (Mojang adopted the Yarn name); `Util` remains `net.minecraft.util.Util`.
@@ -59,6 +61,8 @@ prompts/
 When the mod ships a change touching the backend contract, drop a numbered file under the right subdir (`prompts/<feature>/0N-<topic>.md`). New feature = new subdir; follow-ups = next number in that feature's subdir. `prompts/` is **gitignored** — keep your local prompts authoritative; the backend session reads them in WSL.
 
 ## Releases
+
+> **Retired** — no new public releases (see the legacy note at the top). Kept for reference only.
 
 Push a `v*` tag to trigger the GitHub Actions release workflow:
 
@@ -154,7 +158,7 @@ For the config screen rendering pipeline, see `CLAUDE.local.md → Config UI arc
 
 Every **user-facing gameplay feature** defaults OFF — HUDs, automated chat sends, item highlights, overlays. The mod must do nothing visible on a fresh install until the user enables what they want.
 
-**Exceptions (default ON):** data tracking + infrastructure that's invisible from the player POV — `Trackers.fishingTracker` / `Trackers.profitTrackers`, `Data.logMineshaftVisits`, `Sync.*`, `ProfileViewer.enabled`, `Updates.checkForUpdates`, `Debug.logToFile`.
+**Exceptions (default ON):** data tracking + infrastructure that's invisible from the player POV — `Trackers.fishingTracker` / `Trackers.profitTrackers`, `Data.logMineshaftVisits`, `Sync.*`, `ProfileViewer.enabled`, `Updates.checkForUpdates`, `Debug.logToFile`. Also **features backported from the new mod** (`Render.hideFoliage`, `Diana.hideStuckDianaMobs`) — with no public releases left, the opt-in policy no longer applies to them and the user wants them on out of the box.
 
 **Sub-options stay ON when their master is OFF.** They're display / behaviour preferences inside a feature; they only matter once the master is on.
 

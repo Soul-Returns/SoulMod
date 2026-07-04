@@ -106,6 +106,8 @@
   "text.config.soul/config.option.combat.diana.lootPriceSellOffer.tooltip": "How Mythological loot drops are valued. On = sell-offer (ASK side, higher). Off = instant-sell (BID side, lower). Ignored when 'Loot price: NPC' is on. Toggle on the HUD via the Loot button. Default on.",
   "text.config.soul/config.option.combat.diana.lootPriceUseNpc": "Loot price: NPC",
   "text.config.soul/config.option.combat.diana.lootPriceUseNpc.tooltip": "Value Mythological loot at NPC sell price. Ironman-focused. Overrides 'Loot price: Sell Offer'. The HUD's Loot button cycles Sell Offer → Instant Sell → NPC. Default off.",
+  "text.config.soul/config.option.combat.diana.hideStuckDianaMobs": "Hide Stuck Diana Mobs",
+  "text.config.soul/config.option.combat.diana.hideStuckDianaMobs.tooltip": "Hide the frozen Diana mob statues left behind in the Hub when someone nearby uses a re-modelling griffin pet skin (Four Seasons). Only orphaned fakes are hidden — mob-named player entities with SkyBlock-mob health and no live mob next to them — and your crosshair passes through the statue to the real mob behind it. The statue is already dead server-side, so hiding it is anticheat-safe. Default on.",
   "text.config.soul/config.option.dev.trackers.mythologicalTracker": "Mythological Tracker",
   "text.config.soul/config.option.dev.trackers.mythologicalTracker.tooltip": "Master switch for the chat-driven Mythological mob tracker (counts mobs dug out during Mayor Diana's Mythological Ritual). When off, no Diana data is recorded — the Mythological HUD has nothing to display. Default on.",
   "text.config.soul/config.group.profileViewer.misc": "Profile Viewer",

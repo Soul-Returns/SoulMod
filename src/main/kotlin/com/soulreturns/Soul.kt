@@ -16,6 +16,7 @@ import com.soulreturns.features.DoubleHookResponse
 import com.soulreturns.features.dev.DevKeybindHandler
 import com.soulreturns.features.diana.DianaLootWatcher
 import com.soulreturns.features.diana.DianaLootshareDetector
+import com.soulreturns.features.diana.HideStuckDianaMobs
 import com.soulreturns.features.diana.MythologicalActivityTimer
 import com.soulreturns.features.diana.MythologicalMobTracker
 import com.soulreturns.features.diana.MythologicalProfitChatListener
@@ -365,6 +366,10 @@ object Soul : ClientModInitializer {
         // currently hardcoded; backend-driven version is a follow-up.
         MythologicalStatsTracker.init()
         DianaStatsHud.register()
+
+        // Hide stuck Diana mobs — per-tick orphaned-statue detector; EntityRenderDispatcher /
+        // LivingEntity mixins consult its hidden-id set to cull rendering + crosshair pick.
+        HideStuckDianaMobs.register()
     }
 
     fun reloadFeatures() {

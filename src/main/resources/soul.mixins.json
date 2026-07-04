@@ -6,6 +6,7 @@
   ],
   "client": [
     "ClientPacketListenerMixin",
+    "LivingEntityMixin",
     "LocalPlayerMixin",
     "MultiPlayerGameModeMixin",
     "block.CactusHitboxMixin",
@@ -23,7 +24,8 @@
     "render.LightningFlashMixin",
     "render.BlockStateBaseMixin",
     "render.LevelEventHandlerMixin",
-    "render.LevelRendererBlockOutlineMixin"
+    "render.LevelRendererBlockOutlineMixin",
+    "render.EntityRenderDispatcherMixin"
   ],
   "injectors": {
     "defaultRequire": 1

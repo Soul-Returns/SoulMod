@@ -91,7 +91,9 @@ public class SoulConfigModel {
         // Hide decorative foliage (grass, ferns, flowers, bushes — see HideFoliage.shouldHide).
         // Anticheat-safe: block interactions stay vanilla; crops unaffected; auto-disabled on
         // the Garden and the private island where foliage is a farmed resource.
-        public boolean hideFoliage = false;
+        // Default ON — deliberate opt-in-policy exception for backported QoL features
+        // (personal legacy build, no public releases).
+        public boolean hideFoliage = true;
     }
 
     public static class HudScale {
@@ -258,6 +260,12 @@ public class SoulConfigModel {
         // When true, value loot at NPC sell price. Mirrors the Dragon tracker's matching
         // field — Ironman-focused. Default off.
         public boolean lootPriceUseNpc = false;
+        // Hide "stuck" skinned Diana mobs — frozen griffin-skin statues left behind in the
+        // Hub when a re-modelling pet skin's fake player outlives its backing mob. Render +
+        // crosshair-pick culling only; the entity is already dead server-side.
+        // Default ON — deliberate opt-in-policy exception for backported QoL features
+        // (personal legacy build, no public releases).
+        public boolean hideStuckDianaMobs = true;
     }
 
     public static class Dragons {
