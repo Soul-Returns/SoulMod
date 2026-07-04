@@ -57,6 +57,10 @@ prompts/
 
 # Local-only research notes / scratch — not tracked
 docs/
+.temp/
+
+# Claude Code session data / local agent config
+.claude/
 
 # Local-only deep-dive of CLAUDE.md kept off the repo so the tracked CLAUDE.md stays
 # small enough to fit in a fresh session's context window
