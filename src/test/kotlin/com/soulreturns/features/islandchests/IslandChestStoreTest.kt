@@ -49,6 +49,36 @@ class IslandChestStoreTest {
     }
 
     @Test
+    fun legacyCacheIsPreservedUntilEveryPageOfANewRevisionArrives() = temporary { file ->
+        val obs = observation()
+        val legacy = IslandChestBucket(5, listOf(obs.chest.copy(revision = 5)), listOf(obs))
+        val bucket = chestWireJson.encodeToString(IslandChestBucket.serializer(), legacy)
+        val original = """{"schemaVersion":1,"buckets":{"${chestBucketKey(account, profile)}":$bucket}}"""
+        Files.writeString(file, original)
+        val store = IslandChestStore(file) { _, _ -> }.also { it.load() }
+        val initial = store.read(account, profile)
+        assertEquals(legacy, initial)
+        assertNull(initial.snapshotRevision, "Legacy ACK revisions cannot certify that a full snapshot was downloaded.")
+        val normalizedProfile = profile.replace("-", "")
+        val first = ChestWireChest(obs.chest.key, obs.chest.blocks, obs.chest.blockId, obs.wire()!!.slots,
+            account, "Observer", obs.chest.observedAt, obs.chest.observedAt + 1, 6)
+        val download = ChestSnapshotDownload(normalizedProfile, null)
+        assertTrue(download.accept(ChestWireSnapshot(2, normalizedProfile, 6, false, listOf(first), "6:${first.key}")))
+        store.update(account, profile, download::reconcile)
+        store.flush()
+        assertEquals(original, Files.readString(file))
+        assertEquals(initial, store.read(account, profile))
+        val second = first.copy(key = "3,64,2", blocks = listOf(ChestPos(3, 64, 2)))
+        assertTrue(download.accept(ChestWireSnapshot(2, normalizedProfile, 6, false, listOf(second))))
+        store.update(account, profile, download::reconcile)
+        store.flush()
+        val reloaded = IslandChestStore(file) { _, _ -> }.also { it.load() }.read(account, profile)
+        assertEquals(6L, reloaded.snapshotRevision)
+        assertEquals(2, reloaded.shared.size)
+        assertEquals(setOf(first.key, second.key), reloaded.shared.map { it.key }.toSet())
+    }
+
+    @Test
     fun malformedClaimedBucketAndUnknownDataArePreservedWhenAnotherBucketSaves() = temporary { file ->
         val badKey = chestBucketKey(account, profile)!!
         val original = """{"schemaVersion":1,"futureField":{"keep":true},"buckets":{"$badKey":{"local":"unreadable"},"unclaimed":{"anything":[1,2,3]}}}"""

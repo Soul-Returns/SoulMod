@@ -13,8 +13,7 @@ import kotlinx.serialization.Serializable
  *   thing that is easy to get wrong — an internal hostname here is unreachable from the client.
  * @property topics the topics this JWT authorises, to be subscribed to **verbatim**.
  *   `RealtimeTokenService::topicsFor()` on the backend is the single source of truth and this
- *   endpoint exists precisely so the mod never hardcodes a topic string. One of them
- *   (`dungeon/{serverId}`) is an RFC 6570 URI template.
+ *   endpoint exists precisely so the mod never hardcodes its subscription list.
  */
 @Serializable
 data class RealtimeToken(

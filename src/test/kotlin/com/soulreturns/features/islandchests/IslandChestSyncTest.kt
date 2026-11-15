@@ -117,9 +117,91 @@ class IslandChestSyncTest {
         assertNull(local(chest().copy(slots = List(27) { item().copy(displayNameRaw = "é".repeat(513)) })).wire())
         assertNull(local(chest().copy(slots = List(27) { item(lore = List(64) { "x".repeat(2048) }) })).wire())
         assertNull(local(chest().copy(blocks = listOf(ChestPos(2, 64, 2), ChestPos(1, 64, 2)), slots = List(54) { null })).wire())
-        assertFalse(ChestWireSnapshot(1, profile, 0, false, null).valid(profile))
-        assertFalse(ChestWireSnapshot(1, account, 0, true).valid(profile))
-        assertTrue(ChestWireSnapshot(1, profile, 0, true).valid(profile))
+        assertFalse(ChestWireSnapshot(2, profile, 0, false, null).valid(profile))
+        assertFalse(ChestWireSnapshot(2, account, 0, true).valid(profile))
+        assertFalse(ChestWireSnapshot(1, profile, 0, true).valid(profile))
+        assertTrue(ChestWireSnapshot(2, profile, 0, true).valid(profile))
+    }
+
+    private fun wireChest(x: Int, revision: Long = 7): ChestWireChest {
+        val c = chest(x, revision)
+        return ChestWireChest(c.key, c.blocks, c.blockId, local(c).wire()!!.slots, account, "Observer", c.observedAt, c.observedAt + 1, revision)
+    }
+
+    @Test
+    fun allPagesAreSearchableOnlyAfterCompleteAtomicSnapshotCommit() {
+        val local = local(chest(1000), base = 1)
+        val initial = IslandChestBucket(1, listOf(chest(-1, 1)), listOf(local), snapshotRevision = 1)
+        val download = ChestSnapshotDownload(profile, 1)
+        val rows = (1..70).map { wireChest(it) }
+        assertTrue(download.accept(ChestWireSnapshot(2, profile, 7, false, rows.take(32), "7:${rows[31].key}")))
+        assertFalse(download.complete)
+        assertSame(initial, download.reconcile(initial), "A page must never replace the cached full profile.")
+        assertTrue(download.accept(ChestWireSnapshot(2, profile, 7, false, rows.subList(32, 64), "7:${rows[63].key}")))
+        assertSame(initial, download.reconcile(initial))
+        assertTrue(download.accept(ChestWireSnapshot(2, profile, 7, false, rows.drop(64))))
+        assertTrue(download.complete)
+        val committed = download.reconcile(initial)
+        assertEquals(70, committed.shared.size)
+        assertEquals(listOf(local), committed.local)
+        assertEquals(7L, committed.snapshotRevision)
+        val search = IslandChestSearchIndex().search(committed.shared, "vine").single()
+        assertEquals(70 * 64L, search.count)
+        assertEquals(70, search.matches.size)
+    }
+
+    @Test
+    fun revisionChangeOrOverlappingPageNeverCommitsPartialOrMixedSnapshot() {
+        val initial = IslandChestBucket(1, listOf(chest(-1, 1)))
+        val first = wireChest(1)
+        val download = ChestSnapshotDownload(profile, 1)
+        assertTrue(download.accept(ChestWireSnapshot(2, profile, 7, false, listOf(first), "7:${first.key}")))
+        assertFalse(download.accept(ChestWireSnapshot(2, profile, 8, false, listOf(wireChest(2, 8)))))
+        assertSame(initial, download.reconcile(initial))
+        assertFalse(download.accept(ChestWireSnapshot(2, profile, 7, false, listOf(wireChest(2)))))
+        assertSame(initial, download.reconcile(initial))
+        val overlapping = ChestSnapshotDownload(profile, null)
+        assertTrue(overlapping.accept(ChestWireSnapshot(2, profile, 7, false, listOf(first), "7:${first.key}")))
+        assertFalse(overlapping.accept(ChestWireSnapshot(2, profile, 7, false, listOf(first))))
+        assertSame(initial, overlapping.reconcile(initial))
+    }
+
+    @Test
+    fun paginationRequiresVersionBoundsAndMatchingUnchangedRevision() {
+        val initial = IslandChestBucket(7, listOf(chest(1, 7)), snapshotRevision = 7)
+        val unchanged = ChestSnapshotDownload(profile, 7)
+        assertTrue(unchanged.accept(ChestWireSnapshot(2, profile, 7, true)))
+        assertTrue(unchanged.complete)
+        assertSame(initial, unchanged.reconcile(initial))
+        assertFalse(ChestSnapshotDownload(profile, null).accept(ChestWireSnapshot(2, profile, 7, true)))
+        assertFalse(ChestSnapshotDownload(profile, 6).accept(ChestWireSnapshot(2, profile, 7, true)))
+        assertFalse(ChestSnapshotDownload(profile, 7).accept(ChestWireSnapshot(1, profile, 7, true)))
+        assertFalse(ChestSnapshotDownload(profile, 7).accept(ChestWireSnapshot(2, profile, 7, true, listOf(wireChest(1)))))
+        assertFalse(ChestSnapshotDownload(profile, 7).accept(ChestWireSnapshot(2, profile, 7, false, (1..33).map { wireChest(it) })))
+        assertFalse(ChestSnapshotDownload(profile, 7).accept(ChestWireSnapshot(2, profile, 7, false, emptyList(), "7:1,64,2")))
+        assertFalse(ChestSnapshotDownload(profile, 7).accept(ChestWireSnapshot(2, profile, 7, false, listOf(wireChest(1)), "8:1,64,2")))
+    }
+
+    @Test
+    fun quotaRejectionPreservesContentsAndDoesNotQueueRepeatedUploads() {
+        val pending = local()
+        val rejected = IslandChestBucket().observe(pending).reject(pending.observationId, "quota")
+        val restored = chestWireJson.decodeFromString(IslandChestBucket.serializer(), chestWireJson.encodeToString(IslandChestBucket.serializer(), rejected))
+        assertEquals(pending.chest, restored.local.single().chest)
+        assertTrue(restored.local.single().blocked)
+        assertEquals("quota", restored.visible(true).single().syncState)
+        assertEquals(pending.baseRevision, restored.local.single().baseRevision)
+        val smaller = local(chest(count = 0), id = "reopened")
+        assertFalse(restored.observe(smaller).local.single().blocked)
+    }
+
+    @Test
+    fun uploadAckIsNotACompleteSnapshotRevision() {
+        val sent = local(chest(2), base = 3)
+        val previous = IslandChestBucket(3, listOf(chest(1, 3)), listOf(sent), snapshotRevision = 3)
+        val acknowledged = previous.acknowledge(sent, 8)
+        assertEquals(8L, acknowledged.revision)
+        assertEquals(3L, acknowledged.snapshotRevision, "Other co-op writes between GET and POST still require a complete refresh.")
     }
 
     @Test

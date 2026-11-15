@@ -21,9 +21,8 @@ data class BackendAuthenticated(val uuid: String?) : Event
 
 /**
  * Bearer-token auth against the Soul backend, privacy-preserving via Mojang's session service:
- * generate a random serverId, call `sessionService.joinServer(uuid, accessToken, serverId)`, then
- * `GET /authenticate` with the username + serverId. The backend verifies via Mojang `hasJoined` —
- * our access token never leaves the client.
+ * request a one-time backend challenge, call `sessionService.joinServer` with its serverId, then
+ * redeem that challenge through `GET /authenticate`. Our access token never leaves the client.
  *
  * Token is cached in memory and persisted to `config/soul/auth_token.txt` so a relaunch reuses it.
  */
@@ -309,10 +308,27 @@ object BackendAuth {
         val profileUuid: UUID = session.profileId ?: return null.also { record(null, "session has no profile uuid") }
         val sessionService = mc.services()?.sessionService()
             ?: return null.also { record(null, "no Mojang session service") }
-        val serverId = UUID.randomUUID().toString().replace("-", "")
+        val challengeResponse = SoulHttp.post(
+            "${SoulHttp.backendBaseUrl()}/authenticate/challenge",
+            "{}",
+            headers = mapOf("X-Minecraft-Username" to username, "X-Intent" to "authenticate"),
+        )
+        if (challengeResponse.statusCode() !in 200..299) {
+            record(challengeResponse.statusCode(), "Backend authentication challenge failed")
+            if (challengeResponse.statusCode() == 429) lastRateLimitAt = Instant.now()
+            logger.warn("Backend authentication challenge returned ${challengeResponse.statusCode()}")
+            return null
+        }
+        val challenge = try {
+            AuthenticationChallenge.decode(challengeResponse.body())
+        } catch (_: Exception) {
+            record(challengeResponse.statusCode(), "Invalid or expired backend authentication challenge")
+            logger.warn("Backend returned an invalid or expired authentication challenge")
+            return null
+        }
 
         try {
-            sessionService.joinServer(profileUuid, accessToken, serverId)
+            sessionService.joinServer(profileUuid, accessToken, challenge.serverId)
         } catch (e: Exception) {
             logger.warn("sessionService.joinServer failed", e)
             record(null, "Mojang joinServer failed: ${e.message ?: e.javaClass.simpleName}")
@@ -328,7 +344,9 @@ object BackendAuth {
                 "${SoulHttp.backendBaseUrl()}/authenticate",
                 headers = mapOf(
                     "x-minecraft-username" to username,
-                    "x-minecraft-server" to serverId,
+                    "x-minecraft-server" to challenge.serverId,
+                    "x-backend-challenge" to challenge.challengeId,
+                    "X-Intent" to "authenticate",
                 ),
             )
         } catch (e: Exception) {

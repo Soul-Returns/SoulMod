@@ -6,10 +6,13 @@ import com.soulreturns.platform.http.BackendResult
 import com.soulreturns.util.MojangUuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.minecraft.client.Minecraft
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Serializable
 internal data class ChestWireItem(
@@ -50,14 +53,49 @@ internal data class ChestWireSnapshot(
     val revision: Long,
     val unchanged: Boolean,
     val chests: List<ChestWireChest>? = null,
+    val nextCursor: String? = null,
 ) {
     fun valid(profile: String): Boolean {
-        if (schemaVersion != 1 || MojangUuid.undashedOrNull(profileUuid) != profile || revision < 0) return false
-        if (unchanged) return true
+        if (schemaVersion != 2 || MojangUuid.undashedOrNull(profileUuid) != profile || revision < 0) return false
+        if (unchanged) return chests == null && nextCursor == null
         val rows = chests ?: return false
+        if (rows.size > 32 || (nextCursor != null && (rows.isEmpty() || nextCursor != "$revision:${rows.last().key}"))) return false
         val blocks = HashSet<ChestPos>()
         return rows.all { it.valid(revision) && it.blocks.all(blocks::add) }
     }
+}
+
+internal class ChestSnapshotDownload(private val profile: String, private val knownRevision: Long?) {
+    private var revision: Long? = null
+    private var unchanged = false
+    private var failed = false
+    private val blocks = HashSet<ChestPos>()
+    private val chests = ArrayList<StoredIslandChest>()
+    private val cursors = HashSet<String>()
+    var nextCursor: String? = null
+        private set
+    var complete = false
+        private set
+
+    fun accept(page: ChestWireSnapshot): Boolean {
+        if (failed || complete || !page.valid(profile) || (revision != null && page.revision != revision) ||
+            (page.unchanged && (revision != null || page.revision != knownRevision)) ||
+            (page.nextCursor != null && !cursors.add(page.nextCursor)) ||
+            (!page.unchanged && page.chests!!.any { chest -> chest.blocks.any { !blocks.add(it) } })) {
+            failed = true
+            complete = false
+            return false
+        }
+        revision = page.revision
+        unchanged = page.unchanged
+        if (!unchanged) page.chests!!.forEach { chests.add(it.stored()) }
+        nextCursor = page.nextCursor
+        complete = nextCursor == null
+        return true
+    }
+
+    fun reconcile(bucket: IslandChestBucket): IslandChestBucket =
+        if (!complete || failed || unchanged) bucket else bucket.reconcile(revision!!, chests)
 }
 
 @Serializable
@@ -163,18 +201,29 @@ internal class IslandChestSync(
     private suspend fun reconcile(c: IslandChestSyncContext, activeBlocks: List<ChestPos>): Outcome {
         if (!stillCurrent(c)) return Outcome("local")
         val endpoint = "/skyblock/profiles/${c.profile}/island-chests"
-        val known = store.read(c.account, c.profile).revision
-        val fetched = BackendClient.get("$endpoint?knownRevision=$known", ChestWireSnapshot.serializer(), "island-chests-refresh", bypassCache = true)
-        if (!stillCurrent(c)) return Outcome("local")
-        if (fetched !is BackendResult.Ok) return failure(fetched as BackendResult.Failure)
-        val snapshot = fetched.value
-        if (!snapshot.valid(c.profile) || (snapshot.unchanged && snapshot.revision != known)) return Outcome("error")
-        if (!snapshot.unchanged) apply(c) { it.reconcile(snapshot.revision, snapshot.chests!!.map(ChestWireChest::stored)) }
+        val known = store.read(c.account, c.profile).snapshotRevision
+        val download = ChestSnapshotDownload(c.profile, known)
+        var query = "?format=2" + (known?.let { "&knownRevision=$it" } ?: "")
+        while (true) {
+            val fetched = BackendClient.get("$endpoint$query", ChestWireSnapshot.serializer(), "island-chests-refresh", bypassCache = true)
+            if (!stillCurrent(c)) return Outcome("local")
+            if (fetched !is BackendResult.Ok) {
+                val error = fetched as BackendResult.Failure
+                if (error.status != 429) return failure(error)
+                // Keep staged pages across the read limiter; large legacy profiles may need more than one window.
+                delay(maxOf(1_000, error.retryAfter?.toMillis() ?: 60_000))
+                continue
+            }
+            if (!download.accept(fetched.value)) return Outcome("error")
+            if (download.complete) break
+            query = "?format=2&cursor=" + URLEncoder.encode(download.nextCursor!!, StandardCharsets.UTF_8)
+        }
+        apply(c, download::reconcile)
         val observations = store.read(c.account, c.profile).local
         var state = "shared"
         for (observation in observations) {
             if (!stillCurrent(c)) return Outcome("local")
-            if (observation.blocked) { state = "conflict"; continue }
+            if (observation.blocked) { state = observation.rejection ?: "conflict"; continue }
             if (observation.chest.blocks.any { it in activeBlocks }) { state = "pending"; continue }
             // Never repair a conflict by attaching a newer GET revision to old physical contents.
             val latest = store.read(c.account, c.profile)
@@ -193,6 +242,10 @@ internal class IslandChestSync(
                 apply(c) { it.acknowledge(observation, ack.revision) }
             } else {
                 val error = posted as BackendResult.Failure
+                if (error.status == 422) {
+                    apply(c) { it.reject(observation.observationId, "quota") }
+                    return Outcome("quota", 60_000)
+                }
                 if (error.status == 409) {
                     apply(c) { it.reject(observation.observationId) }
                     refreshOnClient()
@@ -210,6 +263,8 @@ internal class IslandChestSync(
         if (error.status == 429) return Outcome("rate-limited", maxOf(1_000, error.retryAfter?.toMillis() ?: 60_000), true)
         if (error.status == 401 || error.status == 403) return Outcome("forbidden", 60_000)
         if (error.status == 409) return Outcome("conflict")
+        if (error.status == 426) return Outcome("update-required", 60_000)
+        if (error.status == 422) return Outcome("quota", 60_000)
         if (error.status == 400 || error.status == 413) return Outcome("error", 60_000)
         return Outcome("offline", 30_000)
     }

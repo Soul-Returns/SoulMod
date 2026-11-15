@@ -12,6 +12,8 @@ import com.soulreturns.platform.presence.PresenceService
 import com.soulreturns.platform.realtime.MercureSseReader
 import com.soulreturns.platform.realtime.RealtimeClient
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -47,20 +49,12 @@ import java.util.concurrent.atomic.AtomicBoolean
  *  2. **Auth** — Mojang `joinServer` + `GET /authenticate` → bearer token (or the cached one).
  *  3. **Realtime token** — `GET /realtime/token` with that bearer → Mercure JWT + hub URL + topics.
  *     This is also what proves the bearer is actually *accepted*, not merely present.
- *  4. **Hub** — open the SSE stream against the hub on a throwaway topic.
+ *  4. **Hub** — open a separate SSE stream against our own private user topic.
  *  5. **Relay round-trip** — `POST /dungeon/sync` and wait for the message to come back down the
  *     stream, which exercises publish → Mercure → subscribe end to end.
  *
- * Steps 4–5 use a random `dungeon/soultest<hex>` instance id rather than the live one, so the probe
- * never broadcasts junk to teammates: nobody else is subscribed to that topic. The backend
- * authorises the whole `dungeon/{serverId}` template, so a made-up id needs no special support.
- *
- * Note that the throwaway topic is not invisible to the shared
- * [com.soulreturns.platform.realtime.RealtimeClient] connection: that one subscribes to the
- * `dungeon/{serverId}` template, which matches `dungeon/soultest<hex>` too, so the probe's own relay
- * echo also lands there and bumps its event counter. Harmless — the dungeon channel drops it (own
- * echo, and no run in progress) — but it is why running the probe makes the shared connection's
- * `events` climb.
+ * Steps 4–5 send only to our own UUID, never teammates. A random instance id and nonce distinguish
+ * the probe from live sync. The shared stream also receives the echo, which its dungeon filters drop.
  *
  * **Step 4 deliberately opens its own throwaway SSE stream** rather than reusing the shared
  * [com.soulreturns.platform.realtime.RealtimeClient] connection. Two reasons: the probe must work
@@ -263,8 +257,9 @@ object BackendTest {
         if (!ok || realtime == null) return null
         DevOutput.line("§8  ↳ §7hub: §f${realtime.hubUrl}")
         DevOutput.line("§8  ↳ §7jwt: §f${mask(realtime.jwt)} §8· topics (${realtime.topics.size}): §f${realtime.topics.joinToString()}")
-        if (realtime.topics.none { it == "dungeon/{serverId}" }) {
-            DevOutput.line("§8  ↳ §eno §fdungeon/{serverId}§e template in the topic list — the relay step will not receive.")
+        val ownTopic = "user/${Minecraft.getInstance().user.profileId.toString().replace("-", "")}"
+        if (ownTopic !in realtime.topics) {
+            DevOutput.line("§8  ↳ §eno §f$ownTopic§e in the topic list — the relay step will not receive.")
         }
         return realtime
     }
@@ -272,7 +267,8 @@ object BackendTest {
     /** Steps 4 and 5. Returns the number of failed steps (0–2). */
     private fun roundTrip(base: String, bearer: String, jwt: String, hubUrl: String): Int {
         val instance = "soultest" + UUID.randomUUID().toString().replace("-", "").take(8)
-        val topic = "dungeon/$instance"
+        val self = Minecraft.getInstance().user.profileId.toString().replace("-", "")
+        val topic = "user/$self"
         val nonce = UUID.randomUUID().toString()
 
         val separator = if (hubUrl.contains('?')) '&' else '?'
@@ -329,10 +325,13 @@ object BackendTest {
                 try {
                     BufferedReader(InputStreamReader(stream, StandardCharsets.UTF_8)).use { r ->
                         MercureSseReader.readLoop(r) { event ->
-                            val payload = runCatching {
-                                json.parseToJsonElement(event.data).jsonObject["data"]?.jsonObject
-                            }.getOrNull()
-                            if (payload?.get("nonce")?.jsonPrimitive?.content == nonce) {
+                            val envelope = runCatching { json.parseToJsonElement(event.data).jsonObject }.getOrNull()
+                            val payload = runCatching { envelope?.get("data")?.jsonObject }.getOrNull()
+                            if (envelope?.get("topic")?.jsonPrimitive?.content == topic &&
+                                envelope?.get("type")?.jsonPrimitive?.content == "dungeon-secret" &&
+                                payload?.get("serverId")?.jsonPrimitive?.content == instance &&
+                                payload?.get("nonce")?.jsonPrimitive?.content == nonce
+                            ) {
                                 echo.complete(payload.toString())
                             }
                         }
@@ -349,6 +348,7 @@ object BackendTest {
                 val t0 = System.nanoTime()
                 val body = buildJsonObject {
                     put("serverId", instance)
+                    put("recipients", buildJsonArray { add(JsonPrimitive(self)) })
                     put(
                         "message",
                         buildJsonObject {
@@ -389,11 +389,10 @@ object BackendTest {
                     val stamped = runCatching {
                         json.parseToJsonElement(received).jsonObject["uuid"]?.jsonPrimitive?.content
                     }.getOrNull()
-                    val self = Minecraft.getInstance().user.profileId.toString().replace("-", "")
                     // The backend stamps the sender uuid from the bearer token, undashed.
                     val match = stamped != null && stamped.equals(self, ignoreCase = true)
                     Result(
-                        true,
+                        match,
                         "POST ${post.statusCode()} in $postMs, echo in ${ms(t0)} §8" +
                             "(sender uuid stamped: §f${stamped ?: "none"}§8, ${if (match) "matches us" else "NOT ours"})",
                     )

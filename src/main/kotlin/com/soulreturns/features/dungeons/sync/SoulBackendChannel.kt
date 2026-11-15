@@ -1,6 +1,7 @@
 package com.soulreturns.features.dungeons.sync
 
 import com.soulreturns.config.cfg
+import com.soulreturns.features.dungeons.DungeonRunState
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.platform.http.BackendClient
 import com.soulreturns.platform.http.BackendResult
@@ -9,24 +10,18 @@ import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.SyncLog
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
+import net.minecraft.client.Minecraft
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Primary sync channel — Soul's own backend at `sky.soulreturns.com`.
  *
- * **Inbound** rides the shared [RealtimeClient] connection: the backend authorises the URI template
- * `dungeon/{serverId}` and the Mercure hub honours that template as a *subscribe selector*, so the
- * one always-on stream already carries every instance the player enters. (Verified empirically
- * against Mercure 0.24.2: the template selector delivers a publish to a concrete `dungeon/<id>`;
- * a wildcard glob under `dungeon` does not, and must not be used.) This channel owns no thread, no
- * socket and no backoff of its own — it registers one handler and is done.
+ * Inbound uses only our private user topic on the shared [RealtimeClient] stream, then checks the
+ * current instance and sender roster. This channel owns no socket or backoff.
  *
- * **Outbound** is still plain REST: `POST /dungeon/sync {serverId, message}`. The backend stamps the
- * sender uuid from the bearer token and re-broadcasts on the instance topic, so it is a dumb relay
- * and the wire schema of `message` stays ours.
+ * Outbound: `POST /dungeon/sync {serverId, recipients, message}`. Recipients come only from the
+ * current dungeon roster; the backend stamps sender identity but cannot attest party membership.
  *
  * No User-Agent whitelist (unlike Skyblocker's hub) — this is our infrastructure.
  */
@@ -79,11 +74,8 @@ object SoulBackendChannel : SecretSyncChannel {
     /** Subscribe to the inbound half. Call once at startup, before [SecretSyncHandler.register]. */
     fun register() {
         RealtimeClient.onRealtimeEvent("dungeon-secret") { event ->
-            // The shared stream carries `dungeon/{serverId}` for every instance the template covers.
-            // In practice nobody publishes to an instance they are not in, but relevance is now this
-            // channel's job to decide rather than something the subscription guaranteed.
-            if (serverId == null) {
-                SyncLog.ws("backend", "← dropped dungeon-secret — not in a run")
+            if (!DungeonSyncPayload.accepts(event.topic, event.data, serverId, Minecraft.getInstance().user.profileId)) {
+                SyncLog.ws("backend", "← dropped dungeon-secret — wrong recipient or instance")
                 return@onRealtimeEvent
             }
             eventsReceived.incrementAndGet()
@@ -109,10 +101,9 @@ object SoulBackendChannel : SecretSyncChannel {
 
     override fun publish(message: JsonObject) {
         val sid = serverId ?: return
-        val body = buildJsonObject {
-            put("serverId", sid)
-            put("message", message)
-        }
+        val self = Minecraft.getInstance().player?.uuid ?: return
+        val body = DungeonSyncPayload.build(sid, DungeonRunState.players.asSequence().map { it?.uuid }, self, message)
+            ?: return
         SoulScope.io.launch {
             SyncLog.ws("backend", "POST /dungeon/sync → $body")
             val result = try {

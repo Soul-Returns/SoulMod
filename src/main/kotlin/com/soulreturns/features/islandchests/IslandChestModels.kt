@@ -161,6 +161,7 @@ internal data class LocalChestObservation(
     val baseRevision: Long,
     val chest: StoredIslandChest,
     val blocked: Boolean = false,
+    val rejection: String? = null,
 )
 
 @Serializable
@@ -168,6 +169,7 @@ internal data class IslandChestBucket(
     val revision: Long = 0,
     val shared: List<StoredIslandChest> = emptyList(),
     val local: List<LocalChestObservation> = emptyList(),
+    val snapshotRevision: Long? = null,
 ) {
     fun observe(observation: LocalChestObservation): IslandChestBucket = copy(
         local = local.filterNot { overlaps(it.chest, observation.chest) } + observation,
@@ -180,7 +182,7 @@ internal data class IslandChestBucket(
             // Revisions, not clocks, decide whether a queued observation may replace shared evidence.
             if (result.any { overlaps(it, observation.chest) && it.revision > observation.baseRevision }) continue
             result.removeAll { overlaps(it, observation.chest) }
-            val state = if (observation.blocked) "conflict" else if (sharing) "pending" else "local"
+            val state = if (observation.blocked) observation.rejection ?: "conflict" else if (sharing) "pending" else "local"
             result += if (observation.chest.syncState == state) observation.chest else observation.chest.copy(syncState = state)
         }
         return result.sortedBy { it.key }
@@ -190,7 +192,7 @@ internal data class IslandChestBucket(
         if (revision < this.revision) return this
         val looks = (shared + local.map { it.chest }).flatMap { it.slots.filterNotNull() }.associateBy { it.searchKey() }
         val restored = chests.map { chest -> chest.copy(slots = chest.slots.map { item -> item?.copy(look = looks[item.searchKey()]?.look) }) }
-        return copy(revision = revision, shared = restored, local = local.mapNotNull { observation ->
+        return copy(revision = revision, snapshotRevision = revision, shared = restored, local = local.mapNotNull { observation ->
             val newer = restored.filter { overlaps(it, observation.chest) && it.revision > observation.baseRevision }
             if (newer.any { samePhysicalObservation(it, observation.chest) }) null
             else if (newer.isNotEmpty()) observation.copy(blocked = true) else observation
@@ -213,5 +215,7 @@ internal data class IslandChestBucket(
         )
     }
 
-    fun reject(id: String): IslandChestBucket = copy(local = local.map { if (it.observationId == id) it.copy(blocked = true) else it })
+    fun reject(id: String, reason: String = "conflict"): IslandChestBucket = copy(
+        local = local.map { if (it.observationId == id) it.copy(blocked = true, rejection = reason) else it },
+    )
 }
