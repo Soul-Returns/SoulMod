@@ -16,6 +16,12 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.1-beta.4" to
+                listOf(
+                    ReleaseNote("Commissions HUD: your commissions with their progress", listOf("f:commissionshud")),
+                    ReleaseNote("Highlight completed commissions in the Commissions menu", listOf("f:commissionsdone")),
+                    ReleaseNote("Hide Powder Coating particles around Divan armor", listOf("f:powdercoating")),
+                ),
             "0.3.1-beta.3" to
                 listOf(
                     ReleaseNote("Search everywhere: one search over island chests and storage", listOf("f:searcheverywhere", "f:islandchests", "f:storageoverlay")),
