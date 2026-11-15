@@ -38,8 +38,9 @@ tools/testclient/shots/
 __pycache__/
 /logs/
 
-# Mock tool (.agents/skills/mock): per-mock conversation, screenshots and server state
-mocks/**/.messages/
+# Agent rules/skills and design mocks: local-only, not for the public repo
+.agents/
+mocks/
 
 # Dev bridge world captures (soul-dev/worlds, tools/testserver/run/plugins/SoulTestKit/worlds) are Hypixel's map
 # data: never committed. The one synthetic fixture made on the test server is tracked.
