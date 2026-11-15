@@ -16,7 +16,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
+import net.fabricmc.fabric.api.event.Event
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.Button
@@ -30,6 +32,7 @@ import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket
 import net.minecraft.network.protocol.game.ClientboundOpenScreenPacket
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket
+import net.minecraft.resources.Identifier
 import net.minecraft.resources.RegistryOps
 import net.minecraft.world.entity.player.Inventory
 import net.minecraft.world.inventory.ChestMenu
@@ -78,6 +81,16 @@ object StorageOverlay {
         SoulScope.io.launch {
             store.load()
             Minecraft.getInstance().execute { loaded = true; updateContext(); publish() }
+        }
+        val commandPhase = Identifier.fromNamespaceAndPath("soul", "last_storage_page")
+        // Run before other storage overlays can redirect the bare /storage command.
+        ClientSendMessageEvents.MODIFY_COMMAND.addPhaseOrdering(commandPhase, Event.DEFAULT_PHASE)
+        ClientSendMessageEvents.MODIFY_COMMAND.register(commandPhase) { command ->
+            if (!cfg.storageOverlay.openLastPage || !Minecraft.getInstance().isSameThread) command
+            else {
+                updateContext()
+                if (validContext()) store.read(scope!!).openingCommand(command) else command
+            }
         }
         Events.subscribe<ChatMessage> { message ->
             if (message.source != ChatMessage.Source.SERVER) return@subscribe

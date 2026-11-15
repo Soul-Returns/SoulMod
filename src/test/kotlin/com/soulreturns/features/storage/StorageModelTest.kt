@@ -29,6 +29,23 @@ class StorageModelTest {
     }
 
     @Test
+    fun lastPageRewritesOnlyTheBareStorageCommand() {
+        val lastEnder = StorageBucket().observe(page(StoragePageId("ender", 5), null))
+        assertEquals("enderchest 5", lastEnder.openingCommand("storage"))
+        assertEquals("enderchest 5", lastEnder.openingCommand(" STORAGE "))
+        val lastBackpack = lastEnder.observe(page(second))
+        assertEquals("backpack 2", lastBackpack.openingCommand("storage"))
+        for (command in listOf("storage 3", "enderchest 1", "backpack 7", "storages", "soul storage")) {
+            assertEquals(command, lastBackpack.openingCommand(command))
+        }
+        assertEquals("storage", StorageBucket().openingCommand("storage"))
+        assertEquals("storage", lastBackpack.reconcile(listOf(StorageSelector(second, "empty"))).openingCommand("storage"))
+        for (id in listOf(StoragePageId("ender", 10), StoragePageId("backpack", 0), StoragePageId("other", 1))) {
+            assertEquals("storage", StorageBucket(lastPage = id).openingCommand("storage"))
+        }
+    }
+
+    @Test
     fun initialFullPacketIsRequiredBeforePredictionsOrSlotCorrections() {
         val observation = StorageObservation<String?>()
         observation.open(7, StorageMenus.parse("Greater Backpack (Slot #1)", 5)!!)

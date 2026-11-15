@@ -107,6 +107,7 @@ data class StorageOverlayConfig(
     val enabled: Boolean = false,
     val columns: Int = 3,
     val overrideSkyblocker: Boolean = true,
+    val openLastPage: Boolean = false,
 )
 
 /**

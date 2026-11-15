@@ -25,8 +25,19 @@ internal data class StorageSelector(val id: StoragePageId, val state: String, va
 internal data class StorageBucket(
     val pages: List<StoredStoragePage> = emptyList(),
     val selectors: List<StorageSelector> = emptyList(),
+    val lastPage: StoragePageId? = null,
 ) {
-    fun observe(page: StoredStoragePage): StorageBucket = copy(pages = pages.filterNot { it.id == page.id } + page)
+    fun observe(page: StoredStoragePage): StorageBucket =
+        copy(pages = pages.filterNot { it.id == page.id } + page, lastPage = page.id)
+
+    fun openingCommand(command: String): String {
+        if (!command.trim().equals("storage", ignoreCase = true)) return command
+        val id = lastPage ?: return command
+        if (selectors.any { it.id == id && it.state != "installed" }) return command
+        if (id.kind == "ender" && id.index in 1..9) return "enderchest ${id.index}"
+        if (id.kind == "backpack" && id.index in 1..18) return "backpack ${id.index}"
+        return command
+    }
 
     fun invalidateBackpacks(ids: Set<StoragePageId>? = null): StorageBucket = copy(pages = pages.map {
         if (it.id.kind == "backpack" && (ids == null || it.id in ids)) it.copy(items = null) else it

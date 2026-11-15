@@ -784,6 +784,10 @@ object ConfigRegistry {
                         ConfigManager.update { copy(storageOverlay = storageOverlay.copy(enabled = v)) }
                     }, d.storageOverlay.enabled),
                     simple = listOf(
+                        toggle("Open last storage page", "Make /storage open the last Ender Chest or backpack page used on this profile",
+                            { cfg.storageOverlay.openLastPage }, { v ->
+                                ConfigManager.update { copy(storageOverlay = storageOverlay.copy(openLastPage = v)) }
+                            }, d.storageOverlay.openLastPage),
                         slider("Pages per row", "The wall scrolls instead of shrinking items to fit",
                             { cfg.storageOverlay.columns.toDouble() }, { v ->
                                 ConfigManager.update { copy(storageOverlay = storageOverlay.copy(columns = v.toInt().coerceIn(1, 6))) }

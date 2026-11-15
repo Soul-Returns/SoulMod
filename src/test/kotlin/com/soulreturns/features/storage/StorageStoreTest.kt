@@ -38,6 +38,35 @@ class StorageStoreTest {
     }
 
     @Test
+    fun lastPageSurvivesRestartWithoutLeakingAcrossProfilesOrAccounts() = temporary { file ->
+        val store = StorageStore(file) { _, _ -> }.also { it.load() }
+        val otherProfile = storageScope(account, other)!!
+        val otherAccount = storageScope(other, profile)!!
+        store.update(key) { it.observe(page.copy(id = StoragePageId("ender", 5))) }
+        store.update(otherProfile) { it.observe(page.copy(id = StoragePageId("backpack", 2))) }
+        store.update(otherAccount) { it.observe(page.copy(id = StoragePageId("ender", 9))) }
+        store.flush()
+        val reloaded = StorageStore(file) { _, _ -> }.also { it.load() }
+        assertEquals("enderchest 5", reloaded.read(key).openingCommand("storage"))
+        assertEquals("backpack 2", reloaded.read(otherProfile).openingCommand("storage"))
+        assertEquals("enderchest 9", reloaded.read(otherAccount).openingCommand("storage"))
+        assertEquals("storage", reloaded.read(storageScope(other, other)!!).openingCommand("storage"))
+    }
+
+    @Test
+    fun existingStoreWithoutLastPageKeepsItsPagesAndUsesTheOverview() = temporary { file ->
+        Files.writeString(file, """{"schemaVersion":1,"buckets":{"$key":{"pages":[{"id":{"kind":"ender","index":1},"label":"Ender Chest 1","rows":5}],"selectors":[]}}}""")
+        val store = StorageStore(file) { _, _ -> }.also { it.load() }
+        assertEquals(listOf(page.copy(items = null)), store.read(key).pages)
+        assertEquals("storage", store.read(key).openingCommand("storage"))
+        store.update(key) { it.observe(page.copy(id = StoragePageId("ender", 5))) }
+        store.flush()
+        val reloaded = StorageStore(file) { _, _ -> }.also { it.load() }
+        assertEquals(2, reloaded.read(key).pages.size)
+        assertEquals("enderchest 5", reloaded.read(key).openingCommand("storage"))
+    }
+
+    @Test
     fun corruptOrNewerRootCannotBeOverwrittenByFreshObservations() = temporary { file ->
         for (original in listOf("not json", """{"schemaVersion":2,"buckets":{}}""")) {
             Files.writeString(file, original)
