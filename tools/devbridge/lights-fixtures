@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Lights fixtures: the Lights device's signals cut from a dev bridge recording (format v2).
+
+    tools/devbridge/lights-fixtures <recording.rec.ndjson.zst> <out.ndjson.gz> [--episode N] [--lead MS]
+
+Finds every Lights episode (a `block.lever.click` at a lever of the 5x4 grid, x 58..62, y 133..136, z 142) and writes
+episode N (1-based, default 1), from MS ms (default 3000) before its first flip to 2 s after the last lamp lit / the
+device's pling. A party run whose grid was lit in Storm's phase (no flip heard from afar) needs about --lead 60000.
+In party recordings a `flip` may be a teammate's.
+One compact line per event; `t` = client arrival in ms, `tick` = the server tick from the recording's clock:
+  {"t":…,"tick":N,"k":"block","x":…,"y":…,"z":…,"s":"lever|redstone_lamp","on":true|false}
+        every block_update / section_blocks_update entry of a lever (z 142) or lamp (z 143) of the grid
+  {"t":…,"tick":N,"k":"flip","x":…,"y":…}
+        the player's own flip: the `block.lever.click` the server plays at the lever (the recordings hold no
+        outbound packets; it arrives one latency after the click, in the packet of the lever's new state)
+  {"t":…,"tick":N,"k":"pling","x":…,"y":…,"z":…}   block.note_block.pling (volume 8) within 8 blocks of the grid
+  {"t":…,"tick":N,"k":"chat","s":"…"}              `completed a device!` lines
+Used by LightsFixturesTest (src/test/resources/devices/).
+"""
+import gzip
+import json
+import subprocess
+import sys
+
+CENTER = (60.5, 134.5, 142.5)
+
+
+def in_grid(x, y, z):
+    return 58 <= x <= 62 and 133 <= y <= 136 and z in (142, 143)
+
+
+def read(src):
+    cmd = ["zstd", "-dc", src] if src.endswith(".zst") else ["gzip", "-dc", src]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    out = []
+    for line in proc.stdout:
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        kind = o.get("kind")
+        d = o.get("data") or {}
+        if kind == "header":
+            if d.get("version") != 2:
+                sys.exit(f"{src}: recording format v{d.get('version')}; only v2 has full block states")
+            continue
+        t, tick = o.get("t"), o.get("tick")
+        if kind == "chat":
+            s = d.get("text") or ""
+            if "completed a device!" in s:
+                out.append({"t": t, "tick": tick, "k": "chat", "s": s})
+            continue
+        if kind != "packet":
+            continue
+        typ = d.get("type")
+        p = d.get("data") or {}
+        if typ == "minecraft:block_update":
+            pos = p.get("pos") or {}
+            block(out, t, tick, pos.get("x"), pos.get("y"), pos.get("z"), p["blockState"])
+        elif typ == "minecraft:section_blocks_update":
+            states = p.get("states") or []
+            for x, y, z, i in p.get("changes") or []:
+                block(out, t, tick, x, y, z, states[i])
+        elif typ == "minecraft:sound":
+            x, y, z = p["x"] / 8.0, p["y"] / 8.0, p["z"] / 8.0
+            sid = p.get("sound")
+            if sid == "minecraft:block.lever.click" and in_grid(int(x // 1), int(y // 1), int(z // 1)) and z < 143:
+                out.append({"t": t, "tick": tick, "k": "flip", "x": int(x // 1), "y": int(y // 1)})
+            elif sid == "minecraft:block.note_block.pling" and p.get("volume") == 8.0 and (x - CENTER[0]) ** 2 + (y - CENTER[1]) ** 2 + (z - CENTER[2]) ** 2 <= 64:
+                out.append({"t": t, "tick": tick, "k": "pling", "x": x, "y": y, "z": z})
+    proc.wait()
+    return out
+
+
+def block(out, t, tick, x, y, z, state):
+    if x is None or not in_grid(x, y, z):
+        return
+    name = state.replace("minecraft:", "").split("[")[0]
+    if name == "lever" and z == 142:
+        out.append({"t": t, "tick": tick, "k": "block", "x": x, "y": y, "z": z, "s": "lever", "on": "powered=true" in state})
+    elif name == "redstone_lamp" and z == 143:
+        out.append({"t": t, "tick": tick, "k": "block", "x": x, "y": y, "z": z, "s": "redstone_lamp", "on": "lit=true" in state})
+
+
+def main(argv):
+    if len(argv) < 3:
+        sys.exit(__doc__)
+    src, dst = argv[1], argv[2]
+    episode = int(argv[argv.index("--episode") + 1]) if "--episode" in argv else 1
+    lead = int(argv[argv.index("--lead") + 1]) if "--lead" in argv else 3000
+    events = read(src)
+    flips = [e for e in events if e["k"] == "flip"]
+    groups = []
+    for f in flips:
+        if groups and f["t"] - groups[-1][-1]["t"] <= 60000:
+            groups[-1].append(f)
+        else:
+            groups.append([f])
+    if episode > len(groups):
+        sys.exit(f"{src}: {len(groups)} Lights episode(s)")
+    first, last = groups[episode - 1][0]["t"], groups[episode - 1][-1]["t"]
+    lo, hi = first - lead, last + 2000
+    keep = [e for e in events if lo <= e["t"] <= hi]
+    keep.sort(key=lambda e: (e["t"], 0 if e["k"] == "flip" else 1))
+    with gzip.open(dst, "wt") as f:
+        for e in keep:
+            f.write(json.dumps(e, separators=(",", ":")) + "\n")
+    print(f"{dst}: episode {episode}/{len(groups)}, {len(keep)} events, {sum(1 for e in keep if e['k'] == 'flip')} flips")
+
+
+if __name__ == "__main__":
+    main(sys.argv)

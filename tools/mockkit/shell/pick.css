@@ -1,0 +1,34 @@
+/* Inline pick cards inside a mock (Mock.pick): the pick skill's cards in Lunar tokens, scoped to .mkp. */
+.mkp {
+  --space: #070912; --g1: rgba(200, 230, 255, .06); --g2: rgba(200, 230, 255, .10); --g3: rgba(200, 230, 255, .14);
+  --hair: rgba(200, 230, 255, .13); --text: #f2f7ff; --soft: #dbe5f8; --muted: #9fb0d0; --dim: #7a89ad; --ink: #0b0d1c; --cyan: #7cf8ff;
+  --iris: linear-gradient(100deg, #7cf8ff 0%, #c9a7ff 52%, #ff7eb6 100%);
+  --ui: "Chakra Petch", "Noto Sans", sans-serif;
+  box-sizing: border-box; padding: 18px 20px; border-radius: 22px; color: var(--soft); font: 400 14px/1.45 var(--ui);
+  background: linear-gradient(160deg, rgba(200, 230, 255, .10), rgba(200, 230, 255, .04) 55%), rgba(8, 11, 24, .82);
+  box-shadow: inset 0 0 0 1px var(--hair), 0 24px 70px -28px rgba(0, 0, 0, .7);
+}
+.mkp *, .mkp *::before, .mkp *::after { box-sizing: border-box; }
+.mkp-head h3 { margin: 0; font: 400 18px/1.25 var(--ui); letter-spacing: .03em; color: var(--text); }
+.mkp-head p { margin: 4px 0 0; color: var(--muted); }
+.mkp-grid { display: grid; gap: 12px; margin-top: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.mkp-card { position: relative; padding: 14px 16px; border-radius: 16px; background: var(--g1); box-shadow: inset 0 0 0 1px var(--hair); cursor: pointer;
+  transition: background .35s cubic-bezier(.4, 0, .2, 1), transform .35s cubic-bezier(.22, 1.16, .36, 1); outline: none; }
+.mkp-card:hover { background: var(--g2); }
+.mkp-card:active { transform: scale(.99); }
+.mkp-card:focus-visible { box-shadow: 0 0 0 1.5px var(--cyan); }
+.mkp-card.on { background: var(--g3); box-shadow: inset 0 0 0 1.5px var(--cyan); }
+.mkp-card h4 { margin: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font: 400 15px/1.3 var(--ui); letter-spacing: .03em; color: var(--text); }
+.mkp-card p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.mkp-body:empty { display: none; }
+.mkp-body { margin-top: 10px; }
+.mkp-rec { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.mkp-on { display: none; margin-left: auto; font-size: 11px; letter-spacing: .16em; color: var(--cyan); }
+.mkp-card.on .mkp-on { display: inline; }
+.mkp-foot { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.mkp-note { flex: 1; min-width: 0; height: 36px; padding: 0 14px; border: 0; border-radius: 12px; background: rgba(7, 9, 18, .42); box-shadow: inset 0 0 0 1px var(--hair);
+  color: var(--text); font: 400 14px/1 var(--ui); outline: none; }
+.mkp-note:focus { box-shadow: inset 0 0 0 1.5px var(--cyan); }
+.mkp-state { font-size: 12px; color: var(--dim); white-space: nowrap; }
+.mkp-send { height: 36px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--iris); color: var(--ink); font: 500 14px/1 var(--ui); cursor: pointer; }
+.mkp-send:disabled { opacity: .38; cursor: default; }

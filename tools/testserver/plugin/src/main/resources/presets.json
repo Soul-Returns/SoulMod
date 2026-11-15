@@ -1,0 +1,562 @@
+{
+  "_doc": "SoulTestKit data. Text is Hypixel-style legacy (section sign or &). Templates: {player} {date} (MM/dd/yy) {server} (location serverName) {serverShort} (mini12AB -> m12AB). See tools/testserver/README.md.",
+  "defaultPreset": "hub",
+  "resetLocation": "lobby",
+
+  "presets": {
+    "hub":       { "location": "hub",       "sidebar": "hub",       "tab": "hub",       "actionbar": "stats",   "chat": "join" },
+    "island":    { "location": "island",    "sidebar": "island",    "tab": "island",    "actionbar": "stats",   "chat": "join" },
+    "dungeon":   { "location": "dungeon",   "sidebar": "dungeon",   "tab": "dungeon",   "actionbar": "dungeon", "chat": "join" },
+    "end":       { "location": "end",       "sidebar": "end",       "tab": "end",       "actionbar": "stats",   "chat": "join" },
+    "mineshaft": { "location": "mineshaft", "sidebar": "mineshaft", "tab": "mineshaft", "actionbar": "stats",   "chat": "join" },
+    "divan":     { "location": "crystal_hollows", "sidebar": "mines_of_divan", "chat": "join" }
+  },
+
+  "locations": {
+    "lobby":           { "serverName": "dynamiclobby35E", "serverType": "MAIN", "lobbyName": "mainlobby1" },
+    "hub":             { "serverName": "mini12AB", "serverType": "SKYBLOCK", "mode": "hub", "map": "Hub" },
+    "island":          { "serverName": "mini31C",  "serverType": "SKYBLOCK", "mode": "dynamic", "map": "Private Island" },
+    "garden":          { "serverName": "mini40D",  "serverType": "SKYBLOCK", "mode": "garden", "map": "Garden" },
+    "dungeon_hub":     { "serverName": "mini22F",  "serverType": "SKYBLOCK", "mode": "dungeon_hub", "map": "Dungeon Hub" },
+    "dungeon":         { "serverName": "mini94M",  "serverType": "SKYBLOCK", "mode": "dungeon", "map": "Dungeon" },
+    "end":             { "serverName": "mini45C",  "serverType": "SKYBLOCK", "mode": "combat_3", "map": "The End" },
+    "dwarven":         { "serverName": "mini58E",  "serverType": "SKYBLOCK", "mode": "mining_3", "map": "Dwarven Mines" },
+    "crystal_hollows": { "serverName": "mini63A",  "serverType": "SKYBLOCK", "mode": "crystal_hollows", "map": "Crystal Hollows" },
+    "mineshaft":       { "serverName": "mini6D",   "serverType": "SKYBLOCK", "mode": "mineshaft", "map": "Mineshaft" },
+    "crimson_isle":    { "serverName": "mini71B",  "serverType": "SKYBLOCK", "mode": "crimson_isle", "map": "Crimson Isle" },
+    "backwater_bayou": { "serverName": "mini80C",  "serverType": "SKYBLOCK", "mode": "fishing_1", "map": "Backwater Bayou" }
+  },
+
+  "sidebars": {
+    "island": {
+      "title": "§e§lSKYBLOCK ♲",
+      "lines": [
+        "§7{date} §8{serverShort}",
+        "",
+        " Late Autumn 11th",
+        " §72:00am §b☽",
+        " §7⏣ §aYour Island",
+        "",
+        "Purse: §61,234,567",
+        "",
+        "§ewww.hypixel.net"
+      ]
+    },
+    "hub": {
+      "title": "§e§lSKYBLOCK",
+      "lines": [
+        "§7{date} §8{serverShort}",
+        "",
+        " Late Autumn 11th",
+        " §72:00am §b☽",
+        " §7⏣ §bVillage",
+        "",
+        "Purse: §61,234,567",
+        "Bits: §b12,345",
+        "",
+        "§ewww.hypixel.net"
+      ]
+    },
+    "dungeon": {
+      "title": "§e§lSKYBLOCK",
+      "lines": [
+        "§7{date} §8{serverShort}",
+        "",
+        " Late Autumn 11th",
+        " §72:00am §b☽",
+        " §7⏣ §cThe Catacombs §7(F7)",
+        "",
+        "Time Elapsed: §a03m 21s",
+        "Cleared: §c45% §8(98)",
+        "",
+        "§e[M] §b{player} §a20,000§c❤",
+        "§e[H] §aAlexTester §a14,250§c❤",
+        "§e[B] §6BuilderBob §a18,900§c❤",
+        "",
+        "§ewww.hypixel.net"
+      ]
+    },
+    "dungeon_m7": {
+      "title": "§e§lSKYBLOCK",
+      "lines": [
+        "§7{date} §8{serverShort}",
+        "",
+        " Late Autumn 11th",
+        " §72:00am §b☽",
+        " §7⏣ §cThe Catacombs §7(M7)",
+        "",
+        "Time Elapsed: §a03m 21s",
+        "Cleared: §c45% §8(98)",
+        "",
+        "§e[M] §b{player} §a20,000§c❤",
+        "§e[H] §aAlexTester §a14,250§c❤",
+        "§e[B] §6BuilderBob §a18,900§c❤",
+        "",
+        "§ewww.hypixel.net"
+      ]
+    },
+    "end": {
+      "title": "§e§lSKYBLOCK",
+      "lines": [
+        "§7{date} §8{serverShort}",
+        "",
+        " Late Autumn 11th",
+        " §72:00am §b☽",
+        " §7⏣ §5Dragon's Nest",
+        "",
+        "Purse: §61,234,567",
+        "Bits: §b12,345",
+        "",
+        "§ewww.hypixel.net"
+      ]
+    },
+    "mineshaft": {
+      "title": "§e§lSKYBLOCK",
+      "lines": [
+        "§7{date} §8{serverShort}§v§8M ONYX_1",
+        "",
+        " Late Autumn 11th",
+        " §72:00am §b☽",
+        " §7⏣ §bGlacite Mineshafts",
+        "",
+        "Purse: §61,234,567",
+        "Bits: §b12,345",
+        "",
+        "§ewww.hypixel.net"
+      ]
+    },
+    "mines_of_divan": {
+      "title": "§e§lSKYBLOCK",
+      "lines": [
+        "§7{date} §8{serverShort}",
+        "",
+        " Late Autumn 11th",
+        " §72:00am §b☽",
+        " §7⏣ §aMines of Divan",
+        "",
+        "Purse: §61,234,567",
+        "Bits: §b12,345",
+        "",
+        "§ewww.hypixel.net"
+      ]
+    }
+  },
+
+  "tabs": {
+    "island": {
+      "header": "\n§bYou are playing on §e§lMC.HYPIXEL.NET\n",
+      "footer": "",
+      "columns": [
+        ["§a§lPlayers (1)", "§b{player}"],
+        [],
+        ["§3§lInfo", "§b§lArea: §7Private Island", "§e§lProfile: §aBanana"],
+        []
+      ]
+    },
+    "hub": {
+      "header": "\n§bYou are playing on §e§lMC.HYPIXEL.NET\n",
+      "footer": "\n§a§lActive Effects\n§7No effects active. Drink potions or splash them\n§7on the ground to buff yourself!\n\n§d§lCookie Buff\n§fActive: §a3d 4h 12m\n\n§aRanks, Boosters & MORE! §c§lSTORE.HYPIXEL.NET",
+      "columns": [
+        [
+          "§r         §r§a§lPlayers §r§f(3)",
+          "§r§8[§r§4607§r§8] §r§b{player}",
+          "§r§8[§r§e201§r§8] §r§aAlexTester",
+          "§r§8[§r§c312§r§8] §r§6BuilderBob"
+        ],
+        ["§r         §r§a§lPlayers §r§f(3)"],
+        [
+          "§r               §r§3§lInfo",
+          "§r§b§lArea: §r§7Hub",
+          "§r Server: §r§8{server}",
+          "§r Gems: §r§a670",
+          "§r Fairy Souls: §r§d80§r§5/§r§d80",
+          "",
+          "§r§e§lProfile: §r§aBanana",
+          "§r SB Level§r§f: §r§8[§r§4607§r§8] §r§b72§r§3/§r§b100 XP",
+          "§r Bank: §r§61B",
+          "§r Interest: §r§e14 Hours§r§6 (993.3k)",
+          "",
+          "§r§e§lPet:",
+          "§r §r§7[Lvl 200] §r§6Golden Dragon§r§d ✦",
+          "§r §r§6+§r§e335,977,671.1 XP"
+        ],
+        [
+          "§r               §r§3§lInfo",
+          "§r§e§lSkills:",
+          "§r Combat 60: §r§c§lMAX",
+          "§r Mining 60: §r§c§lMAX",
+          "§r Fishing 50: §r§c§lMAX",
+          "",
+          "§r§e§lStats:",
+          "§r Speed: §r§f\uE022400",
+          "§r Strength: §r§c\uE00D1420",
+          "§r Crit Chance: §r§9\uE02C145",
+          "§r Crit Damage: §r§9\uE0071666",
+          "§r Attack Speed: §r§e\uE00183",
+          "§r Ferocity: §r§c\uE00B20",
+          "",
+          "§r§e§lElection: §r§b3d",
+          "§r §r§dFoxy: §r§d|||||§r§f||||| §r§f(49%)",
+          "",
+          "§r§e§lEvent: §r§5Year of the Witch",
+          "§r Ends In: §r§e45h"
+        ]
+      ]
+    },
+    "dungeon": {
+      "header": "\n§bYou are playing on §e§lMC.HYPIXEL.NET\n",
+      "footer": "\n§aRanks, Boosters & MORE! §c§lSTORE.HYPIXEL.NET",
+      "columns": [
+        [
+          "§a§lParty §f(3)",
+          " §8[§9285§8] §b{player} §f(§dMage XL§f)",
+          " §8[§e201§8] §aAlexTester §f(§dHealer XXXV§f)",
+          " §8[§c312§8] §6BuilderBob §f(§dBerserk XL§f)"
+        ],
+        [
+          "§e§lDungeon: §7Catacombs",
+          " Opened Rooms: §d12",
+          " Completed Rooms: §d10",
+          " Secrets Found: §b34",
+          " Time: §a03m 21s",
+          "",
+          "§e§lPuzzles: §f(3)",
+          " Three Weirdos: §a[✔]",
+          " Ice Path: §6[✦]",
+          " ???: §6[✦]"
+        ],
+        [
+          "§e§lAccount Info:",
+          " Profile: §aBanana",
+          " Server: §8{server}",
+          "",
+          "§e§lSkills: §aCatacombs 50: 35.4%",
+          " Mage 50: §c§lMAX"
+        ],
+        []
+      ]
+    },
+    "end": {
+      "header": "\n§bYou are playing on §e§lMC.HYPIXEL.NET\n",
+      "footer": "\n§aRanks, Boosters & MORE! §c§lSTORE.HYPIXEL.NET",
+      "columns": [
+        [
+          "§a§lPlayers §f(2)",
+          "§8[§9285§8] §b{player}",
+          "§8[§e201§8] §aAlexTester"
+        ],
+        [
+          "§b§lArea: §7The End",
+          " Server: §8{server}",
+          " Gems: §a670",
+          " Fairy Souls: §d12§5/§d12",
+          "",
+          "§e§lProfile: §aBanana",
+          " SB Level§f: §8[§4607§8] §b72§3/§b100 XP"
+        ],
+        [
+          "§e§lPet:",
+          " §7[Lvl 100] §dEnderman§5 ✦",
+          " §6+§e118,628,204.2 XP"
+        ],
+        []
+      ]
+    },
+    "mineshaft": {
+      "header": "\n§bYou are playing on §e§lMC.HYPIXEL.NET\n",
+      "footer": "\n§aRanks, Boosters & MORE! §c§lSTORE.HYPIXEL.NET",
+      "columns": [
+        [
+          "§a§lPlayers §f(1)",
+          "§8[§9285§8] §b{player}"
+        ],
+        [
+          "§b§lArea: §7Mineshaft",
+          " Server: §8{server}",
+          "",
+          "§e§lProfile: §aBanana",
+          " SB Level§f: §8[§4607§8] §b72§3/§b100 XP",
+          "",
+          "§e§lSkills:",
+          " Mining 60: §c§lMAX"
+        ],
+        [
+          "§e§lPet:",
+          " §7[Lvl 200] §6Golden Dragon§d ✦",
+          " §6+§e335,977,671.1 XP"
+        ],
+        []
+      ]
+    }
+  },
+
+  "actionbars": {
+    "stats": "§c6,267/5,892❤     §a582❈ Defense     §b1,498/1,498✎ Mana",
+    "dungeon": "§c6,267/5,892❤     §73/7 Secrets     §b1,498/1,498✎ Mana"
+  },
+
+  "chats": {
+    "join": [
+      "§r§aYou are playing on profile: §eBanana",
+      "§r§8Profile ID: 3f1c2a9e-5b7d-4e21-9a0c-6d8e4f2b1a77"
+    ]
+  },
+
+  "items": {
+    "RIFT_NECKLACE_OUTSIDE": {"material": "PLAYER_HEAD", "skullTexture": "ewogICJ0aW1lc3RhbXAiIDogMTcxOTUwNDcyMTAxMiwKICAicHJvZmlsZUlkIiA6ICJmNmYxY2IxMmYzNDU0MDRlYjZlNjU2NGE2ZDlmMjU2NyIsCiAgInByb2ZpbGVOYW1lIiA6ICJBdXJlbGl1c0dlbWluaSIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS84YzhjY2Q1Zjg2M2Q4MmJiMDk3YjkyNmJjNWY0Y2NhOTdiMTlmNDZlMTFiM2EzYTU5ZDAwMWFkYjg5ODg2NzczIiwKICAgICAgIm1ldGFkYXRhIiA6IHsKICAgICAgICAibW9kZWwiIDogInNsaW0iCiAgICAgIH0KICAgIH0KICB9Cn0=", "name": "§6Strengthened §dRift Necklace", "unique": true, "lore": ["§7Health: §c+242", "§7Defense: §a+40 §9(+10)", "§7True Defense: §f+1", "§7Strength: §c+50 §9(+7)", "§7Intelligence: §b+85", "§7Vitality: §4+3", "", "§d§l§ka §d§lMYTHIC NECKLACE §d§l§ka"]},
+    "DAVIDS_CLOAK": {"material": "PLAYER_HEAD", "skullTexture": "ewogICJ0aW1lc3RhbXAiIDogMTY5NzUyMDE3ODI4OSwKICAicHJvZmlsZUlkIiA6ICI0NDcyYzcwMjgwY2Q0NjZhODkxYjcyMzQwMGQ5MDUyNiIsCiAgInByb2ZpbGVOYW1lIiA6ICJTaGFkb3dNWCIsCiAgInNpZ25hdHVyZVJlcXVpcmVkIiA6IHRydWUsCiAgInRleHR1cmVzIiA6IHsKICAgICJTS0lOIiA6IHsKICAgICAgInVybCIgOiAiaHR0cDovL3RleHR1cmVzLm1pbmVjcmFmdC5uZXQvdGV4dHVyZS85NmU5NzdhZTJmNzk2ZGNlNmM4MGNiNmJlZDkyOTRlOWVkNGIxMWI4OGY5ZmRlNmMzMWY0MzVkZmQwMzgyNTI5IiwKICAgICAgIm1ldGFkYXRhIiA6IHsKICAgICAgICAibW9kZWwiIDogInNsaW0iCiAgICAgIH0KICAgIH0KICB9Cn0=", "name": "§dBlood-Soaked David's Cloak", "unique": true, "lore": ["§7Health: §c+64 §9(+12)", "§7Defense: §a+6 §9(+6)", "§7True Defense: §f+11", "§7Vitality: §4+3 §9(+3)", "§7Magic Find: §b+2", "", "§d§lMYTHIC CLOAK"]},
+    "THE_PRIMORDIAL": {"material": "PLAYER_HEAD", "skullTexture": "ewogICJ0aW1lc3RhbXAiIDogMTU5NTk1Mzg1NjA0MSwKICAicHJvZmlsZUlkIiA6ICI3MzgyZGRmYmU0ODU0NTVjODI1ZjkwMGY4OGZkMzJmOCIsCiAgInByb2ZpbGVOYW1lIiA6ICJ4cWwiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvMzFmMzIwMDI1MTQyNTk2Mzk2MDMyY2MwMDg4ZTJhYzM2NDg5ZjI0Y2ZhNWU5ZGRhMTNlMDgxY2Y2OWY3N2Y0ZCIKICAgIH0KICB9Cn0=", "name": "§dBloodshot The Primordial §6✪✪✪✪✪", "unique": true, "lore": ["§7Health: §c+2", "§7True Defense: §f+1", "§7Strength: §c+22.5 §9(+6)", "§7Crit Chance: §9+6% §9(+6%)", "§7Crit Damage: §9+28% §9(+6%)", "", "§d§l§ka §d§lMYTHIC BELT §d§l§ka"]},
+    "MANTICORE_CLAW": {"material": "PLAYER_HEAD", "skullTexture": "ewogICJ0aW1lc3RhbXAiIDogMTcxOTUwMjU5OTUwOCwKICAicHJvZmlsZUlkIiA6ICI0NmNhODkyZTY4ODA0YThmYjFkYzkwYjg0ZTY5ZjVmZSIsCiAgInByb2ZpbGVOYW1lIiA6ICJPbG8xNjA2IiwKICAic2lnbmF0dXJlUmVxdWlyZWQiIDogdHJ1ZSwKICAidGV4dHVyZXMiIDogewogICAgIlNLSU4iIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzhmZjdjNDEwYTRhOGI0YjUxOGI5NGQyMTQwMmQyODkyZmNjOGZhNjhjMzAyODQxN2RkNGVhYThiN2UzNWM1NjgiCiAgICB9CiAgfQp9", "name": "§dStrengthened Manticore Claw", "unique": true, "lore": ["§7Health: §c+2", "§7Defense: §a+10 §9(+10)", "§7True Defense: §f+1", "§7Strength: §c+57 §9(+7)", "§7Crit Damage: §9+10%", "§7Attack Speed: §e+7.5%", "", "§d§l§ka §d§lMYTHIC GLOVES §d§l§ka"]},
+    "HYPERION": {
+      "material": "IRON_SWORD",
+      "name": "§dHeroic Hyperion §6✪✪✪✪✪",
+      "unique": true,
+      "lore": [
+        "§7Gear Score: §d1018",
+        "§7Damage: §c+364 §e(+30)",
+        "§7Strength: §c+250 §e(+30) §9(Heroic +50)",
+        "§7Intelligence: §a+650 §9(Heroic +125)",
+        "",
+        "§aScroll Abilities:",
+        "§6Ability: Wither Impact  §e§lRIGHT CLICK",
+        "§7Teleports §a10 blocks§7 ahead of you.",
+        "§8Mana Cost: §3150",
+        "",
+        "§d§l§kU§r §d§lMYTHIC DUNGEON SWORD §d§l§kU"
+      ],
+      "customData": {
+        "modifier": "heroic",
+        "upgrade_level": 5,
+        "rarity_upgrades": 1,
+        "hot_potato_count": 15,
+        "ability_scroll": ["IMPLOSION_SCROLL", "WITHER_SHIELD_SCROLL", "SHADOW_WARP_SCROLL"]
+      }
+    },
+    "ASPECT_OF_THE_END": {
+      "material": "DIAMOND_SWORD",
+      "name": "§9Aspect of the End",
+      "unique": true,
+      "lore": [
+        "§7Damage: §c+100",
+        "§7Strength: §c+100",
+        "",
+        "§6Ability: Instant Transmission  §e§lRIGHT CLICK",
+        "§7Teleport §a8 blocks§7 ahead of you and",
+        "§7gain §a+50 §f✦ Speed§7 for §a3 seconds§7.",
+        "§8Mana Cost: §350",
+        "",
+        "§9§lRARE SWORD"
+      ]
+    },
+    "ENDER_PEARL": {
+      "material": "ENDER_PEARL",
+      "name": "§fEnder Pearl",
+      "lore": ["§f§lCOMMON"]
+    },
+    "ENCHANTED_ENDER_PEARL": {
+      "material": "ENDER_PEARL",
+      "name": "§aEnchanted Ender Pearl",
+      "glint": true,
+      "lore": ["§eRight-click to view recipes!", "", "§a§lUNCOMMON"]
+    },
+    "SUMMONING_EYE": {
+      "material": "PLAYER_HEAD",
+      "name": "§5Summoning Eye",
+      "lore": ["§7Use this at the §5Ender Altar", "§7in the §5Dragon's Nest§7 to", "§7summon Ender Dragons!", "", "§5§lEPIC"]
+    },
+    "GRAPPLING_HOOK": {
+      "material": "FISHING_ROD",
+      "name": "§aGrappling Hook",
+      "unique": true,
+      "lore": ["§7Travel around in style using", "§7this Grappling Hook.", "§82 Second Cooldown", "", "§a§lUNCOMMON"]
+    },
+    "SKYBLOCK_MENU": {
+      "material": "NETHER_STAR",
+      "name": "§aSkyBlock Menu §7(Click)",
+      "lore": ["§7View all of your SkyBlock", "§7progress, including your Skills,", "§7Collections, Recipes, and more!", "", "§eClick to open!"]
+    },
+    "PET_GOLDEN_DRAGON": {
+      "id": "PET",
+      "material": "PLAYER_HEAD",
+      "name": "§7[Lvl 100] §6Golden Dragon",
+      "unique": true,
+      "lore": [
+        "§8Combat Pet",
+        "",
+        "§7Strength: §c+50",
+        "§7Bonus Attack Speed: §e+25%",
+        "",
+        "§6Gold's Power",
+        "§7Adds §c+1 ❁ Strength§7 for every digit",
+        "§7in your bank balance.",
+        "",
+        "§6§lLEGENDARY"
+      ],
+      "petInfo": {
+        "type": "GOLDEN_DRAGON",
+        "active": true,
+        "exp": 25353230.0,
+        "tier": "LEGENDARY",
+        "hideInfo": false,
+        "candyUsed": 0,
+        "uuid": "{uuid}",
+        "uniqueId": "{uuid}",
+        "hideRightClick": false,
+        "noMove": false
+      }
+    },
+    "PET_ENDER_DRAGON": {
+      "id": "PET",
+      "material": "PLAYER_HEAD",
+      "name": "§7[Lvl 100] §5Ender Dragon",
+      "unique": true,
+      "lore": ["§8Combat Pet", "", "§7Crit Damage: §c+50", "§7Strength: §c+50", "", "§5§lEPIC"],
+      "petInfo": {
+        "type": "ENDER_DRAGON",
+        "active": false,
+        "exp": 25353230.0,
+        "tier": "EPIC",
+        "hideInfo": false,
+        "candyUsed": 0,
+        "uuid": "{uuid}",
+        "uniqueId": "{uuid}",
+        "hideRightClick": false,
+        "noMove": false
+      }
+    },
+    "POWER_WITHER_CHESTPLATE": {
+      "material": "LEATHER_CHESTPLATE",
+      "color": "#E7413C",
+      "name": "§dAncient Necron's Chestplate §6✪✪✪✪✪",
+      "unique": true,
+      "lore": ["§7Gear Score: §d897", "§7Strength: §c+40", "§7Health: §a+260", "§7Defense: §a+140", "", "§d§l§kU§r §d§lMYTHIC DUNGEON CHESTPLATE §d§l§kU"],
+      "customData": { "modifier": "ancient", "upgrade_level": 5, "rarity_upgrades": 1 }
+    },
+    "DWARVEN_METAL_DETECTOR": {
+      "material": "PRISMARINE_CRYSTALS",
+      "name": "§5Metal Detector",
+      "unique": true,
+      "lore": ["§7Find treasures in the §bMines of Divan§7.", "", "§5§lEPIC"]
+    },
+    "DWARVEN_LAPIS_SWORD": { "material": "IRON_SWORD", "name": "§9Scavenged Lapis Sword", "lore": ["§9§lRARE SWORD"] },
+    "DWARVEN_DIAMOND_AXE": { "material": "DIAMOND_AXE", "name": "§9Scavenged Diamond Axe", "lore": ["§9§lRARE AXE"] },
+    "DWARVEN_EMERALD_HAMMER": { "material": "GOLDEN_PICKAXE", "name": "§9Scavenged Emerald Hammer", "lore": ["§9§lRARE PICKAXE"] },
+    "DWARVEN_GOLD_HAMMER": { "material": "GOLDEN_PICKAXE", "name": "§9Scavenged Golden Hammer", "lore": ["§9§lRARE PICKAXE"] }
+  },
+
+  "menus": {
+    "storage_1": {
+      "title": "Ender Chest (1/2)",
+      "rows": 6,
+      "slots": {
+        "53": { "material": "ARROW", "action": "swap:storage_2", "name": "§aNext Page", "lore": ["§eClick to view!"] }
+      }
+    },
+    "storage_2": {
+      "title": "Ender Chest (2/2)",
+      "rows": 6,
+      "slots": {
+        "45": { "material": "ARROW", "action": "swap:storage_1", "name": "§aPrevious Page", "lore": ["§eClick to view!"] }
+      }
+    },
+    "skyblock_menu": {
+      "title": "SkyBlock Menu",
+      "rows": 6,
+      "filler": "BLACK_STAINED_GLASS_PANE",
+      "slots": {
+        "13": { "material": "PLAYER_HEAD", "action": "open:equipment", "name": "§aYour SkyBlock Profile", "lore": ["§7View your equipment, stats,", "§7and more!", "", "§eClick to view!"] },
+        "19": { "material": "DIAMOND_SWORD", "name": "§aYour Skills", "lore": ["§7View your Skill progression and", "§7rewards.", "", "§655.0 Skill Avg.", "", "§eClick to view!"] },
+        "20": { "material": "PAINTING", "name": "§aCollections", "lore": ["§7View all of the items available", "§7in SkyBlock.", "", "§eClick to view!"] },
+        "21": { "material": "BOOK", "name": "§aRecipe Book", "lore": ["§7Through your adventure, you will", "§7unlock recipes for all kinds of", "§7special items!", "", "§eClick to view!"] },
+        "22": { "material": "EMERALD", "name": "§aSkyBlock Leveling", "lore": ["§7Your SkyBlock Level: §8[§9285§8]", "", "§eClick to view!"] },
+        "23": { "material": "WRITABLE_BOOK", "name": "§aQuest Log", "lore": ["§7View your active quests,", "§7progress, and rewards.", "", "§eClick to view!"] },
+        "24": { "material": "CLOCK", "name": "§aCalendar and Events", "lore": ["§7View the SkyBlock Calendar,", "§7upcoming events, and event", "§7rewards!", "", "§eClick to view!"] },
+        "25": { "material": "CHEST", "name": "§aStorage", "lore": ["§7Store global items that you", "§7want to access at any time.", "", "§eClick to view!"] },
+        "30": { "material": "BONE", "action": "open:pets", "name": "§aPets", "lore": ["§7View and manage all of your", "§7Pets.", "", "§7Selected pet: §6Golden Dragon", "", "§eClick to view!"] },
+        "31": { "material": "CRAFTING_TABLE", "name": "§aCrafting Table", "lore": ["§7Opens the crafting grid.", "", "§eClick to open!"] },
+        "32": { "material": "LEATHER_CHESTPLATE", "name": "§aWardrobe", "lore": ["§7Store armor sets and quickly", "§7swap between them!", "", "§eClick to view!"] },
+        "48": { "material": "NAME_TAG", "name": "§aProfile Management", "lore": ["§7Create, delete, and switch", "§7between profiles.", "", "§eClick to manage!"] },
+        "49": { "material": "BARRIER", "name": "§cClose", "action": "close" },
+        "50": { "material": "REDSTONE_TORCH", "name": "§aSettings", "lore": ["§7View and edit your SkyBlock", "§7settings.", "", "§eClick to view!"] }
+      }
+    },
+    "equipment": {
+      "title": "Your Equipment and Stats",
+      "rows": 6,
+      "filler": "BLACK_STAINED_GLASS_PANE",
+      "slots": {
+        "10": "RIFT_NECKLACE_OUTSIDE",
+        "11": { "material": "PLAYER_HEAD", "name": "§dAncient Necron's Helmet §6✪✪✪✪✪", "unique": true, "id": "POWER_WITHER_HELMET", "lore": ["§d§l§kU§r §d§lMYTHIC DUNGEON HELMET §d§l§kU"] },
+        "19": "DAVIDS_CLOAK",
+        "20": "POWER_WITHER_CHESTPLATE",
+        "28": { "material": "GRAY_DYE", "name": "§7Empty Belt Slot", "lore": ["§7Equip a belt to fill this slot."] },
+        "29": { "material": "LEATHER_LEGGINGS", "color": "#E7413C", "name": "§dAncient Necron's Leggings §6✪✪✪✪✪", "unique": true, "id": "POWER_WITHER_LEGGINGS", "lore": ["§d§l§kU§r §d§lMYTHIC DUNGEON LEGGINGS §d§l§kU"] },
+        "37": "MANTICORE_CLAW",
+        "38": { "material": "LEATHER_BOOTS", "color": "#E7413C", "name": "§dAncient Necron's Boots §6✪✪✪✪✪", "unique": true, "id": "POWER_WITHER_BOOTS", "lore": ["§d§l§kU§r §d§lMYTHIC DUNGEON BOOTS §d§l§kU"] },
+        "47": "PET_GOLDEN_DRAGON",
+        "49": { "material": "ARROW", "name": "§aGo Back", "action": "open:skyblock_menu", "lore": ["§7To SkyBlock Menu"] },
+        "50": { "material": "BARRIER", "name": "§cClose", "action": "close" }
+      }
+    },
+    "loadouts": {
+      "title": "(1/3) Loadouts",
+      "rows": 6,
+      "filler": "BLACK_STAINED_GLASS_PANE",
+      "slots": {
+        "9": { "material": "PLAYER_HEAD", "name": "§aHeart of the Forest Slot", "lore": ["§7Quickly swap between saved trees.", "", "§7Current: §aHeart of the Forest 2", "", "§eClick to view!"] },
+        "10": "RIFT_NECKLACE_OUTSIDE",
+        "14": { "material": "PLAYER_HEAD", "name": "§aLoadout 1", "lore": ["§7Helmet: §6Renowned Crown of Avarice", "", "§eClick to equip!"] },
+        "18": { "material": "PLAYER_HEAD", "name": "§aHeart of the Mountain Slot", "lore": ["§7Quickly swap between saved trees.", "", "§eClick to view!"] },
+        "19": "DAVIDS_CLOAK",
+        "20": "POWER_WITHER_CHESTPLATE",
+        "21": "PET_GOLDEN_DRAGON",
+        "27": { "material": "PAPER", "name": "§aPower Stone", "lore": ["§7Choose your selected Power Stone.", "", "§7Current: §aHurtful"] },
+        "28": "THE_PRIMORDIAL",
+        "36": { "material": "COMPARATOR", "name": "§aStats Tuning", "lore": ["§7Optimize your build to your liking by using", "§7Tuning Points."] },
+        "37": "MANTICORE_CLAW",
+        "44": { "material": "ARROW", "name": "§aNext Page", "lore": ["§ePage 2"] },
+        "49": { "material": "BARRIER", "name": "§cClose", "action": "close" }
+      }
+    },
+    "pets": {
+      "title": "Pets",
+      "rows": 6,
+      "filler": "BLACK_STAINED_GLASS_PANE",
+      "slots": {
+        "4": { "material": "BONE", "name": "§aPets", "lore": ["§7View and manage all of your", "§7Pets.", "", "§7Pet Score Bonus: §d+12 ✯ Magic Find"] },
+        "10": "PET_GOLDEN_DRAGON",
+        "11": "PET_ENDER_DRAGON",
+        "48": { "material": "ARROW", "name": "§aGo Back", "action": "open:skyblock_menu", "lore": ["§7To SkyBlock Menu"] },
+        "49": { "material": "BARRIER", "name": "§cClose", "action": "close" }
+      }
+    },
+    "bazaar": {
+      "title": "Bazaar ➜ Mining",
+      "rows": 6,
+      "filler": "GRAY_STAINED_GLASS_PANE",
+      "slots": {
+        "0": { "material": "GOLDEN_HOE", "name": "§eFarming", "lore": ["§8Category", "", "§eClick to view!"] },
+        "9": { "material": "DIAMOND_PICKAXE", "name": "§bMining", "lore": ["§8Category", "", "§aCurrently viewing!"] },
+        "18": { "material": "IRON_SWORD", "name": "§cCombat", "lore": ["§8Category", "", "§eClick to view!"] },
+        "27": { "material": "FISHING_ROD", "name": "§6Woods & Fishes", "lore": ["§8Category", "", "§eClick to view!"] },
+        "36": { "material": "ENCHANTING_TABLE", "name": "§dOddities", "lore": ["§8Category", "", "§eClick to view!"] },
+        "11": { "material": "COBBLESTONE", "name": "§aCobblestone", "lore": ["§8Mining Product", "", "§7Buy price: §61.3 coins", "§7Sell price: §61.1 coins", "", "§eClick to view details!"] },
+        "12": { "material": "DIAMOND", "name": "§aDiamond", "lore": ["§8Mining Product", "", "§7Buy price: §69.2 coins", "§7Sell price: §68.7 coins", "", "§eClick to view details!"] },
+        "13": { "material": "DIAMOND_BLOCK", "name": "§aEnchanted Diamond", "glint": true, "lore": ["§8Mining Product", "", "§7Buy price: §61,512.4 coins", "§7Sell price: §61,480.0 coins", "", "§eClick to view details!"] },
+        "14": { "material": "PRISMARINE_SHARD", "name": "§aMithril", "lore": ["§8Mining Product", "", "§7Buy price: §610.1 coins", "§7Sell price: §69.6 coins", "", "§eClick to view details!"] },
+        "49": { "material": "BARRIER", "name": "§cClose", "action": "close" }
+      }
+    },
+    "auction_house": {
+      "title": "Auction House",
+      "rows": 4,
+      "filler": "BLACK_STAINED_GLASS_PANE",
+      "slots": {
+        "11": { "material": "GOLD_BLOCK", "name": "§6Auctions Browser", "lore": ["§7Find items for sale by players", "§7across Hypixel SkyBlock!", "", "§eClick to browse!"] },
+        "13": { "material": "GOLDEN_CARROT", "name": "§eView Bids", "lore": ["§7You don't have any outstanding", "§7bids.", "", "§eClick to view!"] },
+        "15": { "material": "GOLDEN_HORSE_ARMOR", "name": "§aCreate Auction", "lore": ["§7Set your own items on auction", "§7for other players to purchase.", "", "§eClick to become rich!"] },
+        "31": { "material": "BARRIER", "name": "§cClose", "action": "close" }
+      }
+    }
+  }
+}

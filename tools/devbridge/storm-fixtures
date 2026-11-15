@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""Storm fixtures: the signals the F7 boss helpers read, cut from a dev bridge recording.
+
+    tools/devbridge/storm-fixtures <recording.rec.ndjson.zst[,part2…]> <out.ndjson.gz> [fight]
+
+One compact line per event, `t` = client arrival in ms:
+  {"t":…,"k":"time","gt":N}                      set_time (the server clock's only input)
+  {"t":…,"k":"chat","s":"…"}                     boss lines and P2/P3 status lines, raw (with § codes)
+  {"t":…,"k":"title","s":"…"}                    title text (the Giga countdown digits)
+  {"t":…,"k":"sound","id":"…","x":…,"y":…,"z":…,"v":…}   pillar sounds in the Storm room (block coords)
+  {"t":…,"k":"wither","id":N,"x":…,"y":…,"z":…}  a wither's absolute position after each update (P2 only)
+  {"t":…,"k":"gone","id":N}                      a wither left tracking range
+  {"t":…,"k":"fireball","id":N,"x":…,"y":…,"z":…} a fireball entity added (P2 only; Storm's high-phase shots)
+  {"t":…,"k":"self","x":…,"y":…,"z":…}           the player's own position (P2 only, every 2 client ticks)
+  {"t":…,"k":"bar","p":…}                         the Storm boss bar's progress (add / progress updates)
+  {"t":…,"k":"falling","x":…,"y":…,"z":…}         a falling_block added at the Storm pad after P2's end line
+                                                  (the P2→P3 floor collapse; the first of each burst only)
+Parts of one recording are read in order (comma-separated). [fight] (1-based, default 1) picks the
+fight: the cut starts 30 s before its `Pathetic Maxor` line and ends at the next one.
+Used by StormFixturesTest (src/test/resources/storm/).
+"""
+import gzip
+import json
+import re
+import subprocess
+import sys
+
+SOUNDS = {
+    "minecraft:block.piston.extend",
+    "minecraft:block.piston.contract",
+    "minecraft:entity.iron_golem.hurt",
+    "minecraft:entity.zombie.break_wooden_door",
+    "minecraft:entity.wither.shoot",
+}
+CHAT_KEYS = ("[BOSS]", "Giga Lightning", "enraged", "Core entrance", "Lightning Fireball", "saved your life",
+             "saved you from certain death", "became a ghost", "Revive Stone revived")
+LEAD_MS = 30000
+
+
+def strip(s):
+    return re.sub("§.", "", s or "")
+
+
+def lines(srcs):
+    for src in srcs:
+        proc = subprocess.Popen(["zstd", "-dc", src], stdout=subprocess.PIPE, text=True)
+        try:
+            yield from proc.stdout
+        finally:
+            proc.kill()
+            proc.wait()
+
+
+def main(srcs, dst, fight):
+    out = []
+    withers = {}
+    pos = {}
+    p2 = False
+    p2_end = None
+    started = False
+    seen = 0
+    last_fall = None
+    for line in lines(srcs):
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        kind = o.get("kind")
+        d = o.get("data") or {}
+        t = o.get("t")
+        if kind == "chat":
+            s = d.get("text") or ""
+            if any(k in s for k in CHAT_KEYS):
+                if "Pathetic Maxor" in s:
+                    seen += 1
+                    if started:
+                        break
+                    if seen == fight:
+                        out = [e for e in out if e["t"] >= t - LEAD_MS]
+                        p2_end = None
+                out.append({"t": t, "k": "chat", "s": s})
+                if "Pathetic Maxor" in s and seen == fight:
+                    started = True
+                    p2 = True
+                if "I should have known" in s:
+                    p2_end = t
+            continue
+        if kind == "bossbar" and started and "Storm" in strip(d.get("name")) and d.get("op") in ("add", "progress"):
+            out.append({"t": t, "k": "bar", "p": d.get("progress")})
+            continue
+        if kind == "title" and d.get("type") == "title":
+            out.append({"t": t, "k": "title", "s": d.get("text") or ""})
+            continue
+        if kind == "self" and p2:
+            x, y, z = d["pos"]
+            out.append({"t": t, "k": "self", "x": round(x, 3), "y": round(y, 3), "z": round(z, 3)})
+            continue
+        if kind != "packet":
+            continue
+        typ = d.get("type")
+        pk = d.get("data") or {}
+        t = d.get("t", t)
+        if typ == "minecraft:set_time":
+            out.append({"t": t, "k": "time", "gt": pk["gameTime"]})
+            continue
+        if p2_end is not None and t > p2_end + 5000:
+            p2 = False
+        if typ == "minecraft:sound" and isinstance(pk.get("sound"), str) and pk["sound"] in SOUNDS:
+            x, y, z = pk["x"] / 8.0, pk["y"] / 8.0, pk["z"] / 8.0
+            if 20 <= x <= 125 and 160 <= y <= 200 and 0 <= z <= 110:
+                out.append({"t": t, "k": "sound", "id": pk["sound"].split(":", 1)[1], "x": x, "y": y, "z": z, "v": pk["volume"]})
+            continue
+        if typ == "minecraft:add_entity" and pk.get("type") == "minecraft:falling_block":
+            if p2_end is not None and 90 <= pk["x"] <= 112 and 30 <= pk["z"] <= 52 and pk["y"] > 160:
+                if last_fall is None or t - last_fall > 1000:
+                    out.append({"t": t, "k": "falling", "x": round(pk["x"], 2), "y": round(pk["y"], 2), "z": round(pk["z"], 2)})
+                last_fall = t
+            continue
+        if typ == "minecraft:add_entity":
+            if pk.get("type") == "minecraft:fireball" and p2:
+                out.append({"t": t, "k": "fireball", "id": pk["id"], "x": round(pk["x"], 2), "y": round(pk["y"], 2), "z": round(pk["z"], 2)})
+                continue
+            if pk.get("type") == "minecraft:wither":
+                withers[pk["id"]] = True
+                pos[pk["id"]] = [pk["x"], pk["y"], pk["z"]]
+                if p2:
+                    emit(out, t, pk["id"], pos)
+            continue
+        if typ == "minecraft:remove_entities":
+            for i in pk.get("entityIds", []):
+                if i in withers:
+                    pos.pop(i, None)
+                    if p2:
+                        out.append({"t": t, "k": "gone", "id": i})
+            continue
+        if typ == "minecraft:entity_position_sync":
+            i = pk.get("id")
+            if i in pos:
+                p = pk["values"]["position"]
+                pos[i] = [p["x"], p["y"], p["z"]]
+                if p2:
+                    emit(out, t, i, pos)
+            continue
+        if typ in ("minecraft:move_entity_pos", "minecraft:move_entity_pos_rot"):
+            i = pk.get("entityId")
+            if i in pos:
+                p = pos[i]
+                p[0] += pk["xa"] / 4096.0
+                p[1] += pk["ya"] / 4096.0
+                p[2] += pk["za"] / 4096.0
+                if p2:
+                    emit(out, t, i, pos)
+            continue
+        if typ == "minecraft:teleport_entity":
+            i = pk.get("id")
+            if i in pos:
+                p = pk["change"]["position"]
+                pos[i] = [p["x"], p["y"], p["z"]]
+                if p2:
+                    emit(out, t, i, pos)
+    with gzip.open(dst, "wt") as f:
+        for e in out:
+            f.write(json.dumps(e, separators=(",", ":"), ensure_ascii=False) + "\n")
+    print(f"{dst}: {len(out)} events")
+
+
+def emit(out, t, i, pos):
+    x, y, z = pos[i]
+    out.append({"t": t, "k": "wither", "id": i, "x": round(x, 3), "y": round(y, 3), "z": round(z, 3)})
+
+
+if __name__ == "__main__":
+    if len(sys.argv) not in (3, 4):
+        sys.exit(__doc__)
+    main(sys.argv[1].split(","), sys.argv[2], int(sys.argv[3]) if len(sys.argv) == 4 else 1)

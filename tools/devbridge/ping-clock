@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""Ping clock: are the server's pings one per server tick, and which ones? Settles how Odin's tick timers stay right.
+
+    tools/devbridge/ping-clock <recording.rec.ndjson.zst[,part2…]>
+
+Odin counts `ClientboundPingPacket`s (id != 0) at `Connection.channelRead0`, where a bundle is still one packet, so it
+never sees the pings inside bundles. Recordings mark bundle sub-packets with `"bundle": n` (dev bridge, 2026-11-13);
+older ones do not, and then only the all-pings line means anything.
+
+Prints, per kind of ping (lone, bundled, all): the count against the `set_time` game ticks over the recording and
+the spread per 20-tick `set_time` interval (one per tick = 20 every interval, no drift). Then, per Goldor phase,
+each direct check (`☠ X died and became a ghost.` or the death-zone line) as Odin would show it (lone pings since
+`Who dares` mod 60) next to `set_time` ticks since `Who dares` and the floor collapse grid.
+"""
+import bisect
+import collections
+import json
+import re
+import subprocess
+import sys
+
+WD = "[BOSS] Goldor: Who dares trespass into my domain?"
+DZ = "[BOSS] Goldor: What do you think you are doing there!"
+STORM_END = "[BOSS] Storm: I should have known that I stood no chance."
+DEATH = re.compile(r"^☠ \S+ died and became a ghost\.$")
+CODES = re.compile("§.")
+
+
+def lines(paths):
+    for p in paths:
+        cmd = ["zstdcat", p] if p.endswith(".zst") else ["zcat", p]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, bufsize=1 << 20)
+        try:
+            yield from proc.stdout
+        finally:
+            proc.kill()
+            proc.wait()
+
+
+def main():
+    if len(sys.argv) != 2:
+        sys.exit(__doc__)
+    packets = []  # (seq, t, kind, value, bundled)
+    chat = []
+    for raw in lines(sys.argv[1].split(",")):
+        if b'"kind":"chat"' in raw:
+            o = json.loads(raw)
+            chat.append((o["t"], CODES.sub("", o["data"]["text"]).strip()))
+            continue
+        if b'"kind":"packet"' not in raw or b'"dir":"in"' not in raw:
+            continue
+        if b'"minecraft:ping"' in raw:
+            d = json.loads(raw)["data"]
+            if d["data"].get("id", 0) != 0:
+                packets.append((d["seq"], d["t"], "ping", None, "bundle" in d))
+        elif b'"minecraft:set_time"' in raw:
+            d = json.loads(raw)["data"]
+            packets.append((d["seq"], d["t"], "time", d["data"]["gameTime"], False))
+        elif b'"minecraft:falling_block"' in raw and b'"minecraft:add_entity"' in raw:
+            d = json.loads(raw)["data"]
+            e = d["data"]
+            if 90 <= e["x"] <= 112 and 30 <= e["z"] <= 52 and e["y"] > 160:
+                packets.append((d["seq"], d["t"], "falling", None, False))
+    packets.sort()
+    marked = any(p[4] for p in packets if p[2] == "ping")
+    print(f"bundle membership recorded: {'yes' if marked else 'no (older recording: lone/bundled cannot be told apart)'}")
+
+    kinds = {"lone": lambda b: not b, "bundled": lambda b: b, "all": lambda b: True}
+    times = [(p[1], p[3]) for p in packets if p[2] == "time"]
+    st_t = [t for t, _ in times]
+    for name, want in kinds.items():
+        n, rows, spread = 0, [], collections.Counter()
+        for p in packets:
+            if p[2] == "ping" and want(p[4]):
+                n += 1
+            elif p[2] == "time":
+                rows.append((p[3], n))
+        pings = ticks = 0
+        for (g0, n0), (g1, n1) in zip(rows, rows[1:]):
+            if 0 < g1 - g0 <= 40:
+                spread[(n1 - n0) - (g1 - g0)] += 1
+                pings += n1 - n0
+                ticks += g1 - g0
+        if ticks:
+            exact = spread[0] / sum(spread.values())
+            print(f"{name:8s} {pings} pings / {ticks} ticks = {pings / ticks:.4f}; intervals exact {exact:.1%}; "
+                  f"extra per 20 ticks {dict(sorted(spread.items())[:12])}")
+
+    def tick_at(t):
+        i = bisect.bisect_right(st_t, t)
+        if i == 0 or i >= len(times):
+            return None
+        (t0, g0), (t1, g1) = times[i - 1], times[i]
+        return g0 + (g1 - g0) * (t - t0) / (t1 - t0) if t1 > t0 else g0
+
+    lone_t = [p[1] for p in packets if p[2] == "ping" and not p[4]]
+    falling = [p[1] for p in packets if p[2] == "falling"]
+    end = wd = None
+    last_check = -1
+    for t, s in chat:
+        if s == STORM_END:
+            end, wd = t, None
+        elif s == WD and end is not None and wd is None:
+            wd = t
+            col = next((f for f in falling if end < f <= wd), None)
+            gwd = tick_at(wd)
+            print(f"\nWho dares at set_time {gwd:.1f}" + (f", floor collapse WD-{gwd - tick_at(col):.1f}" if col else ""))
+        elif wd is not None and (s == DZ or DEATH.match(s)) and t - last_check > 160:
+            last_check = t
+            gwd, gc = tick_at(wd), tick_at(t)
+            if gwd is None or gc is None:
+                continue
+            lone = bisect.bisect_right(lone_t, t) - bisect.bisect_right(lone_t, wd)
+            odin = (lone + 30) % 60 - 30
+            grid = ""
+            if col:
+                x = (gc - (tick_at(col) + 61.4) + 30) % 60 - 30
+                grid = f", collapse grid {x:+.1f}"
+            print(f"  check WD+{gc - gwd:.1f} ticks ({s[:28]}): lone pings since WD {lone} (Odin {odin:+d}), "
+                  f"WD+60k {(gc - gwd + 30) % 60 - 30:+.1f}{grid}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,14 @@
+accessWidener v2 official
+
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen hoveredSlot Lnet/minecraft/world/inventory/Slot;
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen leftPos I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen topPos I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageWidth I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageHeight I
+accessible field net/minecraft/client/gui/Hud overlayMessageString Lnet/minecraft/network/chat/Component;
+accessible field net/minecraft/client/gui/Hud overlayMessageTime I
+accessible field net/minecraft/client/gui/Hud animateOverlayMessageColor Z
+accessible field net/minecraft/client/player/LocalPlayer xLast D
+accessible field net/minecraft/client/player/LocalPlayer yLast D
+accessible field net/minecraft/client/player/LocalPlayer zLast D
+accessible field net/minecraft/client/gui/components/BossHealthOverlay events Ljava/util/Map;

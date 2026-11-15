@@ -1,0 +1,250 @@
+#!/usr/bin/env bash
+# Local Paper 26.2 test server that imitates Hypixel SkyBlock for SoulMod (README.md next to this file).
+# Offline mode, bound to 127.0.0.1:25590 only. Everything it generates lives in run/ and cache/ (gitignored).
+#   s up | down | restart | status | build | cmd "<console command>" | log [lines]
+#   s world install FILE [NAME] | list | rm NAME   dev bridge world captures for /hx world load (plugins/SoulTestKit/worlds/)
+#   s marks install FILE                           marks.ndjson / spots JSON for /hx marks show (plugins/SoulTestKit/marks/)
+set -euo pipefail
+
+HERE=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+REPO=$(cd "$HERE/../.." && pwd)
+MC_VERSION=26.2
+HOST=127.0.0.1
+PORT=25590
+TESTER=SoulTester
+# Always op on every start, besides the test bot: the user's own account (user, 2026-11-12).
+OPS=("$TESTER" SoulReturns)
+JAVA=${SOUL_TESTSERVER_JAVA:-/usr/lib/jvm/java-25-openjdk/bin/java}
+RUN=$HERE/run
+CACHE=$HERE/cache
+PLUGIN=$HERE/plugin
+FIFO=$RUN/console.in
+CONSOLE=$RUN/console.log
+PIDFILE=$RUN/server.pid
+UA="SoulMod-testserver (local test tooling; github.com/SoulReturns)"
+READY_TIMEOUT=${READY_TIMEOUT:-240}
+
+die() { echo "s: $*" >&2; exit 1; }
+say() { echo "s: $*" >&2; }
+
+pid() {
+    local p
+    [[ -f $PIDFILE ]] || return 1
+    p=$(<"$PIDFILE")
+    [[ -n $p && -d /proc/$p ]] || return 1
+    # A recycled pid must not pass for the server.
+    tr '\0' ' ' <"/proc/$p/cmdline" | grep -q -- "-jar" || return 1
+    echo "$p"
+}
+running() { pid >/dev/null; }
+ready() { running && grep -q 'Done (' "$CONSOLE" 2>/dev/null; }
+port_busy() { ss -Hltn "sport = :$PORT" | grep -q .; }
+
+# Serialises up/down/restart between agents. The descriptor is closed for the server process (9<&-),
+# so a running server never holds the lock.
+take_lock() {
+    mkdir -p "$RUN"
+    exec 9>>"$RUN/.s.lock"
+    flock -w 300 9 || die "another s up/down holds $RUN/.s.lock for 300 s"
+}
+
+# Latest Paper build for $MC_VERSION from the PaperMC (Fill v3) downloads API, sha256 verified.
+# Offline with a cached jar: keep using the cached one.
+fetch_paper() {
+    mkdir -p "$CACHE"
+    local meta name sha url tmp
+    if ! meta=$(curl -fsS --max-time 20 -A "$UA" \
+        "https://fill.papermc.io/v3/projects/paper/versions/$MC_VERSION/builds/latest"); then
+        [[ -e $CACHE/paper.jar ]] || die "PaperMC API unreachable and no cached jar"
+        say "PaperMC API unreachable, using cached $(readlink "$CACHE/paper.jar")"
+        return
+    fi
+    name=$(jq -r '.downloads["server:default"].name' <<<"$meta")
+    sha=$(jq -r '.downloads["server:default"].checksums.sha256' <<<"$meta")
+    url=$(jq -r '.downloads["server:default"].url' <<<"$meta")
+    [[ $name == paper-*.jar && ${#sha} == 64 && $url == https://* ]] || die "unexpected PaperMC API answer: $meta"
+    if ! { [[ -f $CACHE/$name ]] && echo "$sha  $CACHE/$name" | sha256sum -c --quiet - 2>/dev/null; }; then
+        say "downloading $name"
+        tmp=$CACHE/.$name.part
+        curl -fsSL --max-time 600 -A "$UA" -o "$tmp" "$url"
+        echo "$sha  $tmp" | sha256sum -c --quiet - || { rm -f "$tmp"; die "checksum mismatch for $name"; }
+        mv "$tmp" "$CACHE/$name"
+    fi
+    ln -sfn "$name" "$CACHE/paper.jar"
+}
+
+# Paperclip unpacks the patched server and its libraries into run/ (versions/, libraries/);
+# the plugin compiles against exactly those jars.
+unpack_paper() {
+    mkdir -p "$RUN"
+    (cd "$RUN" && "$JAVA" -Dpaperclip.patchonly=true -jar "$CACHE/paper.jar" >"$RUN/paperclip.log" 2>&1) \
+        || { cat "$RUN/paperclip.log" >&2; die "paperclip failed"; }
+}
+
+build_plugin() {
+    say "building SoulTestKit"
+    "$REPO/gradlew" -q -p "$PLUGIN" build -PpaperServerDir="$RUN" 9<&- \
+        || die "plugin build failed"
+    mkdir -p "$RUN/plugins"
+    cp "$PLUGIN/build/libs/SoulTestKit.jar" "$RUN/plugins/SoulTestKit.jar"
+}
+
+offline_uuid() {
+    python3 - "$1" <<'EOF'
+import hashlib, sys, uuid
+h = bytearray(hashlib.md5(("OfflinePlayer:" + sys.argv[1]).encode()).digest())
+h[6] = (h[6] & 0x0F) | 0x30
+h[8] = (h[8] & 0x3F) | 0x80
+print(uuid.UUID(bytes=bytes(h)))
+EOF
+}
+
+# server.properties is rewritten on every start; keys not listed here keep Paper's defaults.
+write_config() {
+    mkdir -p "$RUN"
+    echo "eula=true" >"$RUN/eula.txt"
+    cat >"$RUN/server.properties" <<EOF
+online-mode=false
+server-ip=$HOST
+server-port=$PORT
+level-name=world
+level-type=minecraft\:flat
+generate-structures=false
+allow-nether=false
+difficulty=peaceful
+gamemode=survival
+force-gamemode=true
+spawn-protection=0
+allow-flight=true
+white-list=false
+enforce-whitelist=false
+enforce-secure-profile=false
+enable-rcon=false
+enable-query=false
+max-players=8
+view-distance=6
+simulation-distance=4
+motd=SoulMod test server (fake SkyBlock, local only)
+EOF
+    local entries=() name
+    for name in "${OPS[@]}"; do
+        entries+=("$(printf '{"uuid":"%s","name":"%s","level":4,"bypassesPlayerLimit":true}' "$(offline_uuid "$name")" "$name")")
+    done
+    (IFS=,; printf '[%s]\n' "${entries[*]}") >"$RUN/ops.json"
+}
+
+start() {
+    if ready; then say "already running (pid $(pid)); 's restart' picks up plugin changes"; return; fi
+    if running; then say "already starting (pid $(pid))"; wait_ready; return; fi
+    port_busy && die "port $PORT is taken by another process: $(ss -Hltnp "sport = :$PORT")"
+    [[ -x $JAVA ]] || die "Java 25 not found at $JAVA"
+    fetch_paper
+    unpack_paper
+    build_plugin
+    write_config
+    rm -f "$FIFO"
+    mkfifo "$FIFO"
+    : >"$CONSOLE"
+    say "starting Paper $(readlink "$CACHE/paper.jar") on $HOST:$PORT"
+    # setsid -f detaches at once; no process of this script keeps the caller's stdout/stderr or the lock.
+    # Opening the FIFO read-write keeps a writer alive, so stdin never hits EOF between `s cmd` calls.
+    rm -f "$PIDFILE"
+    (cd "$RUN" && exec setsid -f bash -c '
+        echo $$ >"$1"
+        exec 3<>"$2"
+        exec "$3" -Xms1G -Xmx2G -Dterminal.jline=false -Dterminal.ansi=false \
+            -jar "$4" nogui <&3 >>"$5" 2>&1
+    ' _ "$PIDFILE" "$FIFO" "$JAVA" "$CACHE/paper.jar" "$CONSOLE") </dev/null >/dev/null 2>&1 9<&-
+    for _ in $(seq 50); do [[ -s $PIDFILE ]] && break; sleep 0.1; done
+    wait_ready
+}
+
+wait_ready() {
+    local waited=0
+    until grep -q 'Done (' "$CONSOLE" 2>/dev/null; do
+        running || { tail -n 40 "$CONSOLE" >&2; die "server exited during startup"; }
+        ((waited++ < READY_TIMEOUT * 2)) || { tail -n 20 "$CONSOLE" >&2; die "not ready after ${READY_TIMEOUT}s"; }
+        sleep 0.5
+    done
+    say "ready on $HOST:$PORT (pid $(pid))"
+}
+
+stop() {
+    local p
+    if ! p=$(pid); then say "not running"; rm -f "$PIDFILE" "$FIFO"; return; fi
+    say "stopping (pid $p)"
+    timeout 5 bash -c 'printf "stop\n" >"$1"' _ "$FIFO" || true
+    for _ in $(seq 120); do [[ -d /proc/$p ]] || break; sleep 0.5; done
+    if [[ -d /proc/$p ]]; then say "no clean stop after 60 s, sending TERM"; kill "$p" || true; sleep 5; fi
+    [[ -d /proc/$p ]] && kill -9 "$p"
+    rm -f "$PIDFILE" "$FIFO"
+    say "stopped"
+}
+
+status() {
+    if ready; then echo "ready  pid $(pid)  $HOST:$PORT  $(readlink "$CACHE/paper.jar" 2>/dev/null)"
+    elif running; then echo "starting  pid $(pid)"
+    else echo "stopped"; return 3; fi
+}
+
+# Sends one console line and prints what the server logged while handling it.
+cmd() {
+    local line=${*#/} start size last
+    [[ -n $line ]] || die "usage: s cmd \"<console command>\""
+    ready || die "server is not running (s up)"
+    start=$(stat -c %s "$CONSOLE")
+    timeout 5 bash -c 'printf "%s\n" "$2" >"$1"' _ "$FIFO" "$line" || die "console FIFO not writable"
+    last=-1
+    for _ in $(seq 30); do
+        sleep 0.25
+        size=$(stat -c %s "$CONSOLE")
+        ((size > start && size == last)) && break
+        last=$size
+    done
+    tail -c +$((start + 1)) "$CONSOLE"
+}
+
+# Captures are Hypixel's map data: they live in run/ (gitignored), never in the repo.
+install_file() {
+    local kind=$1 file=${2:-} name=${3:-} dest
+    [[ -f $file ]] || die "usage: s $kind install FILE [NAME]"
+    dest=$RUN/plugins/SoulTestKit/$([[ $kind == world ]] && echo worlds || echo marks)
+    mkdir -p "$dest"
+    if [[ $kind == world ]]; then
+        if [[ -z $name ]]; then
+            name=$(basename "$file")
+            name=${name%.soulworld.gz}
+            name=$(sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{2}-[0-9]{2}-[0-9]{2}_?//' <<<"$name")
+            [[ -n $name && $name != latest ]] || name=capture
+        fi
+        [[ $name =~ ^[A-Za-z0-9_.-]+$ ]] || die "name may only hold letters, digits, _ . -"
+        cp -f "$file" "$dest/$name.soulworld.gz"
+        say "installed $dest/$name.soulworld.gz ($(du -h "$dest/$name.soulworld.gz" | cut -f1)); in game: /hx world load $name [entry|latest]"
+    else
+        cp -f "$file" "$dest/$(basename "$file")"
+        say "installed $dest/$(basename "$file"); in game: /hx marks show latest [filter]"
+    fi
+}
+
+world_cmd() {
+    local dest=$RUN/plugins/SoulTestKit/worlds
+    case ${1:-} in
+        install) shift; install_file world "$@" ;;
+        list) ls -lh "$dest" 2>/dev/null || say "no captures installed" ;;
+        rm) [[ -n ${2:-} ]] || die "usage: s world rm NAME"; rm -f "$dest/$2.soulworld.gz" && say "removed $2" ;;
+        *) die "usage: s world install FILE [NAME] | list | rm NAME" ;;
+    esac
+}
+
+case ${1:-} in
+    world) shift; world_cmd "$@" ;;
+    marks) shift; [[ ${1:-} == install ]] || die "usage: s marks install FILE"; shift; install_file marks "$@" ;;
+    up) take_lock; start ;;
+    down) take_lock; stop ;;
+    restart) take_lock; stop; start ;;
+    status) status ;;
+    build) fetch_paper; unpack_paper; build_plugin; say "built; 's restart' loads it" ;;
+    cmd) shift; cmd "$@" ;;
+    log) tail -n "${2:-60}" "$CONSOLE" ;;
+    *) sed -n '2,4p' "$0" >&2; exit 2 ;;
+esac

@@ -1,0 +1,143 @@
+#!/usr/bin/env python3
+"""Goldor's phase start fixtures: the signals around T (when terminals, levers and devices take clicks), cut from a
+dev bridge recording.
+
+    tools/devbridge/phase3-fixtures <recording.rec.ndjson.zst[,part2…]> <out.ndjson.gz> [fight]
+
+One compact line per event, `t` = client arrival in ms:
+  {"t":…,"k":"time","gt":N}                      set_time
+  {"t":…,"k":"chat","s":"…"}                     boss lines, deaths, saves, terminal/lever/device counters and refusals (raw)
+  {"t":…,"k":"strike","y":…}                     thunder at volume >= 1000 over Storm's arena (y >= 150) until the collapse: the first is his death strike
+  {"t":…,"k":"falling","x":…,"y":…,"z":…}         the first falling_block of each burst at the Storm pad (the floor collapse)
+  {"t":…,"k":"self","x":…,"y":…,"z":…}           the player's own position, from 5 s before Storm's end line to 5 s after `Who dares`
+  {"t":…,"k":"open","s":"…"}                     a terminal menu opened for this player (its title)
+  {"t":…,"k":"ping"}                             a lone server ping (one per tick), only from recordings that mark bundles
+Lines are in arrival order: by `t`, packets of one ms in hook order (`seq`), client-thread events after them.
+[fight] (1-based, default 1) picks the fight by its `I should have known…` line; the cut runs from 30 s before it to
+`The Core entrance is opening!` (or the next fight). Used by GoldorStartFixturesTest (src/test/resources/boss/p3/).
+"""
+import gzip
+import json
+import re
+import subprocess
+import sys
+
+STORM_END = "I should have known that I stood no chance"
+WHO_DARES = "Who dares trespass into my domain?"
+CORE = "The Core entrance is opening!"
+CHAT_KEYS = ("[BOSS]", "saved your life", "saved you from certain death", "became a ghost", "activated a", "completed a device",
+             "Terminal", "lever", "Core entrance")
+TERMINAL = re.compile(r"(Select all the|What starts with|Click in order|Correct all the panes|Change all to same color|Click the button on time)")
+LEAD_MS = 30000
+SELF_MS = 5000
+
+
+def strip(s):
+    return re.sub("§.", "", s or "")
+
+
+def lines(srcs):
+    for src in srcs:
+        cmd = ["zstd", "-dc", src] if src.endswith(".zst") else ["zcat", src]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+        try:
+            yield from proc.stdout
+        finally:
+            proc.kill()
+            proc.wait()
+
+
+def main(srcs, dst, fight):
+    out = []
+    seen = 0
+    started = False
+    end_t = wd_t = None
+    last_fall = None
+    marked = False
+    for line in lines(srcs):
+        if '"kind":"packet"' in line and '"dir":"out"' in line:
+            continue
+        if '"kind":"packet"' in line and not any(k in line for k in ('"minecraft:set_time"', '"minecraft:sound"', '"minecraft:add_entity"', '"minecraft:ping"')):
+            continue
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        kind = o.get("kind")
+        d = o.get("data") or {}
+        t = o.get("t")
+        if kind == "chat":
+            s = d.get("text") or ""
+            plain = strip(s)
+            if re.match(r"^(?:(?:Party|Guild|Officer|Co-op) >|From |To )", plain):
+                continue
+            if STORM_END in plain:
+                seen += 1
+                if started:
+                    break
+                if seen == fight:
+                    out = [e for e in out if e["t"] >= t - LEAD_MS]
+                    started = True
+                    end_t = t
+            if not any(k in plain for k in CHAT_KEYS):
+                continue
+            out.append({"t": t, "k": "chat", "s": s})
+            if started and WHO_DARES in plain and wd_t is None:
+                wd_t = t
+            if started and CORE in plain:
+                break
+            continue
+        if kind == "screen_open":
+            title = strip(d.get("title"))
+            if TERMINAL.search(title):
+                out.append({"t": t, "k": "open", "s": title})
+            continue
+        if kind == "self":
+            if end_t is not None and t >= end_t - SELF_MS and (wd_t is None or t <= wd_t + SELF_MS):
+                x, y, z = d["pos"]
+                out.append({"t": t, "k": "self", "x": round(x, 3), "y": round(y, 3), "z": round(z, 3)})
+            elif end_t is None:
+                x, y, z = d["pos"]
+                out.append({"t": t, "k": "self", "x": round(x, 3), "y": round(y, 3), "z": round(z, 3)})
+            continue
+        if kind != "packet":
+            continue
+        typ = d.get("type")
+        pk = d.get("data") or {}
+        t = d.get("t", t)
+        q = d.get("seq")
+        if typ == "minecraft:ping":
+            if "bundle" in d:
+                marked = True
+            elif pk.get("id", 0) != 0:
+                out.append({"t": t, "k": "ping", "q": q})
+        elif typ == "minecraft:set_time":
+            out.append({"t": t, "k": "time", "gt": pk["gameTime"], "q": q})
+        elif typ == "minecraft:sound":
+            if pk.get("sound") == "minecraft:entity.lightning_bolt.thunder" and pk["volume"] >= 1000 and pk["y"] / 8.0 >= 150:
+                if not (end_t is not None and last_fall is not None and last_fall > end_t):
+                    out.append({"t": t, "k": "strike", "y": pk["y"] / 8.0, "q": q})
+        elif typ == "minecraft:add_entity" and pk.get("type") == "minecraft:falling_block":
+            if 90 <= pk["x"] <= 112 and 30 <= pk["z"] <= 52 and pk["y"] > 160:
+                if last_fall is None or t - last_fall > 1000:
+                    out.append({"t": t, "k": "falling", "x": round(pk["x"], 2), "y": round(pk["y"], 2), "z": round(pk["z"], 2), "q": q})
+                last_fall = t
+    # Before the fight's own lead-in only the last 5 s of positions matter.
+    if end_t is not None:
+        out = [e for e in out if e["k"] != "self" or e["t"] >= end_t - SELF_MS]
+    # Unmarked recordings mix the bundled pings in: no tick clock there.
+    if not marked:
+        out = [e for e in out if e["k"] != "ping"]
+    out.sort(key=lambda e: (e["t"], e.get("q", float("inf"))))
+    for e in out:
+        e.pop("q", None)
+    with gzip.open(dst, "wt") as f:
+        for e in out:
+            f.write(json.dumps(e, separators=(",", ":"), ensure_ascii=False) + "\n")
+    print(f"{dst}: {len(out)} events")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) not in (3, 4):
+        sys.exit(__doc__)
+    main(sys.argv[1].split(","), sys.argv[2], int(sys.argv[3]) if len(sys.argv) == 4 else 1)

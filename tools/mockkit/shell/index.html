@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock</title>
+<link rel="icon" type="image/svg+xml" href="/kit/shell/favicon.svg">
+<link rel="stylesheet" href="/kit/shell/lunar.css">
+<link rel="stylesheet" href="/kit/shell/shell.css">
+</head>
+<body>
+<div id="app">
+  <main id="stage">
+    <div id="frames">
+      <iframe id="mock" title="Mock"></iframe>
+      <iframe id="ghost" title="Ghost of the other variant" tabindex="-1" hidden></iframe>
+    </div>
+    <div id="overlay"><div id="pins"></div><div id="hl" hidden><span></span></div></div>
+    <div id="catcher" hidden></div>
+    <div id="shooter" hidden><div id="shotRect"><span></span></div></div>
+    <div id="toasts"></div>
+    <button id="reopen" class="glass glass--float" type="button" hidden title="Open the drawer (Alt+D)">
+      <svg class="ic sm" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg><span>Chat</span><span class="badge count" hidden></span>
+    </button>
+  </main>
+  <div id="resizer" title="Drag to resize the drawer"></div>
+  <aside id="drawer" class="glass glass--window">
+    <header class="dh">
+      <div class="dh-title"><span class="lbl">Mock</span><h1 id="title"></h1></div>
+      <button id="collapse" class="btn-icon sm" type="button" aria-label="Hide the drawer" title="Hide the drawer (Alt+D)">
+        <svg class="ic sm" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </header>
+    <div class="dh-status"><span id="agent" class="status"><i class="dot idle"></i><span>Connecting</span></span></div>
+    <div id="variantbar" hidden></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" data-tab="chat" aria-selected="true">Chat <span class="count" id="unreadAll"></span></button>
+      <button role="tab" data-tab="sandbox" aria-selected="false">Sandbox</button>
+      <i class="bar"></i>
+    </div>
+    <section id="chat" class="pane">
+      <div id="log" aria-live="polite"></div>
+      <div id="composer">
+        <div id="target" hidden></div>
+        <div class="field field--area"><div id="text" contenteditable="true" role="textbox" aria-multiline="true" data-placeholder="Message the agent (Enter sends, Shift+Enter new line, paste or drop images)"></div></div>
+        <div class="crow">
+          <button id="commentBtn" class="btn btn--glass btn--sm" type="button" title="Pick an element in the mock to comment on (Alt+C)">
+            <svg class="ic sm" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>Comment
+          </button>
+          <button id="shotBtn" class="btn btn--glass btn--sm" type="button" title="Capture an area of the mock into the message (Alt+S)">
+            <svg class="ic sm" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>Screenshot
+          </button>
+          <button id="send" class="btn btn--primary btn--sm" type="button">Send</button>
+        </div>
+      </div>
+    </section>
+    <section id="sandbox" class="pane" hidden>
+      <div id="controls"></div>
+      <div class="sbx-foot">
+        <button id="reloadMock" class="btn btn--ghost btn--sm" type="button">Reload mock</button>
+        <button id="resetState" class="btn btn--ghost btn--sm" type="button" title="Forget the saved state and start from the mock's defaults">Reset state</button>
+        <label class="check"><input type="checkbox" id="pinsOn"><span class="box"><svg viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg></span>Comment pins</label>
+      </div>
+    </section>
+  </aside>
+</div>
+<script type="module" src="/kit/shell/shell.js"></script>
+</body>
+</html>

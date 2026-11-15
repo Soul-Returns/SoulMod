@@ -1,0 +1,53 @@
+/* MC containers, items and tooltips (mc-). Everything is GUI px; the layer it sits in scales by g. */
+/* Text: the monospace stand-in gets an inline per-string letter-spacing (font.js mcSpacing) so it spans vanilla's width. */
+
+/* ------------------------------------------------------------------ screens */
+.mc-screen { position: absolute; }
+.mc-screen > .mc-frame { position: absolute; left: 0; top: 0; }
+.mc-label { position: absolute; color: #404040; }
+.mc-dark .mc-label { color: #c8c8c8; }
+.mc-slot { position: absolute; width: 16px; height: 16px; }
+.mc-slot > .mc-item { z-index: 1; }
+/* AbstractContainerScreen: slot_highlight_back (white α 96) under the item, _front (α 32) over it. */
+.mc-slot::before, .mc-slot::after { content: ""; position: absolute; inset: 0; pointer-events: none; display: none; }
+.mc-slot::before { background: rgba(255, 255, 255, .376); }
+.mc-slot::after { background: rgba(255, 255, 255, .125); z-index: 2; }
+.mc-slot:hover::before, .mc-slot:hover::after, .mc-slot.mc-hover::before, .mc-slot.mc-hover::after { display: block; }
+
+/* The player in the entity box (front view, Steve colors). */
+.mc-doll { position: absolute; width: 29px; height: 60px; pointer-events: none; }
+.mc-doll > i { position: absolute; }
+.mc-doll-head { background: linear-gradient(#3b2a1a 0 4px, #c8946a 4px 100%); box-shadow: inset 0 -2px 0 #9c6a48; }
+.mc-doll-body { background: #00a8a8; }
+.mc-doll-arm { background: linear-gradient(#00a8a8 0 8px, #c8946a 8px 100%); }
+.mc-doll-leg { background: linear-gradient(#3c3caa 0 18px, #5a5a5a 18px 100%); }
+
+/* recipe_book/button (atlas sprite: Dark UI leaves it vanilla). */
+.mc-recipe { position: absolute; background: #c6c6c6;
+  box-shadow: inset 0 0 0 1px #000, inset 2px 2px 0 #fff, inset -2px -2px 0 #555;
+  clip-path: polygon(1px 0, calc(100% - 1px) 0, 100% 1px, 100% calc(100% - 1px), calc(100% - 1px) 100%, 1px 100%, 0 calc(100% - 1px), 0 1px); }
+.mc-recipe::after { content: ""; position: absolute; left: 6px; top: 5px; width: 8px; height: 8px; background: #56ad56;
+  box-shadow: inset -2px -2px 0 #2a592a, inset 1px 1px 0 #b7b7b7; transform: rotate(45deg); }
+
+/* ------------------------------------------------------------------ items */
+.mc-item { position: relative; display: inline-block; vertical-align: top; width: 16px; height: 16px; }
+.mc-item > svg { display: block; }
+.mc-ghost { opacity: .45; }
+.mc-glint { mix-blend-mode: screen; }
+/* GuiGraphics.itemCount: white with shadow, top at y + 9, right edge at x + 17 (left set inline). */
+.mc-count { position: absolute; top: 9px; color: #fff; text-shadow: 1px 1px 0 #3f3f3f; pointer-events: none; }
+
+/* ------------------------------------------------------------------ tooltip */
+.mc-tt-host { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+.mc-tt { position: absolute; pointer-events: none; z-index: 20; }
+/* tooltip/background: #100010 α 240, 1 px beyond the frame, corners cut. */
+.mc-tt-bg { position: absolute; inset: 0; background: rgba(16, 0, 16, .941);
+  clip-path: polygon(1px 0, calc(100% - 1px) 0, calc(100% - 1px) 1px, 100% 1px, 100% calc(100% - 1px), calc(100% - 1px) calc(100% - 1px),
+    calc(100% - 1px) 100%, 1px 100%, 1px calc(100% - 1px), 0 calc(100% - 1px), 0 1px, 1px 1px); }
+/* tooltip/frame: 1 px, #5000ff → #28007f (α 80) top to bottom, corners cut. */
+.mc-tt-frame { position: absolute; inset: 1px; border: 1px solid transparent;
+  border-image: linear-gradient(rgba(80, 0, 255, .314), rgba(40, 0, 127, .314)) 1;
+  clip-path: polygon(1px 0, calc(100% - 1px) 0, calc(100% - 1px) 1px, 100% 1px, 100% calc(100% - 1px), calc(100% - 1px) calc(100% - 1px),
+    calc(100% - 1px) 100%, 1px 100%, 1px calc(100% - 1px), 0 calc(100% - 1px), 0 1px, 1px 1px); }
+.mc-tt-lines { position: absolute; }
+.mc-tt-lines > div { position: absolute; left: 0; }

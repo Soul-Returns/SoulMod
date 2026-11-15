@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+"""(Re)install the dev-only bridge jar into a client instance while its game is closed.
+
+  tools/devbridge/install --skyblock | --test | --instance NAME | --game-dir DIR  [--no-build]
+
+Builds `./gradlew devbridgeJar` from this checkout, replaces any soul-devbridge-*.jar in the
+instance's mods/, and checks the Soul jar there speaks the same bridge API. Refuses while that
+game runs. The dev client (runClient) needs no install: the bridge is on its classpath.
+"""
+import argparse
+import glob
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import zipfile
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+PRISM = Path.home() / ".local/share/PrismLauncher/instances"
+JAVAP = "/usr/lib/jvm/java-25-openjdk/bin/javap"
+
+
+def running(game):
+    info = game / "soul-dev/bridge.json"
+    if info.exists():
+        try:
+            pid = int(json.loads(info.read_text())["pid"])
+            os.kill(pid, 0)
+            return "pid %d (bridge.json)" % pid
+        except (OSError, ValueError, KeyError):
+            pass
+    needle = str(game.resolve())
+    for cmdline in glob.glob("/proc/[0-9]*/cmdline"):
+        try:
+            args = Path(cmdline).read_bytes().split(b"\0")
+        except OSError:
+            continue
+        if any(a.decode(errors="replace").rstrip("/") == needle for a in args) and any(b"java" in a for a in args[:1]):
+            return "pid %s (command line names the game dir)" % cmdline.split("/")[2]
+    return None
+
+
+def api_of(jar):
+    """DevBridgeApi.VERSION inside a Soul jar, or None when it has no bridge API."""
+    with zipfile.ZipFile(jar) as z:
+        if "com/soulreturns/features/dev/DevBridgeApi.class" not in z.namelist():
+            return None
+    try:
+        res = subprocess.run([JAVAP if Path(JAVAP).exists() else "javap", "-constants", "-cp", str(jar), "com.soulreturns.features.dev.DevBridgeApi"],
+                             capture_output=True, text=True, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        return "?"
+    m = re.search(r"int VERSION = (\d+);", res.stdout)
+    return int(m.group(1)) if m else "?"
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    g = ap.add_mutually_exclusive_group(required=True)
+    g.add_argument("--skyblock", action="store_true")
+    g.add_argument("--test", action="store_true")
+    g.add_argument("--instance")
+    g.add_argument("--game-dir")
+    ap.add_argument("--no-build", action="store_true")
+    args = ap.parse_args()
+    game = Path(args.game_dir) if args.game_dir else PRISM / ("Hypixel Skyblock" if args.skyblock else "soulmod-test" if args.test else args.instance) / "minecraft"
+    mods = game / "mods"
+    if not mods.is_dir():
+        sys.exit("no mods dir at %s" % mods)
+    who = running(game)
+    if who:
+        sys.exit("refusing: that game is running (%s). Close it first; jars must not change under a running client." % who)
+    if not args.no_build:
+        subprocess.run([str(REPO / "gradlew"), "-p", str(REPO), "devbridgeJar", "-q"], check=True)
+    jars = sorted((REPO / "build/devbridge").glob("soul-devbridge-*.jar"), key=lambda p: p.stat().st_mtime)
+    if not jars:
+        sys.exit("no build/devbridge/soul-devbridge-*.jar (run without --no-build)")
+    jar = jars[-1]
+    with zipfile.ZipFile(jar) as z:
+        meta = json.loads(z.read("fabric.mod.json"))
+    bridge_api = meta.get("custom", {}).get("soul-devbridge", {}).get("api")
+    for old in mods.glob("soul-devbridge-*.jar"):
+        old.unlink()
+        print("removed %s" % old.name)
+    shutil.copy2(jar, mods / jar.name)
+    print("installed %s (bridge API %s) into %s" % (jar.name, bridge_api, mods))
+    souls = [p for p in mods.glob("soul-*.jar") if not p.name.startswith("soul-devbridge")]
+    if not souls:
+        print("note: no Soul jar in %s; the bridge needs Soul with bridge API %s" % (mods, bridge_api))
+    for s in souls:
+        api = api_of(s)
+        verdict = "OK" if api == bridge_api else "MISMATCH: the bridge will disable itself (update Soul or rebuild from a matching checkout)"
+        print("Soul jar %s: bridge API %s -> %s" % (s.name, api, verdict))
+
+
+if __name__ == "__main__":
+    main()

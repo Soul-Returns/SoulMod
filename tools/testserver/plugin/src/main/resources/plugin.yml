@@ -1,0 +1,13 @@
+name: SoulTestKit
+version: 1.0.0
+main: com.soulreturns.testkit.SoulTestKit
+api-version: "26.2"
+description: Imitates Hypixel SkyBlock (mod API packets, sidebar, tab list, action bar, menus, items) for SoulMod tests. Local test server only.
+commands:
+  hx:
+    description: Fake Hypixel SkyBlock state for the SoulMod test client (hx help).
+    usage: /hx help
+    permission: soultestkit.hx
+permissions:
+  soultestkit.hx:
+    default: op

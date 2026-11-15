@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "soul-devbridge",
+  "version": "${version}",
+  "name": "Soul Dev Bridge",
+  "description": "Development only: read-only client state, events, recordings and marks on a loopback port for agents. Never shipped. Runs with any Soul whose DevBridgeApi.VERSION matches custom.soul-devbridge.api, else disables itself.",
+  "authors": [
+    "Soul-Returns"
+  ],
+  "license": "GPL-3.0-or-later",
+  "environment": "client",
+  "mixins": [
+    "soul-devbridge.mixins.json"
+  ],
+  "entrypoints": {
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "com.soulreturns.devbridge.DevBridge"
+      }
+    ]
+  },
+  "depends": {
+    "soul": "*",
+    "fabric-language-kotlin": ">=1.13.12",
+    "minecraft": "~26.2",
+    "fabric-api": "*"
+  },
+  "custom": {
+    "soul-devbridge": {
+      "api": ${bridgeApi},
+      "builtAgainstSoul": "${version}"
+    }
+  }
+}

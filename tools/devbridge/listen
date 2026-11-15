@@ -1,0 +1,2250 @@
+#!/usr/bin/env python3
+"""Agent CLI for the SoulMod dev bridge (dev-only mod `soul-devbridge`, loopback only, read-only).
+
+TARGET (which running client; default: the only one running, else pick one)
+  --dev           the dev client (runClient, game dir <repo>/run)
+  --test          the agent test client instance (soulmod-test)
+  --skyblock      the user's "Hypixel Skyblock" Prism instance
+  --instance NAME any Prism instance by name     --pid N   by process     --game-dir DIR
+
+LIVE
+  status                                  every running client with a bridge (or one: details, streams, costs)
+  snapshot [--providers a,b] [--ent SPEC] [--soul a,b] [--json]
+                                          every provider at once: self, players, entities, map, party, world, soul, screen
+  listen [FILTERS] [STOP] [OUTPUT]        stream events (+ provider frames with --state); starts with a full snapshot
+  record [start] [--for SECS|--detach] [--label L] [--state SPEC] [--packets default|none|a,b] [--max-min N] [--max-mb N] [--max-total-min N]
+         [--preset full [--out]] [--tick-budget-ms F]
+                                          --preset full: every packet needed to reconstruct a fight (entity spawn/remove/metadata/equipment/movement/teleport/
+                                          head rotation/velocity/passengers/links/events/damage/hurt/animate/effects/attributes/health, block + section updates,
+                                          block events and block entity data, explosions, particles, sounds, level events, boss bars, player position, pickups,
+                                          set_time and every ping (with their hook order `seq`);
+                                          --dir both (or out, or the older --out) adds the player's own packets (observed, never sent): use_item/use_item_on/interact/
+                                          player_action/swing/set_carried_item, container_click/close/button, player_input/command (sneak, sprint), movement,
+                                          accept_teleportation, chat and commands (credential commands like /login keep only the command word);
+                                          `status` and the end of `record` show packets in/out per type, and `record` warns after 6 s if none arrived;
+                                          never chunks, light, keep-alives. Every packet is serialized under a hard cap (an oversized one becomes a stub) and the
+                                          bridge sheds a packet type that costs the game more than --tick-budget-ms (default 2) per tick on average (`status`).
+  record stop | record status             one recording at a time, written by the client to soul-dev/recordings/
+  mark [LABEL…]                           drop a mark now (as the agent)
+  shot                                    screenshot of the client's current frame -> prints the PNG path
+  log [N] [--grep RE]                     tail the client's own latest.log (the path the bridge reports)
+
+FILES (recordings: soul-dev/recordings/*.rec.ndjson.{zst,gz}, streamed in one pass, ~1 s per GB; default = latest of the target)
+  replay [FILE] summary | ticks | sizes | timeline | at <WHEN> | track <NAME|self>
+      timeline [--events] [--kinds a,b|--all] [--grep REGEX] [--player NAME]   (default kinds: chat, title, bossbar, places, menus, marks)
+      at WHEN: +SECS, +MM:SS, HH:MM:SS, tick=N (the server tick; gt=N is the same), ping=N (raw ping count)     track: [--csv] [--every S] [--party]
+      every `tick` is the server game time from set_time (recording format v2; v1 files: their `gt`), `ping` the raw per-tick-ping count (diagnostic: overcounts)
+      every replay-like command takes --from WHEN --to WHEN --limit N (default 300; 0 = all) --tail
+  marks [FILE] [--json]                   marks from a recording, or the client's soul-dev/marks.ndjson
+  menus [FILE] [--title REGEX] [--inv]    per-screen grid + lore of a capture or recording (default: the first 20 screens)
+  recompress FILE.gz… [--rm]              gzip → zstd (the client does this itself after a recording when zstd is installed)
+
+WORLD CAPTURE (copies the chunks the client holds, read-only; files in soul-dev/worlds/*.soulworld.gz, see skill live-research)
+  world start [--label L] [--bounds x1,y1,z1,x2,y2,z2 | --around R] [--max-chunks N] [--budget-ms F] [--max-min N] [--max-mb N]
+  world status                            progress, cost, and the holes (chunk columns in the bounds never seen) as a map + walk hints
+  world stop                              ends it, prints the summary and holes
+  world info [FILE] [--top N] [--all]     bounds, coverage map, block counts, block entities, entities, changes, holes (default: latest)
+  world merge A [B…] [-o OUT] [--entities static]
+                                          one capture from several of the same place: blocks first-seen from the first file, block entities and
+                                          entities as the union, conflicts reported; --entities static drops mob tags, damage numbers, chat-like
+                                          lines and anything that moved (rules: tools/devbridge/entity-filter.json, or --rules FILE)
+  world entities [FILE] [--rules F]       the entities of a capture split into useful static ones (with positions) and noise, by those rules
+
+FILTERS  --kinds a,b   events: screen_open,screen_contents,slot_update,page,screen_close,click,chat,mark (default)
+                       also inventory_contents,inventory_slot,actionbar,sidebar,tab,title,bossbar,location,connection,
+                       tracking,record,screenshot,packet; all
+         --state SPEC  provider frames: self:10,players:5,party,world,map,soul,screen,entities (Hz, or on change)
+         --ent SPEC    entities provider: radius:30,type:armor_stand|zombie,name:Keeper,max:100
+         --soul a,b    soul provider: only these DevState names
+         --types w,..  raw packets whose type id contains a word   --channels w,..   --all   --dir in|out|both
+         --backlog     first replay the always-on backlog (last minutes of chat/titles/places/marks)
+         --no-snapshot skip the snapshot that starts every stream
+STOP     --until screen_close | idle:SECS     --timeout SECS     --max N
+OUTPUT   --json raw NDJSON  --inv player-inventory slots  --legacy keep § codes  --full-lore  --no-save
+"""
+import argparse
+import collections
+import csv
+import glob
+import gzip
+import json
+import os
+import re
+import signal
+import socket
+import shutil
+import subprocess
+import sys
+import time
+import urllib.parse
+import zlib
+from datetime import datetime
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+PRISM = Path.home() / ".local/share/PrismLauncher/instances"
+DEV_GAME = REPO / "run"
+TEST_GAME = PRISM / "soulmod-test/minecraft"
+SKYBLOCK_GAME = PRISM / "Hypixel Skyblock/minecraft"
+POINTERS = Path.home() / ".cache/soul-devbridge/clients"
+EVENTS_TABLE = Path(__file__).resolve().parent / "events.json"
+COLOR = re.compile("§(#[0-9a-fA-F]{6}|.)|[\u200b\u2060]")   # color codes and the zero-width spaces some Hypixel/room names carry
+STAMP = re.compile(r"^\d\d:\d\d:\d\d\.\d{3}( t\d+)? ")
+OPTS = {"legacy": False, "inv": False, "full_lore": False}
+PROVIDERS = ("self", "players", "entities", "map", "party", "world", "soul", "screen")
+
+
+# ---------- discovery / connection ----------
+
+def alive(pid):
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def candidate_dirs():
+    dirs = [DEV_GAME, TEST_GAME, SKYBLOCK_GAME]
+    dirs += [Path(p).parent.parent for p in glob.glob(str(PRISM / "*/minecraft/soul-dev/bridge.json"))]
+    for f in glob.glob(str(POINTERS / "*.json")):
+        try:
+            dirs.append(Path(json.loads(Path(f).read_text())["game_dir"]))
+        except (OSError, ValueError, KeyError):
+            pass
+    seen, out = set(), []
+    for d in dirs:
+        r = d.resolve()
+        if r not in seen:
+            seen.add(r)
+            out.append(d)
+    return out
+
+
+def read_info(game):
+    path = game / "soul-dev/bridge.json"
+    try:
+        info = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    info["_path"] = str(path)
+    info["_game"] = str(game)
+    return info
+
+
+def live_clients():
+    out = []
+    for d in candidate_dirs():
+        info = read_info(d)
+        if info and alive(info.get("pid")):
+            out.append(info)
+    return out
+
+
+def target_game(args):
+    if args.game_dir:
+        return Path(args.game_dir)
+    if args.dev:
+        return DEV_GAME
+    if args.test:
+        return TEST_GAME
+    if args.skyblock:
+        return SKYBLOCK_GAME
+    if args.instance:
+        return PRISM / args.instance / "minecraft"
+    clients = live_clients()
+    if args.pid:
+        for c in clients:
+            if int(c["pid"]) == args.pid:
+                return Path(c["_game"])
+        sys.exit("no running client with a bridge has pid %s" % args.pid)
+    if len(clients) == 1:
+        return Path(clients[0]["_game"])
+    if not clients:
+        sys.exit("no running client with the soul-devbridge mod (start one, or name a game dir for files: --dev/--test/--skyblock)")
+    sys.exit("several clients run a bridge; pick one with --pid/--instance/--dev/--test/--skyblock:\n" + client_table(clients))
+
+
+def bridge_info(game):
+    info = read_info(game)
+    if info is None:
+        sys.exit("no %s/soul-dev/bridge.json: is a client with the soul-devbridge mod running?" % game)
+    if not alive(info.get("pid")):
+        sys.exit("stale %s: client pid %s is gone" % (info["_path"], info.get("pid")))
+    return info
+
+
+def request(info, target, timeout=10):
+    sock = socket.create_connection(("127.0.0.1", int(info["port"])), timeout=timeout)
+    sock.sendall(("GET %s HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer %s\r\nConnection: close\r\n\r\n"
+                  % (target, info["token"])).encode())
+    buf = b""
+    while b"\r\n\r\n" not in buf:
+        chunk = sock.recv(65536)
+        if not chunk:
+            sys.exit("bridge closed the connection")
+        buf += chunk
+    head, rest = buf.split(b"\r\n\r\n", 1)
+    status = head.split(b"\r\n", 1)[0].decode()
+    if " 200 " not in status + " ":
+        body = rest
+        try:
+            while True:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                body += chunk
+        except OSError:
+            pass
+        sys.exit("bridge: %s %s" % (status, body.decode(errors="replace")))
+    return sock, rest
+
+
+def fetch_json(info, target, timeout=15):
+    sock, body = request(info, target, timeout)
+    while True:
+        chunk = sock.recv(65536)
+        if not chunk:
+            break
+        body += chunk
+    sock.close()
+    return json.loads(body)
+
+
+def query(**kw):
+    q = {k: v for k, v in kw.items() if v not in (None, "", False)}
+    return ("?" + urllib.parse.urlencode(q)) if q else ""
+
+
+# ---------- formatting ----------
+
+def txt(s):
+    if s is None:
+        return ""
+    if not isinstance(s, str):
+        s = str(s)
+    return s if OPTS["legacy"] else COLOR.sub("", s)
+
+
+def stamp(ms):
+    return datetime.fromtimestamp(ms / 1000).strftime("%H:%M:%S.%f")[:-3]
+
+
+def pos(p, digits=1):
+    if not p:
+        return "?"
+    return "(%s)" % ", ".join("?" if v is None else ("%.*f" % (digits, v)) for v in p)
+
+
+def item_str(item):
+    if not isinstance(item, dict):
+        return str(item)
+    out = txt(item.get("name")) or "(no name)"
+    if item.get("count", 1) != 1:
+        out += " ×%d" % item["count"]
+    out += "  " + (item.get("sb_id") or item.get("id", "?"))
+    lore = [txt(l).strip() for l in item.get("lore", [])]
+    lore = [l for l in lore if l]
+    if lore and not OPTS["full_lore"]:
+        lore = lore[:3] + (["…", lore[-1]] if len(lore) > 4 else lore[3:])
+    if lore:
+        out += "  — " + " | ".join(lore)
+    if comps(item):
+        out += "  " + comps(item)
+    return out
+
+
+def comps(item):
+    """The bridge's compact component summary of an item (glint, model, custom model data, dye, enchantments, the component patch) on one line."""
+    c = item.get("components") if isinstance(item, dict) else None
+    if not c:
+        return ""
+    parts = []
+    if c.get("glint"):
+        parts.append("glint")
+    if "glint_override" in c:
+        parts.append("glint_override=%s" % str(c["glint_override"]).lower())
+    for key in ("model", "dye", "tooltip_style"):
+        if key in c:
+            parts.append("%s=%s" % (key, c[key]))
+    if "cmd" in c:
+        parts.append("cmd=" + json.dumps(c["cmd"], separators=(",", ":")))
+    if c.get("ench"):
+        parts.append("ench=" + ",".join("%s %s" % (k.replace("minecraft:", ""), v) for k, v in c["ench"].items()))
+    if c.get("unbreakable"):
+        parts.append("unbreakable")
+    if c.get("damage"):
+        parts.append("damage=%s" % c["damage"])
+    if c.get("patch"):
+        parts.append("patch: " + ",".join(c["patch"]))
+    return "{" + "; ".join(parts) + "}"
+
+
+def brief(item):
+    if not isinstance(item, dict):
+        return "-"
+    return "%s [%s]" % (txt(item.get("name")) or "?", item.get("sb_id") or item.get("id", "?"))
+
+
+def slot_lines(slots, indent="    "):
+    hidden, fillers, lines = 0, {}, []
+    for s in slots:
+        if s.get("player") and not OPTS["inv"]:
+            hidden += 1
+            continue
+        it = s.get("item")
+        # Hypixel pads menus with blank-named glass panes; panes that differ in components (a glint marks a clicked one) are counted apart
+        if isinstance(it, dict) and not txt(it.get("name")).strip() and not it.get("lore"):
+            fillers.setdefault((it.get("id"), comps(it)), []).append(s["slot"])
+            continue
+        lines.append("%s[%3d] %s" % (indent, s["slot"], item_str(it)))
+    for (item_id, c), where in fillers.items():
+        lines.append("%s(%d blank-named %s fillers%s)" % (indent, len(where), item_id, (" %s: slots %s" % (c, ",".join(map(str, where)))) if c else ""))
+    if hidden:
+        lines.append("%s(+%d player inventory items; --inv shows them)" % (indent, hidden))
+    return lines
+
+
+def fmt_self(d):
+    if not isinstance(d, dict):
+        return "self: none (not in a world)"
+    look = d.get("looking_at") or {}
+    looking = (" looking at %s %s" % (look.get("block") or look.get("entity"), look.get("pos"))) if look else ""
+    room = d.get("room")
+    return ("self: %s %s yaw %.1f pitch %.1f%s%s%s hp %s/%s held %s slot %s ping %s %s%s%s" % (
+        d.get("name"), pos(d.get("pos"), 2), d.get("yaw") or 0, d.get("pitch") or 0,
+        " ground" if d.get("on_ground") else " air", " sneak" if d.get("sneaking") else "", " sprint" if d.get("sprinting") else "",
+        d.get("health"), d.get("max_health"), brief(d.get("held")), d.get("hotbar"), d.get("ping"), d.get("dimension"), looking,
+        (" room %s" % txt(room.get("name") or room.get("type"))) if isinstance(room, dict) else ""))
+
+
+def fmt_players(d):
+    if not isinstance(d, dict):
+        return ["players: none"]
+    out = ["players: %d tracked" % d.get("count", 0)]
+    for p in dicts(d.get("players")):
+        out.append("    %-16s %s %s %5.1fm yaw %6.1f held %s%s since %s" % (
+            p.get("name"), "real" if p.get("real") else "npc ", pos(p.get("pos")), p.get("distance") or 0, p.get("yaw") or 0,
+            brief(p.get("held")), " sneak" if p.get("sneaking") else "", stamp(p["tracked_since"]) if p.get("tracked_since") else "?"))
+    for u in dicts(d.get("untracked_recent")):
+        out.append("    (untracked %s at %s, last %s)" % (u.get("name"), stamp(u["at"]), pos(u.get("last_pos"))))
+    return out
+
+
+def fmt_party(d):
+    if not isinstance(d, dict):
+        return ["party: none"]
+    out = ["party: floor %s in_run %s leader %s" % (d.get("floor"), d.get("in_run"), d.get("leader"))]
+    for m in dicts(d.get("members")):
+        out.append("    %-16s %-8s %-6s %-6s %s%s" % (
+            m.get("name"), m.get("class") or "-", "DEAD" if m.get("dead") else "", m.get("source"), pos(m.get("pos")),
+            (" age %.1fs" % (m["age_ms"] / 1000)) if isinstance(m.get("age_ms"), (int, float)) else ""))
+    return out
+
+
+def fmt_world(d):
+    if not isinstance(d, dict):
+        return ["world: none"]
+    loc = d.get("location") or {}
+    out = ["world: %s | skyblock=%s area=%s sub=%s mode=%s server_id=%s profile=%s dim=%s" % (
+        d.get("server"), loc.get("on_skyblock"), loc.get("area"), loc.get("sub_location"), loc.get("mode"), loc.get("server_id"),
+        loc.get("profile"), d.get("dimension"))]
+    sb = d.get("sidebar")
+    if sb:
+        out.append("    sidebar: %s" % txt(sb.get("title")))
+        out += ["      " + txt(l) for l in sb.get("lines", [])]
+    tab = d.get("tab")
+    if tab:
+        lines = [txt(l).strip() for l in tab.get("lines", [])]
+        out.append("    tab: %d lines (%d non-empty)" % (len(lines), len([l for l in lines if l])))
+    if d.get("action_bar"):
+        out.append("    action bar: " + txt(d["action_bar"]))
+    if d.get("title"):
+        out.append("    title: %s | %s" % (txt(d["title"].get("title")), txt(d["title"].get("subtitle"))))
+    for b in d.get("boss_bars", []):
+        out.append("    boss bar: %s %.2f %s" % (txt(b.get("name")), b.get("progress") or 0, b.get("color")))
+    return out
+
+
+def fmt_entities(d):
+    if not isinstance(d, dict):
+        return ["entities: none"]
+    out = ["entities: %s matched, %s shown (%s)" % (d.get("matched"), d.get("shown"), d.get("query"))]
+    for e in d.get("entities", []):
+        out.append("    %-24s #%-8s %5.1fm %s %s%s" % (e.get("type"), e.get("id"), e.get("distance") or 0, pos(e.get("pos")), txt(e.get("name")),
+                                                  ("  head " + brief(e["head"])) if e.get("head") else ""))
+    return out
+
+
+def fmt_map(d):
+    if not isinstance(d, dict) or not d.get("markers"):
+        return ["map: no dungeon map%s" % ("" if not isinstance(d, dict) else "")]
+    out = ["map: id %s floor %s dims %s (%s)" % (d.get("map_id"), d.get("floor"), d.get("dims_known"), d.get("limit"))]
+    for m in d["markers"]:
+        out.append("    %s%s map(%s,%s) yaw %.1f world %s" % (m.get("type"), " (self)" if m.get("self") else "", m.get("map_x"), m.get("map_y"),
+                                                       m.get("yaw") or 0, pos([m.get("x"), None, m.get("z")])))
+    return out
+
+
+def fmt_soul(d, width=400):
+    if not isinstance(d, dict):
+        return ["soul: none"]
+    out = ["soul: " + ", ".join(d.keys())]
+    for k, v in d.items():
+        s = json.dumps(v, ensure_ascii=False)
+        out.append("    %s: %s" % (k, s if len(s) <= width else s[:width] + "…"))
+    return out
+
+
+def fmt_screen(sc):
+    if sc is None:
+        return ["screen: none"]
+    out = ['screen: %s "%s" #%s %s %s+%s slots' % (sc["class"], txt(sc.get("title")), sc.get("container_id"), sc.get("menu_type"),
+                                                  sc.get("container_slots"), (sc.get("slot_count") or 0) - (sc.get("container_slots") or 0))]
+    if sc.get("carried"):
+        out.append("    carried: " + item_str(sc["carried"]))
+    return out + slot_lines(sc.get("slots", []))
+
+
+def fmt_snapshot(snap):
+    ticks = snap.get("ticks") or {}
+    out = ["%s on %s | server tick %s (%s/s, source %s), pings %s (%s/s, diagnostic)" % (
+        snap.get("player"), snap.get("server"), ticks.get("tick"), ("%.2f" % ticks["tick_rate"]) if ticks.get("tick_rate") else "-", ticks.get("source"),
+        ticks.get("pings"), ("%.1f" % ticks["ping_rate"]) if ticks.get("ping_rate") else "-")]
+    if "self" in snap:
+        out.append(fmt_self(snap["self"]))
+    if "players" in snap:
+        out += fmt_players(snap["players"])
+    if "party" in snap:
+        out += fmt_party(snap["party"])
+    if "map" in snap:
+        out += fmt_map(snap["map"])
+    if "world" in snap:
+        out += fmt_world(snap["world"])
+    if "entities" in snap:
+        out += fmt_entities(snap["entities"])
+    if "soul" in snap:
+        out += fmt_soul(snap["soul"])
+    if "screen" in snap:
+        out += fmt_screen(snap["screen"])
+    return out
+
+
+def fmt(ev):
+    """One or more display lines for an event; data this tool does not understand (another server, a newer bridge) prints raw instead of raising."""
+    try:
+        return fmt_event(ev)
+    except UNEXPECTED:
+        return ["%s %s <unrecognised data> %s" % (stamp(ev["t"]) if isinstance(ev.get("t"), (int, float)) else "?", (ev.get("kind") or "?").upper(),
+                                                   json.dumps(ev.get("data"), ensure_ascii=False, default=str)[:300])]
+
+
+UNEXPECTED = (AttributeError, TypeError, KeyError, ValueError, IndexError)
+
+
+def dicts(v):
+    """The dict items of a list; anything else (a string, null, a number) is an empty list."""
+    return [x for x in v if isinstance(x, dict)] if isinstance(v, list) else []
+
+
+def fmt_event(ev):
+    k, d, t = ev.get("kind"), ev.get("data"), stamp(ev.get("t", time.time() * 1000))
+    tick = ev.get("tick")
+    t = t + (" t%s" % tick if tick is not None else "")
+    d0 = d if isinstance(d, dict) else {}
+    cid = "#%s" % d0.get("container_id")
+    if k == "hello":
+        f = d0.get("filter", {})
+        return ["%s LISTENING kinds=%s%s%s" % (t, ",".join(f.get("kinds", [])),
+                                               "".join(" %s=%s" % (x, ",".join(f[x])) for x in ("types", "channels") if f.get(x)),
+                                               (" state=" + ",".join(f["state"])) if f.get("state") else "")]
+    if k == "snapshot":
+        return ["%s SNAPSHOT" % t] + ["    " + l for l in fmt_snapshot(d0)]
+    if k == "backlog":
+        return ["%s BACKLOG %s earlier events follow" % (t, d0.get("events"))]
+    if k == "self":
+        return ["%s %s" % (t, fmt_self(d))]
+    if k == "players":
+        return ["%s %s" % (t, l) for l in fmt_players(d)[:1]] + fmt_players(d)[1:]
+    if k == "party":
+        return ["%s %s" % (t, fmt_party(d)[0])] + fmt_party(d)[1:]
+    if k == "world":
+        return ["%s %s" % (t, fmt_world(d)[0])] + fmt_world(d)[1:]
+    if k == "entities":
+        return ["%s %s" % (t, fmt_entities(d)[0])] + fmt_entities(d)[1:]
+    if k == "map":
+        return ["%s %s" % (t, fmt_map(d)[0])] + fmt_map(d)[1:]
+    if k == "soul":
+        return ["%s %s" % (t, fmt_soul(d)[0])] + fmt_soul(d)[1:]
+    if k == "screen":
+        return ["%s %s" % (t, fmt_screen(d)[0])] + fmt_screen(d)[1:]
+    if k == "mark":
+        return ["%s MARK %s: %s at %s yaw %.1f pitch %.1f looking at %s held %s area %s" % (
+            t, d0.get("n"), d0.get("label"), pos(d0.get("pos"), 2), d0.get("yaw") or 0, d0.get("pitch") or 0,
+            (d0.get("looking_at") or {}).get("block") or (d0.get("looking_at") or {}).get("entity"), brief(d0.get("held")),
+            (d0.get("location") or {}).get("area"))]
+    if k == "title":
+        if d0.get("type") == "times":
+            return ["%s TITLE times fade in %s, stay %s, fade out %s ticks" % (t, d0.get("fade_in"), d0.get("stay"), d0.get("fade_out"))]
+        return ["%s TITLE %s %s" % (t, d0.get("type"), txt(d0.get("text")))]
+    if k == "bossbar":
+        return ["%s BOSSBAR %s %s %s" % (t, d0.get("op"), txt(d0.get("name")), d0.get("progress", ""))]
+    if k == "location":
+        return ["%s LOCATION area=%s sub=%s mode=%s server=%s" % (t, d0.get("area"), d0.get("sub_location"), d0.get("mode"), d0.get("server_id"))]
+    if k == "connection":
+        return ["%s CONNECTION %s %s" % (t, d0.get("op"), d0.get("server") or "")]
+    if k == "tracking":
+        return ["%s TRACKING %s %s %s %s" % (t, d0.get("event"), d0.get("name"), "real" if d0.get("real") else "", pos(d0.get("pos") or d0.get("last_pos")))]
+    if k == "record":
+        if d0.get("op"):
+            return ["%s RECORD %s #%s %s%s" % (t, d0["op"], d0.get("id"), d0.get("file"), (" (%s)" % d0["reason"]) if d0.get("reason") else "")]
+        return ["%s RECORD %s %s %ss %s lines %s bytes gz" % (t, ("stopped: " + d0["stopped"]) if d0.get("stopped") else "running", d0.get("file"),
+                                                           d0.get("seconds"), d0.get("lines"), d0.get("compressed_bytes"))]
+    if k == "screenshot":
+        return ["%s SCREENSHOT %s" % (t, d0.get("file"))]
+    if k == "screen_open":
+        return ['%s OPEN %s "%s" %s %s+%s slots' % (t, cid, txt(d0.get("title")), d0.get("menu_type"), d0.get("container_slots", "?"),
+                                                    (d0["slot_count"] - d0["container_slots"]) if "slot_count" in d0 and "container_slots" in d0 else "?")]
+    if k in ("screen_contents", "inventory_contents"):
+        label = "CONTENTS" if k == "screen_contents" else "INV_CONTENTS"
+        return ['%s %s %s "%s" %d slots, %d filled' % (t, label, cid, txt(d0.get("title")), d0.get("slot_count", 0), len(d0.get("slots", [])))] \
+            + slot_lines(d0.get("slots", []))
+    if k in ("slot_update", "inventory_slot"):
+        if d0.get("player") and k == "slot_update" and not OPTS["inv"]:
+            return []
+        return ["%s %s %s [%3d] %s" % (t, "SLOT" if k == "slot_update" else "INV_SLOT", cid, d0.get("slot", -1), item_str(d0.get("item")))]
+    if k == "page":
+        return ['%s PAGE "%s" (#%s) -> "%s" (#%s)%s' % (t, txt(d0.get("from_title")), d0.get("from_container_id"), txt(d0.get("title")),
+                                                       d0.get("container_id"), " same container" if d0.get("same_container") else "")]
+    if k == "screen_close":
+        return ['%s CLOSE %s "%s" by %s' % (t, cid, txt(d0.get("title")), d0.get("by"))]
+    if k == "click":
+        it = d0.get("item")
+        return ['%s CLICK %s [%d] %s button %s on "%s": %s' % (t, cid, d0.get("slot", -1), d0.get("input"), d0.get("button"),
+                                                              txt(d0.get("title")), item_str(it) if isinstance(it, dict) else it)]
+    if k in ("chat", "actionbar"):
+        out = ["%s %s %s" % (t, k.upper(), txt(d0.get("text")))]
+        for hover in d0.get("hover", []):
+            out += ["    hover: " + line for line in txt(hover).split("\n")]
+        return out
+    if k == "sidebar":
+        return ["%s SIDEBAR %s" % (t, txt(d0.get("title")))] + ["    " + txt(l) for l in d0.get("lines", [])]
+    if k == "tab":
+        lines = [txt(l).strip() for l in d0.get("lines", [])]
+        return ["%s TAB %d lines" % (t, len(lines))] + ["    " + l for l in lines if l]
+    if k == "packet":
+        body = json.dumps(d0.get("data"), ensure_ascii=False)
+        return ["%s PACKET %s %s%s%s %s" % (t, d0.get("dir"), d0.get("type"), (" #%s" % d0["seq"]) if d0.get("seq") else "",
+                                           " " + d0["channel"] if d0.get("channel") else "", body if len(body) <= 400 else body[:400] + "…")]
+    if k == "held":
+        return ["%s HELD %s slot %s%s %s" % (t, d0.get("op"), d0.get("slot"), (" (from %s)" % d0["from"]) if d0.get("from") is not None else "", brief(d0.get("item")) if d0.get("item") else "empty hand")]
+    if k == "bridge":
+        return ["%s BRIDGE %s %s: %s" % (t, d0.get("op"), d0.get("type") or "", d0.get("reason"))]
+    if k == "dropped":
+        return ["%s DROPPED %s events (total %s): the stream fell behind" % (t, d0.get("count"), d0.get("total"))]
+    return ["%s %s %s" % (t, (k or "?").upper(), json.dumps(d, ensure_ascii=False)[:400])]
+
+
+def out(lines):
+    for l in lines:
+        print(l, flush=True)
+
+
+# ---------- live modes ----------
+
+def client_table(clients):
+    rows = ["%-8s %-20s %-10s %-10s %-4s %-30s %-6s %s" % ("PID", "INSTANCE", "SOUL", "BRIDGE", "API", "STATE / AREA", "PORT", "GAME DIR")]
+    for c in clients:
+        state = "disabled" if c.get("disabled") else "ok"
+        if state == "ok":
+            try:
+                st = fetch_json(c, "/status", timeout=3)
+                place = st.get("place") or {}
+                state = "ok %s%s" % (place.get("area") or st.get("place", {}).get("server_id") or "-",
+                                     (" / " + place["sub_location"]) if place.get("sub_location") else "")
+                if st.get("failure"):
+                    state = "FAILED"
+            except (OSError, SystemExit, ValueError):
+                state = "unreachable"
+        rows.append("%-8s %-20s %-10s %-10s %-4s %-30s %-6s %s" % (c.get("pid"), (c.get("instance") or Path(c["_game"]).parent.name)[:20],
+                                                                    c.get("soul_version") or "?", c.get("bridge_version") or "?",
+                                                                    c.get("bridge_api") or "?", state[:30], c.get("port"), c["_game"]))
+    return "\n".join(rows)
+
+
+def explicit_target(args):
+    return any((args.game_dir, args.dev, args.test, args.skyblock, args.instance, args.pid))
+
+
+def cmd_status(args):
+    if not explicit_target(args):
+        clients = live_clients()
+        if not clients:
+            sys.exit("no running client with the soul-devbridge mod")
+        print(client_table(clients))
+        if len(clients) > 1:
+            return
+        game = Path(clients[0]["_game"])
+    else:
+        game = target_game(args)
+    info = bridge_info(game)
+    st = fetch_json(info, "/status")
+    if args.json:
+        return print(json.dumps(st, indent=2, ensure_ascii=False))
+    print("\nbridge 127.0.0.1:%s pid %s, instance %s, Soul %s, bridge %s (API %s, Soul API %s)" % (
+        st["port"], st["pid"], st.get("instance"), st.get("soul_version"), st.get("bridge_version"), st.get("bridge_api"), st.get("soul_api")))
+    print("game dir %s\nlog      %s" % (st.get("game_dir"), st.get("log")))
+    if st.get("disabled") or st.get("failure"):
+        print("DISABLED: %s" % (st.get("disabled") or st.get("failure")))
+        return
+    place = st.get("place") or {}
+    print("place    skyblock=%s area=%s sub=%s mode=%s server_id=%s" % (place.get("on_skyblock"), place.get("area"), place.get("sub_location"),
+                                                                       place.get("mode"), place.get("server_id")))
+    tk = st.get("ticks") or {}
+    print("ticks    source %s, server tick %s (%s/s), last set_time %s ms ago; pings %s (%s/s, diagnostic)" % (
+        tk.get("source"), tk.get("tick"), ("%.2f" % tk["tick_rate"]) if tk.get("tick_rate") else "-", tk.get("last_set_time_ms_ago"),
+        tk.get("pings"), ("%.1f" % tk["ping_rate"]) if tk.get("ping_rate") else "-"))
+    bl = st.get("backlog") or {}
+    print("backlog  %s events, %s bytes, oldest %ss ago; %s added, %.3f ms total (%.1f us/event)" % (
+        bl.get("events"), bl.get("bytes"), bl.get("oldest_s_ago"), bl.get("added_total"), bl.get("cost_ms_total") or 0, bl.get("cost_us_per_event") or 0))
+    print("idle     provider reads %s, packet observer %s" % (st.get("provider_reads_total"), "on" if st.get("packet_observer") else "off"))
+    cost, pk = st.get("cost") or {}, st.get("packets") or {}
+    if cost.get("ticks"):
+        print("cost     bridge on the game threads: avg %.3f ms/tick (client %.3f, network %.3f), max %.3f, %s ticks over the %.1f ms budget of %s" % (
+            cost.get("avg_ms", 0), cost.get("client_thread_avg_ms", 0), cost.get("network_thread_avg_ms", 0), cost.get("max_ms", 0),
+            cost.get("ticks_over_budget"), cost.get("budget_ms", 0), cost.get("ticks")))
+    if pk.get("serialized") or pk.get("shed") or pk.get("stubs"):
+        w = pk.get("worker") or {}
+        print("packets  %s serialized, %s stubs%s, worker %s%% busy, %s queued, %s dropped, %s dropped by shedding" % (
+            pk.get("serialized"), pk.get("stubs"), (" " + json.dumps(pk.get("stub_types"))) if pk.get("stub_types") else "",
+            w.get("busy_pct"), w.get("queued"), w.get("queue_dropped"), pk.get("shed_dropped")))
+        for sh in pk.get("shed") or []:
+            print("  SHED %s (%ss ago): %s" % (sh["type"], sh["seconds_ago"], sh["reason"]))
+    rec = st.get("recording")
+    print("record   %s" % ("#%s %s, %ss, %s lines, %s bytes gz, owner %s" % (rec["id"], rec["file"], rec["seconds"], rec["lines"], rec["compressed_bytes"], rec["owner"]) if rec else "none"))
+    if rec and packet_dirs(rec):
+        print("         %s" % packet_dirs(rec))
+        if (rec.get("filter") or {}).get("dir") in ("out", "both") and rec["seconds"] >= OUT_WAIT_SECS and not (rec.get("packets") or {}).get("out"):
+            print("         WARNING: the recording asked for outbound packets and has none")
+    wc = st.get("world_capture") or {}
+    print("world    %s" % (("CAPTURING %s, %s sections (`listen world status`)" % (wc.get("file"), wc.get("sections"))) if wc.get("active") else "no capture running"))
+    mk = st.get("marks") or {}
+    print("marks    %s this session (%s)" % (mk.get("this_session"), mk.get("file")))
+    for l in st.get("listeners", []):
+        print("  stream #%s %s since %s: sent %s, queued %s, dropped %s, filter %s" % (
+            l["id"], l.get("kind"), stamp(l["since"]), l["sent"], l["queued"], l["dropped"], json.dumps(l["filter"])))
+    if not st.get("listeners"):
+        print("  no streams or recordings attached (idle)")
+
+
+def cmd_snapshot(args):
+    game = target_game(args)
+    ev = fetch_json(bridge_info(game), "/snapshot" + query(providers=args.providers, ent=args.ent, soul=args.soul), timeout=20)
+    if args.json:
+        return print(json.dumps(ev, indent=2, ensure_ascii=False))
+    print(stamp(ev["t"]) + (" tick %s" % ev["tick"] if ev.get("tick") is not None else "") + (" ping %s" % ev["ping"] if ev.get("ping") is not None else ""))
+    out(fmt_snapshot(ev["data"]))
+
+
+def capture_file(game):
+    d = game / "soul-dev/captures"
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / (datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".ndjson")
+    latest = d / "latest.ndjson"
+    try:
+        if latest.is_symlink() or latest.exists():
+            latest.unlink()
+        latest.symlink_to(path.name)
+    except OSError:
+        pass
+    return path
+
+
+def cmd_listen(args):
+    game = target_game(args)
+    info = bridge_info(game)
+    q = {}
+    for key in ("kinds", "types", "channels", "state", "ent", "soul", "preset"):
+        if getattr(args, key):
+            q[key] = getattr(args, key)
+    if args.tick_budget_ms:
+        q["tick_budget_ms"] = args.tick_budget_ms
+    if args.all:
+        q["all"] = "1"
+    if args.out:
+        q["out"] = "1"
+    if args.dir != "in":
+        q["dir"] = args.dir
+    if args.backlog:
+        q["backlog"] = "1"
+    if args.no_snapshot:
+        q["snapshot"] = "0"
+    until_close, idle = False, None
+    if args.until == "screen_close":
+        until_close = True
+    elif args.until and args.until.startswith("idle:"):
+        idle = float(args.until[5:])
+    elif args.until:
+        sys.exit("--until is screen_close or idle:SECS")
+    sock, buf = request(info, "/events" + ("?" + urllib.parse.urlencode(q) if q else ""), timeout=30)
+    save = None if args.no_save else capture_file(game)
+    fh = open(save, "w") if save else None
+    start, last, count, reason = time.time(), None, 0, None
+    sock.settimeout(0.5)
+    try:
+        while reason is None:
+            now = time.time()
+            if args.timeout and now - start >= args.timeout:
+                reason = "timeout %ss" % args.timeout
+                break
+            if idle is not None and last is not None and now - last >= idle:
+                reason = "idle %ss" % idle
+                break
+            if b"\n" not in buf:
+                try:
+                    chunk = sock.recv(65536)
+                except socket.timeout:
+                    continue
+                if not chunk:
+                    reason = "bridge closed the stream (client quit?)"
+                    break
+                buf += chunk
+                continue
+            raw, buf = buf.split(b"\n", 1)
+            if not raw.strip():
+                continue
+            ev = json.loads(raw)
+            kind = ev.get("kind")
+            if kind == "heartbeat":
+                continue
+            if fh:
+                fh.write(raw.decode() + "\n")
+                fh.flush()
+            if args.json:
+                print(raw.decode(), flush=True)
+            else:
+                out(fmt(ev))
+            if kind in ("hello", "dropped", "snapshot", "backlog") or kind in PROVIDERS:
+                continue
+            count += 1
+            last = time.time()
+            if until_close and kind == "screen_close":
+                reason = "screen_close"
+            elif args.max and count >= args.max:
+                reason = "max %d events" % args.max
+    except KeyboardInterrupt:
+        reason = "interrupted"
+    finally:
+        sock.close()
+        if fh:
+            fh.close()
+    print("# end: %s; %d events%s" % (reason, count, "; capture %s" % save if save else ""),
+          file=sys.stderr if args.json else sys.stdout, flush=True)
+
+
+def cmd_record(args):
+    game = target_game(args)
+    info = bridge_info(game)
+    if args.action == "stop":
+        res = fetch_json(info, "/record/stop")
+        return print(json.dumps(res, indent=2) if args.json else fmt_record(res))
+    if args.action == "status":
+        res = fetch_json(info, "/record/status")
+        return print(json.dumps(res, indent=2) if args.json else (fmt_record(res) if res.get("file") else "not recording"))
+    q = dict(label=args.label, state=args.state, packets=args.packets, max_min=args.max_min, max_mb=args.max_mb, max_total_min=args.max_total_min,
+             budget_mb_min=args.budget, kinds=args.kinds, ent=args.ent, soul=args.soul, dir=None if args.dir == "in" else args.dir,
+             preset=args.preset, tick_budget_ms=args.tick_budget_ms, out="1" if args.out else None)
+    if args.no_backlog:
+        q["backlog"] = "0"
+    if args.detach:
+        res = fetch_json(info, "/record/start" + query(**q))
+        print("recording (detached, until `listen record stop` or %s min total; a new file every %s min / %s MB): %s" % (
+            res["caps"]["max_total_min"], res["caps"]["max_min"], res["caps"]["max_mb"], res["file"]))
+        if wants_outbound(args):
+            time.sleep(OUT_WAIT_SECS)
+            warn_if_no_outbound(info, True)
+        return
+    q["hold"] = "1"
+    sock, buf = request(info, "/record/start" + query(**q), timeout=30)
+    sock.settimeout(0.5)
+    start, final = time.time(), None
+    print("recording; Ctrl-C or --for ends it (a dying listen ends it too)", flush=True)
+    checked = not wants_outbound(args)
+    try:
+        while True:
+            if not checked and time.time() - start >= OUT_WAIT_SECS:
+                checked = True
+                warn_if_no_outbound(info, True)
+            if args.for_secs and time.time() - start >= args.for_secs:
+                break
+            if b"\n" not in buf:
+                try:
+                    chunk = sock.recv(65536)
+                except socket.timeout:
+                    continue
+                if not chunk:
+                    break
+                buf += chunk
+                continue
+            raw, buf = buf.split(b"\n", 1)
+            ev = json.loads(raw)
+            d = ev.get("data") or {}
+            if d.get("stopped"):
+                final = d
+                break
+            print("  %s part %s %ss %s lines %s KiB gz%s" % (Path(d.get("file", "?")).name, d.get("part", 1), d.get("seconds"), d.get("lines"),
+                                                    (d.get("compressed_bytes") or 0) // 1024,
+                                                    (" dropped %s" % d["dropped"]) if d.get("dropped") else ""), flush=True)
+    except KeyboardInterrupt:
+        pass
+    if final is None:
+        final = fetch_json(info, "/record/stop" + query(reason="listen record ended"))
+    sock.close()
+    print(fmt_record(final))
+
+
+def fmt_record(r):
+    if not isinstance(r, dict) or not r.get("file"):
+        return json.dumps(r)
+    files = r.get("files") or [r["file"]]
+    return "%s: %ss, %s lines, %s bytes raw, %s bytes gz%s%s%s%s" % (
+        r["file"], r.get("seconds"), r.get("lines"), r.get("raw_bytes"), r.get("compressed_bytes"),
+        (", dropped %s" % r["dropped"]) if r.get("dropped") else "", (" (%s)" % r["stopped"]) if r.get("stopped") else "",
+        ("\n  %d files (rolled over): %s\n  (the client recompresses finished files to .zst when zstd is installed)" % (len(files), ", ".join(Path(f).name for f in files))) if len(files) > 1 else "",
+        ("\n  " + packet_dirs(r)) if packet_dirs(r) else "")
+
+
+OUT_WAIT_SECS = 6
+
+
+def wants_outbound(args):
+    return bool(args.out) or args.dir in ("out", "both")
+
+
+def packet_dirs(rec):
+    """`in N, out M (use_item_on 2, swing 5, ...)` from a recording's or stream's packet counts; None from a bridge that predates them."""
+    pk = rec.get("packets") if isinstance(rec, dict) else None
+    if not isinstance(pk, dict) or "in" not in pk:
+        return None
+    types = ", ".join("%s %s" % kv for kv in sorted((pk.get("out_types") or {}).items(), key=lambda kv: -kv[1])[:8])
+    return "packets in %s, out %s%s" % (pk["in"], pk["out"], (" (%s)" % types) if types else "")
+
+
+def warn_if_no_outbound(info, wanted):
+    """Asked for the client's own packets but none arrived: say so now, not after the fight."""
+    if not wanted:
+        return
+    try:
+        rec = fetch_json(info, "/record/status")
+    except (OSError, SystemExit, ValueError):
+        return
+    pk = rec.get("packets") if isinstance(rec, dict) else None
+    if not isinstance(pk, dict) or "out" not in pk:
+        print("WARNING: this bridge does not count packets per direction, so it predates the outbound fix: install the current one (tools/devbridge/install)", file=sys.stderr, flush=True)
+    elif pk["out"] == 0:
+        print("WARNING: outbound packets were asked for (--dir both/out or --out) but none arrived in %ss (%s). Standing still still sends a position every second: "
+              "check `listen status` (packets in/out), that the player is in a world, and that the installed bridge is current." % (OUT_WAIT_SECS, packet_dirs(rec) or "no counts"),
+              file=sys.stderr, flush=True)
+
+
+def cmd_mark(args):
+    info = bridge_info(target_game(args))
+    res = fetch_json(info, "/mark" + query(label=" ".join(args.label) if args.label else None))
+    print(json.dumps(res, ensure_ascii=False) if args.json else fmt({"t": time.time() * 1000, "kind": "mark", "data": res})[0])
+
+
+def cmd_shot(args):
+    info = bridge_info(target_game(args))
+    print(fetch_json(info, "/screenshot", timeout=20)["file"])
+
+
+def cmd_log(args):
+    game = target_game(args)
+    info = read_info(game)
+    path = Path(info["log"]) if info and info.get("log") else None
+    if path is None:
+        sys.exit("the client's bridge.json has no log path (client not running, or a bridge older than this CLI)")
+    lines = path.read_text(errors="replace").splitlines()
+    if args.grep:
+        rx = re.compile(args.grep)
+        lines = [l for l in lines if rx.search(l)]
+    print("# %s" % path, file=sys.stderr)
+    out(lines[-args.n:])
+
+
+# ---------- recordings ----------
+#
+# A recording is a gzip (while it grows) or zstd (after the client's compression pass) NDJSON file;
+# a 3 h session is ~3 GB raw. Everything here streams: one pass, constant memory, and a line is
+# JSON-parsed only when its kind (read from the line's fixed prefix) and time are wanted.
+
+PRE = re.compile(rb'^\{"t":(-?\d+),"tick":([^,]*),"(?:gt|ping)":([^,]*),"kind":"(\w+)"')
+
+
+def pre_clock(m):
+    """(clock, ping) of a PRE match. v2 lines are `tick` (the clock) then `ping`; v1 lines `tick` (the ping count) then `gt` (the clock then)."""
+    a = None if m.group(2) == b"null" else int(m.group(2))
+    b = None if m.group(3) == b"null" else int(m.group(3))
+    return (b, a) if b'"gt":' in m.group(0) else (a, b)
+
+
+PKT = re.compile(rb'"type":"(?:minecraft:)?(\w+)"')
+DEFAULT_LIMIT = 300
+TIMELINE_KINDS = {"chat", "title", "bossbar", "location", "connection", "mark", "screen_open", "screen_close", "page", "record", "end"}
+GREP_KINDS = {"chat", "title", "actionbar", "bossbar", "screen_open", "click", "mark"}
+
+
+def zstd_errors():
+    try:
+        from compression import zstd
+        return (zstd.ZstdError,)
+    except ImportError:
+        return ()
+
+
+def open_stream(path):
+    name = Path(path).name
+    if name.endswith(".zst"):
+        try:
+            from compression import zstd
+            return zstd.open(path, "rb")
+        except ImportError:
+            return subprocess.Popen(["zstd", "-dc", str(path)], stdout=subprocess.PIPE).stdout
+    if name.endswith(".gz"):
+        return gzip.open(path, "rb")
+    return open(path, "rb")
+
+
+def lines(path):
+    """Raw lines of a recording or capture; one still being written (or cut off) ends early, cleanly.
+    A recording the client finished compressing a moment ago (`.gz` replaced by `.zst`) is opened under its new name."""
+    f = open_stream(settle(path))
+    try:
+        yield from f
+    except (EOFError, zlib.error, OSError) + zstd_errors():
+        pass
+    finally:
+        f.close()
+
+
+def settle(path):
+    """The file to read now: `path`, or its twin when the client's recompression swapped `.gz` for `.zst` underneath us."""
+    path = Path(path)
+    if path.exists():
+        return path
+    name = path.name
+    for old, new in ((".gz", ".zst"), (".zst", ".gz")):
+        if name.endswith(old):
+            twin = path.with_name(name[: -len(old)] + new)
+            if twin.exists():
+                return twin
+    return path
+
+
+def disk_size(path):
+    """Bytes on disk of a recording, whichever of its two names exists now (0 when neither: it was removed)."""
+    try:
+        return settle(path).stat().st_size
+    except OSError:
+        return 0
+
+
+def scan(path, kinds=None, t_from=None, t_to=None, needle=None):
+    """(kind, t_ms, raw line) for lines of the wanted kinds/time range; `needle` = bytes the line must contain."""
+    for line in lines(path):
+        if needle is not None and needle not in line:
+            continue
+        m = PRE.match(line)
+        if m:
+            k, t = m.group(4).decode(), int(m.group(1))
+        else:  # a capture or older writer with another key order
+            try:
+                o = json.loads(line)
+            except ValueError:
+                continue
+            k, t = o.get("kind"), o.get("t")
+            if k is None or t is None:
+                continue
+        if kinds is not None and k not in kinds:
+            continue
+        if (t_from is not None and t < t_from) or (t_to is not None and t > t_to):
+            continue
+        yield k, t, line
+
+
+def stamps(line):
+    """(clock, ping) of a recording line: the server tick to use, and the raw ping count (diagnostic)."""
+    m = PRE.match(line)
+    if not m:
+        return line_clock(event(line))
+    return pre_clock(m)
+
+
+def line_clock(o):
+    if "gt" in o:  # format v1: `tick` was the ping count, `gt` the client's game time (the clock back then)
+        return o.get("gt"), o.get("tick")
+    return o.get("tick"), o.get("ping")
+
+
+def event(line):
+    """A parsed recording line, normalised to the v2 meaning: `tick` = the clock, `ping` = the raw ping count (v1 `gt` becomes `tick`).
+    A line cut off mid-write (a recording still being written, or a crash) comes back as an empty `corrupt` event instead of raising."""
+    try:
+        o = json.loads(line)
+    except ValueError:
+        return {"t": 0, "tick": None, "ping": None, "kind": "corrupt", "data": {}}
+    if isinstance(o, dict) and "gt" in o:
+        o["tick"], o["ping"] = line_clock(o)
+        del o["gt"]
+    return o
+
+
+def read_events(path):
+    """Every parsed line of a small file (marks.ndjson, a short capture)."""
+    out = []
+    for line in lines(path):
+        e = event(line)
+        if e.get("kind") != "corrupt":
+            out.append(e)
+    return out
+
+
+def disk_mtime(path):
+    """Modification time of a file that may be replaced by its twin (`.gz` → `.zst`) at any moment; 0 when it is gone."""
+    try:
+        return settle(path).resolve().stat().st_mtime
+    except OSError:
+        return 0
+
+
+def latest_recording(game):
+    d = game / "soul-dev/recordings"
+    found = [p for p in d.glob("latest.rec.ndjson.*") if p.exists()]
+    if not found:
+        found = [p for p in d.glob("*.rec.ndjson.*") if not p.name.endswith(".part")]
+    if not found:
+        sys.exit("no recording in %s" % d)
+    return max(found, key=disk_mtime).resolve()
+
+
+def recording_path(args):
+    if getattr(args, "file", None):
+        p = settle(args.file)
+        if not p.exists():
+            sys.exit("no such file %s" % args.file)
+        return p
+    return latest_recording(target_game(args))
+
+
+def first_event(path):
+    g = lines(path)
+    try:
+        for line in g:
+            try:
+                return json.loads(line)
+            except ValueError:
+                continue
+    finally:
+        g.close()
+    return None
+
+
+def load_rules():
+    rules = []
+    for r in json.loads(EVENTS_TABLE.read_text()).get("rules", []):
+        rules.append((r["name"], set(r.get("on", ["chat"])), re.compile(r["match"])))
+    return rules
+
+
+def flat(text):
+    """One display line for a multi-line chat message."""
+    return re.sub(r"\s*\n\s*", " | ", text.strip()) if text else ""
+
+
+def text_of(ev):
+    """The searchable text of an event (colors stripped), '' for kinds without one."""
+    k, d = ev.get("kind"), data_of(ev)
+    if k == "title" and d.get("type") == "times":
+        return "times: fade in %s, stay %s, fade out %s ticks" % (d.get("fade_in"), d.get("stay"), d.get("fade_out"))
+    if k in ("chat", "title", "actionbar"):
+        text = ev.get("data") if isinstance(ev.get("data"), str) else d.get("text")
+        return COLOR.sub("", sval(text))
+    if k == "bossbar":
+        return COLOR.sub("", sval(d.get("name")))
+    if k == "screen_open":
+        return COLOR.sub("", sval(d.get("title")))
+    if k == "click":
+        it = d.get("item")
+        return COLOR.sub("", sval(it.get("name"))) if isinstance(it, dict) else ""
+    if k == "mark":
+        return sval(d.get("label"))
+    if k == "tracking":
+        return sval(d.get("name"))
+    return ""
+
+
+def data_of(ev):
+    """The event's data as a dict: odd servers and builds send strings, lists or null where the rules expect an object."""
+    d = ev.get("data")
+    return d if isinstance(d, dict) else {}
+
+
+def sval(v):
+    return v if isinstance(v, str) else ("" if v is None else str(v))
+
+
+def classify(ev, rules):
+    k, d = ev.get("kind"), data_of(ev)
+    if k == "bossbar" and d.get("op") not in ("add", "name"):
+        return None, None
+    if k not in ("chat", "title", "bossbar"):
+        return None, None
+    text = text_of(ev)
+    for name, on, rx in rules:
+        if k in on and rx.search(text):
+            return name, flat(text)
+    return None, flat(text)
+
+
+def rel(ms, t0):
+    """Seconds from the recording start; backlog events from before it come out negative."""
+    s = (ms - t0) / 1000
+    sign, s = ("-", -s) if s < 0 else ("+", s)
+    return "%s%02d:%04.1f" % (sign, int(s // 60), s % 60)
+
+
+TICK_WINDOW = 200  # `tick=N` takes the first line at/after the recording start whose tick is in [N, N+200): another server's game time is far away
+
+
+def when_ms(spec, path, t0):
+    """+SECS, +MM:SS, MM:SS, HH:MM:SS (wall clock), tick=N (the server tick, `gt=N` is the same), ping=N (raw ping count) → epoch ms of the first line at or after it."""
+    if spec.startswith(("tick=", "gt=", "ping=")):
+        key, n = spec.split("=", 1)
+        n = int(n)
+        last = t0
+        for line in lines(path):
+            m = PRE.match(line)
+            if not m:
+                continue
+            last = int(m.group(1))
+            clock, ping = pre_clock(m)
+            value = ping if key == "ping" else clock
+            if value is not None and n <= value < n + TICK_WINDOW and last >= t0 and m.group(4) != b"backlog":
+                return last
+        return last
+    if re.fullmatch(r"\d\d:\d\d:\d\d(\.\d+)?", spec):
+        day = datetime.fromtimestamp(t0 / 1000)
+        h, m, s = spec.split(":")
+        return day.replace(hour=int(h), minute=int(m), second=int(float(s)), microsecond=int((float(s) % 1) * 1e6)).timestamp() * 1000
+    s = spec.lstrip("+")
+    if ":" in s:
+        mm, ss = s.split(":")
+        return t0 + (int(mm) * 60 + float(ss)) * 1000
+    return t0 + float(s) * 1000
+
+
+class Range:
+    """--from/--to of a replay-like command, resolved against the recording start."""
+
+    def __init__(self, args, path):
+        head = first_event(path) or {}
+        self.head = head.get("data") or {}
+        self.t0 = head.get("t") or 0
+        f, t = getattr(args, "from_", None), getattr(args, "to", None)
+        self.t_from = when_ms(f, path, self.t0) if f else None
+        self.t_to = when_ms(t, path, self.t0) if t else None
+
+    def scan(self, path, kinds=None, needle=None):
+        return scan(path, kinds, self.t_from, self.t_to, needle)
+
+
+class Limited:
+    """Bounded output: the first (or with --tail the last) `limit` lines, then one footer naming how to narrow."""
+
+    def __init__(self, args, default=DEFAULT_LIMIT):
+        n = getattr(args, "limit", None)
+        self.limit = default if n is None else n
+        self.tail = getattr(args, "tail", False)
+        self.rows = collections.deque(maxlen=self.limit if (self.tail and self.limit) else None)
+        self.total = 0
+
+    def add(self, row):
+        self.total += 1
+        if self.limit and not self.tail and self.total > self.limit:
+            return
+        self.rows.append(row)
+
+    def flush(self, what="lines", hint="--from/--to, --kinds, --grep, --player, or --limit 0"):
+        for r in self.rows:
+            print(r)
+        if self.limit and self.total > self.limit:
+            print("… %d %s %s (%d shown); narrow with %s" % (self.total - self.limit, what, "before" if self.tail else "more", self.limit, hint))
+
+
+def cmd_replay(args):
+    path = recording_path(args)
+    rng = Range(args, path)
+    if not rng.head:
+        sys.exit("empty recording %s" % path)
+    {"summary": replay_summary, "timeline": replay_timeline, "at": replay_at, "track": replay_track, "ticks": replay_ticks,
+     "sizes": replay_sizes}[args.what](args, path, rng)
+
+
+def mb(n):
+    return "%.1f MB" % (n / 1e6)
+
+
+def replay_summary(args, path, rng):
+    t0, head = rng.t0, rng.head
+    client = head.get("client") or {}
+    rules = load_rules()
+    parse_kinds = {"chat", "title", "bossbar", "location", "connection", "mark", "screen_open", "tracking", "end"}
+    kinds, kind_bytes, t_last = collections.Counter(), collections.Counter(), t0
+    pdirs = collections.Counter()
+    ticks, gts = [None, None], [None, None]
+    places, evs, marks, menus = [], [], [], collections.Counter()
+    real, npc, joins, end = {}, collections.Counter(), [], None
+    for line in lines(path):
+        m = PRE.match(line)
+        if not m:
+            continue
+        k = m.group(4).decode()
+        kinds[k] += 1
+        kind_bytes[k] += len(line)
+        if k == "packet":
+            pdirs["out" if b'"dir":"out"' in line[:200] else "in"] += 1
+        t = int(m.group(1))
+        if k != "backlog" and t > t_last:
+            t_last = t
+        clock, ping = pre_clock(m)
+        if clock is not None:
+            ticks[0] = ticks[0] if ticks[0] is not None else clock
+            ticks[1] = clock
+        if ping is not None and k in PROVIDERS:
+            gts[0] = gts[0] if gts[0] is not None else ping
+            gts[1] = ping
+        if k not in parse_kinds:
+            continue
+        if k == "tracking" and b'"real":true' not in line and b'"event":"tracked"' not in line:
+            continue
+        e = event(line)
+        d = e.get("data")
+        if not isinstance(d, dict):
+            d = {}
+        if k == "location":
+            p = (d.get("area"), d.get("sub_location"), d.get("server_id"))
+            if p[0] and p[1] and (not places or places[-1][1] != p):
+                places.append((t, p))
+        elif k == "connection" and d.get("op") == "join":
+            joins.append(t)
+        elif k == "tracking":
+            name = COLOR.sub("", d.get("name") or "")
+            if d.get("real"):
+                s = real.setdefault(name, [t, t, 0])
+                s[1], s[2] = t, s[2] + 1
+            else:
+                npc[name] += 1
+        elif k == "mark":
+            marks.append(e)
+        elif k == "screen_open":
+            menus[txt(d.get("title"))] += 1
+        elif k == "end":
+            end = d
+        elif k in ("chat", "title", "bossbar"):
+            name, text = classify(e, rules)
+            if name:
+                evs.append((t, name, text))
+    size = disk_size(path)
+    raw = sum(kind_bytes.values())
+    print("%s (%s on disk, %s raw, format %s v%s)" % (path, mb(size), mb(raw), head.get("format"), head.get("version")))
+    print("player %s on %s, Soul %s, bridge %s, instance %s" % (head.get("player"), head.get("server"), client.get("soul_version"),
+                                                                 client.get("bridge_version"), client.get("instance")))
+    print("duration %.1fs (%s → %s), %d lines, %d server joins; server tick %s; ping count %s" % (
+        (t_last - t0) / 1000, stamp(t0), stamp(t_last), sum(kinds.values()), len(joins),
+        ("%s..%s (%s)" % (ticks[0], ticks[1], "game time from set_time, interpolated: the clock to use" if (head.get("version") or 1) >= 2 else "format v1: the client's game time, snapped to set_time; its `tick` was the ping count")) if ticks[0] is not None else "none (no set_time seen)",
+        ("%s..%s (diagnostic; `replay ticks` compares it with the clock)" % tuple(gts)) if gts[0] is not None else "-"))
+    top = kinds.most_common()
+    print("kinds   " + ", ".join("%s %d (%s)" % (k, n, mb(kind_bytes[k])) for k, n in top[:14]) + ((", +%d more kinds (`replay sizes`)" % (len(top) - 14)) if len(top) > 14 else ""))
+    if pdirs:
+        asked = (head.get("filter") or {}).get("dir")
+        print("packets in %d, out %d%s" % (pdirs["in"], pdirs["out"], ("  <- the recording asked for dir=%s but has no outbound packets (recorded by a bridge older than 2026-11-12, or an old preset: use --dir both with a current bridge)" % asked) if asked in ("out", "both") and not pdirs["out"] else ""))
+    shown = places[:40]
+    print("places  " + ("; ".join("%s %s / %s (%s)" % (rel(t, t0), a, s, sid) for t, (a, s, sid) in shown) or "-") + ((" … +%d more" % (len(places) - 40)) if len(places) > 40 else ""))
+    if real:
+        print("players real (tracked as entities): " + ", ".join("%s %s..%s" % (n, rel(s[0], t0), rel(s[1], t0)) for n, s in list(real.items())[:30])
+              + ((" … +%d more" % (len(real) - 30)) if len(real) > 30 else ""))
+    if npc:
+        print("        npc entities tracked: %d (%d distinct names; most: %s)" % (sum(npc.values()), len(npc), ", ".join("%s ×%d" % kv for kv in npc.most_common(5))))
+    found = collections.OrderedDict()
+    for t, name, _ in evs:
+        found.setdefault(name, []).append(t)
+    print("events  " + (", ".join("%s ×%d (first %s)" % (n, len(ts), rel(ts[0], t0)) for n, ts in found.items()) or "none classified"))
+    runs = dungeon_runs(evs)
+    if runs:
+        print("runs    %d" % len(runs))
+        for i, r in enumerate(runs, 1):
+            print("   #%d %s start %s%s%s end %s  %s  deaths %s own secrets %s" % (
+                i, r.get("floor") or "?", rel(r["start"], t0), (" blood door %s" % rel(r["blood"], t0)) if r.get("blood") else "",
+                (" boss %s" % rel(r["boss"], t0)) if r.get("boss") else "", rel(r["end"], t0) if r.get("end") else "(no end)",
+                " ".join(x for x in (r.get("score"), r.get("defeated")) if x) or "-", r.get("deaths"), r.get("secrets", "?")))
+    print("marks   %d" % len(marks))
+    for m in marks:
+        d = m["data"]
+        print("   %s #%s %-24s %s yaw %.1f %s" % (rel(m["t"], t0), d.get("n"), d.get("label"), pos(d.get("pos"), 2), d.get("yaw") or 0,
+                                                 (d.get("location") or {}).get("area")))
+    if menus:
+        top = menus.most_common()
+        print("menus   %d opened: %s%s" % (sum(menus.values()), ", ".join('"%s" ×%d' % kv for kv in top[:30]), (" … +%d more titles" % (len(top) - 30)) if len(top) > 30 else ""))
+    if end:
+        print("end     %s; dropped %s, queue drops %s, caps %s" % (end.get("reason"), end.get("dropped") or "nothing", end.get("queue_dropped"), end.get("caps")))
+        if end.get("next"):
+            print("        continues in %s" % end["next"])
+    else:
+        print("end     (no end line: still recording or cut off)")
+
+
+def dungeon_runs(evs):
+    """One row per dungeon run from the named chat events: floor, start, blood door, boss entry, end, score, boss time, deaths, secrets."""
+    runs, cur = [], None
+    for t, name, text in evs:
+        if name == "run start":
+            cur = {"start": t, "deaths": 0}
+            runs.append(cur)
+        elif cur is None:
+            continue
+        elif name == "death":
+            cur["deaths"] += 1
+        elif name == "blood open":
+            cur.setdefault("blood", t)
+        elif name.startswith("boss entry"):
+            cur.setdefault("boss", t)
+        elif name == "run floor":
+            cur.setdefault("floor", ("MM " if "Master Mode" in text else "") + re.sub(r"^.*Catacombs - ", "", text.strip()))
+        elif name == "score":
+            cur.setdefault("score", text.strip().replace("Team Score: ", "score "))
+        elif name == "defeated":
+            cur.setdefault("defeated", re.sub(r"^.*Defeated ", "", text.strip()))
+        elif name == "stat secrets":
+            cur.setdefault("secrets", re.sub(r"\D", "", text))
+        elif name == "run end":
+            cur.setdefault("end", t)
+    return runs
+
+
+def replay_timeline(args, path, rng):
+    rules = load_rules()
+    t0 = rng.t0
+    wanted = set(args.kinds.split(",")) if args.kinds else None
+    if args.all or (wanted and "all" in wanted):
+        wanted = None
+    elif wanted is None:
+        wanted = GREP_KINDS if args.grep else TIMELINE_KINDS
+    grep = re.compile(args.grep, re.I) if args.grep else None
+    needle = args.player.encode() if args.player else None
+    out_ = Limited(args)
+    for k, t, line in rng.scan(path, wanted, needle):
+        if k in ("header", "snapshot", "backlog") and not (wanted and k in wanted):
+            continue
+        e = event(line)
+        if e.get("kind") == "corrupt":
+            continue
+        d = e.get("data")
+        if not isinstance(d, dict):
+            d = {}
+        if k == "bossbar" and d.get("op") == "progress" and not (args.kinds and "bossbar" in args.kinds.split(",")):
+            continue
+        if grep and not grep.search(text_of(e)):
+            continue
+        name, text = classify(e, rules)
+        if args.events and not name:
+            continue
+        tick = e.get("tick") if e.get("tick") is not None else "-"
+        prefix = "%s %-10s" % (rel(t, t0), tick)
+        if name:
+            out_.add("%s EVENT %-22s %s" % (prefix, name, text))
+        elif k in ("chat", "actionbar", "title"):
+            out_.add("%s %-8s %s" % (prefix, k.upper(), flat(text_of(e)) if not OPTS["legacy"] else flat(d.get("text") or "")))
+        else:
+            for i, l in enumerate(fmt(e)):
+                out_.add(("%s %s" % (prefix, STAMP.sub("", l, count=1))) if i == 0 else l)
+    out_.flush("lines")
+
+
+def reconstruct(path, rng, until):
+    last, snap, chat, screen, extra = {}, None, collections.deque(maxlen=8), None, {}
+    kinds = set(PROVIDERS) | {"snapshot", "chat", "screen_open", "screen_close", "mark", "title"}
+    last_clock = None
+    for k, t, line in scan(path, kinds, None, until):
+        c = stamps(line)[0]
+        if c is not None and k != "snapshot":
+            last_clock = (t, c)
+        if k == "snapshot":
+            snap = (t, line)
+        elif k in PROVIDERS:
+            last[k] = (t, line)
+        elif k == "chat":
+            chat.append((t, line))
+        elif k == "screen_open":
+            screen = (t, line)
+        elif k == "screen_close":
+            screen = None
+        else:
+            extra["last_" + k] = (t, line)
+    state = {}
+    if snap:
+        sd = event(snap[1]).get("data") or {}
+        for p in PROVIDERS:
+            if p in sd:
+                state[p] = (snap[0], sd[p])
+    for p, (t, line) in last.items():
+        if p not in state or t >= state[p][0]:
+            state[p] = (t, event(line).get("data"))
+    state["chat"] = [(t, (event(l).get("data") or {}).get("text") if isinstance(event(l).get("data"), dict) else None) for t, l in chat]
+    state["menu"] = (screen[0], event(screen[1]).get("data") or {}) if screen else None
+    for k, (t, line) in extra.items():
+        state[k] = (t, event(line).get("data"))
+    if last_clock is not None:
+        state["_tick"] = last_clock
+    return state
+
+
+def replay_at(args, path, rng):
+    t0 = rng.t0
+    when = when_ms(args.arg, path, t0)
+    st = reconstruct(path, rng, when)
+    if args.json:
+        return print(json.dumps({k: v for k, v in st.items()}, ensure_ascii=False, indent=1, default=str))
+    tick = st.get("_tick")
+    print("at %s (%s%s)" % (rel(when, t0), stamp(when), (", server tick %s" % tick[1]) if tick else ""))
+    limit = args.limit if args.limit is not None else 30
+    for p in ("self", "players", "party", "map", "world", "entities", "soul", "screen"):
+        if p not in st:
+            continue
+        t, d = st[p]
+        try:
+            if p == "players" and isinstance(d, dict):
+                d = dict(d)
+                ps = sorted(dicts(d.get("players")), key=lambda x: (not x.get("real"), x.get("distance") or 0))
+                extra = max(0, len(ps) - limit) if limit else 0
+                d["players"] = ps[:limit] if limit else ps
+                gone = dicts(d.get("untracked_recent"))
+                if limit and len(gone) > 8:
+                    d["untracked_recent"] = gone[-8:]
+                    extra_gone = len(gone) - 8
+                else:
+                    extra_gone = 0
+                lines_ = fmt_players(d)
+                if extra:
+                    lines_.append("    … +%d more tracked entities (real players first, then nearest; --limit 0 shows all)" % extra)
+                if extra_gone:
+                    lines_.append("    … +%d older untracks" % extra_gone)
+            else:
+                lines_ = {"self": lambda: [fmt_self(d)], "party": lambda: fmt_party(d), "map": lambda: fmt_map(d),
+                          "world": lambda: fmt_world(d), "entities": lambda: fmt_entities(d), "soul": lambda: fmt_soul(d, 200),
+                          "screen": lambda: fmt_screen(d)}[p]()
+            lines_[0] += "   [%.1fs old]" % ((when - t) / 1000)
+        except UNEXPECTED:
+            lines_ = ["%s: unrecognised data %s" % (p, json.dumps(d, ensure_ascii=False, default=str)[:200])]
+        out(lines_)
+    if st.get("menu"):
+        print('menu open: "%s" since %s' % (txt(st["menu"][1].get("title")), rel(st["menu"][0], t0)))
+    for key, label in (("last_title", "last title"), ("last_mark", "last mark")):
+        if st.get(key):
+            t, d = st[key]
+            print("%s: %s (%s)" % (label, d.get("text") if key == "last_title" else "#%s %s" % (d.get("n"), d.get("label")), rel(t, t0)))
+    print("recent chat:")
+    for t, text in st["chat"]:
+        print("   %s %s" % (rel(t, t0), flat(txt(text))))
+
+
+def replay_track(args, path, rng):
+    who, t0 = args.arg, rng.t0
+    me = rng.head.get("player")
+    needle = None if who == "self" else who.encode()
+    rows = []
+    for k, t, line in rng.scan(path, {"self", "players", "party"}, needle):
+        if k == "self":
+            if who not in ("self", me):
+                continue
+        elif k == "party" and not args.party:
+            continue
+        elif k == "players" and who == "self":
+            continue
+        e = event(line)
+        d = e.get("data")
+        if not isinstance(d, dict):
+            continue
+        if k == "self":
+            rows.append((e, d.get("pos"), d.get("yaw"), "self"))
+        elif k == "players":
+            for p in d.get("players", []):
+                if p.get("name") == who:
+                    rows.append((e, p.get("pos"), p.get("yaw"), "entity"))
+        elif k == "party":
+            for m in d.get("members", []):
+                if m.get("name") == who and m.get("source") != "entity":
+                    rows.append((e, m.get("pos"), m.get("yaw"), m.get("source")))
+    if not rows:
+        sys.exit("no positions for %s (names seen in players frames are case-sensitive; `self` for the recording player)" % who)
+    limit = args.limit if args.limit is not None else DEFAULT_LIMIT
+    every = args.every
+    if every is None and limit and len(rows) > limit:
+        every = max(0.1, round((rows[-1][0]["t"] - rows[0][0]["t"]) / 1000 / limit, 1))
+        print("# %d samples, thinned to one per %.1fs to stay under %d rows (--every S or --limit 0 for all)" % (len(rows), every, limit), file=sys.stderr)
+    if every:
+        thinned, last = [], None
+        for r in rows:
+            if last is None or r[0]["t"] - last >= every * 1000:
+                thinned.append(r)
+                last = r[0]["t"]
+        rows = thinned
+    if args.csv:
+        w = csv.writer(sys.stdout)
+        w.writerow(["t_ms", "rel_s", "tick", "ping", "x", "y", "z", "yaw", "source"])
+        for e, p, yaw, src in rows:
+            p = p or [None, None, None]
+            w.writerow([e["t"], round((e["t"] - t0) / 1000, 3), e.get("tick"), e.get("ping"), p[0], p[1], p[2], yaw, src])
+        return
+    print("%-10s %-8s %-8s %-32s %-7s %s" % ("time", "tick", "ping", "pos", "yaw", "source"))
+    for e, p, yaw, src in rows:
+        print("%-10s %-8s %-8s %-32s %-7s %s" % (rel(e["t"], t0), e.get("tick"), e.get("ping"), pos(p, 2), "%.1f" % yaw if yaw is not None else "?", src))
+
+
+def replay_ticks(args, path, rng):
+    """Clock health per server: the server tick (set_time game time) against the raw ping count, and freezes (the ping count standing still)."""
+    t0 = rng.t0
+    segs, cur, server = [], None, None
+    for k, t, line in rng.scan(path, {"self", "connection", "location"}):
+        if k == "connection":
+            cur, server = None, None
+            continue
+        if k == "location":
+            d = event(line).get("data")
+            server = (d.get("server_id") if isinstance(d, dict) else None) or server
+            if cur is not None and cur["server"] is None:
+                cur["server"] = server
+            continue
+        clock, ping = stamps(line)
+        if cur is None:
+            cur = {"t0": t, "t1": t, "server": server, "ping0": None, "ping1": None, "clock": 0, "clock_last": None, "null": 0,
+                   "stalls": [], "stall_from": None, "last_ping": None, "t_prev": t}
+            segs.append(cur)
+        cur["t1"] = t
+        if clock is None:
+            cur["null"] += 1
+        else:
+            # Net advance of the clock; a jump (another server's time, a reconnect) is not a duration.
+            if cur["clock_last"] is not None and -200 < clock - cur["clock_last"] < 200:
+                cur["clock"] += clock - cur["clock_last"]
+            cur["clock_last"] = clock
+        if ping is None:
+            if cur["stall_from"] is None and cur["last_ping"] is not None:
+                cur["stall_from"] = cur["t_prev"]
+        else:
+            cur["ping0"] = cur["ping0"] if cur["ping0"] is not None else ping
+            cur["ping1"] = ping
+            if cur["last_ping"] is not None:
+                if ping == cur["last_ping"]:
+                    cur["stall_from"] = cur["stall_from"] or cur["t_prev"]
+                elif cur["stall_from"] is not None:
+                    if t - cur["stall_from"] >= 500:
+                        cur["stalls"].append((cur["stall_from"], t - cur["stall_from"]))
+                    cur["stall_from"] = None
+            cur["last_ping"], cur["t_prev"] = ping, t
+    print("%-9s %-10s %6s %8s %8s %8s %6s %s" % ("from", "server", "secs", "tick/s", "ping/s", "surplus", "null", "freezes ≥0.5s (the ping count standing still; longest)"))
+    shown = Limited(args, 60)
+    for s in segs:
+        secs = (s["t1"] - s["t0"]) / 1000
+        if secs < 3 or (s["clock_last"] is None and s["ping0"] is None):
+            continue
+        st = s["stalls"]
+        rate = s["clock"] / secs
+        prate = (s["ping1"] - s["ping0"]) / secs if s["ping0"] is not None else None
+        shown.add("%-9s %-10s %6.0f %8.2f %8s %8s %6d %d%s" % (
+            rel(s["t0"], t0), s["server"] or "?", secs, rate, ("%.2f" % prate) if prate is not None else "-",
+            ("%+.1f%%" % (100 * (prate - rate) / rate)) if prate is not None and rate else "-", s["null"], len(st),
+            (" (%.1fs at %s)" % (max(x[1] for x in st) / 1000, rel(max(st, key=lambda x: x[1])[0], t0))) if st else ""))
+    shown.flush("segments")
+    print("tick/s is the server's game time per second (~TPS, 19.6 on Hypixel); ping/s counts the per-tick ping, which overcounts by about 2 per attribute update of the player's own entity "
+          "and continues across servers (never resets). Use the tick, never the ping count, for durations.")
+
+
+def replay_sizes(args, path, rng):
+    """Where the bytes are: per kind, per raw packet type, and the busiest minutes (raw, uncompressed)."""
+    t0 = rng.t0
+    kinds, kb, pt, pb, minute = collections.Counter(), collections.Counter(), collections.Counter(), collections.Counter(), collections.Counter()
+    for line in lines(path):
+        m = PRE.match(line)
+        if not m:
+            continue
+        k = m.group(4).decode()
+        kinds[k] += 1
+        kb[k] += len(line)
+        minute[(int(m.group(1)) - t0) // 60000] += len(line)
+        if k == "packet":
+            pm = PKT.search(line, 0, 220)
+            ty = pm.group(1).decode() if pm else "?"
+            pt[ty] += 1
+            pb[ty] += len(line)
+    raw = sum(kb.values())
+    print("%s: %s on disk, %s raw, %d lines" % (path.name, mb(disk_size(path)), mb(raw), sum(kinds.values())))
+    print("%-20s %9s %10s %6s" % ("kind", "lines", "raw", "share"))
+    for k, n in sorted(kinds.items(), key=lambda kv: -kb[kv[0]])[:20]:
+        print("%-20s %9d %10s %5.1f%%" % (k, n, mb(kb[k]), 100 * kb[k] / raw))
+    if pt:
+        print("\npacket types (inside kind packet):")
+        for ty, n in sorted(pt.items(), key=lambda kv: -pb[kv[0]])[:15]:
+            print("  %-26s %8d %10s" % (ty, n, mb(pb[ty])))
+    busiest = minute.most_common(5)
+    print("\nraw MB per minute: average %.1f, busiest %s (writer budget default 96 MB/min)" % (
+        raw / 1e6 / max(1, len(minute)), ", ".join("%s %.1f" % (rel(t0 + m * 60000, t0), v / 1e6) for m, v in busiest)))
+
+
+def cmd_marks(args):
+    if args.file:
+        path = Path(args.file)
+    else:
+        game = target_game(args)
+        path = game / "soul-dev/marks.ndjson"
+    if not path.exists():
+        sys.exit("no marks at %s" % path)
+    rng = Range(args, path)
+    marks = [event(line) for _, _, line in rng.scan(path, {"mark"})]
+    if args.json:
+        return print(json.dumps([dict(m["data"], t=m["t"], tick=m.get("tick"), ping=m.get("ping")) for m in marks], ensure_ascii=False, indent=1))
+    print("%-3s %-20s %-24s %-8s %-30s %-14s %-24s %-22s %s" % ("#", "time", "label", "tick", "pos", "yaw/pitch", "looking at", "held", "area / room"))
+    for m in marks:
+        d = m["data"]
+        look = d.get("looking_at") or {}
+        room = d.get("room")
+        print("%-3s %-20s %-24s %-8s %-30s %-14s %-24s %-22s %s" % (
+            d.get("n"), datetime.fromtimestamp(m["t"] / 1000).strftime("%m-%d %H:%M:%S"), (d.get("label") or "")[:24], m.get("tick") if m.get("tick") is not None else "-",
+            pos(d.get("pos"), 2), "%.1f/%.1f" % (d.get("yaw") or 0, d.get("pitch") or 0),
+            ("%s %s" % (look.get("block") or look.get("entity"), look.get("pos")))[:24] if look else "-",
+            brief(d.get("held"))[:22], "%s%s" % ((d.get("location") or {}).get("area"), (" / " + str(room.get("name"))) if isinstance(room, dict) else "")))
+
+
+def cmd_menus(args):
+    if args.file:
+        path = Path(args.file)
+    else:
+        game = target_game(args)
+        cap = game / "soul-dev/captures/latest.ndjson"
+        try:
+            rec = latest_recording(game)
+        except SystemExit:
+            rec = cap
+        path = max((p for p in (rec, cap) if p.exists()), key=lambda p: disk_mtime(p), default=cap)
+    if not path.exists():
+        sys.exit("no capture at %s" % path)
+    rng = Range(args, path)
+    title_rx = re.compile(args.title, re.I) if args.title else None
+    screens, cur = [], None
+    for k, t, line in rng.scan(path, {"screen_open", "screen_contents", "slot_update", "click", "screen_close"}):
+        ev = event(line)
+        d = ev.get("data") or {}
+        if k == "screen_open":
+            cur = {"title": d.get("title"), "id": d.get("container_id"), "type": d.get("menu_type"),
+                   "size": d.get("container_slots"), "slots": {}, "clicks": [], "t": ev["t"], "end": None}
+            screens.append(cur)
+        elif k == "screen_contents" and cur and d.get("container_id") == cur["id"]:
+            cur["slots"] = {s["slot"]: s for s in d.get("slots", [])}
+            if cur["size"] is None:
+                cur["size"] = d.get("slot_count")
+        elif k == "slot_update" and cur and d.get("container_id") == cur["id"]:
+            if d.get("item") == "empty":
+                cur["slots"].pop(d["slot"], None)
+            else:
+                cur["slots"][d["slot"]] = d
+        elif k == "click" and cur:
+            cur["clicks"].append(d)
+        elif k == "screen_close" and cur and d.get("container_id") == cur["id"]:
+            cur["end"] = "closed by %s" % d.get("by")
+            cur = None
+    if not screens:
+        sys.exit("no screens in %s" % path)
+    if title_rx:
+        screens = [s for s in screens if title_rx.search(txt(s["title"]))]
+        if not screens:
+            sys.exit("no screen title matches %s" % args.title)
+    limit = args.limit if args.limit is not None else 20
+    total = len(screens)
+    if limit and total > limit:
+        screens = screens[-limit:] if args.tail else screens[:limit]
+    for i, s in enumerate(screens):
+        end = s["end"] or ("replaced by the next screen" if i + 1 < len(screens) else "still open at capture end")
+        print('== "%s" #%s %s, %s container slots (%s; %s)' % (txt(s["title"]), s["id"], s["type"], s["size"], stamp(s["t"]), end))
+        size = s["size"] or 0
+        for row in range(0, size, 9):
+            cells = []
+            for c in range(row, min(row + 9, size)):
+                it = s["slots"].get(c, {}).get("item")
+                name = txt(it.get("name")).strip() if isinstance(it, dict) else ""
+                cells.append(("·" if not isinstance(it, dict) else (name[:11] or "—")).ljust(11))
+            print("  %3d | %s" % (row, " ".join(cells)))
+        listed = [v for k2, v in sorted(s["slots"].items()) if isinstance(v.get("item"), dict)
+                  and txt(v["item"].get("name")).strip() and (OPTS["inv"] or not v.get("player"))]
+        out(slot_lines(listed, "    "))
+        for c in s["clicks"]:
+            it = c.get("item")
+            print("    click [%s] %s: %s" % (c.get("slot"), c.get("input"), txt(it.get("name")) if isinstance(it, dict) else it))
+    if limit and total > limit:
+        print("… %d more screens (%d shown); narrow with --title REGEX, --from/--to, --tail, or --limit 0" % (total - limit, limit))
+
+
+def cmd_recompress(args):
+    """gzip → zstd -12 (about 5× smaller, same content): the same pass the client runs after a recording stops."""
+    for name in args.files:
+        src = Path(name)
+        if not src.name.endswith(".gz"):
+            print("skip %s (not .gz)" % src)
+            continue
+        dst = src.with_name(src.name[:-3] + ".zst")
+        part = dst.with_name(dst.name + ".part")
+        t = time.time()
+        try:
+            from compression import zstd
+            with gzip.open(src, "rb") as fin, zstd.open(part, "wb", level=12) as fout:
+                while True:
+                    chunk = fin.read(1 << 20)
+                    if not chunk:
+                        break
+                    fout.write(chunk)
+        except ImportError:
+            with gzip.open(src, "rb") as fin, open(part, "wb") as fout:
+                p = subprocess.Popen(["zstd", "-q", "-T2", "-12", "-c"], stdin=subprocess.PIPE, stdout=fout)
+                shutil.copyfileobj(fin, p.stdin)
+                p.stdin.close()
+                if p.wait() != 0:
+                    sys.exit("zstd failed on %s" % src)
+        part.replace(dst)
+        print("%s: %s → %s (%s, %.1fs)" % (src.name, mb(src.stat().st_size), mb(dst.stat().st_size), dst.name, time.time() - t))
+        if args.rm:
+            src.unlink()
+
+
+# ---------- world capture ----------
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import worldfile  # noqa: E402
+
+COMPASS = ((0, "east (+x)"), (90, "south (+z)"), (180, "west (-x)"), (270, "north (-z)"))
+
+
+def compass(dx, dz):
+    import math
+    ang = (math.degrees(math.atan2(dz, dx)) + 360) % 360
+    return min(COMPASS, key=lambda c: min(abs(ang - c[0]), 360 - abs(ang - c[0])))[1]
+
+
+def hole_regions(holes):
+    """4-connected groups of [cx, cz] holes -> [(cols, (minx, minz, maxx, maxz))]."""
+    left = {tuple(h) for h in holes}
+    out = []
+    while left:
+        stack = [left.pop()]
+        group = list(stack)
+        while stack:
+            x, z = stack.pop()
+            for n in ((x + 1, z), (x - 1, z), (x, z + 1), (x, z - 1)):
+                if n in left:
+                    left.remove(n)
+                    stack.append(n)
+                    group.append(n)
+        xs, zs = [g[0] for g in group], [g[1] for g in group]
+        out.append((group, (min(xs), min(zs), max(xs), max(zs))))
+    return out
+
+
+def column_map(stored, seen, player=None, width_cap=120):
+    """ASCII map of chunk columns: # captured, . hole (never seen), @ the player's column. x grows right, z down."""
+    cx1, cx2, cz1, cz2 = stored[0] >> 4, stored[3] >> 4, stored[2] >> 4, stored[5] >> 4
+    step = 1
+    while (cx2 - cx1 + 1) // step > width_cap:
+        step += 1
+    lines = []
+    lines.append("      x %d .. %d   (one char = %s chunk column%s of 16 blocks; # captured, . never seen%s)" % (
+        cx1 * 16, cx2 * 16 + 15, step * step if step > 1 else 1, "s" if step > 1 else "", ", @ you" if player else ""))
+    for z in range(cz1, cz2 + 1, step):
+        row = []
+        for x in range(cx1, cx2 + 1, step):
+            cells = [(xx, zz) for xx in range(x, min(x + step, cx2 + 1)) for zz in range(z, min(z + step, cz2 + 1))]
+            ch = "#" if all(c in seen for c in cells) else ("." if not any(c in seen for c in cells) else "+")
+            if player and (player["cx"], player["cz"]) in cells:
+                ch = "@"
+            row.append(ch)
+        lines.append("z%5d  %s" % (z * 16, "".join(row)))
+    return lines
+
+
+def seen_columns(stored, holes):
+    cx1, cx2, cz1, cz2 = stored[0] >> 4, stored[3] >> 4, stored[2] >> 4, stored[5] >> 4
+    hs = {tuple(h) for h in holes}
+    return {(x, z) for x in range(cx1, cx2 + 1) for z in range(cz1, cz2 + 1)} - hs
+
+
+def fmt_world_status(st):
+    if not st.get("file"):
+        return ["no world capture has run in this client session (`listen world start`)"]
+    lines = []
+    cols = st.get("columns") or {}
+    b = st.get("bounds") or {}
+    player = st.get("player")
+    state = "CAPTURING" if st.get("active") else "ended (%s)" % st.get("reason", "stopped")
+    lines.append("%s  %s%s" % (state, st["file"], ("  label %s" % st["label"]) if st.get("label") else ""))
+    lines.append("dimension %s, %ss, bounds requested %s, stored %s" % (st.get("dimension"), st.get("seconds"), b.get("requested"), b.get("stored")))
+    lines.append("columns %s/%s captured (%s queued, %s holes), %s sections, %s non-air blocks, %s states" % (
+        cols.get("seen"), cols.get("total"), cols.get("queued"), cols.get("holes"), st.get("sections"), st.get("blocks_non_air"), st.get("states")))
+    if b.get("covered"):
+        lines.append("covered   %s" % b["covered"])
+    lines.append("also      %s block entities (+%s updates), %s entities (+%s updates, %s capped), %s block changes (%s no-ops dropped), %s from re-sent chunks" % (
+        st.get("block_entities"), st.get("block_entity_updates"), st.get("entities"), st.get("entity_updates"), st.get("entity_updates_capped"),
+        st.get("changes"), st.get("changes_deduped"), st.get("diff_changes")))
+    c = st.get("cost") or {}
+    lines.append("file      %s gz (%s raw), writer queue %s, dropped %s" % (mb(st.get("bytes_gz") or 0), mb(st.get("bytes_raw") or 0), st.get("writer_queue"), st.get("dropped")))
+    lines.append("cost      client thread avg %.3f ms/tick over %s ticks; %.2f ms/tick over the %s ticks that copied data; max %.2f ms; %s ticks over 2 ms (budget %s ms)" % (
+        c.get("avg_ms") or 0, c.get("ticks"), c.get("avg_work_tick_ms") or 0, c.get("work_ticks"), c.get("max_ms") or 0, c.get("ticks_over_2ms"), c.get("budget_ms")))
+    if st.get("entity_errors"):
+        lines.append("entity errors %s, last: %s" % (st["entity_errors"], st.get("last_entity_error")))
+    if st.get("failure"):
+        lines.append("WRITER FAILED: %s" % st["failure"])
+    if b.get("stored"):
+        holes = st.get("holes") or []
+        lines.append("")
+        lines += column_map(b["stored"], seen_columns(b["stored"], holes), player if st.get("active") else None)
+        if holes:
+            regions = hole_regions(holes)
+            if player and st.get("active"):
+                px, pz = player["x"], player["z"]
+                regions.sort(key=lambda r: (((r[1][0] + r[1][2] + 1) * 8 - px) ** 2 + ((r[1][1] + r[1][3] + 1) * 8 - pz) ** 2))
+            lines.append("")
+            lines.append("holes: %d chunk columns in %d region(s); walk until the chunks load, nearest first:" % (len(holes), len(regions)))
+            for group, (x1, z1, x2, z2) in regions[:12]:
+                cx, cz = (x1 + x2 + 1) * 8, (z1 + z2 + 1) * 8
+                where = ""
+                if player:
+                    where = ", from you %d blocks %s" % (round(((cx - player["x"]) ** 2 + (cz - player["z"]) ** 2) ** 0.5), compass(cx - player["x"], cz - player["z"]))
+                lines.append("  x %d..%d, z %d..%d  (%d columns; centre ≈ %d, %d%s)" % (x1 * 16, x2 * 16 + 15, z1 * 16, z2 * 16 + 15, len(group), cx, cz, where))
+            if len(regions) > 12:
+                lines.append("  … %d more regions" % (len(regions) - 12))
+        else:
+            lines.append("")
+            lines.append("no holes: every chunk column inside the bounds was captured")
+    if player and st.get("active"):
+        lines.append("you are at x %.1f y %.1f z %.1f (chunk %d, %d)" % (player["x"], player["y"], player["z"], player["cx"], player["cz"]))
+    return lines
+
+
+def cmd_world(args):
+    what = args.parts[0] if args.parts else "status"
+    if what in ("start", "stop", "status"):
+        info = bridge_info(target_game(args))
+        if what == "start":
+            q = dict(label=args.label, bounds=args.bounds, around=args.around, max_chunks=args.max_chunks, budget_ms=args.budget_ms,
+                     max_min=args.max_min, max_mb=args.max_mb)
+            res = fetch_json(info, "/world/start" + query(**q), timeout=30)
+            if args.json:
+                return print(json.dumps(res, indent=2, ensure_ascii=False))
+            if res.get("error"):
+                sys.exit("world capture: %s" % res["error"])
+            print("capturing to %s" % res["file"])
+            print("stored bounds %s (whole 16-block sections), %s chunk columns, budget %s ms/tick" % (
+                res["bounds"]["stored"], res["columns"]["total"], res["cost"]["budget_ms"]))
+            print("`listen world status` shows progress and holes; `listen world stop` ends it")
+            return
+        res = fetch_json(info, "/world/" + what, timeout=90)
+        if args.json:
+            return print(json.dumps(res, indent=2, ensure_ascii=False))
+        if res.get("error"):
+            sys.exit("world capture: %s" % res["error"])
+        out(fmt_world_status(res))
+        return
+    if what == "info":
+        return world_info(args)
+    if what == "merge":
+        return world_merge(args)
+    if what == "entities":
+        return world_entities(args)
+    sys.exit("world start|stop|status|info [FILE]|entities [FILE]|merge A [B…]")
+
+
+def world_path(args):
+    given = args.parts[1] if len(args.parts) > 1 else None
+    if given:
+        return Path(given)
+    return target_game(args) / "soul-dev/worlds/latest.soulworld.gz"
+
+
+def short_state(name):
+    return name.replace("minecraft:", "")
+
+
+def world_info(args):
+    path = world_path(args)
+    if not path.exists():
+        sys.exit("no capture at %s" % path)
+    cap = worldfile.read(path)
+    h = cap.header
+    bounds = h.get("bounds") or {}
+    stored = bounds.get("stored")
+    print("%s  (%s, format v%s%s)" % (path, mb(cap.size), h.get("version"), ", TRUNCATED: the writer never finished (client closed?)" if cap.truncated else ""))
+    print("label %s, started %s, server %s, player %s, minecraft %s, dimension %s" % (
+        h.get("label"), datetime.fromtimestamp(h.get("started", 0) / 1000).strftime("%Y-%m-%d %H:%M:%S"), h.get("server"), h.get("player"), h.get("minecraft"), h.get("dimension")))
+    if isinstance(h.get("merged_from"), list):
+        print("merged from %s" % ", ".join(h["merged_from"]))
+    print("bounds requested %s, stored %s" % (bounds.get("requested"), stored))
+    if cap.end:
+        print("ended: %s%s" % (cap.end.get("reason"), (" after %ss" % cap.end["seconds"]) if cap.end.get("seconds") is not None else ""))
+    cols = {(cx, cz) for cx, cz, _ in cap.sections}
+    secs = sorted({sy for _, _, sy in cap.sections})
+    print("%d chunk columns, %d sections (section y %s..%s), %d block states" % (len(cols), len(cap.sections), secs[0] if secs else "-", secs[-1] if secs else "-", len(cap.states)))
+    if cap.sections:
+        xs, zs = [c[0] for c in cols], [c[1] for c in cols]
+        print("covered   x %d..%d, y %d..%d, z %d..%d" % (min(xs) * 16, max(xs) * 16 + 15, secs[0] * 16, secs[-1] * 16 + 15, min(zs) * 16, max(zs) * 16 + 15))
+    holes = []
+    if stored:
+        cx1, cx2, cz1, cz2 = stored[0] >> 4, stored[3] >> 4, stored[2] >> 4, stored[5] >> 4
+        holes = [(x, z) for z in range(cz1, cz2 + 1) for x in range(cx1, cx2 + 1) if (x, z) not in cols]
+        print()
+        out(column_map(stored, cols))
+    print()
+    counts = collections.Counter()
+    t0 = time.time()
+    for s in cap.sections.values():
+        if s.bits == 0:
+            counts[s.palette[0]] += worldfile.BLOCKS
+        else:
+            counts.update(worldfile.unpack(s.palette, s.bits, s.longs))
+    by_name = collections.Counter()
+    non_air = 0
+    for sid, n in counts.items():
+        name = cap.states.get(sid, "?%d" % sid)
+        base = name.split("[")[0]
+        by_name[base] += n
+        if base not in ("minecraft:air", "minecraft:cave_air", "minecraft:void_air"):
+            non_air += n
+    total = sum(counts.values())
+    print("blocks as first seen: %d total, %d non-air (%d distinct states, %d block types; counted in %.1fs)" % (total, non_air, len(counts), len(by_name), time.time() - t0))
+    limit = len(by_name) if args.all else args.top
+    for name, n in by_name.most_common(limit):
+        print("  %10d  %s" % (n, short_state(name)))
+    if len(by_name) > limit:
+        print("  … %d more block types (--all)" % (len(by_name) - limit))
+    bes = collections.Counter()
+    firsts = [b for b in cap.block_entities if b.kind == 0]
+    heads, signs = 0, []
+    for b in firsts:
+        try:
+            tag = worldfile.parse_nbt(b.nbt)
+        except Exception:
+            tag = {}
+        bes[tag.get("id", "?")] += 1
+        if "profile" in tag or "SkullOwner" in tag:
+            heads += 1
+        if "front_text" in tag and len(signs) < 5:
+            messages = tag["front_text"].get("messages", []) if isinstance(tag.get("front_text"), dict) else []
+            signs.append(((b.x, b.y, b.z), [str(m)[:40] for m in messages if m not in ('""', "")][:4]))
+    print()
+    print("block entities: %d first-seen (+%d updates)%s" % (len(firsts), len(cap.block_entities) - len(firsts), ": " + ", ".join("%s %d" % (k.replace("minecraft:", ""), v) for k, v in bes.most_common()) if bes else ""))
+    if heads:
+        print("  %d with a profile (player heads)" % heads)
+    for at, msgs in signs:
+        print("  sign at %s: %s" % (at, msgs))
+    ents = collections.Counter(e.type for e in cap.entities if e.kind == 0)
+    print("entities: %d first-seen (+%d updates)%s" % (sum(ents.values()), sum(1 for e in cap.entities if e.kind == 1), ": " + ", ".join("%s %d" % (k.replace("minecraft:", ""), v) for k, v in ents.most_common()) if ents else ""))
+    names = collections.Counter()
+    for e in cap.entities:
+        if e.kind != 0:
+            continue
+        try:
+            n = worldfile.parse_nbt(e.nbt).get("CustomName")
+        except Exception:
+            n = None
+        if n:
+            names[txt(str(n))[:60]] += 1
+    for n, c in names.most_common(args.top):
+        print("  %3d × %s" % (c, n))
+    changes = sum(len(c[2]) for c in cap.changes)
+    if cap.changes:
+        t1, t2 = cap.changes[0][0], cap.changes[-1][0]
+        after = collections.Counter(short_state(cap.states.get(e[3], "?")).split("[")[0] for c in cap.changes for e in c[2])
+        print()
+        print("block changes after first sight: %d in %d batches (%d from re-sent chunks), %.1fs..%.1fs after the start" % (
+            changes, len(cap.changes), sum(len(c[2]) for c in cap.changes if c[1] == 1), t1 / 1000, t2 / 1000))
+        print("  became: " + ", ".join("%s %d" % kv for kv in after.most_common(8)))
+        ticks = [c[1] for c in cap.clocks if c[1] >= 0]
+        if ticks:
+            print("  server ticks: %d clock records, tick %d..%d (`cap.tick_at(t)` in worldfile.py maps a record's time to its tick)" % (len(cap.clocks), min(ticks), max(ticks)))
+        else:
+            print("  no server tick recorded (a capture from before 2026-11-12, or no set_time yet)")
+    else:
+        print("\nno block changes logged")
+    if holes:
+        print()
+        regions = hole_regions(holes)
+        print("holes: %d chunk columns never seen, %d region(s):" % (len(holes), len(regions)))
+        for group, (x1, z1, x2, z2) in regions[:20]:
+            print("  x %d..%d, z %d..%d  (%d columns)" % (x1 * 16, x2 * 16 + 15, z1 * 16, z2 * 16 + 15, len(group)))
+    elif stored:
+        print("\nno holes: every chunk column of the stored bounds is in the file")
+
+
+def world_entities(args):
+    path = world_path(args)
+    if not path.exists():
+        sys.exit("no capture at %s" % path)
+    cap = worldfile.read(path)
+    rules = worldfile.EntityRules(args.rules)
+    info = rules.classify(cap)
+    kept = [i for i in info.values() if i.keep]
+    noise = [i for i in info.values() if not i.keep]
+    print("%s: %d entities; %d static and kept, %d dropped (moved more than %.1f blocks, or matching a drop rule)" % (path.name, len(info), len(kept), len(noise), rules.max_move))
+    why = collections.Counter(i.why if not i.why.startswith("moved") else "moved" for i in noise)
+    print("dropped: " + ", ".join("%d %s" % (v, k) for k, v in why.most_common()))
+    named = collections.defaultdict(list)
+    plain = collections.Counter()
+    for i in kept:
+        f = i.first
+        if i.type.endswith("item_frame"):
+            item = (worldfile.parse_nbt(f.nbt).get("Item") or {}).get("id", "empty").replace("minecraft:", "")
+            named[(i.type.replace("minecraft:", ""), item)].append(i)
+        elif i.name:
+            named[("named", i.name)].append(i)
+        else:
+            nb = worldfile.parse_nbt(f.nbt)
+            eq = nb.get("equipment") or {}
+            plain[(i.type.replace("minecraft:", ""), ", ".join(("%s=%s" % (k, v.get("id") if isinstance(v, dict) else v)).replace("minecraft:", "") for k, v in sorted(eq.items())) or "no equipment")] += 1
+    print("\nuseful (named or item frames), with first-seen positions:")
+    for (kind, label), lst in sorted(named.items(), key=lambda kv: (kv[0][0], -len(kv[1]), kv[0][1])):
+        pos = ["%.1f %.1f %.1f" % (i.first.x, i.first.y, i.first.z) for i in lst[:6]]
+        later = [n for n in dict.fromkeys(n for i in lst for n in i.names[1:]) if n]
+        print("  %-12s %-40r ×%d  %s%s%s" % (kind, label, len(lst), "; ".join(pos), " …" if len(lst) > 6 else "", ("   (later also: %s)" % ", ".join(repr(n) for n in later)) if later else ""))
+    if plain:
+        print("\nunnamed static stands (decor, boss models; kept): %d" % sum(plain.values()))
+        for (kind, eq), v in plain.most_common(8):
+            print("  %4d × %s, %s" % (v, kind, eq))
+
+
+def world_merge(args):
+    paths = [Path(p) for p in args.parts[1:]]
+    if not paths or (len(paths) < 2 and args.entities == "all"):
+        sys.exit("world merge A B… [-o OUT] [--entities static]   (one file is enough with --entities static)")
+    caps = [worldfile.read(p) for p in paths]
+    rules = worldfile.EntityRules(args.rules) if args.entities == "static" else None
+    dropped = collections.Counter()
+    base = caps[0]
+    merged = worldfile.Capture()
+    started = min(c.started for c in caps)
+    boxes = [c.header.get("bounds", {}).get("stored") for c in caps if c.header.get("bounds", {}).get("stored")]
+    stored = [min(b[i] for b in boxes) if i < 3 else max(b[i] for b in boxes) for i in range(6)] if boxes else None
+    merged.header = dict(base.header, label=(base.header.get("label") or "merged") + "+merged", started=started,
+                         merged_from=[p.name for p in paths], bounds={"requested": stored, "stored": stored})
+    if stored:
+        merged.header["columns_total"] = ((stored[3] >> 4) - (stored[0] >> 4) + 1) * ((stored[5] >> 4) - (stored[2] >> 4) + 1)
+    ids = {}
+
+    def state_id(name):
+        if name not in ids:
+            ids[name] = len(ids)
+            merged.states[ids[name]] = name
+        return ids[name]
+
+    conflicts, origin = [], {}
+    be_seen, ent_seen, dup_entities = {}, {}, 0
+    for n, (path, cap) in enumerate(zip(paths, caps)):
+        remap = {sid: state_id(name) for sid, name in cap.states.items()}
+        shift = cap.started - started
+        for key, sec in cap.sections.items():
+            mapped = worldfile.Section(sec.t + shift, [remap[p] for p in sec.palette], sec.bits, sec.longs)
+            if key not in merged.sections:
+                merged.sections[key] = mapped
+                origin[key] = n
+                continue
+            have = merged.sections[key].blocks()
+            new = mapped.blocks()
+            if have != new:
+                diff = sum(1 for a, b in zip(have, new) if a != b)
+                conflicts.append((key, origin[key], n, diff))
+        for b in cap.block_entities:
+            pos = (b.x, b.y, b.z)
+            if b.kind == 0 and pos in be_seen:
+                if be_seen[pos] != b.nbt:
+                    pass
+                continue
+            if b.kind == 1 and pos not in be_seen:
+                continue
+            be_seen[pos] = b.nbt
+            merged.block_entities.append(worldfile.BlockEntity(b.t + shift, b.kind, b.x, b.y, b.z, b.nbt))
+        owned = {}
+        verdict = rules.classify(cap) if rules else {}
+        for e in cap.entities:
+            uid = (e.uuid_hi, e.uuid_lo)
+            if e.kind == 0:
+                info = verdict.get(uid)
+                if info is not None and not info.keep:
+                    dropped[info.why if not info.why.startswith("moved") else "moved"] += 1
+                    owned[uid] = False
+                    continue
+                # the same thing seen before (this capture re-sees entities whenever a chunk reloads): same look and
+                # name within 0.6 blocks (stands bob a little)
+                sig = worldfile.entity_signature(e)
+                near = next((q for q in ent_seen.get(sig, ()) if abs(q[0] - e.x) < 0.6 and abs(q[1] - e.y) < 0.6 and abs(q[2] - e.z) < 0.6), None)
+                if near is not None:
+                    dup_entities += 1
+                    owned[uid] = False
+                    continue
+                ent_seen.setdefault(sig, []).append((e.x, e.y, e.z))
+                owned[uid] = True
+            elif not owned.get(uid):
+                continue
+            merged.entities.append(worldfile.Entity(e.t + shift, e.kind, e.id, e.uuid_hi, e.uuid_lo, e.type, e.x, e.y, e.z, e.yaw, e.pitch, e.nbt))
+        for t, source, entries in cap.changes:
+            merged.changes.append((t + shift, source, [(x, y, z, remap[sid]) for x, y, z, sid in entries]))
+        merged.clocks += [(t + shift, tick, ping) for t, tick, ping in cap.clocks]
+    merged.clocks.sort()
+    merged.end = {"reason": "merged", "sources": [p.name for p in paths]}
+    out_path = Path(args.output) if args.output else paths[0].with_name(datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + "_merged" + worldfile_suffix(paths[0]))
+    worldfile.write(out_path, merged)
+    cols = {(cx, cz) for cx, cz, _ in merged.sections}
+    kept = len({(e.uuid_hi, e.uuid_lo) for e in merged.entities})
+    print("merged %d captures → %s (%s): %d columns, %d sections, %d block entities, %d entities (%d duplicates of entities already seen dropped), %d change batches" % (
+        len(paths), out_path, mb(out_path.stat().st_size), len(cols), len(merged.sections), len(merged.block_entities), kept, dup_entities, len(merged.changes)))
+    if rules:
+        print("entity filter (%s): dropped %d: %s" % (Path(args.rules).name if args.rules else "entity-filter.json", sum(dropped.values()),
+                                                      ", ".join("%d %s" % (v, k) for k, v in dropped.most_common())))
+    for i, path in enumerate(paths):
+        print("  [%d] %s: %d sections first (won), %d columns" % (i, path.name, sum(1 for v in origin.values() if v == i), len({(k[0], k[1]) for k, v in origin.items() if v == i})))
+    if conflicts:
+        print("CONFLICTS: %d sections exist in several captures with different blocks (first-seen kept):" % len(conflicts))
+        for key, a, b, diff in sorted(conflicts, key=lambda c: -c[3])[:15]:
+            print("  column %d,%d section y %d (blocks x %d..%d y %d..%d z %d..%d): [%d] vs [%d], %d blocks differ" % (
+                key[0], key[1], key[2], key[0] * 16, key[0] * 16 + 15, key[2] * 16, key[2] * 16 + 15, key[1] * 16, key[1] * 16 + 15, a, b, diff))
+        if len(conflicts) > 15:
+            print("  … %d more" % (len(conflicts) - 15))
+    else:
+        print("no conflicts: overlapping sections are identical")
+
+
+def worldfile_suffix(path):
+    return ".soulworld.gz"
+
+
+def main():
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)   # quiet exit when piped into head
+    common = argparse.ArgumentParser(add_help=False)
+    for flag in ("--dev", "--test", "--skyblock"):
+        common.add_argument(flag, action="store_true", default=argparse.SUPPRESS)
+    common.add_argument("--instance", default=argparse.SUPPRESS)
+    common.add_argument("--pid", type=int, default=argparse.SUPPRESS)
+    common.add_argument("--game-dir", default=argparse.SUPPRESS)
+    common.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
+    common.add_argument("--legacy", action="store_true", default=argparse.SUPPRESS)
+    common.add_argument("--inv", action="store_true", default=argparse.SUPPRESS)
+    common.add_argument("--full-lore", action="store_true", default=argparse.SUPPRESS)
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, parents=[common])
+    sub = ap.add_subparsers(dest="mode", required=True)
+    sub.add_parser("status", parents=[common])
+    p = sub.add_parser("snapshot", parents=[common])
+    p.add_argument("--providers")
+    p.add_argument("--ent")
+    p.add_argument("--soul")
+    p = sub.add_parser("listen", parents=[common])
+    for key in ("--kinds", "--types", "--channels", "--state", "--ent", "--soul", "--until"):
+        p.add_argument(key)
+    p.add_argument("--preset", choices=("full",), help="the packet types that reconstruct a fight (see record)")
+    p.add_argument("--out", action="store_true", help="with --preset full: also the client's own outbound actions (see record)")
+    p.add_argument("--tick-budget-ms", type=float, help="shed packet types above this average ms per client tick (default 2)")
+    p.add_argument("--all", action="store_true")
+    p.add_argument("--dir", default="in", choices=("in", "out", "both"))
+    p.add_argument("--backlog", action="store_true")
+    p.add_argument("--no-snapshot", action="store_true")
+    p.add_argument("--timeout", type=float)
+    p.add_argument("--max", type=int)
+    p.add_argument("--no-save", action="store_true")
+    p = sub.add_parser("record", parents=[common])
+    p.add_argument("action", nargs="?", default="start", choices=("start", "stop", "status"))
+    p.add_argument("--for", dest="for_secs", type=float)
+    p.add_argument("--detach", action="store_true")
+    for key in ("--label", "--state", "--packets", "--kinds", "--ent", "--soul"):
+        p.add_argument(key)
+    p.add_argument("--dir", default="in", choices=("in", "out", "both"))
+    p.add_argument("--max-min", type=float)
+    p.add_argument("--max-mb", type=float, help="compressed MB per file before rolling over to the next (default 1024)")
+    p.add_argument("--max-total-min", type=float, help="end the whole recording after N minutes (default 480)")
+    p.add_argument("--budget", type=float, help="uncompressed MB per minute before packets/frames are dropped (default 96)")
+    p.add_argument("--no-backlog", action="store_true")
+    p.add_argument("--preset", choices=("full",), help="the packet types that reconstruct a fight: entity life, blocks, explosions, particles, sounds, boss bars, damage, effects, set_time and every ping")
+    p.add_argument("--out", action="store_true", help="with --preset full: also the client's own outbound actions (use item, use on block, interact, dig/drop, swing, hotbar slot); observed, never sent")
+    p.add_argument("--tick-budget-ms", type=float, help="shed packet types above this average ms per client tick (default 2)")
+    p = sub.add_parser("mark", parents=[common])
+    p.add_argument("label", nargs="*")
+    sub.add_parser("shot", parents=[common])
+    p = sub.add_parser("log", parents=[common])
+    p.add_argument("n", nargs="?", type=int, default=60)
+    p.add_argument("--grep")
+    def ranged(p):
+        p.add_argument("--from", dest="from_", metavar="WHEN", help="start: +SECS, +MM:SS, HH:MM:SS, tick=N (server tick, gt=N is the same), ping=N (raw ping count)")
+        p.add_argument("--to", metavar="WHEN", help="end, same forms")
+        p.add_argument("--limit", type=int, help="max output lines/rows (0 = unlimited)")
+        p.add_argument("--tail", action="store_true", help="when limited, keep the last lines instead of the first")
+
+    p = sub.add_parser("replay", parents=[common])
+    p.add_argument("parts", nargs="+", help="[FILE] summary|timeline|at WHEN|track NAME|ticks|sizes")
+    ranged(p)
+    p.add_argument("--all", action="store_true", help="timeline: every kind (same as --kinds all)")
+    p.add_argument("--kinds", help="timeline: comma list (default chat,title,bossbar,location,connection,mark,screen_open/close,page; with --grep also actionbar,click)")
+    p.add_argument("--grep", metavar="REGEX", help="timeline: only events whose text (chat, title, bar, menu title, clicked item) matches, case-insensitive")
+    p.add_argument("--player", metavar="NAME", help="timeline: only lines that mention this name (chat, tracking, marks…)")
+    p.add_argument("--events", action="store_true", help="timeline: only classified events")
+    p.add_argument("--csv", action="store_true")
+    p.add_argument("--every", type=float)
+    p.add_argument("--party", action="store_true", help="track: also map/none positions from party frames")
+    p = sub.add_parser("marks", parents=[common])
+    p.add_argument("file", nargs="?")
+    ranged(p)
+    p = sub.add_parser("menus", parents=[common])
+    p.add_argument("file", nargs="?")
+    p.add_argument("--title", metavar="REGEX", help="only screens whose title matches")
+    ranged(p)
+    p = sub.add_parser("world", parents=[common])
+    p.add_argument("parts", nargs="*", help="start|stop|status|info [FILE]|entities [FILE]|merge A [B…]")
+    for key in ("--label", "--bounds"):
+        p.add_argument(key)
+    p.add_argument("--around", type=int)
+    p.add_argument("--max-chunks", type=int)
+    p.add_argument("--budget-ms", type=float)
+    p.add_argument("--max-min", type=float)
+    p.add_argument("--max-mb", type=float)
+    p.add_argument("--top", type=int, default=25)
+    p.add_argument("--all", action="store_true")
+    p.add_argument("-o", "--output")
+    p.add_argument("--entities", choices=("all", "static"), default="all", help="merge: keep every entity, or only the static, useful ones")
+    p.add_argument("--rules", help="entity filter rules (default: tools/devbridge/entity-filter.json)")
+    p = sub.add_parser("recompress", parents=[common])
+    p.add_argument("files", nargs="+")
+    p.add_argument("--rm", action="store_true", help="delete the .gz after a successful pass")
+    args = ap.parse_args()
+    for key in ("dev", "test", "skyblock", "json", "legacy", "inv", "full_lore"):
+        setattr(args, key, getattr(args, key, False))
+    for key in ("instance", "pid", "game_dir"):
+        setattr(args, key, getattr(args, key, None))
+    for k in OPTS:
+        OPTS[k] = getattr(args, k, False)
+    if args.mode == "replay":
+        parts = args.parts
+        args.file = None
+        if parts[0] not in ("summary", "timeline", "at", "track", "ticks", "sizes"):
+            args.file, parts = parts[0], parts[1:]
+        if not parts:
+            sys.exit("replay [FILE] summary|timeline|at WHEN|track NAME|ticks|sizes")
+        args.what = parts[0]
+        args.arg = parts[1] if len(parts) > 1 else None
+        if args.what in ("at", "track") and not args.arg:
+            sys.exit("replay %s needs an argument" % args.what)
+    {"status": cmd_status, "snapshot": cmd_snapshot, "listen": cmd_listen, "record": cmd_record, "mark": cmd_mark, "shot": cmd_shot,
+     "log": cmd_log, "replay": cmd_replay, "marks": cmd_marks, "menus": cmd_menus, "recompress": cmd_recompress,
+     "world": cmd_world}[args.mode](args)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,106 @@
+# Initial boards of the native F7 terminal capture (docs/research/f7-native-terminals-2026-11-12.md, Appendix A):
+# the first full screen_contents of each opening. '[cid] title', then rows 'first-slot: nine cells'. Generated; edit the doc, not this file.
+
+[13] §rWhat starts with: 'L'?
+09: · | Leather | Iron Horse Armor | Snowball | Leather Leggings | Ender Pearl | Cooked Rabbit | Leather | ·
+18: · | Slime Ball | Spawn Egg | Roast Chicken | Gold Pickaxe | Glowstone Dust | Leather Helmet | Slime Ball | ·
+27: · | Cooked Fish | Leather Helmet | Dark Oak Door | Lava Bucket | Leather Boots | Watch | Slime Ball | ·
+
+[14] §rClick the button on time!
+00: · | P | · | · | · | · | · | · | ·
+09: · | G | R | R | R | R | · | LOCK | ·
+18: · | W | W | W | W | W | · | inactive | ·
+27: · | W | W | W | W | W | · | inactive | ·
+36: · | P | · | · | · | · | · | · | ·
+
+[15] §rClick the button on time!
+00: · | · | P | · | · | · | · | · | ·
+09: · | G | R | R | R | R | · | LOCK | ·
+18: · | W | W | W | W | W | · | inactive | ·
+27: · | W | W | W | W | W | · | inactive | ·
+36: · | · | P | · | · | · | · | · | ·
+
+[16] §rCorrect all the panes!
+09: · | · | OFF | ON | OFF | ON | OFF | · | ·
+18: · | · | OFF | OFF | OFF | OFF | OFF | · | ·
+27: · | · | OFF | OFF | OFF | OFF | OFF | · | ·
+
+[17] §rClick in order!
+09: · | · | 7 | 1 | 2 | 10 | 8 | · | ·
+18: · | · | 3 | 6 | 5 | 4 | 9 | · | ·
+
+[18] §rChange all to same color!
+09: · | · | · | red | blue | green | · | · | ·
+18: · | · | · | red | red | green | · | · | ·
+27: · | · | · | orange | blue | orange | · | · | ·
+
+[19] §rWhat starts with: 'E'?
+09: · | Leather | Egg | Skull Item | Gold Chestplate | Fishing Rod | Minecart with TNT | Eye of Ender | ·
+18: · | Leather Helmet | Spruce Door | Empty Map | Fire Charge | Gold Shovel | Enchanted Book [g] | Seeds | ·
+27: · | Glistering Melon | Rabbit Stew | Enchanted Book [g] | Cookie | Ender Pearl | Flower Pot | Bottle o' Enchanting [g] | ·
+
+[20] §rWhat starts with: 'A'?
+09: · | Armor Stand | Stone Pickaxe | Birch Door | Rabbit Stew | Arrow | Nether Quartz | Armor Stand | ·
+18: · | Acacia Door | Dark Oak Door | Armor Stand | Acacia Door | Raw Porkchop | Sugar | Diamond Boots | ·
+27: · | Apple | Armor Stand | Prismarine Shard | Glistering Melon | Iron Horse Armor | Diamond Chestplate | Iron Helmet | ·
+
+[21] §rClick the button on time!
+00: · | · | P | · | · | · | · | · | ·
+09: · | G | R | R | R | R | · | LOCK | ·
+18: · | W | W | W | W | W | · | inactive | ·
+27: · | W | W | W | W | W | · | inactive | ·
+36: · | · | P | · | · | · | · | · | ·
+
+[22] §rClick in order!
+09: · | · | 4 | 6 | 8 | 10 | 3 | · | ·
+18: · | · | 7 | 9 | 5 | 2 | 1 | · | ·
+
+[23] §rCorrect all the panes!
+09: · | · | OFF | OFF | OFF | OFF | OFF | · | ·
+18: · | · | OFF | OFF | ON | OFF | ON | · | ·
+27: · | · | OFF | OFF | OFF | OFF | OFF | · | ·
+
+[27] §rWhat starts with: 'R'?
+09: · | Rabbit Foot | Cooked Mutton | Raw Porkchop | Redstone Comparator | Gold Chestplate | Gold Chestplate | Raw Porkchop | ·
+18: · | Leather Helmet | Gunpowder | Rabbit Foot | Gold Horse Armor | Leather Helmet | Redstone Comparator | Rabbit Stew | ·
+27: · | Rabbit Stew | Redstone | Gold Helmet | Roast Chicken | Rabbit Hide | Iron Door | Rabbit Hide | ·
+
+[28] §rSelect all the LIME items!
+09: · | Purple Wool | Silver Wool | Cyan Stained Clay | Cyan Wool | Lime Stained Glass | Black Stained Clay | Black Wool | ·
+18: · | Purple Stained Glass | Lime Dye | Lime Stained Clay | Cyan Dye | Purple Stained Clay | Cyan Dye | Ink Sack | ·
+27: · | Light Gray Dye | Light Gray Dye | Silver Wool | Black Wool | Purple Dye | Silver Stained Glass | Lime Wool | ·
+36: · | Lime Stained Clay | Cyan Dye | Ink Sack | Purple Stained Glass | Purple Wool | Cyan Dye | Silver Wool | ·
+
+[29] §rChange all to same color!
+09: · | · | · | orange | green | yellow | · | · | ·
+18: · | · | · | blue | blue | red | · | · | ·
+27: · | · | · | orange | blue | yellow | · | · | ·
+
+[30] §rClick in order!
+09: · | · | 6 | 8 | 9 | 7 | 3 | · | ·
+18: · | · | 4 | 1 | 10 | 5 | 2 | · | ·
+
+[34] §rChange all to same color!
+09: · | · | · | yellow | green | orange | · | · | ·
+18: · | · | · | green | green | red | · | · | ·
+27: · | · | · | yellow | green | yellow | · | · | ·
+
+[35] §rWhat starts with: 'M'?
+09: · | Minecart with TNT | Dark Oak Door | Acacia Door | Diamond Leggings | Minecart with Command Block | Minecart with Hopper | Bottle o' Enchanting [g] | ·
+18: · | Milk Bucket | Seeds | Firework Star | Clay | Gold Boots | Milk Bucket | Iron Ingot | ·
+27: · | Melon Seeds | Magma Cream | Fire Charge | Raw Fish | Minecart with Hopper | Wheat | Water Bottle | ·
+
+[36] §rSelect all the GRAY items!
+09: · | Purple Dye | Pink Stained Clay | Purple Wool | Pink Dye | Gray Dye | Lime Stained Clay | Gray Wool | ·
+18: · | Pink Stained Glass | Purple Wool | Gray Stained Glass | Gray Wool | Light Blue Stained Glass | Light Blue Stained Clay | Lime Stained Clay | ·
+27: · | Gray Stained Glass | Light Blue Stained Glass | Lime Dye | Purple Stained Glass | Lime Wool | Pink Dye | Pink Stained Glass | ·
+36: · | Lime Stained Glass | Pink Stained Glass | Purple Stained Glass | Light Blue Wool | Light Blue Stained Clay | Gray Stained Clay | Lime Wool | ·
+
+[37] §rClick in order!
+09: · | · | 10 | 5 | 7 | 3 | 4 | · | ·
+18: · | · | 1 | 8 | 9 | 6 | 2 | · | ·
+
+[38] §rChange all to same color!
+09: · | · | · | green | blue | orange | · | · | ·
+18: · | · | · | yellow | yellow | blue | · | · | ·
+27: · | · | · | yellow | green | blue | · | · | ·

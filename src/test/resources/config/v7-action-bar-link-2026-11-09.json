@@ -1,0 +1,47 @@
+{
+    "configVersion": 7,
+    "general": {
+        "soulActionBar": true,
+        "actionBarTransform": {
+            "hAnchor": 1,
+            "vAnchor": 2,
+            "offsetX": 0.0,
+            "offsetY": -62.0,
+            "autoAnchor": true,
+            "scale": 1.4,
+            "fontMode": 2,
+            "fontChoice": 0,
+            "textShadowMode": 0,
+            "link": {
+                "target": "vanilla:actionbar",
+                "h": 1,
+                "v": 1,
+                "offsetX": 0.0,
+                "offsetY": 0.0,
+                "follow": true,
+                "auto": false,
+                "fixed": false,
+                "whenHidden": 0
+            }
+        },
+        "toggleSprintHudTransform": {
+            "hAnchor": 1,
+            "vAnchor": 2,
+            "offsetX": -138.0,
+            "offsetY": -22.0,
+            "autoAnchor": true,
+            "scale": 1.0,
+            "link": {
+                "target": "vanilla:hotbar",
+                "h": -1,
+                "v": -1,
+                "offsetX": -4.0,
+                "offsetY": 0.0,
+                "follow": true,
+                "auto": false,
+                "fixed": false,
+                "whenHidden": 0
+            }
+        }
+    }
+}

@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""Goldor and dragon fixtures: P3-P5 signals of one F7/M7 fight, cut from a dev bridge recording.
+
+    tools/devbridge/late-fixtures <recording.rec.ndjson.zst[,part2…]> <out.ndjson.gz> [fight]
+
+From Storm's end line of fight [fight] (1-based, by `Pathetic Maxor`) to the next fight. One line per event, `t` = ms:
+  {"t":…,"k":"time","gt":N}                     set_time
+  {"t":…,"k":"chat","s":"…"}                    boss lines, section counters, gate lines, deaths and saves (raw)
+  {"t":…,"k":"self","x":…,"y":…,"z":…}          the player's own position
+  {"t":…,"k":"pulse","x":…,"y":…,"z":…}         a dragon spawn pulse (`flame`, count 20, y 19.0)
+  {"t":…,"k":"dragon","x":…,"y":…,"z":…}        an `ender_dragon` added
+  {"t":…,"k":"ping"}                            a lone server ping (one per tick), only from recordings that mark bundles
+Lines are in arrival order: by `t`, packets of one ms in hook order (`seq`), client-thread events after them.
+Used by GoldorSectionsTest and DragonSpawnsTest (src/test/resources/boss/).
+"""
+import gzip
+import json
+import subprocess
+import sys
+
+CHAT_KEYS = ("[BOSS]", "activated a", "completed a device", "gate has been destroyed", "gate will open", "Core entrance",
+             "saved your life", "saved you from certain death", "became a ghost", "Revive Stone revived")
+
+
+def lines(srcs):
+    for src in srcs:
+        proc = subprocess.Popen(["zstd", "-dc", src], stdout=subprocess.PIPE, text=True)
+        try:
+            yield from proc.stdout
+        finally:
+            proc.kill()
+            proc.wait()
+
+
+def main(srcs, dst, fight):
+    out = []
+    seen = 0
+    on = False
+    marked = False
+    for line in lines(srcs):
+        if '"kind":"chat"' not in line and '"kind":"self"' not in line and '"minecraft:set_time"' not in line \
+                and '"minecraft:level_particles"' not in line and '"minecraft:ender_dragon"' not in line \
+                and '"minecraft:ping"' not in line:
+            continue
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        kind = o.get("kind")
+        d = o.get("data") or {}
+        t = o.get("t")
+        if kind == "chat":
+            s = d.get("text") or ""
+            if "Pathetic Maxor" in s:
+                seen += 1
+                if on:
+                    break
+            if seen == fight and "I should have known that I stood no chance" in s:
+                on = True
+            if on and not s.startswith("§r§9Party") and any(k in s for k in CHAT_KEYS):
+                out.append({"t": t, "k": "chat", "s": s})
+            continue
+        if not on:
+            continue
+        if kind == "self":
+            x, y, z = d["pos"]
+            out.append({"t": t, "k": "self", "x": round(x, 3), "y": round(y, 3), "z": round(z, 3)})
+            continue
+        if kind != "packet":
+            continue
+        pk = d.get("data") or {}
+        typ = d.get("type")
+        t = d.get("t", t)
+        q = d.get("seq")
+        if typ == "minecraft:ping":
+            if "bundle" in d:
+                marked = True
+            elif pk.get("id", 0) != 0:
+                out.append({"t": t, "k": "ping", "q": q})
+        elif typ == "minecraft:set_time":
+            out.append({"t": t, "k": "time", "gt": pk["gameTime"], "q": q})
+        elif typ == "minecraft:level_particles" and pk.get("particle") == "minecraft:flame" and pk.get("count") == 20 and pk.get("y") == 19.0:
+            out.append({"t": t, "k": "pulse", "x": pk["x"], "y": pk["y"], "z": pk["z"], "q": q})
+        elif typ == "minecraft:add_entity" and pk.get("type") == "minecraft:ender_dragon":
+            out.append({"t": t, "k": "dragon", "x": round(pk["x"], 2), "y": round(pk["y"], 2), "z": round(pk["z"], 2), "q": q})
+    # Unmarked recordings mix the bundled pings in: no tick clock there.
+    if not marked:
+        out = [e for e in out if e["k"] != "ping"]
+    out.sort(key=lambda e: (e["t"], e.get("q", float("inf"))))
+    for e in out:
+        e.pop("q", None)
+    with gzip.open(dst, "wt") as f:
+        for e in out:
+            f.write(json.dumps(e, separators=(",", ":"), ensure_ascii=False) + "\n")
+    print(f"{dst}: {len(out)} events")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) not in (3, 4):
+        sys.exit(__doc__)
+    main(sys.argv[1].split(","), sys.argv[2], int(sys.argv[3]) if len(sys.argv) == 4 else 1)

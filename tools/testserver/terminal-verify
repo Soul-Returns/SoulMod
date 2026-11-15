@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""Client-side check of the F7 terminal simulator (`/hx terminal`), through the real test client.
+
+Opens every captured Appendix A board (docs/research/f7-native-terminals-2026-11-12.md) as a real menu, records
+what the client receives with the dev bridge, compares every slot of every board with the doc (title, container
+size, item id, count, name, lore, initial glint) and saves a screenshot of the vanilla menu next to the captured
+board's text. Then drives real mouse input (click, right click, drag) and reports what the client sees back.
+
+Needs the test server and the test client up; hold the client lock:
+
+  tools/testclient/lock testclient bash -c 'tools/testserver/s up && tools/testclient/c up &&
+      tools/testserver/terminal-verify [OUTDIR] [--no-clicks|--clicks-only]; tools/testclient/c down'
+
+OUTDIR defaults to .temp/terminal-sim (gitignored).
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+DOC = REPO / "docs/research/f7-native-terminals-2026-11-12.md"
+S = str(REPO / "tools/testserver/s")
+C = str(REPO / "tools/testclient/c")
+LISTEN = str(REPO / "tools/devbridge/listen")
+SHOTS = REPO / "tools/testclient/shots"
+
+ROWS = {"starts with": 5, "Select all": 6, "panes": 5, "in order": 4, "same color": 5, "on time": 6}
+FILLER = {"id": "minecraft:black_stained_glass_pane", "count": 1, "name": "", "lore": []}
+
+
+def sh(*args, check=True):
+    return subprocess.run(args, capture_output=True, text=True, check=check).stdout
+
+
+def hx(command):
+    return sh(S, "cmd", command)
+
+
+def doc_boards():
+    text = DOC.read_text(encoding="utf-8")
+    a = text[text.index("## Appendix A"):text.index("## Appendix B")]
+    b = text[text.index("## Appendix B"):]
+    names = {m.group(1): m.group(2) for m in re.finditer(r"^\|([^|]+)\|`([^`]+)`\|", b, re.M)}
+    boards = []
+    for m in re.finditer(r"### cid (\d+): `(.*?)`\n(.*?)```text\n(.*?)```", a, re.S):
+        tokens = {}
+        for row in m.group(4).rstrip("\n").split("\n"):
+            first, cells = row.split(":", 1)
+            for i, cell in enumerate(cells.split(" | ")):
+                if cell.strip() != "·":
+                    tokens[int(first) + i] = cell.strip()
+        boards.append({"cid": int(m.group(1)), "title": m.group(2), "tokens": tokens, "block": m.group(4), "names": names})
+    return boards
+
+
+def expected(board, token):
+    """(id, count, name, lore, glint) the doc says the slot holds."""
+    glint = token.endswith(" [g]")
+    t = token[:-4] if glint else token
+    title = board["title"]
+    lore = []
+    if "panes" in title:
+        return ("lime_stained_glass_pane" if t == "ON" else "red_stained_glass_pane", 1, "§r§aOn" if t == "ON" else "§r§cOff", lore, glint)
+    if "in order" in title:
+        return ("red_stained_glass_pane", int(t), "§r§a" + t, lore, glint)
+    if "same color" in title:
+        return (t + "_stained_glass_pane", 1, "§r§a" + t.capitalize(), lore, glint)
+    if "on time" in title:
+        pane = {"P": "magenta", "G": "lime", "R": "red", "W": "white"}
+        if t in pane:
+            return (pane[t] + "_stained_glass_pane", 1, "", lore, glint)
+        lore = ["§r§7Click this button when the Green", "§r§7lines up with the Purple!"]
+        return ("lime_terracotta", 1, "§r§aLock In Slot", lore, glint) if t == "LOCK" else ("red_terracotta", 1, "§r§cRow Not Active", lore, glint)
+    return (board["names"][t], 1, "§r§a" + t, lore, glint)
+
+
+def compare(board, contents):
+    title = board["title"]
+    rows = next(r for k, r in ROWS.items() if k in title)
+    problems = []
+    if contents["title"] != title:
+        problems.append("title %r != %r" % (contents["title"], title))
+    if contents["container_slots"] != rows * 9:
+        problems.append("container slots %d != %d" % (contents["container_slots"], rows * 9))
+    slots = {s["slot"]: s["item"] for s in contents["slots"] if s["slot"] < rows * 9}
+    ok = 0
+    for slot in range(rows * 9):
+        item = slots.get(slot)
+        token = board["tokens"].get(slot)
+        if item is None:
+            problems.append("slot %d missing" % slot)
+            continue
+        if token is None:
+            want = (FILLER["id"].replace("minecraft:", ""), 1, "", [], False)
+        else:
+            want = expected(board, token)
+        got_glint = bool(item.get("components", {}).get("glint"))
+        got = (item["id"].replace("minecraft:", ""), item.get("count", 1), item.get("name", ""), item.get("lore", []), got_glint)
+        if got != want:
+            problems.append("slot %d (%s): got %s, doc says %s" % (slot, token, got, want))
+        else:
+            ok += 1
+    return ok, problems
+
+
+def events(path):
+    out = []
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        if line.startswith("{"):
+            try:
+                out.append(json.loads(line))
+            except ValueError:
+                pass
+    return out
+
+
+def main():
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    clicks = "--no-clicks" not in sys.argv
+    boards_phase = "--clicks-only" not in sys.argv
+    out = Path(args[0]) if args else REPO / ".temp/terminal-sim"
+    out.mkdir(parents=True, exist_ok=True)
+    boards = doc_boards() if boards_phase else []
+    log = out / "boards.ndjson"
+    listener = subprocess.Popen(
+        [LISTEN, "--test", "listen", "--kinds", "screen_open,screen_contents,slot_update,screen_close,click,chat", "--json", "--no-snapshot", "--timeout", "900"],
+        stdout=open(log, "w"), stderr=subprocess.DEVNULL)
+    time.sleep(2.5)
+    failures = 0
+    try:
+        for board in boards:
+            hx("hx terminal board %d" % board["cid"])
+            time.sleep(1.5)
+            name = "cid%02d" % board["cid"]
+            sh(C, "shot", "terminal-" + name)
+            shutil.copy(SHOTS / ("terminal-" + name + ".png"), out / (name + ".png"))
+            hx("hx terminal close")
+            time.sleep(0.6)
+        time.sleep(1)
+        evs = events(log)
+        opens = [i for i, e in enumerate(evs) if e["kind"] == "screen_open"]
+        print("opened %d of %d boards" % (len(opens), len(boards)))
+        for n, board in enumerate(boards):
+            if n >= len(opens):
+                print("cid %d: no screen_open recorded" % board["cid"])
+                failures += 1
+                continue
+            contents = next((e["data"] for e in evs[opens[n]:] if e["kind"] == "screen_contents"), None)
+            ok, problems = compare(board, contents)
+            failures += len(problems)
+            text = "Captured board (Appendix A, cid %d): %s\n%s\nClient-side comparison with the doc: %d slots match, %d mismatches\n%s\n" % (
+                board["cid"], board["title"], board["block"], ok, len(problems), "\n".join(problems))
+            (out / ("cid%02d.txt" % board["cid"])).write_text(text, encoding="utf-8")
+            print("cid %2d %-34s %s" % (board["cid"], board["title"][2:], "OK" if not problems else "%d MISMATCHES: %s" % (len(problems), problems[:3])))
+        if clicks:
+            failures += click_phase(out)
+    finally:
+        listener.terminate()
+    print("verify: %s" % ("all boards identical to Appendix A" if failures == 0 else "%d problems" % failures))
+    return 1 if failures else 0
+
+
+# ---- real mouse input ----
+
+def display():
+    sys.path.insert(0, str(REPO / "tools/testclient"))
+    import client
+    return client.display()
+
+
+def slot_xy(rows, slot):
+    """Window pixels of a container slot's center, GUI scale 2 on the 1600x900 window."""
+    col, row = slot % 9, slot // 9
+    height = 114 + rows * 18
+    return (312 + 8 + col * 18 + 8) * 2, ((450 - height) // 2 + 18 + row * 18 + 8) * 2
+
+
+def click_phase(out):
+    """Real left, right and drag clicks; prints what the client received and how late."""
+    problems = 0
+    xdo_env = dict(os.environ, DISPLAY=display())
+
+    def xdo(*a):
+        subprocess.run(["xdotool", *a], env=xdo_env, check=True)
+
+    def session(command, steps, wait=2.0):
+        log = out / "clicks.ndjson"
+        proc = subprocess.Popen(
+            [LISTEN, "--test", "listen", "--kinds", "screen_open,slot_update,screen_close,click,chat,title", "--json", "--no-snapshot", "--timeout", "60"],
+            stdout=open(log, "w"), stderr=subprocess.DEVNULL)
+        time.sleep(2.5)
+        hx(command)
+        time.sleep(1.5)
+        steps()
+        time.sleep(wait)
+        proc.terminate()
+        time.sleep(0.3)
+        return events(log)
+
+    def report(title, evs):
+        t0 = None
+        print("--- " + title)
+        for e in evs:
+            if e["kind"] in ("hello",):
+                continue
+            t0 = t0 or e["t"]
+            d = e["data"]
+            brief = {"slot_update": lambda: "slot %s %s %s" % (d.get("slot"), d.get("item", {}).get("id", "")[10:], d.get("item", {}).get("components", "")),
+                     "click": lambda: "slot %s button %s %s" % (d.get("slot"), d.get("button"), d.get("type")),
+                     "chat": lambda: d.get("text", ""), "title": lambda: json.dumps(d),
+                     "screen_open": lambda: d.get("title"), "screen_close": lambda: "by " + str(d.get("by"))}.get(e["kind"], lambda: "")()
+            print("  +%5d ms %-12s %s" % (e["t"] - t0, e["kind"], brief))
+        return evs
+
+    # starts-with L (cid 13): a correct pick (Lava Bucket, slot 31), then a wrong one (Snowball, slot 12)
+    def starts():
+        xdo("mousemove", *map(str, slot_xy(5, 31))); time.sleep(0.2); xdo("click", "1"); time.sleep(1.0)
+        xdo("mousemove", *map(str, slot_xy(5, 12))); time.sleep(0.2); xdo("click", "1")
+    evs = report("starts-with L: Lava Bucket (ok), Snowball (wrong)", session("hx terminal board 13", starts, 3))
+    problems += not any(e["kind"] == "slot_update" and e["data"].get("slot") == 31 for e in evs)
+    problems += not any(e["kind"] == "screen_close" for e in evs)
+
+    # rubix (cid 18): left, right, then a press-and-drag on slot 22 right after a click
+    def rubix():
+        x, y = slot_xy(5, 22)
+        xdo("mousemove", str(x), str(y)); time.sleep(0.2); xdo("click", "1"); time.sleep(1.0)
+        xdo("click", "3"); time.sleep(1.0)
+        # click, then within the response delay press again on the (client-side emptied) slot and drag a little:
+        # the client holds a predicted stack, so it sends a QUICK_CRAFT triple
+        xdo("click", "1", "mousedown", "1", "mousemove_relative", "--", "6", "2", "mouseup", "1")
+    evs = report("rubix: left, right, click + drag on slot 22 within the delay", session("hx terminal board 18", rubix, 3))
+    problems += sum(1 for e in evs if e["kind"] == "slot_update" and e["data"].get("slot") == 22) < 3
+    triple = any(e["kind"] == "click" and e["data"].get("slot") == -999 for e in evs)
+    print("  (the client sent a QUICK_CRAFT triple)" if triple else
+          "  (this client turned the one-slot drag into plain clicks, as vanilla does; the QUICK_CRAFT packets are covered by `hx terminal selftest`)")
+    return problems
+
+
+if __name__ == "__main__":
+    sys.exit(main())

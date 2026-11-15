@@ -1,0 +1,90 @@
+# Build the mod and publish it as a DRAFT GitHub release on a version tag.
+# Optional: `make publish V=x.y.z` builds the tag locally and needs none of this (GITHUB=1 opts in
+# to using this draft). The workflow stays for anyone who pushes tags.
+#
+# Trigger: pushing a tag like `v0.1.0` (pre-release suffixes such as `v0.2.0-rc1` work too).
+# The release is left as a draft on purpose — the changelog is generated automatically, but
+# publishing it stays a human decision.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# Needed by `gh release create` to write the draft release.
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Full history: `--generate-notes` diffs against the previous tag, and a shallow
+          # clone has neither the tags nor the commits in between.
+          fetch-depth: 0
+
+      - name: Resolve version from the tag
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          echo "tag=$tag"         >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          # The jar is built at the TAG's version (see -Pmod_version below), so the artifact and
+          # the fabric.mod.json inside it always match the tag. gradle.properties should still be
+          # bumped in the repo — warn rather than fail, so a release never blocks on bookkeeping.
+          declared="$(sed -n 's/^mod_version=//p' gradle.properties)"
+          if [ "$declared" != "$version" ]; then
+            echo "::warning file=gradle.properties::mod_version is '$declared' but the tag is '$tag' — building as '$version'. Bump gradle.properties to match."
+          fi
+
+      - uses: actions/setup-java@v5
+        with:
+          # 26.2 requires Java 25 (jvmToolchain(25) in build.gradle.kts).
+          java-version: "25"
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v5
+
+      - name: Build
+        run: ./gradlew build -Pmod_version=${{ steps.version.outputs.version }} --no-daemon --stacktrace
+
+      - name: Pick the mod jar
+        id: jar
+        run: |
+          # `withSourcesJar()` also puts a -sources.jar in build/libs; the release ships only the
+          # loadable mod jar.
+          jar="build/libs/soul-${{ steps.version.outputs.version }}.jar"
+          test -f "$jar" || { echo "::error::expected $jar, got:"; ls -la build/libs; exit 1; }
+          echo "path=$jar" >> "$GITHUB_OUTPUT"
+          # For comparing with what `make sign` downloads (it checks the asset digest too).
+          echo "\`$(basename "$jar")\` sha256 \`$(sha256sum "$jar" | cut -d' ' -f1)\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # `x.y.z-suffix` tags are the updater's Beta channel; mark them as prereleases.
+          prerelease=()
+          case "${{ steps.version.outputs.version }}" in
+            *-*) prerelease=(--prerelease) ;;
+          esac
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --draft \
+            "${prerelease[@]}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes \
+            "${{ steps.jar.outputs.path }}"

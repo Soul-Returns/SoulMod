@@ -1,0 +1,66 @@
+/* Game window (gw-) and vanilla HUD (v-). Vanilla sizes are GUI px; the .gw-gui layer scales them by g. */
+.gw-root { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; }
+.gw-info { display: flex; align-items: center; gap: 10px; flex: none; color: var(--dim); font: 12px/1.6 var(--soul-font); margin-bottom: 6px; }
+.gw-info b { color: var(--text); font-weight: 600; }
+.gw-stage { flex: 1; min-height: 0; min-width: 0; overflow: auto; padding: 0 16px 16px 0; }
+.gw-wrap { position: relative; width: max-content; }
+.gw-frame { position: relative; overflow: hidden; border-radius: 3px; background: #000; box-shadow: 0 0 0 1px #2c2f36, 0 10px 40px rgba(0,0,0,.5); }
+.gw-game { position: absolute; left: 0; top: 0; transform-origin: 0 0; overflow: hidden; }
+.gw-gui, .gw-screen, .gw-soul { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.gw-soul { font-family: var(--soul-font); }
+.gw-top, .gw-dim { position: absolute; inset: 0; pointer-events: none; }
+.gw-top > * { pointer-events: auto; }
+/* Screen.renderBackground's in-world dim (blur off). */
+.gw-dim { background: rgba(0,0,0,.188); display: none; }
+.gw-dim.on { display: block; }
+.gw-rh { position: absolute; z-index: 5; }
+.gw-rh-r { top: 0; right: -9px; width: 9px; bottom: 0; cursor: ew-resize; }
+.gw-rh-b { left: 0; bottom: -9px; height: 9px; right: 0; cursor: ns-resize; }
+.gw-rh-c { right: -12px; bottom: -12px; width: 18px; height: 18px; cursor: nwse-resize; }
+.gw-rh-c::after { content: ""; position: absolute; right: 3px; bottom: 3px; width: 9px; height: 9px; border-right: 2px solid #5b6270; border-bottom: 2px solid #5b6270; }
+.gw-rh-r:hover, .gw-rh-b:hover, .gw-resizing .gw-rh-r, .gw-resizing .gw-rh-b { background: rgba(59,130,246,.25); border-radius: 3px; }
+.gw-resizing { user-select: none; }
+.gw-world { position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 35%, rgba(0,0,0,.45) 100%),
+    linear-gradient(180deg, transparent 0 58%, rgba(58,40,24,.94) 58% 100%),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 1px, transparent 1px 64px),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.10) 0 1px, transparent 1px 64px),
+    conic-gradient(from 90deg at 50% 50%, #45474b 0 25%, #3c3e42 0 50%, #4a4c50 0 75%, #404246 0) 0 0 / 128px 128px; }
+.gw-world::after { content: ""; position: absolute; left: 0; right: 0; top: 58%; bottom: 0;
+  background: conic-gradient(from 90deg at 50% 50%, rgba(0,0,0,.08) 0 25%, transparent 0 50%, rgba(0,0,0,.12) 0 75%, transparent 0) 0 0 / 96px 96px; }
+
+/* ------------------------------------------------------------------ vanilla HUD, GUI px */
+.v-hud { position: absolute; inset: 0; pointer-events: none; color: #fff; }
+.v-hud > * { position: absolute; }
+.v-text { font-family: var(--mc-font); font-size: 8px; line-height: 9px; white-space: nowrap; text-shadow: 1px 1px 0 #3f3f3f; }
+.v-hotbar { background: rgba(60,60,60,.72); box-shadow: inset 0 0 0 1px #000, inset 0 0 0 2px #8b8b8b;
+  background-image: repeating-linear-gradient(90deg, transparent 0 1px, transparent 1px 21px, #222 21px 22px); }
+.v-hotbar > * { position: absolute; }
+.v-item { border-radius: 2px; }
+.v-sel { box-shadow: inset 0 0 0 1px #000, inset 0 0 0 2px #fff, inset 0 0 0 3px #888; }
+.v-heart, .v-armor, .v-food { width: 9px; height: 9px; }
+.v-heart { background: #2a0d0d; clip-path: polygon(0 22%,22% 0,45% 0,50% 12%,55% 0,78% 0,100% 22%,100% 55%,50% 100%,0 55%); }
+.v-heart.full { background: #e32626; }
+.v-heart.half { background: linear-gradient(90deg, #e32626 50%, #2a0d0d 50%); }
+.v-heart.gold { background: #e8b730; }
+.v-heart.gold.half { background: linear-gradient(90deg, #e8b730 50%, transparent 50%); }
+.v-armor { background: #333; clip-path: polygon(0 0,100% 0,100% 45%,50% 100%,0 45%); }
+.v-armor.full { background: #d9d9d9; }
+.v-armor.half { background: linear-gradient(90deg, #d9d9d9 50%, #333 50%); }
+.v-food { background: #3a2208; border-radius: 50% 50% 50% 0; }
+.v-food.full { background: #b8762e; }
+.v-food.half { background: linear-gradient(270deg, #b8762e 50%, #3a2208 50%); }
+.v-xp { background: #222; box-shadow: 0 0 0 1px #000; }
+.v-xp b { display: block; height: 100%; background: #7ec82d; }
+.v-xpnum { color: #80ff20; transform: translateX(-50%); text-shadow: 1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000; }
+.v-chatline > span { position: absolute; top: 0; }
+.v-score { display: flex; flex-direction: column; }
+.v-score > div { height: 9px; padding: 0 1px 0 2px; display: flex; justify-content: space-between; }
+.v-score-t { justify-content: center !important; }
+.v-score > .v-score-gap { height: 1px; }
+.v-score-n { color: #ff5555; padding-left: 6px; }
+.v-boss-name, .v-action { transform: translateX(-50%); }
+.v-boss-bar { background: color-mix(in srgb, var(--c) 30%, #111); box-shadow: 0 0 0 1px rgba(0,0,0,.6); }
+.v-boss-bar b { display: block; height: 100%; background: var(--c); }
+.v-title { position: absolute; left: 0; transform: translateX(-50%) scale(var(--k)); transform-origin: top center; text-shadow: 1px 1px 0 #3f3f3f; }

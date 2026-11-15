@@ -1,0 +1,16 @@
+{
+    "configVersion": 8,
+    "mining": {
+        "metalDetector": {
+            "enabled": true,
+            "hudTransform": {
+                "hAnchor": 0,
+                "vAnchor": 0,
+                "offsetX": 9.5,
+                "offsetY": 11.0,
+                "autoAnchor": true,
+                "scale": 1.2
+            }
+        }
+    }
+}

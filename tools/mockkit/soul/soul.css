@@ -1,0 +1,202 @@
+/* Soul UI (s-): config-menu widgets by default, Move GUI inspector sizes inside .s-compact; Soul HUD content.
+   Colors: config/gui/Theme.kt. Metrics: SoulScreenBase / ConfigScreenBase / HudMoveScreen / TrackerHud. */
+
+.s-compact { --s-fs: 10px; --s-lh: 12px; --s-h: 14px; --s-btn-h: 16px; --s-btn-pad: 7px; --s-row-h: 16px; --s-sw-w: 22px; --s-sw-h: 12px; --s-kn: 10px; --s-dd-item: 16px; }
+
+/* ------------------------------------------------------------------ panel + rows */
+.s-panel { background: rgba(26,26,26,.847); border-radius: 6px; box-shadow: 0 0 0 1px #333; color: #eee;
+  font: var(--s-fs, 11px)/var(--s-lh, 14px) var(--soul-font); }
+.s-row { display: flex; align-items: center; gap: 8px; min-height: var(--s-row-h, 32px); }
+.s-row .s-lb { flex: 1; min-width: 0; color: #eee; }
+.s-row .s-lb small { display: block; color: #888; font-size: 10px; line-height: 11px; }
+.s-row .s-ct { display: flex; align-items: center; gap: 6px; flex: none; }
+.s-compact .s-row { gap: 4px; margin-bottom: 3px; }
+.s-compact .s-row .s-lb { flex: none; width: 46px; color: #888; }
+.s-compact .s-row .s-ct { flex: 1; min-width: 0; gap: 4px; }
+
+/* ------------------------------------------------------------------ button */
+.s-btn { border: 0; height: var(--s-btn-h, 18px); padding: 0 var(--s-btn-pad, 12px); border-radius: 4px; background: rgba(36,36,36,.878);
+  color: #eee; font: var(--s-fs, 11px)/1 var(--soul-font); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center;
+  justify-content: center; gap: 4px; flex: none; }
+.s-btn:hover { background: #353535; }
+.s-btn.accent { background: #2563eb; } .s-btn.accent:hover { background: #3b82f6; }
+.s-btn.on { background: #3b82f6; color: #fff; }
+.s-btn.tab { background: transparent; color: #888; } .s-btn.tab:hover { background: rgba(36,36,36,.878); color: #eee; }
+.s-btn.tab.on { background: #3b82f6; color: #fff; } .s-btn.tab.on:hover { background: #2563eb; }
+.s-btn.icon { width: var(--s-btn-h, 18px); padding: 0; }
+.s-btn:disabled { color: #555; cursor: default; } .s-btn:disabled:hover { background: rgba(36,36,36,.878); }
+.s-btn.accent:disabled { background: #2563eb; color: rgba(255,255,255,.4); }
+.s-btn svg { width: 10px; height: 10px; display: block; flex: none; }
+
+/* ------------------------------------------------------------------ toggle (pill, knob = height - 4) */
+.s-sw { display: inline-block; position: relative; width: var(--s-sw-w, 36px); height: var(--s-sw-h, 18px); border-radius: 999px;
+  background: rgba(36,36,36,.878); cursor: pointer; flex: none; vertical-align: middle; }
+.s-sw::after { content: ""; position: absolute; left: 2px; top: 2px; width: calc(var(--s-sw-h, 18px) - 4px); height: calc(var(--s-sw-h, 18px) - 4px);
+  border-radius: 50%; background: #eee; }
+.s-sw.on { background: #3b82f6; }
+.s-sw.on::after { left: calc(100% - var(--s-sw-h, 18px) + 2px); }
+.s-sw.dis { opacity: .4; cursor: default; }
+
+/* ------------------------------------------------------------------ slider (4 px track, knob 12) */
+.s-sld { display: inline-flex; align-items: center; gap: 6px; height: var(--s-h, 18px); cursor: pointer; flex: none; touch-action: none; }
+.s-sld .s-sv { color: #888; min-width: 18px; text-align: right; white-space: nowrap; }
+.s-sld .s-tr { position: relative; height: var(--s-kn, 12px); flex: none; width: var(--w, 120px); min-width: 20px; }
+.s-sld .s-tr::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: #2a2a2a; }
+.s-sld .s-fi { position: absolute; left: 0; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; background: #3b82f6; width: calc(var(--f, 0) * 100%); }
+.s-sld .s-kn { position: absolute; top: 0; left: calc(var(--f, 0) * 100%); width: var(--s-kn, 12px); height: var(--s-kn, 12px);
+  margin-left: calc(var(--s-kn, 12px) / -2); border-radius: 50%; background: #eee; }
+/* Compact (inspector) sliders fill their row instead of the fixed config width. */
+.s-compact .s-sld { flex: 1; min-width: 0; } .s-compact .s-sld .s-tr { flex: 1 1 0; width: auto; }
+.s-sld.dis { opacity: .4; cursor: default; }
+
+/* ------------------------------------------------------------------ segmented (tracker tab strip) */
+.s-seg { display: inline-flex; gap: 4px; flex: none; }
+.s-seg button { border: 0; height: var(--s-h, 18px); padding: 0 10px; border-radius: 4px; background: transparent; color: #888;
+  font: var(--s-fs, 11px)/1 var(--soul-font); cursor: pointer; white-space: nowrap; }
+.s-seg button:hover { background: rgba(36,36,36,.878); color: #eee; }
+.s-seg button.on { background: #3b82f6; color: #fff; } .s-seg button.on:hover { background: #2563eb; }
+.s-seg button:disabled { color: #555; background: transparent; cursor: default; }
+.s-compact .s-seg { gap: 1px; padding: 2px; background: rgba(0,0,0,.34); border-radius: 5px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+.s-compact .s-seg button { padding: 0 9px; border-radius: 3px; }
+
+/* ------------------------------------------------------------------ fields, dropdown, stepper */
+.s-fld { height: var(--s-h, 18px); background: rgba(36,36,36,.878); border: 1px solid #333; border-radius: 4px; color: #eee;
+  font: var(--s-fs, 11px)/1 var(--soul-font); padding: 0 5px; outline: none; min-width: 0; }
+.s-fld:focus { border-color: #3b82f6; }
+.s-fld::placeholder { color: #555; }
+.s-fld:disabled { color: #555; }
+.s-dd { height: var(--s-h, 18px); background: rgba(36,36,36,.878); border: 1px solid #333; border-radius: 4px; color: #eee;
+  font: var(--s-fs, 11px)/1 var(--soul-font); padding: 0 5.5px 0 5px; display: inline-flex; align-items: center; justify-content: space-between;
+  gap: 4px; cursor: pointer; text-align: left; min-width: 0; flex: none; }
+.s-dd > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-dd.open { border-color: #3b82f6; }
+.s-dd:disabled { color: #555; cursor: default; }
+.s-car { flex: none; width: 0; height: 0; border-left: 2.5px solid transparent; border-right: 2.5px solid transparent; border-top: 3px solid #888; }
+.s-compact .s-dd { flex: 1; }
+.s-step { position: relative; display: inline-flex; flex: none; }
+.s-step > .s-fld { width: 100%; padding-right: 14px; text-align: center; }
+.s-step .s-arr { position: absolute; right: 2px; top: 2px; bottom: 2px; width: 10px; display: flex; flex-direction: column; opacity: .55; }
+.s-step:hover .s-arr { opacity: 1; }
+.s-step .s-arr button { flex: 1; border: 0; padding: 0; background: transparent; border-radius: 2px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; }
+.s-step .s-arr button:hover { background: #2a2a2a; }
+.s-step .s-arr i { width: 0; height: 0; border-left: 2.5px solid transparent; border-right: 2.5px solid transparent; }
+.s-step .s-arr [data-d="1"] i { border-bottom: 3px solid #888; }
+.s-step .s-arr [data-d="-1"] i { border-top: 3px solid #888; }
+.s-step .s-arr button:hover i { border-top-color: #eee; border-bottom-color: #eee; }
+.s-step.dis { opacity: .5; } .s-step.dis .s-arr { display: none; }
+.s-unit { color: #888; margin-left: -2px; }
+
+/* ------------------------------------------------------------------ section */
+.s-sec { background: #1e1e1e; border-radius: 6px; padding: 8px 12px; margin: 6px 0; }
+.s-sh { display: flex; align-items: center; gap: 5px; min-height: 18px; }
+.s-sh .s-st { font-weight: 600; font-size: 13px; flex: none; }
+.s-sh .s-ss { flex: 1; min-width: 0; text-align: right; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-sec.coll > .s-sh { cursor: pointer; }
+.s-sh .s-car { border: 0; width: 4px; height: 4px; border-right: 1.2px solid #888; border-bottom: 1.2px solid #888; transform: rotate(-45deg); margin-right: 1px; }
+.s-sec.open > .s-sh .s-car { transform: rotate(45deg) translate(-1px, -1px); }
+.s-sb { padding-top: 4px; }
+.s-compact .s-sec { background: none; border-radius: 0; padding: 0; margin: 5px -8px 0; border-top: 1px solid #2a2a2a; }
+.s-compact .s-sh { height: 20px; min-height: 0; padding: 0 8px; }
+.s-compact .s-sh .s-st { font-size: inherit; }
+.s-compact .s-sec.coll > .s-sh:hover { background: rgba(255,255,255,.04); }
+.s-compact .s-sb { padding: 2px 8px 4px; }
+
+/* ------------------------------------------------------------------ popup list (drawOpenDropdown) */
+.s-poplayer { position: absolute; inset: 0; z-index: 40; }
+.s-popscrim { position: absolute; inset: 0; }
+.s-pop { position: absolute; background: rgba(36,36,36,.878); box-shadow: 0 0 0 1px #333; border-radius: 4px; padding: 1px 0; overflow-y: auto;
+  color: #eee; font: var(--s-fs, 11px)/1 var(--soul-font); scrollbar-width: thin; scrollbar-color: #444 transparent; }
+.s-pop .s-o { height: var(--s-dd-item, 16px); margin: 0 1px; padding: 0 5px; border-radius: 4px; display: flex; align-items: center;
+  justify-content: space-between; gap: 10px; cursor: pointer; white-space: nowrap; }
+/* The real hover is PANEL_HOVER over the same FIELD_BG (barely visible); CONTROL_HOVER reads in a mock. */
+.s-pop .s-o:hover { background: #353535; }
+.s-pop .s-o.cur { background: #3b82f6; color: #fff; }
+.s-pop .s-o.dis { color: #555; cursor: default; } .s-pop .s-o.dis:hover { background: none; }
+.s-pop .s-o small { color: #888; font-size: 9px; } .s-pop .s-o.cur small { color: #dbe7ff; }
+.s-pop .s-oh { height: 15px; line-height: 15px; padding: 0 6px; color: #555; font-size: 8.5px; text-transform: uppercase; letter-spacing: .07em; }
+
+/* ------------------------------------------------------------------ color control + picker (ConfigScreenBase drawSwatch / drawColorPicker) */
+.s-col { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.s-col .s-swatch { width: 26px; height: 16px; padding: 0; border: 0; border-radius: 4px; box-shadow: 0 0 0 1px #333; cursor: pointer; flex: none; }
+.s-col.open .s-swatch { box-shadow: 0 0 0 1px #3b82f6; }
+.s-col .s-hex { text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.s-col.dis { opacity: .4; } .s-col.dis .s-swatch { cursor: default; }
+.s-cpop { position: absolute; background: rgba(26,26,26,.847); box-shadow: 0 0 0 1px #333; border-radius: 6px; color: #eee; font: 11px/1 var(--soul-font); }
+.s-cp-top { display: flex; }
+.s-cp-sv, .s-cp-hue { position: relative; cursor: crosshair; flex: none; }
+.s-cp-hue { background: linear-gradient(to bottom, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+.s-cp-cur { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 1px #000; pointer-events: none; }
+.s-cp-hk { position: absolute; left: -1px; right: -1px; height: 2px; margin-top: -1px; background: #fff; pointer-events: none; }
+.s-cp-pal { display: grid; }
+.s-cp-chip { display: block; width: 10px; height: 10px; border-radius: 2px; box-shadow: 0 0 0 1px #333; cursor: pointer; }
+.s-cp-chip.cur { box-shadow: 0 0 0 1px #fff; }
+.s-cp-hex { display: flex; align-items: center; gap: 6px; }
+.s-cp-sw { display: block; width: 22px; height: 16px; border-radius: 4px; box-shadow: 0 0 0 1px #333; }
+.s-cp-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.s-cp-row .s-sw { cursor: pointer; }
+.s-cp-tr { position: relative; flex: 1; height: 12px; cursor: pointer; --f: 0; }
+.s-cp-tr::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 4px; border-radius: 2px; background: #2a2a2a; }
+.s-cp-fi { position: absolute; left: 0; top: 4px; height: 4px; border-radius: 2px; background: #3b82f6; width: calc(var(--f) * 100%); }
+.s-cp-kn { position: absolute; top: 0; left: calc(var(--f) * 100%); width: 12px; height: 12px; margin-left: -6px; border-radius: 50%; background: #eee; }
+.s-cp-sv-n { width: 22px; text-align: right; color: #888; }
+/* Chroma (ChromaColor): a full-saturation rainbow cycling one hue loop per --cs seconds. A swatch shows
+   one hue at a time (the 5000 % tile makes the visible slice ~uniform); bars set their own tile. */
+.s-chroma { background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00) 0 0 / var(--chs, 5000%) 100% repeat-x !important;
+  animation: s-chroma var(--cs, 3.333s) linear infinite; }
+@keyframes s-chroma { from { background-position: 0 0; } to { background-position: 100% 0; } }
+
+/* ------------------------------------------------------------------ modal (drawAlertModal, confirm) */
+.s-modallayer { position: absolute; inset: 0; z-index: 50; }
+.s-scrim { position: absolute; inset: 0; background: rgba(0,0,0,.69); display: flex; align-items: center; justify-content: center; }
+.s-modal { width: min(300px, 90%); padding: 16px; background: rgba(26,26,26,.847); box-shadow: 0 0 0 1px #333; border-radius: 6px; color: #eee;
+  font: 11px/14px var(--soul-font); }
+.s-modal .s-mt { font-size: 13px; font-weight: 600; line-height: 20px; color: #e05252; }
+.s-modal .s-mx { margin-top: 8px; color: #888; white-space: normal; }
+.s-modal .s-mb { margin-top: 12px; display: flex; justify-content: flex-end; gap: 8px; }
+.s-modal .s-mb .s-btn { height: 20px; min-width: 72px; padding: 0 14px; font-size: 11px; }
+
+/* ------------------------------------------------------------------ HUD content */
+/* SoulText shadow: ~1 screen px at 70 % black; set --soul-s to the Soul UI scale on the Soul layer. */
+.s-hud { --s-sh: calc(1px / var(--soul-s, 2)); color: #fff; white-space: nowrap; user-select: none; box-sizing: border-box; }
+.s-hud.sh, .s-hud .sh { text-shadow: var(--s-sh) var(--s-sh) 0 rgba(0,0,0,.7); }
+.s-hud.b { font-weight: 600; }
+
+.s-tp { padding: 12px; border-radius: 6px; line-height: 11px; color: #eee; display: flex; flex-direction: column; overflow: hidden; }
+.s-tp-t { height: 13px; line-height: 13px; margin-bottom: 4px; text-align: center; font-weight: 600; color: #eee; }
+.s-tp-hx { height: 11px; margin-bottom: 4px; text-align: center; }
+.s-tp-h { display: flex; align-items: center; justify-content: space-between; flex: none; }
+.s-tp-tm { font-weight: 600; } .s-tp-pz { color: #ff5555; margin-left: 6px; }
+.s-tp-tabn { color: #888; }
+.s-tp-tabs { display: flex; gap: 4px; }
+.s-tp-tab { height: 27px; line-height: 27px; padding: 0 10px; border-radius: 4px; color: #888; }
+.s-tp-tab.on { background: #3b82f6; color: #fff; }
+.s-tp-sep { height: 1px; margin: 6px 0; background: #2a2a2a; flex: none; }
+.s-tp-list { overflow: hidden; flex: none; }
+.s-tp-rows { display: flex; flex-direction: column; gap: 2px; }
+.s-tp-r { display: flex; align-items: flex-start; height: 11px; }
+.s-tp-ic { flex: none; width: 10px; height: 10px; margin: -1px 3px 0 0; border-radius: 2px; display: block; overflow: hidden; }
+.s-tp-rm { flex: none; width: 11px; height: 11px; margin-right: 3px; position: relative; color: #888; }
+.s-tp-rm::before, .s-tp-rm::after { content: ""; position: absolute; left: 1px; top: 5px; width: 9px; height: 1px; background: currentColor; transform: rotate(45deg); }
+.s-tp-rm::after { transform: rotate(-45deg); }
+.s-tp-l { flex: 1; min-width: 0; margin-right: 6px; overflow: hidden; text-overflow: ellipsis; }
+.s-tp-c { flex: none; text-align: center; font-weight: 600; overflow: hidden; }
+.s-tp-d { flex: none; width: 1px; height: 9px; margin: 2px 1px 0 2px; background: #2a2a2a; }
+.s-tp-empty { color: #555; }
+.s-tp-chips { margin-top: 6px; height: 11px; display: flex; justify-content: space-between; gap: 8px; color: #3b82f6; font-weight: 600; flex: none; }
+.s-tp-chips.one { justify-content: flex-end; }
+.s-tp-foot { display: flex; flex-direction: column; gap: 6px; flex: none; }
+.s-tp-fr { display: flex; gap: 6px; } .s-tp-fr.rs { margin-top: 0; }
+.s-tp-trg { height: 27px; padding: 0 10px; border-radius: 4px; background: #1e1e1e; display: flex; align-items: center; justify-content: space-between; gap: 6px; flex: none; }
+.s-tp-trg span { overflow: hidden; text-overflow: ellipsis; }
+.s-tp-car { flex: none; width: 0; height: 0; border-left: 3.5px solid transparent; border-right: 3.5px solid transparent; border-top: 4px solid #888; }
+.s-tp-btn { height: 27px; line-height: 27px; border-radius: 4px; background: rgba(36,36,36,.878); text-align: center; flex: none; }
+
+.s-alert { display: inline-block; text-align: center; font-weight: 600; }
+.s-al-t { white-space: nowrap; }
+.s-al-m { position: relative; color: #c0c0c0; }
+
+.s-notif { display: inline-flex; flex-direction: column; align-items: stretch; }
+.s-nc { border-radius: 4px; white-space: normal; overflow-wrap: anywhere; }
+
+.s-card { display: inline-block; }

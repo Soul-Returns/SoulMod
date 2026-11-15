@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Short form of client.py (stdlib only). See `c help`.
+exec python3 "$(dirname "$0")/client.py" "$@"

@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Cost of `listen record --preset full` in the isolated test client, with a fight-like load on the test server.
+
+Run under the client lock:  tools/testclient/lock testclient python3 tools/devbridge/preset-bench [SECONDS] [NPCS]
+Needs the test server and client up (tools/testserver/s up, tools/testclient/c up) with the current bridge installed
+(tools/testclient/c update). Spawns NPCs that walk in circles (`/hx npc`), zombies, and every second a burst of block
+changes, tnt, particles, sounds, damage, effects, skull block entities and a boss bar. Records with the preset, samples the
+bridge's own cost figures, and prints ms per client tick on the game threads and MB per minute. Nothing here touches the
+user's client.
+"""
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+LISTEN = [sys.executable, str(REPO / "tools/devbridge/listen"), "--test"]
+SERVER = str(REPO / "tools/testserver/s")
+
+
+def srv(cmd):
+    return subprocess.run([SERVER, "cmd", cmd], capture_output=True, text=True).stdout
+
+
+def listen(*args, timeout=120):
+    return subprocess.run(LISTEN + list(args), capture_output=True, text=True, timeout=timeout).stdout
+
+
+def status():
+    return json.loads(listen("status", "--json"))
+
+
+def main():
+    seconds = int(sys.argv[1]) if len(sys.argv) > 1 else 60
+    npcs = int(sys.argv[2]) if len(sys.argv) > 2 else 40
+    srv("gamemode creative SoulTester")
+    srv("execute as SoulTester at @s run tp @s 0 100 0")
+    srv("difficulty normal")
+    for i in range(npcs):
+        srv("hx npc add b%d npc %d %d" % (i, (i % 9) - 4, (i // 9) * 2 - 4))
+        srv("hx npc walk b%d %d" % (i, 2 + i % 5))
+    for i in range(30):
+        srv("execute as SoulTester at @s run summon minecraft:zombie ~%d ~ ~%d {NoAI:0b,PersistenceRequired:1b}" % ((i % 6) * 2 - 5, (i // 6) * 2 - 5))
+    time.sleep(3)
+    print(listen("record", "--preset", "full", "--out", "--detach", "--label", "preset-bench").strip())
+    t0, cost = time.time(), []
+    n = 0
+    while time.time() - t0 < seconds:
+        n += 1
+        x = 5 + (n % 4)
+        srv("execute as SoulTester at @s run fill ~%d ~-1 ~%d ~%d ~-1 ~%d minecraft:%s" % (x, x, x + 6, x + 6, "cobblestone" if n % 2 else "stone"))
+        srv("execute as SoulTester at @s run particle minecraft:flame ~ ~1 ~ 2 1 2 0.1 200")
+        srv("execute as SoulTester at @s run playsound minecraft:entity.generic.explode master @a ~ ~ ~")
+        srv("execute as SoulTester at @s run summon minecraft:tnt ~%d ~ ~ {fuse:10}" % (n % 5))
+        srv("execute as SoulTester at @s run effect give @e[type=zombie,limit=10] minecraft:speed 3 1")
+        srv("execute as SoulTester at @s run damage @e[type=zombie,limit=5,sort=random] 1")
+        srv("execute as SoulTester at @s run setblock ~%d ~ ~8 minecraft:player_head[rotation=%d]" % (n % 9, n % 16))
+        srv("bossbar set minecraft:bench value %d" % (n % 100) if n > 1 else "bossbar add minecraft:bench \"Bench Boss\"")
+        if n == 1:
+            srv("bossbar set minecraft:bench players @a")
+        c = status().get("cost")
+        if c:
+            cost.append(c)
+        time.sleep(0.5)
+    st = status()
+    res = json.loads(listen("record", "stop", "--json"))
+    srv("hx npc remove all")
+    srv("kill @e[type=zombie]")
+    srv("bossbar remove minecraft:bench")
+    minutes = max(res.get("seconds") or seconds, 1) / 60
+    print("recording: %s s, %s lines, %.1f MB raw (%.1f MB/min), %.2f MB gz" % (res.get("seconds"), res.get("lines"), res["raw_bytes"] / 1e6, res["raw_bytes"] / 1e6 / minutes, res["compressed_bytes"] / 1e6))
+    c = st["cost"]
+    print("cost on the game threads: avg %.3f ms/tick (client %.3f, network %.3f), max %.3f ms, %s of %s ticks over the %.1f ms budget" % (
+        c["avg_ms"], c["client_thread_avg_ms"], c["network_thread_avg_ms"], c["max_ms"], c["ticks_over_budget"], c["ticks"], c["budget_ms"]))
+    p = st["packets"]
+    print("packets: %s serialized, %s stubs %s, shed %s, worker %s%% busy, %s queue drops" % (
+        p["serialized"], p["stubs"], p["stub_types"], [s["type"] for s in p["shed"]], p["worker"]["busy_pct"], p["worker"]["queue_dropped"]))
+    print(listen("replay", res["file"], "sizes").split("\n\n")[1] if "\n\n" in listen("replay", res["file"], "sizes") else "")
+
+
+main()

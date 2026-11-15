@@ -1,0 +1,7 @@
+/* One stylesheet for a mock: <link rel="stylesheet" href="/kit/kit.css">. */
+@import url("fonts.css");
+@import url("base.css");
+@import url("game/game.css");
+@import url("mc/mc.css");
+@import url("soul/soul.css");
+@import url("editor/editor.css");

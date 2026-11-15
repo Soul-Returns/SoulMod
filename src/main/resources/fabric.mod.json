@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "soul",
+  "version": "${version}",
+  "name": "Soul",
+  "description": "Client-side Hypixel SkyBlock features. Fresh 26.2 baseline.",
+  "authors": [
+    "Soul-Returns"
+  ],
+  "contact": {
+    "homepage": "https://sky.soulreturns.com"
+  },
+  "license": "GPL-3.0-or-later",
+  "environment": "client",
+  "accessWidener": "soul.accesswidener",
+  "mixins": [
+    "soul.mixins.json"
+  ],
+  "entrypoints": {
+    "client": [
+      {
+        "adapter": "kotlin",
+        "value": "com.soulreturns.Soul"
+      }
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "fabric-language-kotlin": ">=1.13.12",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*",
+    "hypixel-mod-api": ">=1.0.2"
+  }
+}

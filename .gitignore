@@ -1,0 +1,47 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Loom
+run/
+.fabric/
+remappedSrc/
+
+# IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# OS
+.DS_Store
+
+# Local-only project notes
+/AGENTS.local.md
+/BACKLOG.md
+.temp/
+
+# Local-only internal notes (not for the public repo)
+docs/
+
+# Owner-local omp settings and memory scoping
+.omp/
+
+# Per-worktree dev overrides (e.g. soul.backendUrl for a paired backend lane)
+local.properties
+
+# Agent test client (tools/testclient): downloaded mods and screenshots
+tools/testclient/cache/
+tools/testclient/shots/
+__pycache__/
+/logs/
+
+# Mock tool (.agents/skills/mock): per-mock conversation, screenshots and server state
+mocks/**/.messages/
+
+# Dev bridge world captures (soul-dev/worlds, tools/testserver/run/plugins/SoulTestKit/worlds) are Hypixel's map
+# data: never committed. The one synthetic fixture made on the test server is tracked.
+*.soulworld.gz
+!tools/devbridge/fixtures/selftest.soulworld.gz

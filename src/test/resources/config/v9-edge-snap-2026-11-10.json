@@ -1,0 +1,12 @@
+{
+    "configVersion": 9,
+    "general": {
+        "moveGui": {
+            "edgeSnap": 1.0,
+            "linkGap": 7.5,
+            "confirmDetach": false,
+            "openOnSelect": true,
+            "barPinned": false
+        }
+    }
+}

@@ -1,0 +1,511 @@
+{
+    "general": {
+        "prefixOutgoingMessages": true,
+        "uiScale": 2.0,
+        "fontChoice": 0,
+        "menuFontChoice": 0,
+        "hudBoldFont": false,
+        "hudTextShadow": true,
+        "noFrontCamera": true,
+        "toggleSprint": true,
+        "toggleSprintUnderwater": false,
+        "toggleSprintKey": "key.keyboard.equal",
+        "toggleSprintHud": true,
+        "toggleSprintHudTransform": {
+            "anchorX": 0.5,
+            "anchorY": 1.0,
+            "offsetX": 209.0664,
+            "offsetY": -5.0183105,
+            "scale": 1.0,
+            "hAnchor": 2,
+            "vAnchor": 2,
+            "fontMode": 0,
+            "fontChoice": 0,
+            "textShadowMode": 0
+        },
+        "toggleSprintHudBackground": false,
+        "toggleSprintHudBackgroundColor": {
+            "argb": -1879048192,
+            "chroma": false,
+            "speed": 6.0
+        },
+        "toggleSprintHudColor": {
+            "argb": -1,
+            "chroma": false,
+            "speed": 6.0
+        },
+        "preventAbilityItemPlace": true,
+        "hideHeldItemTooltip": true,
+        "hideEffectsHud": true,
+        "hideEffectsInventory": true,
+        "hideRecipeBook": false,
+        "hideOffhandSlot": false,
+        "hideCraftingGrid": false,
+        "darkUi": false,
+        "hideFoliage": true,
+        "hideStuckDianaMobs": true,
+        "highlightHyperion": false,
+        "highlightHyperionColor": {
+            "argb": -43521,
+            "chroma": false,
+            "speed": 6.0
+        }
+    },
+    "fishing": {
+        "doubleHookMessageEnabled": false,
+        "doubleHookMessageText": "Woot Woot!",
+        "trackerHud": true,
+        "trackerHudTransform": {
+            "anchorX": 0.01,
+            "anchorY": 0.02,
+            "offsetX": 0.0,
+            "offsetY": 0.0,
+            "scale": 1.0,
+            "hAnchor": 0,
+            "vAnchor": 0,
+            "fontMode": 0,
+            "fontChoice": 0,
+            "textShadowMode": 0
+        },
+        "trackerHudBackground": true,
+        "trackerHudBackgroundColor": {
+            "argb": -669378022,
+            "chroma": false,
+            "speed": 6.0
+        },
+        "trackerScrollable": true,
+        "trackerFestivalTimer": true,
+        "trackerShowRates": false,
+        "trackerTab": "Session",
+        "trackerSort": "rarity",
+        "trackerFilter": [],
+        "trackerColumns": {
+            "doubleHooks": true,
+            "catches": true
+        },
+        "bobbinAlert": false,
+        "bobbinThreshold": 3
+    },
+    "combo": {
+        "enabled": true,
+        "mode": 1,
+        "hideComboMessages": true,
+        "hideExpireMessage": true,
+        "decaySeconds": 0.0,
+        "trackBest": true,
+        "bestCombo": 187,
+        "showCount": true,
+        "showMagicFind": true,
+        "showCoins": true,
+        "showCombatExp": true,
+        "showExpireTimer": false,
+        "background": true,
+        "backgroundColor": {
+            "argb": -1879048192,
+            "chroma": false,
+            "speed": 6.0
+        },
+        "hud": {
+            "anchorX": 0.5,
+            "anchorY": 0.35,
+            "offsetX": -194.65393,
+            "offsetY": 445.0,
+            "scale": 1.0,
+            "hAnchor": 1,
+            "vAnchor": 1,
+            "fontMode": 0,
+            "fontChoice": 0,
+            "textShadowMode": 0
+        }
+    },
+    "dungeons": {
+        "mapEnabled": true,
+        "mapHideInBoss": false,
+        "mapFontChoice": 0,
+        "mapHud": {
+            "anchorX": 0.5,
+            "anchorY": 0.5,
+            "offsetX": -632.84064,
+            "offsetY": -351.5643,
+            "scale": 2.5,
+            "hAnchor": 0,
+            "vAnchor": 0,
+            "fontMode": 0,
+            "fontChoice": 0,
+            "textShadowMode": 0
+        },
+        "mapBackground": false,
+        "mapBorder": true,
+        "mapRoundedCorners": true,
+        "mapBackgroundColor": {
+            "argb": -938471404,
+            "chroma": false,
+            "speed": 6.0
+        },
+        "mapBorderColor": {
+            "argb": -12961212,
+            "chroma": false,
+            "speed": 6.0
+        },
+        "colors": {
+            "unopened": {
+                "argb": -12698042,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "normal": {
+                "argb": -7708350,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "rare": {
+                "argb": -13479,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "entrance": {
+                "argb": -15224802,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "puzzle": {
+                "argb": -7713360,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "trap": {
+                "argb": -2588101,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "miniboss": {
+                "argb": -2566075,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "fairy": {
+                "argb": -1077320,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "blood": {
+                "argb": -6090222,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "doorWither": {
+                "argb": -15263973,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "doorBlood": {
+                "argb": -6090222,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "doorEntrance": {
+                "argb": -15224802,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "markerSelf": {
+                "argb": -14494738,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "classArcher": {
+                "argb": -43691,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "classBerserk": {
+                "argb": -22016,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "classMage": {
+                "argb": -16733526,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "classHealer": {
+                "argb": -5635926,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "classTank": {
+                "argb": -11141291,
+                "chroma": false,
+                "speed": 6.0
+            }
+        },
+        "mapShowSecrets": true,
+        "mapShowRoomNames": true,
+        "mapSecretsPosition": 0,
+        "mapNamePosition": 1,
+        "mapCenterPair": false,
+        "mapSecretsAboveName": false,
+        "mapCenterNamelessRooms": true,
+        "mapAutoScaleNames": true,
+        "mapTextScale": 1.0,
+        "mapShowNames": true,
+        "mapNamesOnlyWithLeap": true,
+        "mapPlayerHeadsOthers": true,
+        "mapPlayerHeadSelf": false,
+        "mapClassColorBorders": true,
+        "mapPlayerHeadScale": 1.0,
+        "mapPlayerScaleSelf": 1.0,
+        "mapOthersAboveText": false,
+        "mapSelfAboveText": false,
+        "debugHudEnabled": false,
+        "debugHudX": 250.0,
+        "debugHudY": 10.0,
+        "debugHudScale": 0.75,
+        "secretsSyncEnabled": true
+    },
+    "mining": {
+        "mineshaft": {
+            "logVisits": true,
+            "corpsesHud": true,
+            "corpsesHudBackground": true,
+            "corpsesHudBackgroundColor": {
+                "argb": -1879048192,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "corpsesHudTransform": {
+                "anchorX": 0.5,
+                "anchorY": 0.04,
+                "offsetX": 4.008972,
+                "offsetY": 45.0,
+                "scale": 2.2,
+                "hAnchor": 1,
+                "vAnchor": 0,
+                "fontMode": 0,
+                "fontChoice": 0,
+                "textShadowMode": 0
+            },
+            "corpsesHudColors": {
+                "lapis": {
+                    "argb": -11184641,
+                    "chroma": false,
+                    "speed": 6.0
+                },
+                "umber": {
+                    "argb": -22016,
+                    "chroma": false,
+                    "speed": 6.0
+                },
+                "tungsten": {
+                    "argb": -1,
+                    "chroma": false,
+                    "speed": 6.0
+                },
+                "vanguard": {
+                    "argb": -5635926,
+                    "chroma": false,
+                    "speed": 6.0
+                },
+                "other": {
+                    "argb": -2236963,
+                    "chroma": false,
+                    "speed": 6.0
+                },
+                "looted": {
+                    "argb": -11141291,
+                    "chroma": false,
+                    "speed": 6.0
+                },
+                "total": {
+                    "argb": -43691,
+                    "chroma": false,
+                    "speed": 6.0
+                },
+                "title": {
+                    "argb": -11141121,
+                    "chroma": false,
+                    "speed": 6.0
+                },
+                "none": {
+                    "argb": -5592406,
+                    "chroma": false,
+                    "speed": 6.0
+                }
+            },
+            "littlefootPtme": false,
+            "littlefootWaypoint": false,
+            "lapisPtme": false,
+            "lapisThreshold": 3,
+            "vanguardPtme": true
+        }
+    },
+    "combat": {
+        "dragons": {
+            "enabled": true,
+            "profitHud": false,
+            "profitHudTransform": {
+                "anchorX": 0.99,
+                "anchorY": 0.02,
+                "offsetX": 0.0,
+                "offsetY": 0.0,
+                "scale": 1.0,
+                "hAnchor": 2,
+                "vAnchor": 0,
+                "fontMode": 0,
+                "fontChoice": 0,
+                "textShadowMode": 0
+            },
+            "profitHudBackground": true,
+            "profitHudBackgroundColor": {
+                "argb": -669378022,
+                "chroma": false,
+                "speed": 6.0
+            },
+            "profitScrollable": true,
+            "useNpcPriceIfHigher": true,
+            "sendDragonProfit": true,
+            "sendDragonProfitToPartyChat": false,
+            "sendLegionOnDeath": true,
+            "sendLegionToPartyChat": false,
+            "profitTab": "Session",
+            "profitSort": "value",
+            "profitFilter": [],
+            "profitColumns": {},
+            "profitSourceFilter": "ALL",
+            "priceMode": 0
+        }
+    },
+    "notifications": {
+        "toastEnabled": true,
+        "chatEnabled": true,
+        "toastSeconds": 6.0,
+        "background": true,
+        "backgroundColor": {
+            "argb": -1879048192,
+            "chroma": false,
+            "speed": 6.0
+        },
+        "hud": {
+            "anchorX": 0.5,
+            "anchorY": 0.12,
+            "offsetX": 0.0,
+            "offsetY": 0.0,
+            "scale": 1.0,
+            "hAnchor": 1,
+            "vAnchor": 0,
+            "fontMode": 0,
+            "fontChoice": 0,
+            "textShadowMode": 0
+        }
+    },
+    "profileViewer": {
+        "enabled": true,
+        "shareSoulStats": true
+    },
+    "commandBindings": [
+        {
+            "command": "soul keybinds",
+            "key": "key.keyboard.backslash"
+        },
+        {
+            "command": "pets",
+            "key": "key.keyboard.x"
+        },
+        {
+            "command": "trades",
+            "key": "key.keyboard.y"
+        },
+        {
+            "command": "bz",
+            "key": "key.keyboard.u"
+        },
+        {
+            "command": "sax",
+            "key": "key.keyboard.i"
+        },
+        {
+            "command": "stats",
+            "key": "key.keyboard.q"
+        },
+        {
+            "command": "wardrobe",
+            "key": "key.keyboard.grave.accent"
+        },
+        {
+            "command": "ah",
+            "key": "key.keyboard.o"
+        },
+        {
+            "command": "loadouts",
+            "key": "key.keyboard.left.alt"
+        },
+        {
+            "command": "storage",
+            "key": "key.keyboard.b"
+        },
+        {
+            "command": "skyblocker crystalWaypoints add ~29 ~-32 ~48 Unknown",
+            "key": "key.keyboard.right.alt"
+        },
+        {
+            "command": "od ep",
+            "key": "key.keyboard.j"
+        }
+    ],
+    "inventoryButtons": {
+        "snapToGrid": true,
+        "buttons": [
+            {
+                "command": "sax",
+                "label": "",
+                "item": "minecraft:player_head",
+                "skin": "{\"id\":[1142684939,489370863,-1672816246,2116170345],\"properties\":[{\"name\":\"textures\",\"value\":\"ewogICJ0aW1lc3RhbXAiIDogMTU5Nzk4NDQ2MTMxOCwKICAicHJvZmlsZUlkIiA6ICJiNzQ3OWJhZTI5YzQ0YjIzYmE1NjI4MzM3OGYwZTNjNiIsCiAgInByb2ZpbGVOYW1lIiA6ICJTeWxlZXgiLAogICJzaWduYXR1cmVSZXF1aXJlZCIgOiB0cnVlLAogICJ0ZXh0dXJlcyIgOiB7CiAgICAiU0tJTiIgOiB7CiAgICAgICJ1cmwiIDogImh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvODBhMDc3ZTI0OGQxNDI3NzJlYTgwMDg2NGY4YzU3OGI5ZDM2ODg1YjI5ZGFmODM2YjY0YTcwNjg4MmI2ZWMxMCIKICAgIH0KICB9Cn0=\",\"signature\":\"DQOODa8UxccwZRdDvSW8dtL7IShZv8eSrUKJYmMKquPK87MhaJhYsFG4qr97SRZixB/BjuCOXGHCPldWy3U6dO74asN4nTSOPm42DDUHWC/2oOKjnueQlRRxpgPFb3ao1cK8fBOsaA8b4W5JkETYRgURGfoWC2tJYhAFTVUQaPmb+6HDHFs3ZiVKfedn6AovUORmfdP3Y+KIfDgDldYyay0yiGJbkzJfL80R6yn0dAKqfAlLzyNHaCKrl4ld2FaKDS3iAgWNR+wUkQEifBCL7ZuanN4BwSpe65BG3ywkyOt+yasyL4CCyf48hW2bt+dEl0CF6sJGYbnsVFxQBkEeywt/3lXL8Y2pwLZZZAXZ6WiIl2QHQHyFh/tDxgDOUsP9F5nsfPoi/CADwxm340frw9MUV5SBryWk4FunEUjqP3tq9rwmr2vh91pREgVuHgXs1+5YX+b3FKVjWiChlXo5NGmxia/YX8an/tGBxvCy4wc4d1HzpHzHayeZgBOdu/OLvuD99MyMG66SPLM8KmUShtuXPazUbeP/JQ8MxoAmFsSpzdtzIWilREvIzOMXvSxubYkcoIBUAa/B+bwGWF4mX3OsPfF3QCCxtsaJuxCbWOqiGd48OrgBbg1uaJOLCL0u72ripUI51yJ32A/KVaIOGAfVnRmJJZYtUgj99euID2Y=\"}]}",
+                "model": "",
+                "glint": false,
+                "x": 179,
+                "y": 114,
+                "inventoryOnly": true
+            },
+            {
+                "command": "od ep",
+                "label": "",
+                "item": "minecraft:ender_pearl",
+                "skin": "",
+                "model": "",
+                "glint": false,
+                "x": 179,
+                "y": 54,
+                "inventoryOnly": true
+            }
+        ]
+    },
+    "inventoryInfo": {
+        "enabled": false,
+        "progressBars": true,
+        "soulFont": false,
+        "entries": [
+            "skyblock_level",
+            "profile",
+            "skill_average",
+            "catacombs"
+        ]
+    },
+    "dev": {
+        "enabled": false,
+        "debugMode": false,
+        "logWebsocket": false,
+        "backendUrl": "",
+        "realtimeAlwaysOn": false,
+        "presence": {
+            "enabled": true
+        },
+        "keybinds": {
+            "copyOpenedGui": "",
+            "copyItemUnderCursor": "",
+            "copyHeldItem": "",
+            "copyScoreboard": "",
+            "copyTablist": "",
+            "copyNearbyEntities": ""
+        }
+    }
+}

@@ -1,0 +1,302 @@
+#!/usr/bin/env python3
+"""End-to-end check of the dev bridge world capture (isolated test client + local test server only).
+
+  tools/testclient/lock testclient tools/devbridge/world-selftest [--out DIR] [--scale]
+
+Builds the recognizable structure from `hx world selftest build` in the test server's world, walks the test
+client through it with a capture running (cluster B only loads late, blocks change during the capture and
+while the client is away), then installs the capture, rebuilds it in void worlds (entry and latest) and
+compares every block state, block entity and entity with the original (mismatches must be 0), taking
+screenshots of original and rebuilt. It also repeats the same walk without a capture and compares the
+client's outbound packets (a capture must add none). --scale measures capture cost, file size and load time
+on a boss-room-sized dense region.
+
+The client must be installed (`tools/testclient/c install|update`); the server and client are started here
+when they are not running. Output goes to DIR (default .temp/world-capture/) plus a summary on stdout.
+"""
+import argparse
+import collections
+import json
+import re
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parents[2]
+S = str(REPO / "tools/testserver/s")
+C = str(REPO / "tools/testclient/c")
+L = [str(REPO / "tools/devbridge/listen"), "--test"]
+GAME = Path.home() / ".local/share/PrismLauncher/instances/soulmod-test/minecraft"
+ORIGIN = (200, -60, 200)
+BOUNDS = "196,-62,196,387,-48,227"
+STORED = "192 -64 192 399 -33 239"
+A = (212, -58, 212)
+B = (372, -58, 212)
+CHANGES_A = [(210, -59, 210, "minecraft:gold_block"), (205, -58, 206, "minecraft:lever[face=wall,facing=east,powered=true]"),
+             (205, -59, 215, "minecraft:oak_stairs[facing=west,half=top,shape=outer_left]")]
+CHANGES_B = [(372, -59, 212, "minecraft:diamond_block"), (370, -59, 210, "minecraft:lever[face=floor,facing=south,powered=true]")]
+CHANGES_AWAY = [(206, -59, 207, "minecraft:emerald_block"), (207, -59, 207, "minecraft:lever[face=floor,facing=south,powered=true]")]
+LOG = []
+
+
+def say(text):
+    print(text, flush=True)
+    LOG.append(text)
+
+
+def run(cmd, timeout=300):
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout).stdout
+
+
+def srv(command):
+    return run([S, "cmd", command])
+
+
+def listen(*args, timeout=120):
+    return run(L + list(args), timeout=timeout)
+
+
+CONSOLE = REPO / "tools/testserver/run/console.log"
+
+
+def mark():
+    """Where the server console is now; wait_log only looks at what follows."""
+    return CONSOLE.stat().st_size
+
+
+def wait_log(pattern, since, timeout=120):
+    end = time.time() + timeout
+    rx = re.compile(pattern)
+    while time.time() < end:
+        with open(CONSOLE, "rb") as f:
+            f.seek(since)
+            m = rx.search(f.read().decode(errors="replace"))
+        if m:
+            return m
+        time.sleep(0.5)
+    sys.exit("timed out waiting for %s" % pattern)
+
+
+def tp(pos, yaw=None, pitch=None):
+    """Into the main world (a plain tp would stay in a rebuilt capture world)."""
+    if yaw is None:
+        srv("execute in minecraft:overworld run tp SoulTester %s %s %s" % pos)
+    else:
+        srv("execute in minecraft:overworld run tp SoulTester %s %s %s %s %s" % (pos + (yaw, pitch)))
+
+
+def apply(changes):
+    for x, y, z, data in changes:
+        srv("setblock %d %d %d %s" % (x, y, z, data))
+
+
+def state(x, y, z):
+    return re.search(r"state (\S+)", srv("hx world selftest state %d %d %d" % (x, y, z))).group(1)
+
+
+def compare(a, b, bounds=STORED, shift="0 0 0"):
+    out = srv("hx world compare %s %s %s %s" % (a, b, bounds, shift))
+    m = re.search(r"blocks (\d+) \((\d+) non-air\) mismatches=(\d+); block entities (\d+) mismatches=(\d+); entities (\d+) mismatches=(\d+) \((\d+) ms", out)
+    if not m:
+        sys.exit("compare failed: " + out)
+    return {k: int(v) for k, v in zip(("blocks", "non_air", "block_mismatches", "block_entities", "block_entity_mismatches", "entities", "entity_mismatches", "ms"), m.groups())}, out
+
+
+def outbound_stream(path):
+    return subprocess.Popen(L + ["listen", "--kinds", "packet", "--dir", "out", "--all", "--json", "--no-snapshot", "--no-save", "--timeout", "600"],
+                            stdout=open(path, "w"), stderr=subprocess.DEVNULL)
+
+
+def outbound_counts(path):
+    counts = collections.Counter()
+    for line in open(path):
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        if ev.get("kind") == "packet":
+            counts[ev["data"].get("type")] += 1
+    return counts
+
+
+def walk(capture, out):
+    tp(A)
+    time.sleep(3)
+    info = {}
+    if capture:
+        started = listen("world", "start", "--label", "selftest", "--bounds", BOUNDS).strip()
+        say(started)
+        if "capturing to" not in started:
+            sys.exit("the capture did not start (is the test client in the world?)")
+        time.sleep(2)
+        info["status_start"] = listen("world", "status")
+        (out / "status-1-start.txt").write_text(info["status_start"])
+    apply(CHANGES_A)
+    time.sleep(1.5)
+    tp(B)
+    time.sleep(4)
+    if capture:
+        info["status_b"] = listen("world", "status")
+        (out / "status-2-after-walk.txt").write_text(info["status_b"])
+    apply(CHANGES_B)
+    apply(CHANGES_AWAY)
+    time.sleep(1.5)
+    tp(A)
+    time.sleep(4)
+    if capture:
+        info["stop"] = listen("world", "stop", timeout=120)
+        if not info["stop"].startswith("ended (stopped by agent)"):
+            sys.exit("the capture was not running at the end:\n" + info["stop"])
+        (out / "status-3-stop.txt").write_text(info["stop"])
+        info["info"] = listen("world", "info")
+        (out / "world-info.txt").write_text(info["info"])
+    return info
+
+
+def shots(out, label, level="minecraft:overworld"):
+    for name, pos, yaw, pitch in (("overview", (212, -55, 192), 0, 30), ("closeup", (208, -58, 207), 0, 15), ("headb", (366, -57, 205), 20, 25)):
+        # `execute in` names the world: a bare `execute as … run tp` would pull the player back into the overworld
+        srv("execute in %s run tp SoulTester %s %s %s %s %s" % ((level,) + pos + (yaw, pitch)))
+        time.sleep(3.5)
+        run([C, "shot", "%s-%s" % (label, name)])
+        shutil.copy(REPO / ("tools/testclient/shots/%s-%s.png" % (label, name)), out / ("%s-%s.png" % (label, name)))
+
+
+def image_diffs(out):
+    try:
+        from PIL import Image, ImageChops
+        import numpy
+    except ImportError:
+        return "n/a (needs PIL and numpy)"
+    parts = []
+    for view in ("overview", "closeup", "headb"):
+        a = Image.open(out / ("original-%s.png" % view)).convert("RGB").crop((0, 400, 1340, 620))
+        b = Image.open(out / ("rebuilt-latest-%s.png" % view)).convert("RGB").crop((0, 400, 1340, 620))
+        d = numpy.asarray(ImageChops.difference(a, b)).astype(float)
+        parts.append("%s mean abs diff %.2f/255 (%.2f%% of pixels off by >32)" % (view, d.mean(), 100 * (d.max(axis=2) > 32).mean()))
+    return "; ".join(parts)
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default=str(REPO / ".temp/world-capture"))
+    ap.add_argument("--scale", action="store_true", help="also measure a boss-room-sized dense region")
+    args = ap.parse_args()
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    run([S, "up"])
+    run([C, "down"])                  # a client left over from before a server restart is no longer in the world
+    say(run([C, "up"]).strip())
+    srv("gamerule random_tick_speed 0")
+    srv("gamemode creative SoulTester")
+    srv("hx world unload all")
+    say(srv("hx world selftest build %d %d %d" % ORIGIN).strip())
+    srv("forceload add 192 192 239 239")
+    srv("forceload add 352 192 399 239")
+    originals = [(x, y, z, state(x, y, z)) for x, y, z, _ in CHANGES_A + CHANGES_B + CHANGES_AWAY]
+
+    # 1. the same walk without a capture, outbound packets counted
+    p = outbound_stream(out / "outbound-baseline.ndjson")
+    time.sleep(2)
+    walk(False, out)
+    time.sleep(1)
+    p.terminate()
+    apply(originals)
+    time.sleep(2)
+
+    # 2. the walk with a capture
+    p2 = outbound_stream(out / "outbound-capture.ndjson")
+    time.sleep(2)
+    info = walk(True, out)
+    time.sleep(1)
+    p2.terminate()
+    base, cap = outbound_counts(out / "outbound-baseline.ndjson"), outbound_counts(out / "outbound-capture.ndjson")
+    noisy = {"minecraft:keep_alive", "minecraft:pong", "minecraft:move_player_pos", "minecraft:move_player_pos_rot", "minecraft:move_player_rot", "minecraft:move_player_status_only"}
+    say("outbound packets of the same walk without / with a capture (per 100 client_tick_end, which counts the walk's length):")
+    tb, tc = max(1, base["minecraft:client_tick_end"]), max(1, cap["minecraft:client_tick_end"])
+    for t in sorted(set(base) | set(cap)):
+        say("  %-40s %5d %5d   %6.1f %6.1f" % (t, base[t], cap[t], 100 * base[t] / tb, 100 * cap[t] / tc))
+    extra = sorted(t for t in cap if t not in base)
+    say("packet types only seen with capture: %s" % (extra or "none"))
+
+    # 3. install and rebuild
+    f = GAME / "soul-dev/worlds/latest.soulworld.gz"
+    say(run([S, "world", "install", str(f), "selftest"]).strip())
+    results = {}
+    for mode in ("latest", "entry"):
+        at = mark()
+        srv("hx world load selftest %s" % mode)
+        m = wait_log(r"loaded selftest %s into world[^\n]*" % mode, at)
+        say(m.group(0))
+        if mode == "entry":
+            apply(originals)       # the original as it was when the capture first saw it
+            time.sleep(1.5)
+        results[mode], text = compare("world", "selftest:%s" % mode)
+        say("compare original vs %s: %s" % (mode, json.dumps(results[mode])))
+        (out / ("compare-%s.txt" % mode)).write_text(text)
+    # 4. screenshots: original now equals entry; latest rebuilt vs original with the changes applied again
+    apply(CHANGES_A + CHANGES_B + CHANGES_AWAY)
+    time.sleep(2)
+    shots(out, "original")
+    for mode in ("latest",):
+        srv("hx world tp selftest %s %s %s %s" % ((mode,) + A))
+        time.sleep(4)
+        shots(out, "rebuilt-" + mode, "minecraft:soulcap_selftest_" + mode)
+    srv("hx world tp selftest entry %s %s %s" % A)
+    time.sleep(3)
+    shots(out, "rebuilt-entry", "minecraft:soulcap_selftest_entry")
+    say("screenshots, original vs rebuilt latest (rows below the horizon only: the void world has no sky or far ground; HUD cropped): " + image_diffs(out))
+    tp(A)
+    srv("forceload remove all")
+    apply(originals)
+    (out / "summary.json").write_text(json.dumps({"compare": results, "outbound_baseline": base, "outbound_capture": cap}, indent=1))
+    say("summary: %s" % (out / "summary.json"))
+    ok = all(r["block_mismatches"] == 0 and r["block_entity_mismatches"] == 0 and r["entity_mismatches"] == 0 for r in results.values())
+    say("RESULT: %s" % ("PASS, mismatches = 0 for entry and latest" if ok else "FAIL"))
+    if args.scale:
+        scale(out)
+    sys.exit(0 if ok else 1)
+
+
+def scale(out):
+    """Capture cost, file size and load time on a boss-room-sized region (x -10..130, y 0..255, z 0..150) of dense blob noise."""
+    dx, dz = 20000, 20000
+    x1, x2, z1, z2 = -10 + dx, 130 + dx, 0 + dz, 150 + dz
+    tp((A[0], A[1], A[2]))
+    time.sleep(1)
+    say(srv("hx world selftest noise %d 0 %d %d 255 %d 70" % (x1, z1, x2, z2)).strip())
+    tp((20000 + 65, 128, 20000 + 75))
+    time.sleep(2)
+    time.sleep(8)
+    bounds = "%d,0,%d,%d,255,%d" % (x1, z1, x2, z2)
+    started = listen("world", "start", "--label", "scale", "--bounds", bounds).strip()
+    say(started)
+    if "capturing to" not in started:
+        sys.exit("the scale capture did not start")
+    end = time.time() + 120
+    while time.time() < end:
+        st = json.loads(listen("world", "status", "--json"))
+        if st["columns"]["holes"] == 0 and st["columns"]["queued"] == 0 and st["writer_queue"] == 0:
+            break
+        time.sleep(1)
+    stop = json.loads(listen("world", "stop", "--json", timeout=180))
+    (out / "scale-stop.json").write_text(json.dumps(stop, indent=1))
+    if "columns" not in stop or stop.get("failure"):
+        sys.exit("scale capture failed: %s" % json.dumps(stop))
+    say("scale capture: %s" % json.dumps({k: stop[k] for k in ("columns", "sections", "blocks_non_air", "bytes_gz", "bytes_raw", "cost")}))
+    run([S, "world", "install", str(GAME / "soul-dev/worlds/latest.soulworld.gz"), "scale"])
+    for mode in ("entry", "latest"):
+        t0, at = time.time(), mark()
+        srv("hx world load scale %s" % mode)
+        m = wait_log(r"loaded scale %s into world[^\n]*" % mode, at, 300)
+        say("%s (wall %.1fs)" % (m.group(0), time.time() - t0))
+    say(srv("hx world compare world scale:entry %d 0 %d %d 255 %d" % (x1, z1, x2, z2)).strip().splitlines()[0])
+    tp(A)
+    srv("hx world unload all")
+    run([S, "world", "rm", "scale"])
+
+
+if __name__ == "__main__":
+    main()

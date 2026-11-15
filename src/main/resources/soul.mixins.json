@@ -1,0 +1,36 @@
+{
+  "required": true,
+  "package": "com.soulreturns.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "AbstractContainerScreenMixin",
+    "AbstractSoundInstanceAccessor",
+    "BlockStateBaseMixin",
+    "ChatComponentMixin",
+    "ClientPacketListenerMixin",
+    "ConnectionMixin",
+    "DiscardedPayloadMixin",
+    "EffectsInInventoryMixin",
+    "EntityMixin",
+    "EntityRenderDispatcherMixin",
+    "FramerateLimitTrackerMixin",
+    "LevelEventHandlerMixin",
+    "GuiGraphicsExtractorMixin",
+    "GuiInitialScreensMixin",
+    "InventoryScreenMixin",
+    "KeyMappingMixin",
+    "KeyboardHandlerMixin",
+    "LevelExtractorMixin",
+    "LocalPlayerMixin",
+    "MouseHandlerMixin",
+    "PlayerMixin",
+    "RecipeBookButtonMixin",
+    "RecipeBookHideMixin",
+    "ScreenEffectRendererMixin",
+    "SlotMixin",
+    "SoundEngineMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

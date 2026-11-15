@@ -1,0 +1,30 @@
+{
+    "configVersion": 12,
+    "mining": {
+        "metalDetector": {
+            "enabled": true,
+            "hud": true,
+            "toolsCounter": true,
+            "toolsCounterTransform": {
+                "hAnchor": 1,
+                "vAnchor": 2,
+                "offsetX": 0.0,
+                "offsetY": -32.0,
+                "autoAnchor": true,
+                "scale": 1.3,
+                "fontMode": 2,
+                "link": {
+                    "target": "vanilla:actionbar",
+                    "h": 1,
+                    "v": 3,
+                    "offsetX": 0.0,
+                    "offsetY": 3.0,
+                    "follow": true,
+                    "auto": false,
+                    "fixed": false,
+                    "whenHidden": 0
+                }
+            }
+        }
+    }
+}

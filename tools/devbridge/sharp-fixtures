@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""Sharpshooter fixtures: the device's signals cut from a dev bridge recording (format v2 or v1, block updates only).
+
+    tools/devbridge/sharp-fixtures <recording.rec.ndjson.zst> <out.ndjson.gz> [--episode N]
+
+Finds every Sharpshooter episode (an emerald block appearing in the 3x3 target grid x 64/66/68, y 126/128/130, z 50;
+emerald events more than 60 s apart are separate episodes) and writes episode N (1-based, default 1), from 3 s before
+its first emerald to 3 s after its last event (the plate going free, the completion line). One compact line per event;
+`t` = client arrival in ms, `tick` = the server tick from the recording's clock:
+  {"t":…,"tick":N,"k":"cell","x":64|66|68,"y":126|128|130,"s":"emerald|blue"}   a target block changes
+  {"t":…,"tick":N,"k":"plate","p":0..15}   the pressure plate (63, 127, 35): its power (0 = free)
+  {"t":…,"tick":N,"k":"chat","s":"…"}      `completed a device!` lines
+The cells before the first change are not in the file (the recordings only hold changes): the replay assumes blue
+terracotta everywhere (the world captures show it) and a free plate.
+Used by SharpshooterFixturesTest (src/test/resources/devices/).
+"""
+import gzip
+import json
+import re
+import subprocess
+import sys
+
+PLATE = (63, 127, 35)
+
+
+def short(s):
+    return s.replace("minecraft:", "").split("[")[0]
+
+
+def is_cell(x, y, z):
+    return z == 50 and x in (64, 66, 68) and y in (126, 128, 130)
+
+
+def read(src):
+    cmd = ["zstd", "-dc", src] if src.endswith(".zst") else ["gzip", "-dc", src]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True)
+    events = []
+    for line in proc.stdout:
+        try:
+            o = json.loads(line)
+        except ValueError:
+            continue
+        kind = o.get("kind")
+        d = o.get("data") or {}
+        t, tick = o.get("t"), o.get("tick")
+        if kind == "chat":
+            s = d.get("text") or ""
+            if "completed a device!" in s:
+                events.append({"t": t, "tick": tick, "k": "chat", "s": s})
+            continue
+        if kind != "packet":
+            continue
+        typ = d.get("type")
+        p = d.get("data") or {}
+        if typ == "minecraft:block_update":
+            pos = p.get("pos") or {}
+            change(events, t, tick, pos.get("x"), pos.get("y"), pos.get("z"), p["blockState"])
+        elif typ == "minecraft:section_blocks_update":
+            states = p.get("states") or []
+            for x, y, z, i in p.get("changes") or []:
+                change(events, t, tick, x, y, z, states[i])
+    proc.wait()
+    return events
+
+
+def change(events, t, tick, x, y, z, state):
+    if x is None:
+        return
+    name = short(state)
+    if is_cell(x, y, z) and name in ("emerald_block", "blue_terracotta"):
+        events.append({"t": t, "tick": tick, "k": "cell", "x": x, "y": y, "s": "emerald" if name == "emerald_block" else "blue"})
+    elif (x, y, z) == PLATE and name == "light_weighted_pressure_plate":
+        m = re.search(r"power=(\d+)", state)
+        events.append({"t": t, "tick": tick, "k": "plate", "p": int(m.group(1)) if m else 0})
+
+
+def main(argv):
+    if len(argv) < 3:
+        sys.exit(__doc__)
+    src, dst = argv[1], argv[2]
+    episode = int(argv[argv.index("--episode") + 1]) if "--episode" in argv else 1
+    events = read(src)
+    # Block updates of a cell that did not change state (a repeat) are kept: the replay must cope with them.
+    em = [e for e in events if e["k"] == "cell" and e["s"] == "emerald"]
+    groups = []
+    for e in em:
+        if groups and e["t"] - groups[-1][-1]["t"] <= 60000:
+            groups[-1].append(e)
+        else:
+            groups.append([e])
+    if episode > len(groups):
+        sys.exit(f"{src}: {len(groups)} Sharpshooter episode(s)")
+    first = groups[episode - 1][0]["t"]
+    nxt = groups[episode][0]["t"] if episode < len(groups) else None
+    lo = first - 3000
+    hi = groups[episode - 1][-1]["t"] + 60000
+    if nxt is not None:
+        hi = min(hi, nxt - 3000)
+    keep = [e for e in events if lo <= e["t"] <= hi and e["k"] in ("cell", "plate")]
+    last_plate = max((e["t"] for e in keep if e["k"] == "plate"), default=hi)
+    end = last_plate + 3000
+    keep = [e for e in keep if e["t"] <= end]
+    keep += [e for e in events if e["k"] == "chat" and lo <= e["t"] <= end]
+    keep.sort(key=lambda e: e["t"])
+    with gzip.open(dst, "wt") as f:
+        for e in keep:
+            f.write(json.dumps(e, separators=(",", ":")) + "\n")
+    print(f"{dst}: episode {episode}/{len(groups)}, {len(keep)} events, {sum(1 for e in keep if e['k'] == 'cell' and e['s'] == 'emerald')} targets")
+
+
+if __name__ == "__main__":
+    main(sys.argv)

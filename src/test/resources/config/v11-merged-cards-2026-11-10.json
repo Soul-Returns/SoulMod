@@ -1,0 +1,51 @@
+{
+    "configVersion": 11,
+    "general": {
+        "moveGui": {
+            "edgeSnap": 1.0,
+            "linkGap": 7.5,
+            "confirmDetach": false,
+            "openOnSelect": true,
+            "barPinned": false
+        },
+        "cleanUpInventory": true,
+        "hideRecipeBook": true,
+        "hideOffhandSlot": true,
+        "hideCraftingGrid": false,
+        "hideEffects": false,
+        "hideEffectsHud": true,
+        "hideEffectsInventory": true,
+        "quietImplosion": true,
+        "hideImplosionParticles": true,
+        "hideImplosionExplosionSound": false,
+        "hideImplosionTeleportSound": true
+    },
+    "mining": {
+        "nucleus": {
+            "compactChat": true,
+            "compactFound": true,
+            "compactLoot": false,
+            "hideAlreadyObtained": true,
+            "hideBlocksInWay": false
+        }
+    },
+    "menu": {
+        "pins": [
+            "dmap",
+            "sprint"
+        ],
+        "recent": [
+            "nucleus",
+            "cleanup"
+        ],
+        "seenNew": {
+            "version": "0.1.2",
+            "ids": [
+                "f:equipment"
+            ]
+        },
+        "sidebarCollapsed": true,
+        "alwaysAdvanced": false,
+        "onboardingDone": true
+    }
+}

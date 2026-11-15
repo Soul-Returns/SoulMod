@@ -1,0 +1,26 @@
+/* Editor chrome (ed-): outlines, labels and snap guides drawn by createEditor, and the inspector frame.
+   Guide pink = HudMoveScreen.GUIDE 0xFFEC4899. */
+
+.ed-overlay { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.ed-box { position: absolute; box-shadow: 0 0 0 1px rgba(255,255,255,.25); }
+.ed-box.hover { box-shadow: 0 0 0 1px #60a5fa; }
+.ed-box.sel { box-shadow: 0 0 0 1px #3b82f6; }
+.ed-lbl { position: absolute; font: 10px/10px var(--soul-font); white-space: nowrap; }
+.ed-lbl.hover { color: #60a5fa; }
+.ed-lbl.sel { color: #3b82f6; }
+.ed-guide { position: absolute; background: #ec4899; }
+
+.ed-hovering { cursor: move; }
+.ed-dragging, .ed-dragging * { cursor: grabbing !important; }
+
+/* Inspector: put inspectorHtml() in <div class="s-panel s-compact ed-insp">. */
+.ed-insp { position: absolute; width: 200px; display: flex; flex-direction: column; overflow: hidden; z-index: 15; transition: opacity .12s; }
+.ed-insp.ed-under { opacity: 0; pointer-events: none; }
+.ed-hidden { display: none !important; }
+.ed-ih { display: flex; align-items: center; gap: 6px; height: 26px; padding: 5px 8px; border-bottom: 1px solid #2a2a2a; flex: none; }
+.ed-it { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ed-chip { flex: none; font-size: 9px; line-height: 12px; color: #888; background: #2a2a2a; border-radius: 3px; padding: 0 4px; }
+.ed-x { flex: none; width: 14px; height: 14px; padding: 2px; border: 0; background: none; color: #555; cursor: pointer; border-radius: 3px; }
+.ed-x:hover { color: #eee; background: #2a2a2a; }
+.ed-x svg { display: block; width: 10px; height: 10px; }
+.ed-ib { overflow-y: auto; padding: 6px 8px 8px; min-height: 0; scrollbar-width: thin; scrollbar-color: #444 transparent; }

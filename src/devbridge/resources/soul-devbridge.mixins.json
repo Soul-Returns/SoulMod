@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "com.soulreturns.devbridge.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "client": [
+    "ClientCommonPacketListenerMixin",
+    "ClientLevelMixin",
+    "ClientPacketListenerMixin",
+    "LocalPlayerMixin",
+    "MultiPlayerGameModeMixin",
+    "ToastManagerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

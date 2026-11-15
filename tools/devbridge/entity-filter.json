@@ -1,0 +1,13 @@
+{
+  "_help": "Rules for `listen world entities` and `listen world merge --entities static`. An entity is dropped when it moved more than max_move blocks over the capture (all its position records), or when any custom name it ever had matches a drop_names regex (on the plain text, colors removed), unless any of its names matches a keep_names regex. Everything else is kept, including unnamed stands and unknown names that stayed still. Edit freely; regexes are Python re, searched anywhere in the name.",
+  "max_move": 1.0,
+  "drop_names": [
+    {"why": "damage number", "re": "^[\\W_]*[\\d,.]+[kKmMbB]?[\\W_]*$"},
+    {"why": "mob health tag", "re": "[\\d.,]+[kKmMbB]?\\s*❤\\s*$"},
+    {"why": "mob name tag glyph", "re": "^[\\ue000-\\uf8ff]"},
+    {"why": "mob level tag", "re": "^\\[?Lv\\s?\\d+\\]?"},
+    {"why": "boss or mob placeholder tag", "re": "^(BOSS|MINIBOSS|\\?+)$"},
+    {"why": "chat-like line", "re": "[.!?…]\\s*$"}
+  ],
+  "keep_names": []
+}

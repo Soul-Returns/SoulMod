@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Runs a command while holding a shared lock, so parallel agents take turns on the test client:
+#   tools/testclient/lock testclient bash -c 'tools/testclient/c up && tools/testclient/c shot x; tools/testclient/c down'
+# The lock is released when the command exits, even if it started background processes (servers, vite):
+# flock -o keeps the lock's file descriptor out of every child. Without it a leftover dev server held the
+# client lock for hours and every later run waited forever.
+# LOCK_WAIT (seconds, default 1800) bounds the wait; on timeout it prints who holds the lock and fails.
+# Reentrant: when the holder is an ancestor of this process the command just runs.
+set -euo pipefail
+
+name=${1:?usage: lock <testclient|name> <command...>}
+shift
+[ $# -gt 0 ] || { echo "lock: no command" >&2; exit 2; }
+dir=${XDG_RUNTIME_DIR:-/tmp}/soulmod-locks
+mkdir -p "$dir"
+file="$dir/$name.lock"
+wait=${LOCK_WAIT:-1800}
+
+held_by_ancestor() {
+    local holders p
+    holders=$(fuser "$file" 2>/dev/null) || return 1
+    p=$$
+    while [ "${p:-0}" -gt 1 ]; do
+        case " $holders " in *" $p "*) return 0 ;; esac
+        p=$(sed 's/.*) //' "/proc/$p/stat" 2>/dev/null | awk '{print $2}') || return 1
+    done
+    return 1
+}
+export SOUL_LOCKS_HELD="${SOUL_LOCKS_HELD:-} $name"
+if held_by_ancestor; then exec "$@"; fi
+
+exec 9>>"$file"
+if ! flock -n 9; then
+    echo "lock: $name is busy, waiting up to ${wait}s. Holder:" >&2
+    cat "$file.owner" >&2 2>/dev/null 9<&- || true
+    if ! flock -w "$wait" 9; then
+        echo "lock: gave up on $name after ${wait}s. Processes holding it:" >&2
+        { fuser -v "$file" 2>&1 | grep -v " $$ " >&2; } 9<&- || true
+        exit 75
+    fi
+fi
+echo "pid $$ since $(date '+%H:%M:%S'): $*" > "$file.owner"
+trap 'rm -f "$file.owner"' EXIT
+# 9<&- : the command (and everything it spawns) runs without the lock's descriptor; this shell keeps it.
+"$@" 9<&-
