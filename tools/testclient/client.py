@@ -12,7 +12,7 @@ server 127.0.0.1:25590 (tools/testserver/s).
   c down               quit the client
   c status             running? joined? test server port open?
   c shot NAME          F2 screenshot -> tools/testclient/shots/NAME.png
-  c click X Y          left click at window pixels (1600 x 900)
+  c click X Y          left click at window pixels (1708 x 960)
   c rclick X Y         right click
   c mclick X Y         middle click
   c move X Y           move the mouse (hover tooltips)
@@ -67,8 +67,9 @@ DEV_ACCESS = GAME / "config/soul/dev_access.json"
 DEV_ACCESS_OFFLINE = HERE / "cache/dev_access.offline.json"
 DEV_ACCESS_LOCAL = HERE / "cache/dev_access.local.json"
 SOUL_CONFIG = GAME / "config/soul/config.json"
-SOUL_UI_SCALE = 1.5
-W, H = 1600, 900
+# 2/3 of the user's 2560x1440 / GUI scale 3 / Soul scale 2 setup: same proportions in a smaller window, width even so GUI 2 divides it exactly (GUI 2, Soul 2*2/3)
+SOUL_UI_SCALE = 1.3333
+W, H = 1708, 960
 SHOTS = HERE / "shots"
 CACHE = HERE / "cache"
 MC, LOADER = "26.2", "0.19.3"

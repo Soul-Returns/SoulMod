@@ -23,6 +23,7 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO / "tools/testclient"))
 DOC = REPO / "docs/research/f7-native-terminals-2026-11-12.md"
 S = str(REPO / "tools/testserver/s")
 C = str(REPO / "tools/testclient/c")
@@ -120,6 +121,7 @@ def events(path):
 
 
 def main():
+    require_vanilla_menus()
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     clicks = "--no-clicks" not in sys.argv
     boards_phase = "--clicks-only" not in sys.argv
@@ -174,10 +176,25 @@ def display():
 
 
 def slot_xy(rows, slot):
-    """Window pixels of a container slot's center, GUI scale 2 on the 1600x900 window."""
+    """Window pixels of a vanilla container slot's center at GUI scale 2 (the test client's setting)."""
+    import client
+    gui = 2
+    gw, gh = -(-client.W // gui), -(-client.H // gui)   # scaled GUI size, rounded up like vanilla
     col, row = slot % 9, slot // 9
     height = 114 + rows * 18
-    return (312 + 8 + col * 18 + 8) * 2, ((450 - height) // 2 + 18 + row * 18 + 8) * 2
+    return ((gw - 176) // 2 + 8 + col * 18 + 8) * gui, ((gh - height) // 2 + 18 + row * 18 + 8) * gui
+
+
+def require_vanilla_menus():
+    """The checks read and click the vanilla menu: Soul's terminal solver (custom GUI) would replace it."""
+    import client
+    try:
+        t = json.loads(client.SOUL_CONFIG.read_text()).get("dungeons", {}).get("terminals", {})
+    except (OSError, ValueError):
+        return
+    if t.get("enabled") and t.get("customGui", True):
+        sys.exit("terminal-verify: dungeons.terminals is enabled with customGui in %s; turn the solver off "
+                 "(client down) so the vanilla menus stay" % client.SOUL_CONFIG)
 
 
 def click_phase(out):
