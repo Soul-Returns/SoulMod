@@ -44,6 +44,8 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         private val BLUE = 0xFF72BBFF.toInt()
         private val EDGE = 0xFF333333.toInt()
         private val AMBER = 0xFFD4B77A.toInt()
+        private val SURFACE = 0xFF181818.toInt()
+        private val SURFACE_EDGE = 0xFF444444.toInt()
         private val FILTER_IDS = arrayOf("all", "ender", "backpack")
         private val FILTER_LABELS = arrayOf("All", "Ender Chest", "Backpacks")
         private fun em(size: Int) = size * MsdfFont.LEGACY_EM
@@ -65,7 +67,8 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
     private var nativeItemScale = 1f
     private var viewport = StorageOverlayLayout.Rect(0, 0, 1, 1)
     private val dockClip = IntArray(4)
-    private var frame = StorageOverlayLayout.frame(1, 1, 3, false, 64)
+    private val buttonWidths = intArrayOf(64, 110, 100)
+    private var frame = StorageOverlayLayout.frame(1, 1, 3, false, buttonWidths)
     private var query = ""
     private var message = ""
     private var nativeGesture = false
@@ -103,6 +106,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
     private fun ready() = contextReady() && StorageOverlay.interactionReady(menu) && StorageOverlay.pendingPage() == null
     private fun filterLabel() = when (state.filter) { "ender" -> "Ender Chest"; "backpack" -> "Backpacks"; else -> "All" }
     private fun filtersLabel() = if (state.filter == "all") "Filters" else "Filters · ${filterLabel()}"
+    private fun emptyLabel() = if (state.showEmpty) "Hide empty & locked" else "Empty & locked"
 
     private fun matches(stack: ItemStack): Boolean {
         if (stack.isEmpty) return false
@@ -152,16 +156,18 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         }
         wallHeight = if (visiblePages.isEmpty()) 110 else top - StorageOverlayLayout.GAP
         if (state.showEmpty) wallHeight += 66
-        val filterWidth = ui.measure(filtersLabel(), 12) + 16
+        buttonWidths[0] = ui.measure(filtersLabel(), 12) + 24
+        buttonWidths[1] = ui.measure("Manage storage", 12) + 24
+        buttonWidths[2] = ui.measure(emptyLabel(), 12) + 24
         frame = StorageOverlayLayout.frame(uiWidth, uiHeight, columns,
-            state.filtersExpanded, filterWidth, scale, wallHeight, state.dock.pos.roundToInt())
+            state.filtersExpanded, buttonWidths, scale, wallHeight, state.dock.pos.roundToInt())
         state.dock.content = frame.dockContentHeight
         state.dock.view = frame.dockArea.height
         val previousDock = state.dock.pos.roundToInt()
         state.dock.clamp()
         if (previousDock != state.dock.pos.roundToInt()) {
             frame = StorageOverlayLayout.frame(uiWidth, uiHeight, columns,
-                state.filtersExpanded, filterWidth, scale, wallHeight, state.dock.pos.roundToInt())
+                state.filtersExpanded, buttonWidths, scale, wallHeight, state.dock.pos.roundToInt())
         }
         viewport = StorageOverlayLayout.Rect(0, 0, uiWidth, uiHeight)
         dockClip[0] = max(0, frame.dockArea.x); dockClip[1] = frame.dockArea.y
@@ -169,8 +175,8 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         state.horizontal.content = frame.wallWidth + 24
         state.horizontal.view = frame.wall.width
         state.horizontal.clamp()
-        state.vertical.content = wallHeight
-        state.vertical.view = frame.storageClip.height
+        state.vertical.content = wallHeight + StorageOverlayLayout.WALL_INSET * 2
+        state.vertical.view = frame.storageClip.height + 2
         state.vertical.clamp()
         val newlyOpen = visiblePages.indexOfFirst { it.open }
         if (!revealedOpenPage && newlyOpen >= 0 && frame.wall.height > 0) {
@@ -240,14 +246,17 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         val titleWidth = ui.measure("Storage", 18)
         val count = pageCountLabel
         val countWidth = ui.measure(count, 11)
-        val x = h.x + (h.width - titleWidth - 9 - countWidth) / 2
-        ui.text(g, "Storage", x, h.y + 2, WHITE, 18, true)
-        ui.text(g, count, x + titleWidth + 9, h.y + 7, MUTED, 11)
+        val pillWidth = titleWidth + 9 + countWidth + 28
+        val x = h.x + (h.width - pillWidth) / 2
+        ui.surface(g, StorageOverlayLayout.Rect(x, h.y, pillWidth, h.height), pill = true)
+        ui.text(g, "Storage", x + 14, h.y + 4, WHITE, 18, true)
+        ui.text(g, count, x + 14 + titleWidth + 9, h.y + 9, MUTED, 11)
     }
 
     private fun drawWall(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val wall = frame.wall
         if (frame.storageClip.height <= 0 || frame.storageClip.width <= 0) return
+        ui.surface(g, wall)
         ui.clip(g, frame.storageClip)
         val pending = StorageOverlay.pendingPage()
         val interactive = ready()
@@ -289,21 +298,21 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
             ui.center(g, "Unopened pages are not searched.", wall.x + wall.width / 2, wall.y + 68, 0xFF777777.toInt(), 10)
         }
         if (state.showEmpty) {
-            val y = wall.y + wallHeight - 44 - state.vertical.pos.roundToInt()
+            val y = wall.y + StorageOverlayLayout.WALL_INSET + wallHeight - 44 - state.vertical.pos.roundToInt()
             val lines = ui.wrap(StorageOverlay.selectorSummary(), max(1, wall.width - 52), 12)
             for ((i, line) in lines.withIndex()) ui.center(g, line, wall.x + wall.width / 2, y + i * 15, MUTED, 12)
         }
         ui.unclip(g)
         ui.clip(g, viewport)
-        ui.bars(g, mx.roundToInt(), my.roundToInt(), state.vertical, state.horizontal, wall)
+        ui.bars(g, mx.roundToInt(), my.roundToInt(), state.vertical, state.horizontal,
+            StorageOverlayLayout.Rect(wall.x, wall.y + 4, wall.width - 3, wall.height - 6))
     }
 
     private fun drawInventory(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val d = frame.dock
         if (frame.inventoryClip.width <= 0 || frame.inventoryClip.height <= 0) return
         ui.clip(g, frame.inventoryClip)
-        ui.box(g, d, 0xFF444444.toInt(), true)
-        ui.box(g, StorageOverlayLayout.Rect(d.x + 1, d.y + 1, d.width - 2, d.height - 2), 0xFF181818.toInt(), true)
+        ui.surface(g, d)
         ui.text(g, "Your inventory", d.x + 10, d.y + 10, 0xFFBBBBBB.toInt(), 11, true)
         val interactive = ready()
         for (i in 0 until 36) {
@@ -345,20 +354,24 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
     private fun drawControls(g: GuiGraphicsExtractor) {
         ui.clip(g, frame.dockArea)
         ui.field(g, frame.search, state.search)
-        ui.button(g, frame.filtersButton, filtersLabel(), state.filtersExpanded || state.filter != "all", 12) {
+        val bar = frame.filtersButton
+        ui.surface(g, StorageOverlayLayout.Rect(bar.x, bar.y, frame.emptyButton.right - bar.x, bar.height))
+        ui.segment(g, frame.filtersButton, filtersLabel(), state.filtersExpanded || state.filter != "all", first = true) {
             state.filtersExpanded = !state.filtersExpanded
         }
-        ui.button(g, frame.emptyButton, if (state.showEmpty) "Hide empty & locked" else "Empty & locked", state.showEmpty, 12) {
-            state.showEmpty = !state.showEmpty
-        }
-        ui.button(g, frame.manageButton, "Manage storage", false, 12) {
+        ui.segment(g, frame.manageButton, "Manage storage", false) {
             if (menu.carried.isEmpty) StorageOverlay.manage() else message = "Place the held item before managing storage."
         }
+        ui.segment(g, frame.emptyButton, emptyLabel(), state.showEmpty, last = true) {
+            state.showEmpty = !state.showEmpty
+        }
         if (state.filtersExpanded) {
-            val height = (frame.filters.height - 8) / 3
+            val f = frame.filters
+            ui.surface(g, f)
             for (i in FILTER_IDS.indices) {
-                ui.button(g, StorageOverlayLayout.Rect(frame.filters.x, frame.filters.y + i * (height + 4), frame.filters.width, height),
-                    FILTER_LABELS[i], state.filter == FILTER_IDS[i], 11) {
+                val x = f.x + f.width * i / 3
+                ui.segment(g, StorageOverlayLayout.Rect(x, f.y, f.x + f.width * (i + 1) / 3 - x, f.height),
+                    FILTER_LABELS[i], state.filter == FILTER_IDS[i], first = i == 0, last = i == FILTER_IDS.lastIndex, size = 11) {
                     state.filter = FILTER_IDS[i]; state.vertical.pos = 0f
                 }
             }
@@ -372,9 +385,14 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
             query.isNotEmpty() -> "${visiblePages.size} matching pages. Unopened pages are not searched."
             else -> "Esc Close · / Search · Shift-click to transfer"
         }
-        val lines = ui.wrap(hint, frame.notice.width, 11)
-        for (i in 0 until minOf(lines.size, frame.notice.height / 13)) {
-            ui.text(g, lines[i], frame.notice.x, frame.notice.y + i * 13, MUTED, 11)
+        val lines = ui.wrap(hint, frame.notice.width - 16, 11)
+        val shown = minOf(lines.size, (frame.notice.height - 8) / 13)
+        if (shown > 0) {
+            var pillWidth = 0
+            for (i in 0 until shown) pillWidth = max(pillWidth, ui.measure(lines[i], 11))
+            val n = frame.notice
+            ui.surface(g, StorageOverlayLayout.Rect(n.x, n.y, pillWidth + 16, shown * 13 + 8), pill = true)
+            for (i in 0 until shown) ui.text(g, lines[i], n.x + 8, n.y + 4 + i * 13, MUTED, 11)
         }
         ui.clip(g, viewport)
         ui.dockBar(g, mx.roundToInt(), my.roundToInt(), state.dock, frame.dockArea)
@@ -534,14 +552,26 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
             return wrapText(value, max(1, width), em(size)).also { wrapped[value] = WrappedText(width, size, it) }
         }
         fun field(g: GuiGraphicsExtractor, r: StorageOverlayLayout.Rect, field: SoulTextField) =
-            drawTextField(g, r.x, r.y, r.right, r.bottom, field, "Search all storage…", viewport = dockClip, inset = minOf(12, max(1, r.width / 4)))
-        fun button(g: GuiGraphicsExtractor, r: StorageOverlayLayout.Rect, label: String, accent: Boolean = false, size: Int = 13, action: () -> Unit) {
+            drawTextField(g, r.x, r.y, r.right, r.bottom, field, "Search all storage…", viewport = dockClip,
+                inset = minOf(12, max(1, r.width / 4)), background = SURFACE, border = SURFACE_EDGE)
+        /** Opaque surface shared by the panel, inventory card, title pill, controls and hint. */
+        fun surface(g: GuiGraphicsExtractor, r: StorageOverlayLayout.Rect, pill: Boolean = false) {
+            if (r.width <= 0 || r.height <= 0) return
+            val shape = if (pill) SoulRenderPipelines.ROUND_PILL else SoulRenderPipelines.ROUND_SMALL
+            roundRect(g, r.x, r.y, r.right, r.bottom, SURFACE_EDGE, shape)
+            roundRect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, SURFACE, shape)
+        }
+        /** One segment of a segmented bar drawn over a [surface]; non-first segments get a divider. */
+        fun segment(g: GuiGraphicsExtractor, r: StorageOverlayLayout.Rect, label: String, accent: Boolean,
+                    first: Boolean = false, last: Boolean = false, size: Int = 12, action: () -> Unit) {
             val hovered = r.contains(mx.toDouble(), my.toDouble())
-            roundRect(g, r.x, r.y, r.right, r.bottom, if (accent) 0xFF3B82F6.toInt() else if (hovered) 0xFF353535.toInt() else 0xE0242424.toInt(), SoulRenderPipelines.ROUND_SMALL)
-            val lines = wrap(label, max(1, r.width - 8), size)
-            val lineHeight = 11
-            val y = r.y + (r.height - lines.size * lineHeight) / 2
-            for (i in lines.indices) text(g, lines[i], r.x + (r.width - measure(lines[i], size)) / 2, y + i * lineHeight, WHITE, size)
+            if (accent || hovered) {
+                box(g, StorageOverlayLayout.Rect(r.x + if (first) 2 else 1, r.y + 2, r.width - (if (first) 2 else 1) - (if (last) 2 else 1), r.height - 4),
+                    if (accent) 0xFF3B82F6.toInt() else 0xFF353535.toInt(), true)
+            }
+            if (!first) g.fill(r.x, r.y + 1, r.x + 1, r.bottom - 1, 0xFF444444.toInt())
+            val shown = shorten(label, r.width - 8, size)
+            text(g, shown, r.x + (r.width - measure(shown, size)) / 2, r.y + (r.height - 11) / 2, WHITE, size)
             clippedRegion(r.x, r.y, r.right - 1, r.bottom - 1, dockClip, action)
         }
         fun bars(g: GuiGraphicsExtractor, mx: Int, my: Int, vertical: ScrollState, horizontal: ScrollState, r: StorageOverlayLayout.Rect) {

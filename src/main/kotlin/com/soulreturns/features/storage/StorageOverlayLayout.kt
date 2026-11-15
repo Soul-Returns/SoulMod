@@ -7,9 +7,12 @@ import kotlin.math.min
 /** Chrome uses Soul pixels; slot cells retain fractional native-GUI coordinates. */
 internal object StorageOverlayLayout {
     const val GAP = 8
+    /** Inner padding of the shared panel around the page-card grid. */
+    const val WALL_INSET = 12
+    const val CONTROL_HEIGHT = 26
     private const val PADDING = 10
-    private const val TITLE_HEIGHT = 24
-    private const val CONTROL_WIDTH = 200
+    private const val TITLE_HEIGHT = 26
+    private const val MIN_SEARCH_WIDTH = 140
 
     data class Rect(val x: Int, val y: Int, val width: Int, val height: Int) {
         val right get() = x + width
@@ -69,8 +72,9 @@ internal object StorageOverlayLayout {
     fun columnsFor(width: Int, requested: Int, factor: Float): Int =
         min(requested.coerceIn(1, 6), max(1, (width - 48 + GAP) / (cardWidth(factor) + GAP)))
 
+    /** [buttonWidths] holds the content widths of the Filters, Manage storage and Empty & locked segments. */
     fun frame(
-        width: Int, height: Int, columns: Int, filters: Boolean, filterButtonWidth: Int,
+        width: Int, height: Int, columns: Int, filters: Boolean, buttonWidths: IntArray,
         factor: Float = 1f, contentHeight: Int = 0, dockScroll: Int = 0,
     ): Frame {
         val slot = 18f / factor
@@ -80,37 +84,44 @@ internal object StorageOverlayLayout {
         val wallWidth = cols * cardWidth + (cols - 1) * GAP
         val availableWidth = max(1, width - 24)
         val inventoryHeight = 28 + ceil(slot * 4 + slot / 6).toInt() + PADDING
-        val flank = min(CONTROL_WIDTH, max(1, (availableWidth - cardWidth - 24) / 2))
-        val buttonHeight = max(24, ceil(max(120, filterButtonWidth).toFloat() / max(1, flank - 8)).toInt() * 11 + 8)
-        val filterHeight = if (filters) (buttonHeight - 6) * 3 + 8 else 0
-        val controlsHeight = (buttonHeight + 6) * 3 + filterHeight
+        val filterHeight = if (filters) CONTROL_HEIGHT - 4 else 0
+        val controlsHeight = CONTROL_HEIGHT + if (filters) 6 + filterHeight else 0
         val dockHeight = max(inventoryHeight, controlsHeight)
         val availableHeight = max(0, height - 24 - TITLE_HEIGHT - groupGap * 2)
-        val dockViewHeight = min(dockHeight, max(0, availableHeight - min(40, contentHeight)))
-        val wallHeight = min(max(0, contentHeight), max(0, availableHeight - dockViewHeight))
+        val wallContent = max(0, contentHeight) + WALL_INSET * 2
+        val dockViewHeight = min(dockHeight, max(0, availableHeight - min(40 + WALL_INSET * 2, wallContent)))
+        val wallHeight = min(wallContent, max(0, availableHeight - dockViewHeight))
         val groupHeight = TITLE_HEIGHT + groupGap + wallHeight + groupGap + dockViewHeight
         val top = max(12, (height - groupHeight) / 2)
-        val groupWidth = max(wallWidth + 24, cardWidth + (flank + 12) * 2)
-        val panel = Rect((width - groupWidth) / 2, top, groupWidth, groupHeight)
-        val header = Rect(panel.x, top, groupWidth, TITLE_HEIGHT)
-        val wall = Rect((width - min(availableWidth, wallWidth + 24)) / 2, header.bottom + groupGap, min(availableWidth, wallWidth + 24), wallHeight)
-        val dockArea = Rect(panel.x, wall.bottom + groupGap, panel.width, dockViewHeight)
-        val dock = Rect((width - cardWidth) / 2, dockArea.y - dockScroll, cardWidth, inventoryHeight)
-        val controlWidth = flank
-        val left = dock.x - 12 - controlWidth
-        val right = dock.right + 12
-        val search = Rect(right, dock.y, controlWidth, 26)
-        val filter = Rect(left, dock.y, controlWidth, buttonHeight)
-        val manage = Rect(left, filter.bottom + 6, controlWidth, buttonHeight)
-        val empty = Rect(left, manage.bottom + 6, controlWidth, buttonHeight)
-        val filtersRect = Rect(left, empty.bottom + 6, controlWidth, filterHeight)
-        val notice = Rect(right, search.bottom + 7, controlWidth, controlsHeight - 33)
+        val header = Rect(0, top, width, TITLE_HEIGHT)
+        val wallOuter = min(availableWidth, wallWidth + WALL_INSET * 2)
+        val wall = Rect((width - wallOuter) / 2, header.bottom + groupGap, wallOuter, wallHeight)
+        val dockY = wall.bottom + groupGap
+        val dock = Rect((width - cardWidth) / 2, dockY - dockScroll, cardWidth, inventoryHeight)
+        // Segmented bar hugs the inventory's left edge; segments shrink evenly when the flank is too narrow.
+        val flank = max(3, dock.x - 24)
+        val wanted = buttonWidths.sum().coerceAtLeast(1)
+        val segments = IntArray(3) { if (wanted <= flank) buttonWidths[it] else max(1, buttonWidths[it] * flank / wanted) }
+        val barRight = dock.x - 12
+        val empty = Rect(barRight - segments[2], dock.y, segments[2], CONTROL_HEIGHT)
+        val manage = Rect(empty.x - segments[1], dock.y, segments[1], CONTROL_HEIGHT)
+        val filter = Rect(manage.x - segments[0], dock.y, segments[0], CONTROL_HEIGHT)
+        val filtersRect = Rect(filter.x, filter.bottom + 6, barRight - filter.x, filterHeight)
+        val searchX = dock.right + 12
+        val searchRight = min(width - 12, max(wall.right, searchX + MIN_SEARCH_WIDTH))
+        val search = Rect(searchX, dock.y, max(1, searchRight - searchX), CONTROL_HEIGHT)
+        val notice = Rect(searchX, search.bottom + 6, search.width, max(0, dockHeight - CONTROL_HEIGHT - 6))
+        val left = min(wall.x, filter.x)
+        val right = max(wall.right, search.right)
+        val panel = Rect(left, top, right - left, groupHeight)
+        val dockArea = Rect(left, dockY, right - left, dockViewHeight)
         val grid = Rect(dock.x + PADDING, dock.y + 28, ceil(slot * 9).toInt(), ceil(slot * 4 + slot / 6).toInt())
         val clipX = max(0, dock.x)
         val clipY = max(dockArea.y, dock.y)
         val clip = Rect(clipX, clipY, max(0, min(width, dock.right) - clipX), max(0, min(dockArea.bottom, dock.bottom) - clipY))
-        val storageClip = Rect(wall.x, wall.y, max(0, wall.width - if (contentHeight > wallHeight) 12 else 0),
-            max(0, wall.height - if (wallWidth + 24 > wall.width) 13 else 0))
+        // Inset by the panel border so scrolled cards never paint over it.
+        val storageClip = Rect(wall.x + 1, wall.y + 1, max(0, wall.width - 2 - if (wallContent > wallHeight) 12 else 0),
+            max(0, wall.height - 2 - if (wallWidth + WALL_INSET * 2 > wall.width) 13 else 0))
         return Frame(panel, header, search, filter, manage, empty, filtersRect, notice, wall, dock, dockArea, dockHeight, grid, clip, storageClip, cols, cardWidth, slot, wallWidth)
     }
 
@@ -118,8 +129,8 @@ internal object StorageOverlayLayout {
         35 + ceil((if (seen) rows else 5) * slot).toInt() + PADDING
 
     fun card(frame: Frame, column: Int, top: Int, rows: Int, seen: Boolean, scrollX: Int, scrollY: Int): Card {
-        val x = frame.wall.x + 12 + column * (frame.cardWidth + GAP) - scrollX
-        val y = frame.wall.y + top - scrollY
+        val x = frame.wall.x + WALL_INSET + column * (frame.cardWidth + GAP) - scrollX
+        val y = frame.wall.y + WALL_INSET + top - scrollY
         val bounds = Rect(x, y, frame.cardWidth, cardHeight(rows, seen, frame.slotSize))
         return Card(bounds, Rect(x + PADDING, y + 35, ceil(frame.slotSize * 9).toInt(),
             ceil(frame.slotSize * (if (seen) rows else 5)).toInt()), frame.slotSize, rows)

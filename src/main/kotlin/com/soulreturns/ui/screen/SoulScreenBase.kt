@@ -645,11 +645,13 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
         placeholder: String = "",
         viewport: IntArray? = null,
         inset: Int = 6,
+        background: Int = Theme.FIELD_BG,
+        border: Int = Theme.FIELD_BORDER,
         onFocus: () -> Unit = {},
     ) {
         val text = if (field.masked) "•".repeat(field.text.length) else field.text
-        roundRect(g, x0, y0, x1, y1, if (field.focused) Theme.ACCENT else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        roundRect(g, x0, y0, x1, y1, if (field.focused) Theme.ACCENT else border, SoulRenderPipelines.ROUND_SMALL)
+        roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, background, SoulRenderPipelines.ROUND_SMALL)
         val available = (x1 - x0 - inset - 6).coerceAtLeast(1)
         field.visibleStart = field.visibleStart.coerceIn(0, field.cursor)
         while (field.visibleStart < field.cursor && textWidth(text.substring(field.visibleStart, field.cursor)) > available - 1) {
