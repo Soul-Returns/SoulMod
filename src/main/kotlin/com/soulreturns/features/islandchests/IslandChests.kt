@@ -84,6 +84,7 @@ object IslandChests {
     private var saveJob: Job? = null
     private var realtimeSince: Instant? = null
     @Volatile private var syncContext: IslandChestSyncContext? = null
+    private var lastSyncIdentity: IslandChestSyncContext? = null
     @Volatile private var snapshot = IslandChestView()
     private val unavailableView = IslandChestView()
     private lateinit var store: IslandChestStore
@@ -111,7 +112,6 @@ object IslandChests {
                 freshProfileLevel = Minecraft.getInstance().level
                 updateContext()
                 publish()
-                sync.refresh()
             }
         }
         Events.subscribe<HypixelModApi.LocationChangeEvent> { transfer() }
@@ -196,7 +196,7 @@ object IslandChests {
         clearArm()
         clearLocating()
         lastBucket = null
-        remoteState = "local"
+        // Sync state survives hops: the sync resumes when the same account + profile resolves again.
         if (loaded) publish()
     }
 
@@ -231,14 +231,14 @@ object IslandChests {
             clearArm()
             clearLocating()
             lastBucket = null
+        }
+        val readable = searchContext()
+        val nextSync = IslandChestGates.sync(readable, cfg.islandChests.shareWithCoop, syncContext)
+        if (nextSync != null && nextSync != lastSyncIdentity) {
+            lastSyncIdentity = nextSync
             remoteState = "local"
         }
-        val sharing = cfg.islandChests.enabled && cfg.islandChests.shareWithCoop
-        val previousSync = syncContext
-        syncContext = if (next == null || !sharing || stopping || !ownIsland()) null else {
-            if (previousSync != null && previousSync.account == next.account && previousSync.profile == next.profile && previousSync.generation == next.generation) previousSync
-            else IslandChestSyncContext(next.account, next.profile, next.generation)
-        }
+        syncContext = nextSync
         if (!cfg.islandChests.enabled || !ownIsland()) {
             resetObservation()
             clearArm()
@@ -252,15 +252,13 @@ object IslandChests {
         SkyblockLocation.area == "Private Island" && SkyblockLocation.subLocation == "Your Island" &&
         SkyblockState.profileType != ProfileType.GUEST && SkyblockState.profileType != ProfileType.UNKNOWN
 
-    private fun captureContext(): ChestObservationContext? = searchContext()?.takeIf { ownIsland() }
+    private fun captureContext(): ChestObservationContext? = IslandChestGates.observable(searchContext(), ownIsland())
 
-    /** The exact profile's cache, readable anywhere on SkyBlock; observing and locating also need [ownIsland]. */
+    /** The exact profile's cache, readable and synced anywhere on SkyBlock; observing and locating also need [ownIsland]. */
     private fun searchContext(): ChestObservationContext? {
         val mc = Minecraft.getInstance()
-        return identity?.takeIf {
-            cfg.islandChests.enabled && !stopping && mc.user.profileId == accountId &&
-                mc.level === lastLevel && SkyblockProfileState.profileId == freshProfileDashed
-        }
+        val fresh = mc.user.profileId == accountId && mc.level === lastLevel && SkyblockProfileState.profileId == freshProfileDashed
+        return IslandChestGates.readable(identity, fresh, cfg.islandChests.enabled, SkyblockState.onSkyblock, stopping)
     }
 
     private fun tick() {
@@ -300,7 +298,7 @@ object IslandChests {
         val name = if (current != null) SkyblockProfileState.current else null
         val ironman = current != null && SkyblockState.profileType == ProfileType.IRONMAN
         val own = current != null && ownIsland()
-        val state = if (sharing) remoteState else "local"
+        val state = if (syncContext != null) remoteState else "local"
         val old = snapshot
         if (old.profileId == current?.profile && old.profileName == name && old.ironman == ironman && old.ownIsland == own &&
             old.sharingEnabled == sharing && old.syncState == state && old.chests === visibleChests) return

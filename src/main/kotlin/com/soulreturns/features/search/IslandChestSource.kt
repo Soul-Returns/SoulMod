@@ -43,8 +43,16 @@ internal object IslandChestSource : SearchSource {
         if (view.profileId == null) return SourceCoverage("island chests locked", "Waiting for your profile · remembered chests stay hidden until it is known", true)
         val count = view.chests.size
         if (count == 0) return SourceCoverage("no island chests yet", "No chests remembered yet · open chests on your private island", true)
-        val sync = if (!view.sharingEnabled) "co-op sharing off" else if (view.syncState == "offline") "co-op offline" else "co-op sharing on"
-        return SourceCoverage(plural(count, "island chest"), "${plural(count, "chest")} remembered · $sync", false)
+        return SourceCoverage(plural(count, "island chest"), "${plural(count, "chest")} remembered · ${coopText(view.sharingEnabled, view.syncState)}", false)
+    }
+
+    /** Co-op sync runs anywhere on SkyBlock, so its last outcome is the truth on and off the island. */
+    internal fun coopText(sharing: Boolean, state: String): String = when {
+        !sharing -> "co-op sharing off"
+        state == "offline" -> "co-op offline"
+        state == "rate-limited" -> "co-op sync paused"
+        state == "forbidden" || state == "update-required" || state == "error" -> "co-op sync unavailable"
+        else -> "co-op sharing on"
     }
 
     override fun searched(): String = "Searched ${plural(IslandChests.view().chests.size, "remembered island chest")}"

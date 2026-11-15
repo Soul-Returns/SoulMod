@@ -96,6 +96,9 @@ internal class ChestSnapshotDownload(private val profile: String, private val kn
 
     fun reconcile(bucket: IslandChestBucket): IslandChestBucket =
         if (!complete || failed || unchanged) bucket else bucket.reconcile(revision!!, chests)
+
+    /** A partly staged snapshot for the same baseline may continue at its cursor after an interruption. */
+    fun resumable(known: Long?): Boolean = !failed && !complete && nextCursor != null && knownRevision == known
 }
 
 @Serializable
@@ -137,7 +140,48 @@ internal fun LocalChestObservation.wire(): ChestWireObservation? {
 }
 
 internal val chestWireJson = Json { ignoreUnknownKeys = true }
-internal data class IslandChestSyncContext(val account: String, val profile: String, val generation: Long)
+/** Sync identity: account plus exact profile UUID. No generation, so server hops with the same identity keep sync state. */
+internal data class IslandChestSyncContext(val account: String, val profile: String)
+
+/** The cache is readable and synced anywhere on SkyBlock with a fresh identity; only observing needs the own island. */
+internal object IslandChestGates {
+    fun readable(identity: ChestObservationContext?, fresh: Boolean, enabled: Boolean, onSkyblock: Boolean, stopping: Boolean): ChestObservationContext? =
+        identity?.takeIf { fresh && enabled && onSkyblock && !stopping }
+
+    fun observable(readable: ChestObservationContext?, ownIsland: Boolean): ChestObservationContext? = readable?.takeIf { ownIsland }
+
+    fun sync(readable: ChestObservationContext?, sharing: Boolean, previous: IslandChestSyncContext?): IslandChestSyncContext? =
+        if (readable == null || !sharing) null
+        else if (previous != null && previous.account == readable.account && previous.profile == readable.profile) previous
+        else IslandChestSyncContext(readable.account, readable.profile)
+}
+
+/** When to run; survives unresolved gaps (server hops) and resets only for another identity. */
+internal class IslandChestSyncSchedule {
+    private var identity: IslandChestSyncContext? = null
+    private var requested = true
+    private var nextAttempt = 0L
+    private var rateLimitedUntil = 0L
+
+    /** True if [current] replaces another identity, whose scheduling and staged pages no longer apply. */
+    fun resolve(current: IslandChestSyncContext): Boolean {
+        if (identity == current) return false
+        identity = current
+        requested = true
+        nextAttempt = 0
+        rateLimitedUntil = 0
+        return true
+    }
+
+    fun request() { requested = true }
+    fun due(now: Long): Boolean = now >= rateLimitedUntil && (requested || now >= nextAttempt)
+    fun started() { requested = false }
+
+    fun finished(at: Long, delay: Long, rateLimited: Boolean) {
+        nextAttempt = at + delay
+        if (rateLimited) rateLimitedUntil = nextAttempt
+    }
+}
 
 internal class IslandChestSync(
     private val store: IslandChestStore,
@@ -145,31 +189,38 @@ internal class IslandChestSync(
     private val changed: () -> Unit,
     private val status: (String) -> Unit,
 ) {
-    private var active: IslandChestSyncContext? = null
+    private val schedule = IslandChestSyncSchedule()
     private var job: Job? = null
+    private var stopped: Job? = null
     private var runId = 0L
-    private var requested = true
-    private var nextAttempt = 0L
-    private var rateLimitedUntil = 0L
+    // Written by the running job only; a new run joins the stopped one before reading them.
+    @Volatile private var staged: ChestSnapshotDownload? = null
+    @Volatile private var stagedFor: IslandChestSyncContext? = null
+    @Volatile private var pageRetryAt = 0L
 
-    fun refresh() { requested = true }
+    fun refresh() = schedule.request()
 
     fun tick(now: Long, activeBlocks: List<ChestPos>) {
         val current = context()
-        if (active != current) {
-            active = current
-            runId++
-            job?.cancel()
-            job = null
-            requested = true
-            nextAttempt = 0
-            rateLimitedUntil = 0
+        if (current == null) {
+            stop()
+            return
         }
-        if (current == null || job?.isActive == true || now < rateLimitedUntil || (!requested && now < nextAttempt)) return
-        requested = false
+        if (schedule.resolve(current)) {
+            stop()
+            stagedFor = null
+            staged = null
+            pageRetryAt = 0
+            status("local")
+        }
+        if (job?.isActive == true || !schedule.due(now)) return
+        schedule.started()
         val serial = ++runId
+        val previous = stopped
+        stopped = null
         status("syncing")
         job = SoulScope.io.launch {
+            previous?.join()
             val outcome = try {
                 reconcile(current, activeBlocks)
             } catch (e: CancellationException) {
@@ -178,18 +229,35 @@ internal class IslandChestSync(
                 Outcome("offline")
             }
             Minecraft.getInstance().execute {
-                if (serial != runId || context() != current) return@execute
+                if (serial != runId) return@execute
                 job = null
-                val at = System.currentTimeMillis()
-                nextAttempt = at + outcome.delay
-                if (outcome.rateLimited) rateLimitedUntil = nextAttempt
-                status(outcome.state)
+                val state = outcome.state
+                if (state == null || context() != current) {
+                    // Interrupted by an unresolved gap: run again once this identity is back.
+                    schedule.request()
+                    return@execute
+                }
+                schedule.finished(System.currentTimeMillis(), outcome.delay, outcome.rateLimited)
+                status(state)
                 changed()
             }
         }
     }
 
-    private data class Outcome(val state: String, val delay: Long = 30_000, val rateLimited: Boolean = false)
+    /** Stops the running job; the next run for the same identity resumes its staged pages. */
+    private fun stop() {
+        val running = job ?: return
+        runId++
+        running.cancel()
+        job = null
+        stopped = running
+        schedule.request()
+    }
+
+    /** [state] null: interrupted, nothing concluded. */
+    private data class Outcome(val state: String?, val delay: Long = 30_000, val rateLimited: Boolean = false)
+    private val interrupted = Outcome(null)
+
     private fun stillCurrent(c: IslandChestSyncContext): Boolean = context() == c
 
     private fun apply(c: IslandChestSyncContext, change: (IslandChestBucket) -> IslandChestBucket) {
@@ -199,30 +267,42 @@ internal class IslandChestSync(
     }
 
     private suspend fun reconcile(c: IslandChestSyncContext, activeBlocks: List<ChestPos>): Outcome {
-        if (!stillCurrent(c)) return Outcome("local")
+        if (!stillCurrent(c)) return interrupted
         val endpoint = "/skyblock/profiles/${c.profile}/island-chests"
         val known = store.read(c.account, c.profile).snapshotRevision
-        val download = ChestSnapshotDownload(c.profile, known)
-        var query = "?format=2" + (known?.let { "&knownRevision=$it" } ?: "")
+        val resumed = staged?.takeIf { stagedFor == c && it.resumable(known) }
+        val download = resumed ?: ChestSnapshotDownload(c.profile, known)
+        staged = download
+        stagedFor = c
+        var query = resumed?.nextCursor?.let(::cursorQuery) ?: ("?format=2" + (known?.let { "&knownRevision=$it" } ?: ""))
         while (true) {
+            val wait = pageRetryAt - System.currentTimeMillis()
+            if (wait > 0) delay(wait)
             val fetched = BackendClient.get("$endpoint$query", ChestWireSnapshot.serializer(), "island-chests-refresh", bypassCache = true)
-            if (!stillCurrent(c)) return Outcome("local")
+            if (!stillCurrent(c)) return interrupted
             if (fetched !is BackendResult.Ok) {
                 val error = fetched as BackendResult.Failure
-                if (error.status != 429) return failure(error)
-                // Keep staged pages across the read limiter; large legacy profiles may need more than one window.
-                delay(maxOf(1_000, error.retryAfter?.toMillis() ?: 60_000))
+                if (error.status != 429) {
+                    staged = null
+                    return failure(error)
+                }
+                // Keep staged pages across the read limiter (and across interruptions); large legacy profiles may need more than one window.
+                pageRetryAt = System.currentTimeMillis() + maxOf(1_000, error.retryAfter?.toMillis() ?: 60_000)
                 continue
             }
-            if (!download.accept(fetched.value)) return Outcome("error")
+            if (!download.accept(fetched.value)) {
+                staged = null
+                return Outcome("error")
+            }
             if (download.complete) break
-            query = "?format=2&cursor=" + URLEncoder.encode(download.nextCursor!!, StandardCharsets.UTF_8)
+            query = cursorQuery(download.nextCursor!!)
         }
+        staged = null
         apply(c, download::reconcile)
         val observations = store.read(c.account, c.profile).local
         var state = "shared"
         for (observation in observations) {
-            if (!stillCurrent(c)) return Outcome("local")
+            if (!stillCurrent(c)) return interrupted
             if (observation.blocked) { state = observation.rejection ?: "conflict"; continue }
             if (observation.chest.blocks.any { it in activeBlocks }) { state = "pending"; continue }
             // Never repair a conflict by attaching a newer GET revision to old physical contents.
@@ -235,7 +315,7 @@ internal class IslandChestSync(
                 continue
             }
             val posted = BackendClient.post(endpoint, payload, ChestWireObservation.serializer(), "island-chests-observe")
-            if (!stillCurrent(c)) return Outcome("local")
+            if (!stillCurrent(c)) return interrupted
             if (posted is BackendResult.Ok) {
                 val ack = try { chestWireJson.decodeFromJsonElement(ChestWireAck.serializer(), posted.value) } catch (_: Exception) { return Outcome("error") }
                 if (ack.schemaVersion != 1 || MojangUuid.undashedOrNull(ack.profileUuid) != c.profile || ack.observationId != observation.observationId || ack.key != observation.chest.key || ack.revision <= observation.baseRevision) return Outcome("error")
@@ -258,6 +338,7 @@ internal class IslandChestSync(
         return Outcome(state)
     }
 
+    private fun cursorQuery(cursor: String) = "?format=2&cursor=" + URLEncoder.encode(cursor, StandardCharsets.UTF_8)
     private fun refreshOnClient() = Minecraft.getInstance().execute { refresh() }
     private fun failure(error: BackendResult.Failure): Outcome {
         if (error.status == 429) return Outcome("rate-limited", maxOf(1_000, error.retryAfter?.toMillis() ?: 60_000), true)

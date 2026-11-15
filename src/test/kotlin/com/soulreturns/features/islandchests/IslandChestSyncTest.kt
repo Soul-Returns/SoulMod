@@ -225,4 +225,66 @@ class IslandChestSyncTest {
         val updated = listOf(first.copy(slots = List(27) { null }))
         assertTrue(index.search(updated, "vine").isEmpty())
     }
+
+    @Test
+    fun syncRunsAnywhereOnSkyblockWithResolvedIdentityButObservationStaysOnTheIsland() {
+        val identity = ChestObservationContext(account, profile, 3)
+        val offIsland = IslandChestGates.readable(identity, fresh = true, enabled = true, onSkyblock = true, stopping = false)
+        assertEquals(IslandChestSyncContext(account, profile), IslandChestGates.sync(offIsland, sharing = true, previous = null))
+        assertNull(IslandChestGates.observable(offIsland, ownIsland = false), "Observing and arming stay island-only.")
+        assertSame(identity, IslandChestGates.observable(offIsland, ownIsland = true))
+
+        fun syncWith(identity: ChestObservationContext? = ChestObservationContext(account, profile, 3), fresh: Boolean = true, enabled: Boolean = true,
+                     onSkyblock: Boolean = true, stopping: Boolean = false, sharing: Boolean = true) =
+            IslandChestGates.sync(IslandChestGates.readable(identity, fresh, enabled, onSkyblock, stopping), sharing, null)
+        assertNull(syncWith(identity = null), "Unresolved identity")
+        assertNull(syncWith(fresh = false), "Stale profile/account/level")
+        assertNull(syncWith(sharing = false), "Sharing off")
+        assertNull(syncWith(enabled = false), "Feature off")
+        assertNull(syncWith(onSkyblock = false), "Not on SkyBlock")
+        assertNull(syncWith(stopping = true), "Client stopping")
+    }
+
+    @Test
+    fun islandHopWithSameIdentityKeepsScheduleWhileAnotherProfileStartsOver() {
+        val first = IslandChestGates.sync(ChestObservationContext(account, profile, 1), true, null)!!
+        // Every server hop bumps the observation generation; the sync identity ignores it.
+        assertSame(first, IslandChestGates.sync(ChestObservationContext(account, profile, 2), true, first))
+        val schedule = IslandChestSyncSchedule()
+        assertTrue(schedule.resolve(first))
+        assertTrue(schedule.due(1_000))
+        schedule.started()
+        schedule.finished(1_000, 30_000, rateLimited = false)
+        assertFalse(schedule.due(2_000))
+        // Unresolved gap, then the same account + profile on the next server: no fresh download per hop.
+        val afterHop = IslandChestGates.sync(ChestObservationContext(account, profile, 5), true, null)!!
+        assertFalse(schedule.resolve(afterHop))
+        assertFalse(schedule.due(2_000))
+        assertTrue(schedule.due(31_000), "The periodic refresh still runs.")
+        // An invalidation (or a run interrupted by the hop) refreshes once, inside the read limiter's window.
+        schedule.started()
+        schedule.finished(31_000, 60_000, rateLimited = true)
+        schedule.request()
+        assertFalse(schedule.due(40_000))
+        assertTrue(schedule.due(91_000))
+        val other = IslandChestGates.sync(ChestObservationContext(account, "00000000000040008000000000000009", 6), true, null)!!
+        assertTrue(schedule.resolve(other))
+        assertTrue(schedule.due(40_000), "Another profile does not inherit this profile's schedule.")
+    }
+
+    @Test
+    fun interruptedMultiPageDownloadResumesOnlyForTheSameBaseline() {
+        val rows = (1..40).map { wireChest(it) }
+        val download = ChestSnapshotDownload(profile, 1)
+        assertFalse(download.resumable(1), "Nothing staged yet has no cursor to resume from.")
+        assertTrue(download.accept(ChestWireSnapshot(2, profile, 7, false, rows.take(32), "7:${rows[31].key}")))
+        assertTrue(download.resumable(1))
+        assertFalse(download.resumable(2), "A new snapshot baseline starts staging over.")
+        assertTrue(download.accept(ChestWireSnapshot(2, profile, 7, false, rows.drop(32))))
+        assertFalse(download.resumable(1), "Complete downloads are committed, not resumed.")
+        val failed = ChestSnapshotDownload(profile, 1)
+        assertTrue(failed.accept(ChestWireSnapshot(2, profile, 7, false, rows.take(32), "7:${rows[31].key}")))
+        assertFalse(failed.accept(ChestWireSnapshot(2, profile, 8, false, rows.drop(32))))
+        assertFalse(failed.resumable(1))
+    }
 }
