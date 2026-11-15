@@ -1,5 +1,7 @@
 package com.soulreturns.devbridge
 
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import net.minecraft.SharedConstants
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
@@ -148,8 +150,11 @@ class PacketDumpTest {
         val stubs = ArrayList<String>()
         val all = (0 until 4096).map { Triple(it shr 8 and 15, it and 15, it shr 4 and 15) }
         val states = listOf(Blocks.STONE.defaultBlockState(), Blocks.AIR.defaultBlockState(), Blocks.LEVER.defaultBlockState())
-        val json = PacketDump.packet("in", sectionUpdate(all, states), 1L, PacketDump.WORKER_MILLIS, 7L) { stubs += it }.toString()
+        // Check node/size bounds, not a shared runner's ability to finish within the worker's 20 ms.
+        val dumped = PacketDump.packet("in", sectionUpdate(all, states), 1L, 10_000L, 7L) { stubs += it }
+        val json = dumped.toString()
         assertEquals(emptyList(), stubs, "4096 changes are one node each: no stub")
+        assertEquals(4096, ((dumped["data"] as JsonObject)["changes"] as JsonArray).size)
         assertTrue(json.length < 100_000, "${json.length} chars")
         assertTrue("\"seq\":7" in json, "the hook order is part of the line")
     }
