@@ -16,6 +16,10 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.1-beta.2" to
+                listOf(
+                    ReleaseNote("Storage overlay: Ender Chest and backpacks in one searchable wall", listOf("f:storageoverlay")),
+                ),
             "0.3.1-beta.1" to
                 listOf(
                     ReleaseNote("Island chests: blue slot highlights for the item you are locating", listOf("f:islandchests")),
