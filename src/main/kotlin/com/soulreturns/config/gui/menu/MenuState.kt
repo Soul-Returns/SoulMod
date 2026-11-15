@@ -16,6 +16,10 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.1-beta.1" to
+                listOf(
+                    ReleaseNote("Island chests: blue slot highlights for the item you are locating", listOf("f:islandchests")),
+                ),
             "0.3.0" to
                 listOf(
                     ReleaseNote("Terminal solver: all six F7/M7 terminals show what to click", listOf("f:terminals")),
