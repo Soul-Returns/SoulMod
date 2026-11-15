@@ -12,15 +12,13 @@ import com.soulreturns.data.skyblock.SkyblockLocation
 import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.data.skyblock.SkyblockState
 import com.soulreturns.features.dev.PacketTap
-import com.soulreturns.features.inventorybuttons.InventoryButtonIcons
+import com.soulreturns.features.search.SearchItems
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.platform.http.BackendAuthenticated
 import com.soulreturns.platform.realtime.RealtimeClient
 import com.soulreturns.platform.realtime.SyncInvalidate
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.MojangUuid
-import com.soulreturns.util.SkyblockItemUtils
-import com.soulreturns.util.toLegacyText
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
@@ -30,7 +28,6 @@ import net.fabricmc.fabric.api.event.player.UseBlockCallback
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
-import net.minecraft.core.component.DataComponents
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.protocol.game.ClientboundContainerClosePacket
 import net.minecraft.network.protocol.game.ClientboundContainerSetContentPacket
@@ -158,7 +155,8 @@ object IslandChests {
         }
     }
 
-    fun view(): IslandChestView = if (captureContext() != null) snapshot else unavailableView
+    /** The current profile's remembered chests, anywhere on SkyBlock; [IslandChestView.ownIsland] gates locating. */
+    fun view(): IslandChestView = if (searchContext() != null) snapshot else unavailableView
     fun search(query: String): List<ChestSearchResult> =
         if (captureContext() == null) emptyList() else index.search(snapshot.chests, query)
     fun startLocating(itemKey: String) {
@@ -247,14 +245,20 @@ object IslandChests {
         }
     }
 
+    /** The player's own private island (not a visit), where chests are observed and located. */
+    internal fun onOwnIsland(): Boolean = ownIsland()
+
     private fun ownIsland(): Boolean = SkyblockState.onSkyblock && LocationApi.mode == "dynamic" &&
         SkyblockLocation.area == "Private Island" && SkyblockLocation.subLocation == "Your Island" &&
         SkyblockState.profileType != ProfileType.GUEST && SkyblockState.profileType != ProfileType.UNKNOWN
 
-    private fun captureContext(): ChestObservationContext? {
+    private fun captureContext(): ChestObservationContext? = searchContext()?.takeIf { ownIsland() }
+
+    /** The exact profile's cache, readable anywhere on SkyBlock; observing and locating also need [ownIsland]. */
+    private fun searchContext(): ChestObservationContext? {
         val mc = Minecraft.getInstance()
         return identity?.takeIf {
-            cfg.islandChests.enabled && ownIsland() && !stopping && mc.user.profileId == accountId &&
+            cfg.islandChests.enabled && !stopping && mc.user.profileId == accountId &&
                 mc.level === lastLevel && SkyblockProfileState.profileId == freshProfileDashed
         }
     }
@@ -281,7 +285,7 @@ object IslandChests {
     }
 
     private fun publish() {
-        val current = captureContext()
+        val current = searchContext()
         val sharing = cfg.islandChests.enabled && cfg.islandChests.shareWithCoop
         val bucket = if (current != null && loaded) store.read(current.account, current.profile) else null
         if (bucket == null) {
@@ -413,12 +417,7 @@ object IslandChests {
         sync.refresh()
     }
 
-    private fun storedItem(stack: ItemStack): StoredChestItem? {
-        if (stack.isEmpty || stack.count <= 0) return null
-        return StoredChestItem(BuiltInRegistries.ITEM.getKey(stack.item).toString(), SkyblockItemUtils.getSkyblockId(stack),
-            stack.hoverName.toLegacyText(), stack.get(DataComponents.LORE)?.lines()?.map { it.toLegacyText() }.orEmpty(),
-            stack.count, InventoryButtonIcons.look(stack))
-    }
+    private fun storedItem(stack: ItemStack): StoredChestItem? = SearchItems.of(stack)
 
     private fun topology(position: BlockPos): ChestTopology? {
         val level = Minecraft.getInstance().level ?: return null

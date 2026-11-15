@@ -194,7 +194,7 @@ object CommandKeybinds {
             if (KeyCombo.cached(binding)?.overlaps(candidate) == true) names.add(name)
         }
         hidden(config.general.toggleSprintKey, "Soul: Toggle sprint")
-        if (config.islandChests.enabled && self != Ref.IslandChests) hidden(config.islandChests.searchKey, "Soul: Island chest search")
+        if ((config.islandChests.enabled || config.storageOverlay.enabled) && self != Ref.IslandChests) hidden(config.islandChests.searchKey, "Soul: Search everywhere")
         // Inert without developer access, so they cannot collide with anything then.
         if (developerAccess) {
             val dev = config.dev.keybinds

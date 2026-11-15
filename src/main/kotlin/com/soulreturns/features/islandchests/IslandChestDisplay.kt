@@ -1,11 +1,12 @@
 package com.soulreturns.features.islandchests
 
-import com.mojang.blaze3d.platform.InputConstants
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.RoundRectRenderState
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
+import com.soulreturns.features.dungeons.DungeonCommandGuard
+import com.soulreturns.features.search.SearchItems
 import com.soulreturns.ui.SoulUi
 import com.soulreturns.ui.hud.HudElement
 import com.soulreturns.ui.hud.SoulHud
@@ -17,7 +18,6 @@ import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.gui.render.TextureSetup
-import net.minecraft.client.input.KeyEvent
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.gizmos.GizmoStyle
@@ -29,12 +29,15 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
 import org.joml.Matrix3x2f
-import org.lwjgl.glfw.GLFW
 import kotlin.math.roundToInt
 
 object IslandChestDisplay {
+    /** How long "Warp home & locate" waits for the arrival on the player's own island. */
+    private const val WARP_TIMEOUT_MS = 60_000L
     private var registered = false
-    private val searchSession = IslandChestSearchSession()
+    private var warpProfile: String? = null
+    private var warpKey: String? = null
+    private var warpSince = 0L
     private var locatingProfile: String? = null
     private var previousKey: String? = null
     private var cachedLevel: Any? = null
@@ -47,8 +50,7 @@ object IslandChestDisplay {
         if (registered) return
         registered = true
         ClientTickEvents.END_CLIENT_TICK.register { mc ->
-            // Let GLFW finish the opening key's character callback before focusing search.
-            if (searchSession.takeRequest(cfg.islandChests.enabled, mc.player != null && mc.level != null, mc.gui.screen() != null, mc.isWindowActive)) openSearch()
+            arrivedHome()
             val result = IslandChests.locating()
             val view = IslandChests.view()
             if (result == null) {
@@ -78,11 +80,50 @@ object IslandChestDisplay {
         SoulHud.add(LocatorHud)
     }
 
-    internal fun rememberSearch(text: String, key: String) {
-        searchSession.remember(IslandChests.view().profileId, text, key)
+    /** Outline [key]'s chests; the player is on their own island. True when locating started. */
+    internal fun locate(key: String): Boolean {
         locatingProfile = IslandChests.view().profileId
         previousKey = key
+        IslandChests.startLocating(key)
+        return IslandChests.locating() != null
     }
+
+    /** Off-island hit (approved mock option): send /warp home, then outline [key]'s chests on arrival. */
+    internal fun warpHomeAndLocate(key: String): Boolean {
+        val profile = IslandChests.view().profileId ?: return false
+        val connection = Minecraft.getInstance().connection ?: return false
+        if (DungeonCommandGuard.blocks("warp home")) return false
+        warpProfile = profile
+        warpKey = key
+        warpSince = System.currentTimeMillis()
+        connection.sendCommand("warp home")
+        return true
+    }
+
+    private fun arrivedHome() {
+        val key = warpKey ?: return
+        val view = IslandChests.view()
+        val expired = System.currentTimeMillis() - warpSince > WARP_TIMEOUT_MS
+        if (expired || !cfg.islandChests.enabled || (view.profileId != null && view.profileId != warpProfile)) {
+            warpKey = null
+            warpProfile = null
+            return
+        }
+        if (!view.ownIsland || view.profileId != warpProfile) return
+        warpKey = null
+        warpProfile = null
+        locate(key)
+    }
+
+    /** Escape while locating cancels it; the press is consumed so the pause menu stays closed. */
+    fun cancelLocating(): Boolean {
+        if (active() == null) return false
+        IslandChests.clearLocating()
+        return true
+    }
+
+    /** Stops locating for a return to search and hands back the located item's key. */
+    internal fun takeLocating(): String? = IslandChests.locating()?.key.also { IslandChests.clearLocating() }
 
     private fun allowed(view: IslandChestView) = IslandChestLayout.canLocate(cfg.islandChests.enabled, view.ownIsland, view.profileId, locatingProfile)
 
@@ -105,37 +146,6 @@ object IslandChestDisplay {
             g.fill(x, y + 1, x + 1, y + 15, MATCH)
             g.fill(x + 15, y + 1, x + 16, y + 15, MATCH)
         }
-    }
-
-    fun handleKey(event: KeyEvent): Boolean {
-        val mc = Minecraft.getInstance()
-        if (mc.player == null || mc.level == null || mc.gui.screen() != null || !mc.isWindowActive) return false
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE && active() != null) {
-            IslandChests.clearLocating()
-            return true
-        }
-        return handleBinding(InputConstants.getKey(event), mc)
-    }
-
-    fun handleMouse(button: Int): Boolean {
-        val mc = Minecraft.getInstance()
-        if (mc.player == null || mc.level == null || mc.gui.screen() != null || !mc.isWindowActive) return false
-        return handleBinding(InputConstants.Type.MOUSE.getOrCreate(button), mc)
-    }
-
-    private fun handleBinding(key: InputConstants.Key, mc: Minecraft): Boolean {
-        val search = KeyCombo.cached(cfg.islandChests.searchKey)
-        if (search?.key == key && search.isDown(mc.window)) {
-            return searchSession.request(cfg.islandChests.enabled && IslandChests.view().ownIsland, mc.player != null && mc.level != null, mc.gui.screen() != null, mc.isWindowActive)
-        }
-        return false
-    }
-
-    private fun openSearch() {
-        if (!cfg.islandChests.enabled || !IslandChests.view().ownIsland) return
-        val search = searchSession.restore(IslandChests.view().profileId, IslandChests.locating()?.key)
-        IslandChests.clearLocating()
-        Minecraft.getInstance().setScreenAndShow(IslandChestsScreen().apply { restore(search.query, search.itemKey) })
     }
 
     private fun updateShapes(mc: Minecraft, result: ChestSearchResult) {
@@ -181,7 +191,7 @@ object IslandChestDisplay {
                 }
                 if (!hasShape) continue
                 val at = center(match.chest) ?: continue
-                val text = "${IslandChestsScreen.marker(index)} · ${IslandChestsScreen.number(match.count)} · ${distance(match.chest)?.roundToInt()}m" + if (older) " · older check" else ""
+                val text = "${IslandChestLayout.marker(index)} · ${SearchItems.number(match.count)} · ${distance(match.chest)?.roundToInt()}m" + if (older) " · older check" else ""
                 val scale = maxOf(0.5f, (eye.distanceTo(at) * 0.06).toFloat())
                 Gizmos.billboardText(text, at.add(0.0, 1.1, 0.0), TextGizmo.Style.forColorAndCentered(color).withScale(scale)).setAlwaysOnTop()
             }
@@ -215,11 +225,11 @@ object IslandChestDisplay {
             val controlsY = if (compact) titleY + 76 else titleY + 15
             val h = if (compact) 135 else 103
             rect(g, left, titleY, right, titleY + h, 0xEB1A1A1A.toInt())
-            IslandChestsScreen.icon(g, result.item, left + 15, titleY + 18, 28)
+            SearchItems.icon(g, result.item, left + 15, titleY + 18, 28)
             text(g, "LOCATING CACHED CONTENTS", left + 53, titleY + 12, MUTED, 9)
-            val title = IslandChestsScreen.itemName(result.item)
-            text(g, fit(title, if (compact) right - left - 68 else (right - left) / 2 - 25, 19), left + 53, titleY + 27, IslandChestsScreen.itemColor(result.item), 19)
-            text(g, "${result.matches.size} matching ${IslandChestsScreen.chests(result.matches.size)} · ${IslandChestsScreen.number(result.count)} last observed", left + 15, titleY + 57, 0xFFB9D5F8.toInt(), 12)
+            val title = SearchItems.name(result.item)
+            text(g, fit(title, if (compact) right - left - 68 else (right - left) / 2 - 25, 19), left + 53, titleY + 27, SearchItems.color(result.item), 19)
+            text(g, "${result.matches.size} matching ${IslandChestLayout.chests(result.matches.size)} · ${SearchItems.number(result.count)} last observed", left + 15, titleY + 57, 0xFFB9D5F8.toInt(), 12)
             val controlsX = if (compact) left + 15 else left + (right - left) / 2 + 12
             text(g, "Back to search [${KeyCombo.label(cfg.islandChests.searchKey)}]", controlsX, controlsY, WHITE, 11)
             text(g, "Cancel locating [Esc]", controlsX, controlsY + 19, WHITE, 11)
@@ -232,7 +242,7 @@ object IslandChestDisplay {
             val textW = minOf(350, right - left)
             val fx = (width - textW) / 2
             rect(g, fx, fy, fx + textW, fy + 63, 0xEB1A1A1A.toInt())
-            text(g, "${IslandChestsScreen.marker(focused.index)} · ${IslandChestsScreen.number(focused.value.count)} last observed", fx + 12, fy + 10, WHITE, 12)
+            text(g, "${IslandChestLayout.marker(focused.index)} · ${SearchItems.number(focused.value.count)} last observed", fx + 12, fy + 10, WHITE, 12)
             text(g, fit("Checked ${IslandChestLayout.age(focused.value.chest.observedAt, System.currentTimeMillis())} · by ${focused.value.chest.observerName ?: focused.value.chest.observerUuid.take(8)}", textW - 24, 10), fx + 12, fy + 29, MUTED, 10)
             text(g, "Information only. Open the chest normally to refresh.", fx + 12, fy + 47, MUTED, 9)
         }
@@ -243,11 +253,11 @@ object IslandChestDisplay {
         g.guiRenderState.addGuiElement(RoundRectRenderState(SoulRenderPipelines.ROUND_MEDIUM, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x, y, right, bottom, color, null))
     }
 
-    private fun text(g: GuiGraphicsExtractor, value: String, x: Int, y: Int, color: Int, size: Int) = SoulText.draw(g, value, x, y, IslandChestsScreen.em(size), color, MsdfFonts.menuRegular, forceCustom = true)
+    private fun text(g: GuiGraphicsExtractor, value: String, x: Int, y: Int, color: Int, size: Int) = SoulText.draw(g, value, x, y, SearchItems.em(size), color, MsdfFonts.menuRegular, forceCustom = true)
 
     private fun fit(value: String, width: Int, size: Int): String {
         val font = MsdfFonts.menuRegular
-        val s = IslandChestsScreen.em(size)
+        val s = SearchItems.em(size)
         if (SoulText.width(value, s, font, forceCustom = true) <= width) return value
         var end = value.length
         while (end > 0 && SoulText.width(value.substring(0, end) + "…", s, font, forceCustom = true) > width) end--

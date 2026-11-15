@@ -8,6 +8,7 @@ import com.soulreturns.data.skyblock.ProfileChanged
 import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.data.skyblock.SkyblockState
 import com.soulreturns.features.dev.PacketTap
+import com.soulreturns.features.islandchests.StoredChestItem
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.MojangUuid
@@ -72,6 +73,8 @@ object StorageOverlay {
     private var bucketSeen: StorageBucket? = null
     private var snapshot: List<StoragePageView> = emptyList()
     private var summary = "Storage slots not observed yet"
+    private var searchMark: SearchMark? = null
+    private const val SEARCH_MARK_TIMEOUT_MS = 10_000L
 
     fun register() {
         if (registered) return
@@ -138,10 +141,35 @@ object StorageOverlay {
         val menu = trackedMenu ?: return false
         if (!contextReady(menu) || !menu.carried.isEmpty || mc.gui.screen() !is StorageOverlayScreen) return false
         if (observation.description?.page == id || snapshot.none { it.id == id }) return false
-        val command = when (id.kind) { "ender" -> "enderchest ${id.index}"; "backpack" -> "backpack ${id.index}"; else -> return false }
+        val command = pageCommand(id) ?: return false
         val connection = mc.connection ?: return false
         pending = id
         publish()
+        connection.sendCommand(command)
+        return true
+    }
+
+    private fun pageCommand(id: StoragePageId): String? = when (id.kind) {
+        "ender" -> "enderchest ${id.index}"
+        "backpack" -> "backpack ${id.index}"
+        else -> null
+    }
+
+    /** The item Search everywhere opened [page] for; the overlay marks its stacks there. */
+    class SearchMark(val page: StoragePageId, val itemKey: String, val item: StoredChestItem, val count: Long, val at: Long) {
+        var shown = false
+    }
+
+    fun searchMark(): SearchMark? = searchMark.takeIf { validContext() }
+
+    /** Search everywhere's Open: the overlay's own page command, sent from outside a storage menu. */
+    fun openFromSearch(id: StoragePageId, itemKey: String, item: StoredChestItem, count: Long): Boolean {
+        updateContext()
+        val mc = Minecraft.getInstance()
+        if (!validContext() || snapshot.none { it.id == id } || mc.player?.containerMenu !== mc.player?.inventoryMenu) return false
+        val command = pageCommand(id) ?: return false
+        val connection = mc.connection ?: return false
+        searchMark = SearchMark(id, itemKey, item, count, System.currentTimeMillis())
         connection.sendCommand(command)
         return true
     }
@@ -379,9 +407,10 @@ object StorageOverlay {
             val liveItems = if (active == id) observation.contents?.drop(9) else null
             // An unverified backpack identity cannot inherit a persisted slot's old contents.
             val remembered = if (liveItems != null || (id.kind == "backpack" && (page?.identity == null || id !in trustedSelectors))) null else decodeItems(page?.items)
-            val contents = liveItems ?: remembered ?: decodeItems(prefill?.items)
+            val preview = if (liveItems == null && remembered == null) decodeItems(prefill?.items) else null
+            val contents = liveItems ?: remembered ?: preview
             StoragePageView(id, page?.label ?: prefill?.label ?: if (id.kind == "ender") "Ender Chest ${id.index}" else "Backpack ${id.index}",
-                page?.rows ?: selector?.rows ?: prefill?.rows ?: 4, contents, active == id)
+                page?.rows ?: selector?.rows ?: prefill?.rows ?: 4, contents, active == id, preview != null)
         }
         val empty = bucket.selectors.count { it.id.kind == "backpack" && it.state == "empty" }
         val locked = bucket.selectors.count { it.id.kind == "backpack" && it.state == "locked" }
@@ -434,6 +463,7 @@ object StorageOverlay {
         stopWatchingInputs()
         bucketSeen = null
         snapshot = emptyList()
+        searchMark = null
     }
 
     private fun tick() {
@@ -452,6 +482,11 @@ object StorageOverlay {
             if (mc.gui.screen() !is StorageOverlayScreen) { pending = null; managing = false }
         }
         if (pending != null && mc.gui.screen() !is StorageOverlayScreen) pending = null
+        searchMark?.let { mark ->
+            // Lives while the overlay it opened stays up; a page that never opens drops it.
+            if (mc.gui.screen() is StorageOverlayScreen) mark.shown = true
+            else if (mark.shown || System.currentTimeMillis() - mark.at > SEARCH_MARK_TIMEOUT_MS) searchMark = null
+        }
         publish()
         if (++ticks % 20 == 0 && loaded && !stopping && store.hasChanges() && saveJob?.isActive != true) saveJob = SoulScope.io.launch { store.flush() }
     }

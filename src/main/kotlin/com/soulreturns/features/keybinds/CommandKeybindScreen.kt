@@ -231,18 +231,18 @@ class CommandKeybindScreen(private val parent: Screen? = null) : SoulScreenBase(
             y += 12
         }
 
-        if (query.isEmpty() || "island chest search soul chests".contains(query)) {
+        if (query.isEmpty() || "search everywhere island chest storage soul search chests".contains(query)) {
             drawTextV(g, "SOUL FEATURES", left + 4, y, y + 18, Theme.TEXT_DIM, fCaption, MsdfFonts.menuSemibold)
             y += 20
             val columns = ((right - left + GAP) / (TILE_MIN_W + GAP)).coerceIn(1, 3)
             val tileW = (right - left - GAP * (columns - 1)) / columns
             drawBindingTile(
-                g, "Island chest search", CHEST_ICON, Ref.IslandChests, cfg.islandChests.searchKey, cfg.islandChests.enabled,
+                g, "Search everywhere", CHEST_ICON, Ref.IslandChests, cfg.islandChests.searchKey, cfg.islandChests.enabled || cfg.storageOverlay.enabled,
                 left, y, left + tileW, y + TILE_H,
                 listOf(
-                    line("Island chest search", ChatFormatting.WHITE),
-                    line("Open search, or return to your preserved search while locating.", ChatFormatting.GRAY),
-                    line("Same binding as Island chests settings. Requires that feature enabled; command pause and share codes do not change it.", ChatFormatting.DARK_GRAY),
+                    line("Search everywhere", ChatFormatting.WHITE),
+                    line("Open search, or return to it while locating or from a page it opened.", ChatFormatting.GRAY),
+                    line("Same binding as the Search everywhere settings. Needs Island chests or Storage overlay enabled; command pause and share codes do not change it.", ChatFormatting.DARK_GRAY),
                 ),
             )
             y += TILE_H + 12

@@ -1781,8 +1781,9 @@ class SoulConfigScreen(
         } else if (id == "openInventoryButtons") {
             MenuState.markSeen("f:invbuttons")
             open(InventoryButtonsScreen(this))
-        } else if (id == "openIslandChests") {
-            open(com.soulreturns.features.islandchests.IslandChestsScreen(this))
+        } else if (id == "openSearchEverywhere") {
+            MenuState.markSeen("f:searcheverywhere")
+            open(com.soulreturns.features.search.SearchEverywhere.screen(this))
         } else if (id == "openInventoryInfo") {
             open(InventoryInfoScreen(this))
         } else if (id == "openSoundLibrary") {

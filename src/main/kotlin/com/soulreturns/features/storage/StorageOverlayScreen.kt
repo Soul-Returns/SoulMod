@@ -7,6 +7,10 @@ import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.ui.SoulUi
 import com.soulreturns.ui.screen.SoulScreenBase
 import com.soulreturns.ui.screen.SoulTextField
+import com.soulreturns.features.islandchests.searchKey
+import com.soulreturns.features.search.SearchEverywhere
+import com.soulreturns.features.search.SearchItems
+import com.soulreturns.util.KeyCombo
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
 import net.minecraft.client.input.CharacterEvent
@@ -75,6 +79,10 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
     private var revealedOpenPage = false
     private var chromeGesture = false
     private var suppressSearchSlash = false
+    private var searchMark: StorageOverlay.SearchMark? = null
+    private var markKey: StorageOverlay.SearchMark? = null
+    private val markCache = IdentityHashMap<ItemStack, Boolean>()
+    private var markedStacks = 0
     private var mx = 0.0
     private var my = 0.0
     private var wallHeight = 0
@@ -233,7 +241,9 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         g.pose().pushMatrix()
         g.pose().scale(scale, scale)
         ui.clip(g, viewport)
-        drawHeader(g)
+        searchMark = StorageOverlay.searchMark()
+        markedStacks = searchMark?.let(::countMarked) ?: 0
+        if (searchMark != null) drawSearchBar(g, searchMark!!) else drawHeader(g)
         drawWall(g, mouseX, mouseY)
         drawInventory(g, mouseX, mouseY)
         drawControls(g)
@@ -251,6 +261,44 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         ui.surface(g, StorageOverlayLayout.Rect(x, h.y, pillWidth, h.height), pill = true)
         ui.text(g, "Storage", x + 14, h.y + 4, WHITE, 18, true)
         ui.text(g, count, x + 14 + titleWidth + 9, h.y + 9, MUTED, 11)
+    }
+
+    private fun markMatches(stack: ItemStack): Boolean {
+        val mark = searchMark ?: return false
+        if (stack.isEmpty) return false
+        if (markKey !== mark) { markCache.clear(); markKey = mark }
+        return markCache.getOrPut(stack) { SearchItems.of(stack)?.searchKey() == mark.itemKey }
+    }
+
+    private fun countMarked(mark: StorageOverlay.SearchMark): Int {
+        val page = pages.firstOrNull { it.id == mark.page } ?: return 0
+        val live = page.open && ready()
+        val items = page.items ?: return 0
+        return (0 until page.rows * 9).count { slot ->
+            markMatches(if (live) menu.slots.getOrNull(9 + slot)?.item ?: ItemStack.EMPTY else items.getOrNull(slot) ?: ItemStack.EMPTY)
+        }
+    }
+
+    /** Opened from Search everywhere: the title pill names the item and how many stacks are marked. */
+    private fun drawSearchBar(g: GuiGraphicsExtractor, mark: StorageOverlay.SearchMark) {
+        val h = frame.header
+        val name = SearchItems.name(mark.item)
+        val label = pages.firstOrNull { it.id == mark.page }?.label ?: "this page"
+        val detail = "${SearchItems.number(mark.count)} in $label · $markedStacks ${if (markedStacks == 1) "stack" else "stacks"} marked"
+        val keys = "${KeyCombo.label(cfg.islandChests.searchKey)} Back to search · Esc Close"
+        val nameW = ui.measure(name, 13)
+        val detailW = ui.measure(detail, 11)
+        val keysW = ui.measure(keys, 10)
+        val pillW = minOf(h.width - 24, 14 + 16 + 8 + nameW + 10 + detailW + 14 + keysW + 14)
+        val x = h.x + (h.width - pillW) / 2
+        ui.surface(g, StorageOverlayLayout.Rect(x, h.y, pillW, h.height), pill = true)
+        SearchItems.icon(g, mark.item, x + 14, h.y + 5, 16)
+        var cx = x + 38
+        ui.text(g, ui.shorten(name, x + pillW - 14 - cx, 13), cx, h.y + 7, SearchItems.color(mark.item), 13, true)
+        cx += nameW + 10
+        if (cx < x + pillW - 14) ui.text(g, ui.shorten(detail, x + pillW - 14 - cx, 11), cx, h.y + 9, 0xFFB9D5F8.toInt(), 11)
+        cx += detailW + 14
+        if (cx < x + pillW - 14) ui.text(g, ui.shorten(keys, x + pillW - 14 - cx, 10), cx, h.y + 10, MUTED, 10)
     }
 
     private fun drawWall(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
@@ -289,7 +337,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
                     if (!cell.intersects(wall)) continue
                     val stack = items.getOrNull(slot) ?: ItemStack.EMPTY
                     val realSlot = if (page.open && interactive) menu.slots.getOrNull(9 + slot) else null
-                    drawCell(g, cell, realSlot?.item ?: stack, realSlot, mouseX, mouseY, page.open)
+                    drawCell(g, cell, realSlot?.item ?: stack, realSlot, mouseX, mouseY, page.open, markPage = page.id == searchMark?.page)
                 }
             }
         }
@@ -325,7 +373,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         ui.clip(g, viewport)
     }
 
-    private fun drawCell(g: GuiGraphicsExtractor, cell: StorageOverlayLayout.Cell, stack: ItemStack, realSlot: Slot?, mouseX: Int, mouseY: Int, open: Boolean, searchable: Boolean = true) {
+    private fun drawCell(g: GuiGraphicsExtractor, cell: StorageOverlayLayout.Cell, stack: ItemStack, realSlot: Slot?, mouseX: Int, mouseY: Int, open: Boolean, searchable: Boolean = true, markPage: Boolean = false) {
         val hovered = cell.contains(mx.toDouble(), my.toDouble()) &&
             if (searchable) frame.storageContains(mx.toDouble(), my.toDouble()) else frame.nativeContains(true, mx.toDouble(), my.toDouble())
         val searching = searchable && query.isNotEmpty()
@@ -337,6 +385,14 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         g.pose().scale(nativeItemScale, nativeItemScale)
         g.fill(0, 0, 18, 18, border)
         g.fill(1, 1, 17, 17, if (match) 0xFF253B57.toInt() else if (hovered) { if (open) 0xFF384B66.toInt() else 0xFF363636.toInt() } else 0xFF292929.toInt())
+        if (markPage && markMatches(stack)) {
+            // Search everywhere's match: the island chest locator's 16×16 fill and 1 px inset edge, behind the item.
+            g.fill(1, 1, 17, 17, 0x4072BBFF)
+            g.fill(1, 1, 17, 2, BLUE)
+            g.fill(1, 16, 17, 17, BLUE)
+            g.fill(1, 2, 2, 16, BLUE)
+            g.fill(16, 2, 17, 16, BLUE)
+        }
         g.pose().pushMatrix()
         g.pose().translate(1f, 1f)
         if (realSlot != null) {
@@ -500,6 +556,11 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         if (!cfg.storageOverlay.enabled) return true
         if (state.search.focused) { state.search.keyPressed(event, minecraft.keyboardHandler); state.vertical.pos = 0f; return true }
         if (event.key() == GLFW.GLFW_KEY_SLASH) { state.search.focused = true; suppressSearchSlash = true; return true }
+        if (searchMark != null && SearchEverywhere.matchesBinding(event)) {
+            onClose()
+            if (minecraft.player?.containerMenu !== menu) SearchEverywhere.requestFromScreen()
+            return true
+        }
         if (!ready()) return true
         return super.keyPressed(event)
     }

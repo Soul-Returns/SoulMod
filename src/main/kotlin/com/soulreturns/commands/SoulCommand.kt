@@ -30,6 +30,7 @@ import com.soulreturns.features.dungeons.map.DungeonGrid
 import com.soulreturns.features.dungeons.map.DungeonMapConfigScreen
 import com.soulreturns.features.mining.mineshaft.MineshaftSummary
 import com.soulreturns.features.inventorybuttons.InventoryButtonsScreen
+import com.soulreturns.features.search.SearchEverywhere
 import com.soulreturns.features.keybinds.CommandKeybindScreen
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.features.profit.dragon.DragonDebug
@@ -125,14 +126,9 @@ object SoulCommand {
                             1
                         },
                     )
-                    .then(
-                        ClientCommands.literal("chests").executes { context ->
-                            context.source.client.execute {
-                                context.source.client.setScreenAndShow(com.soulreturns.features.islandchests.IslandChestsScreen())
-                            }
-                            1
-                        },
-                    )
+                    // `/soul search` opens Search everywhere; `/soul chests` stays from its island-chest days.
+                    .then(ClientCommands.literal("search").executes { context -> context.source.client.execute { SearchEverywhere.open() }; 1 })
+                    .then(ClientCommands.literal("chests").executes { context -> context.source.client.execute { SearchEverywhere.open() }; 1 })
                     .then(
                         ClientCommands.literal("sounds")
                             .executes {

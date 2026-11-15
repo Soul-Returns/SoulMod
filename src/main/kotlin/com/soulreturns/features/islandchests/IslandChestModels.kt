@@ -116,6 +116,17 @@ internal fun StoredChestItem.searchKey(): String {
     return java.util.HexFormat.of().formatHex(digest.digest())
 }
 
+/** Lowercase text queries match word by word; book lore is indexed so enchantments are searchable. */
+internal fun StoredChestItem.searchText(): String = buildString {
+    append(MessageDetector.stripColorCodes(displayNameRaw.orEmpty()))
+    append(' ').append(skyblockId.orEmpty())
+    append(' ').append(skyblockId.orEmpty().replace('_', ' '))
+    append(' ').append(material)
+    if (skyblockId == "ENCHANTED_BOOK" || material == "minecraft:enchanted_book") {
+        for (line in loreLines) append(' ').append(MessageDetector.stripColorCodes(line))
+    }
+}.lowercase(Locale.ROOT)
+
 internal class IslandChestSearchIndex {
     private var source: List<StoredIslandChest>? = null
     private var rows: List<ChestSearchResult> = emptyList()
@@ -136,16 +147,7 @@ internal class IslandChestSearchIndex {
                 val matches = group.second.values.map { ChestMatch(it.chest, it.count) }
                 ChestSearchResult(key, group.first, matches.sumOf { it.count }, matches)
             }.sortedWith(compareBy({ MessageDetector.stripColorCodes(it.item.displayNameRaw ?: it.item.skyblockId ?: it.item.material).lowercase(Locale.ROOT) }, { it.key }))
-            searchTexts = rows.map { row ->
-                buildString {
-                    append(MessageDetector.stripColorCodes(row.item.displayNameRaw.orEmpty()))
-                    append(' ').append(row.item.skyblockId.orEmpty())
-                    append(' ').append(row.item.material)
-                    if (row.item.skyblockId == "ENCHANTED_BOOK" || row.item.material == "minecraft:enchanted_book") {
-                        for (line in row.item.loreLines) append(' ').append(MessageDetector.stripColorCodes(line))
-                    }
-                }.lowercase(Locale.ROOT)
-            }
+            searchTexts = rows.map { it.item.searchText() }
             lastQuery = null
         }
         val normalized = query.trim().lowercase(Locale.ROOT)

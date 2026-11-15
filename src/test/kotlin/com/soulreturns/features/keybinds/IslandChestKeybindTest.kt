@@ -49,9 +49,12 @@ class IslandChestKeybindTest {
             commandBindings = listOf(CommandBinding("test", "key.mouse.4")),
         )
         assertEquals(listOf("Command #1: /test"), CommandKeybinds.soulConflicts(key, CommandKeybinds.Ref.IslandChests, config, false))
-        assertEquals(listOf("Soul: Island chest search"), CommandKeybinds.soulConflicts("key.mouse.4", CommandKeybinds.Ref.Custom(0), config, false))
+        assertEquals(listOf("Soul: Search everywhere"), CommandKeybinds.soulConflicts("key.mouse.4", CommandKeybinds.Ref.Custom(0), config, false))
         val disabled = config.copy(islandChests = config.islandChests.copy(enabled = false))
         assertTrue(CommandKeybinds.soulConflicts(key, CommandKeybinds.Ref.Custom(0), disabled, false).isEmpty())
+        // Search everywhere also opens with only the storage overlay on, so the binding still counts.
+        val storageOnly = disabled.copy(storageOverlay = disabled.storageOverlay.copy(enabled = true))
+        assertEquals(listOf("Soul: Search everywhere"), CommandKeybinds.soulConflicts("key.mouse.4", CommandKeybinds.Ref.Custom(0), storageOnly, false))
         val unbound = CommandKeybinds.rebind(config, CommandKeybinds.Ref.IslandChests, "")
         assertTrue(CommandKeybinds.soulConflicts(key, CommandKeybinds.Ref.Custom(0), unbound, false).isEmpty())
     }
@@ -62,7 +65,7 @@ class IslandChestKeybindTest {
         assertEquals(key, KeyCombo.parse(key)?.serialize())
         val config = SoulConfig(islandChests = IslandChestsConfig(enabled = true, searchKey = key))
         assertTrue(CommandKeybinds.soulConflicts("key.keyboard.right.control+key.mouse.4", null, config, false).isNotEmpty())
-        assertFalse(CommandKeybinds.soulConflicts("key.keyboard.left.control+key.mouse.4", null, config, false).contains("Soul: Island chest search"))
-        assertFalse(CommandKeybinds.soulConflicts("key.keyboard.right.control+key.mouse.5", null, config, false).contains("Soul: Island chest search"))
+        assertFalse(CommandKeybinds.soulConflicts("key.keyboard.left.control+key.mouse.4", null, config, false).contains("Soul: Search everywhere"))
+        assertFalse(CommandKeybinds.soulConflicts("key.keyboard.right.control+key.mouse.5", null, config, false).contains("Soul: Search everywhere"))
     }
 }

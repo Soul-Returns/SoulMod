@@ -753,15 +753,30 @@ object ConfigRegistry {
                 )
             },
             // Inventory & Items › Inventory
+            card("searcheverywhere") {
+                FeatureCard(
+                    "searcheverywhere", "Search everywhere", "One search over your island chests and storage", "inventory", "inventory", "search",
+                    "Finds an item in everything Soul remembers for this profile: chests you opened on your island and the storage pages you looked at. Press the key or use /soul search anywhere on SkyBlock. Each source takes part while its own feature is on.",
+                    master = null, openAction = "openSearchEverywhere",
+                    simple = listOf(
+                        action("Find stored items", "Search every remembered island chest and storage page", "Search", "openSearchEverywhere"),
+                        keybind("Search key", "Open search, or return to it while locating or from a page it opened. Also editable in /soul keybinds", { cfg.islandChests.searchKey }, { v ->
+                            ConfigManager.update { CommandKeybinds.rebind(this, CommandKeybinds.Ref.IslandChests, v) }
+                        }, d.islandChests.searchKey),
+                    ),
+                    beta = true,
+                    synonyms = listOf("search", "find", "items", "where", "chest", "storage", "ender chest", "backpack"),
+                )
+            },
             card("islandchests") {
                 FeatureCard(
-                    "islandchests", "Island chests", "Search remembered items across your island's chests", "inventory", "inventory", "chest",
-                    "Remembers real chests you open on your own island, separately for each SkyBlock profile. Search items and highlight every matching chest. Counts reflect the last observation, not unseen changes.",
+                    "islandchests", "Island chests", "Remember what is in your island's chests", "inventory", "inventory", "chest",
+                    "Remembers real chests you open on your own island, separately for each SkyBlock profile. Search everywhere finds their items from anywhere and highlights every matching chest on your island. Counts reflect the last observation, not unseen changes.",
                     master = toggle("Island chests", null, { cfg.islandChests.enabled }, { v ->
                         ConfigManager.update { copy(islandChests = islandChests.copy(enabled = v)) }
                     }, d.islandChests.enabled),
                     simple = listOf(
-                        action("Find stored items", "Search the current profile's remembered chest contents", "Search chests", "openIslandChests"),
+                        action("Find stored items", "Opens Search everywhere", "Search", "openSearchEverywhere"),
                         toggle("Share with co-op", "Sync observed chest contents and locations through the backend with verified members of this profile", { cfg.islandChests.shareWithCoop }, { v ->
                             ConfigManager.update { copy(islandChests = islandChests.copy(shareWithCoop = v)) }
                             com.soulreturns.features.islandchests.IslandChests.refresh()
@@ -769,11 +784,6 @@ object ConfigRegistry {
                     ),
                     beta = true,
                     synonyms = listOf("chest", "storage", "island", "items", "search", "find", "coop", "co-op", "ironman"),
-                    advanced = listOf(
-                        keybind("Chest search", "Open search, or return to your search while locating. Also editable in /soul keybinds", { cfg.islandChests.searchKey }, { v ->
-                            ConfigManager.update { CommandKeybinds.rebind(this, CommandKeybinds.Ref.IslandChests, v) }
-                        }, d.islandChests.searchKey),
-                    ),
                 )
             },
             card("storageoverlay") {

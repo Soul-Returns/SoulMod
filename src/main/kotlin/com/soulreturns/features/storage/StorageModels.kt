@@ -7,7 +7,8 @@ import java.util.UUID
 @Serializable
 data class StoragePageId(val kind: String, val index: Int)
 
-data class StoragePageView(val id: StoragePageId, val label: String, val rows: Int, val items: List<ItemStack>?, val open: Boolean)
+/** [preview]: contents come from the SkyBlock API only; the page was never opened on this client. */
+data class StoragePageView(val id: StoragePageId, val label: String, val rows: Int, val items: List<ItemStack>?, val open: Boolean, val preview: Boolean = false)
 
 @Serializable
 internal data class StoredStoragePage(

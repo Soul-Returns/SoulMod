@@ -5,7 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
 import com.soulreturns.features.inventory.KeepCursor;
-import com.soulreturns.features.islandchests.IslandChestDisplay;
+import com.soulreturns.features.search.SearchEverywhere;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.input.MouseButtonInfo;
 import org.objectweb.asm.Opcodes;
@@ -26,8 +26,8 @@ public abstract class MouseHandlerMixin {
     private double ypos;
 
     @Inject(method = "onButton", at = @At("HEAD"), cancellable = true)
-    private void soul$chestLocatorKey(long window, MouseButtonInfo button, int action, CallbackInfo ci) {
-        if (action == GLFW.GLFW_PRESS && IslandChestDisplay.INSTANCE.handleMouse(button.button())) ci.cancel();
+    private void soul$searchEverywhereKey(long window, MouseButtonInfo button, int action, CallbackInfo ci) {
+        if (action == GLFW.GLFW_PRESS && SearchEverywhere.INSTANCE.handleMouse(button.button())) ci.cancel();
     }
 
     /** Just before grabMouse overwrites the position with the window center. */

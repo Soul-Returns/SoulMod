@@ -21,6 +21,9 @@ internal object IslandChestLayout {
     fun canLocate(enabled: Boolean, ownIsland: Boolean, profile: String?, locatingProfile: String?): Boolean =
         enabled && ownIsland && profile != null && profile == locatingProfile
 
+    fun chests(count: Int) = if (count == 1) "chest" else "chests"
+    fun marker(index: Int) = if (index < 26) ('A' + index).toString() else (index + 1).toString()
+
     fun age(observedAt: Long, now: Long): String {
         val seconds = ((now - observedAt).coerceAtLeast(0L) / 1000L)
         return when {
