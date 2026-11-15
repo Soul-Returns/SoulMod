@@ -7,14 +7,20 @@ import kotlin.test.assertTrue
 
 class StorageOverlayLayoutTest {
     @Test
-    fun minimumWidthCardsKeepEverySlotInsideTheirOwnPage() {
-        val frame = StorageOverlayLayout.frame(600, 600, 6, false, 90)
-        assertTrue(frame.wallWidth > frame.wall.width)
-        for (column in 0 until frame.columns) {
-            val card = StorageOverlayLayout.card(frame, column, 0, 5, true, 0, 0)
+    fun cardsHugTheirGridsAndOnlyLoseColumnsWhenNecessary() {
+        val compact = StorageOverlayLayout.frame(1280, 720, 3, false, 90, contentHeight = 135)
+        val wide = StorageOverlayLayout.frame(2560, 1440, 3, false, 90, contentHeight = 135)
+        assertEquals(3, compact.columns)
+        assertEquals(compact.cardWidth, wide.cardWidth)
+        val required = 3 * compact.cardWidth + 2 * StorageOverlayLayout.GAP + 48
+        assertEquals(3, StorageOverlayLayout.columnsFor(required, 3, 1f))
+        assertEquals(2, StorageOverlayLayout.columnsFor(required - 1, 3, 1f))
+        assertEquals(1, StorageOverlayLayout.columnsFor(100, 6, 1f))
+        for (column in 0 until compact.columns) {
+            val card = StorageOverlayLayout.card(compact, column, 0, 5, true, 0, 0)
+            assertEquals(20, card.bounds.width - card.grid.width)
             for (index in 0 until 45) {
                 val cell = card.cell(index)
-                assertEquals(20, cell.width)
                 assertTrue(cell.x >= card.bounds.x && cell.right <= card.bounds.right)
                 assertTrue(cell.y >= card.bounds.y && cell.bottom <= card.bounds.bottom)
             }
@@ -22,94 +28,90 @@ class StorageOverlayLayoutTest {
     }
 
     @Test
-    fun scrollingMovesEveryStorageHitCellWithoutMovingThePlayerInventory() {
-        val frame = StorageOverlayLayout.frame(1280, 720, 3, false, 90)
+    fun nativeSlotPitchAndIconSizeAreIndependentOfSoulScale() {
+        for (minecraftScale in 1..4) for (soulScale in listOf(1f, 1.5f, 2f, 3f, 6f)) {
+            val factor = soulScale / minecraftScale
+            val frame = StorageOverlayLayout.frame((1920 / soulScale).toInt(), (1080 / soulScale).toInt(),
+                3, false, 90, factor, 500)
+            val card = StorageOverlayLayout.card(frame, 0, 0, 5, true, 0, 0)
+            val storagePitch = card.cell(1).x - card.cell(0).x
+            val playerPitch = frame.playerCell(1).x - frame.playerCell(0).x
+            assertEquals(18f * minecraftScale, storagePitch * soulScale, 0.001f)
+            assertEquals(18f * minecraftScale, playerPitch * soulScale, 0.001f)
+            assertEquals(16f * minecraftScale, (frame.slotSize - 2f / factor) * soulScale, 0.001f)
+            assertEquals(frame.slotSize, card.cell(0).width)
+            assertEquals(frame.slotSize, frame.playerCell(0).width)
+        }
+    }
+
+    @Test
+    fun wholeContentGroupIsCenteredAndControlsAlignWithInventoryTop() {
+        for (width in listOf(400, 640, 1280)) {
+            val frame = StorageOverlayLayout.frame(width, 900, 3, true, 90, contentHeight = 135)
+            assertTrue(kotlin.math.abs(frame.panel.y * 2 + frame.panel.height - 900) <= 1)
+            assertTrue(frame.header.y > 12)
+            assertEquals(frame.dock.y, frame.filtersButton.y)
+            assertEquals(frame.dock.y, frame.search.y)
+            assertEquals(frame.filtersButton.width, frame.search.width)
+            assertTrue(kotlin.math.abs(frame.wall.x * 2 + frame.wall.width - width) <= 1)
+            assertTrue(kotlin.math.abs(frame.dock.x * 2 + frame.dock.width - width) <= 1)
+            assertTrue(frame.filtersButton.right < frame.dock.x)
+            assertTrue(frame.search.x > frame.dock.right)
+            assertTrue(frame.wall.bottom < frame.dockArea.y)
+        }
+    }
+
+    @Test
+    fun wallScrollingNeverMovesOrOccludesTheNativePlayerSlots() {
+        val frame = StorageOverlayLayout.frame(1280, 720, 3, false, 90, contentHeight = 2000)
         val first = StorageOverlayLayout.card(frame, 2, 320, 5, true, 0, 0)
         val scrolled = StorageOverlayLayout.card(frame, 2, 320, 5, true, 100, 240)
-        val player = frame.playerCell(35)
         for (index in 0 until 45) {
             assertEquals(first.cell(index).x - 100, scrolled.cell(index).x)
             assertEquals(first.cell(index).y - 240, scrolled.cell(index).y)
         }
+        val player = frame.playerCell(35)
         assertTrue(player.bottom <= frame.dock.bottom)
-        assertTrue(player.y < frame.wall.bottom)
-        assertTrue(frame.wall.contains(player.x.toDouble(), player.y.toDouble()))
-        assertFalse(frame.storageContains(player.x.toDouble(), player.y.toDouble()))
+        assertFalse(frame.storageContains(player.x + 1.0, player.y + 1.0))
+        assertTrue(frame.nativeContains(true, player.x + 1.0, player.y + 1.0))
+        assertTrue(frame.wall.bottom < frame.inventoryClip.y)
     }
 
     @Test
-    fun displayedCellEdgesBelongToOnlyOneSlot() {
+    fun adjacentDisplayedCellsHaveExclusivePointerEdges() {
         val frame = StorageOverlayLayout.frame(1280, 720, 3, false, 90)
         val card = StorageOverlayLayout.card(frame, 0, 0, 5, true, 0, 0)
         val first = card.cell(0)
         val next = card.cell(1)
         assertTrue(first.contains(first.x.toDouble(), first.y.toDouble()))
         assertFalse(first.contains(first.right.toDouble(), first.y.toDouble()))
-        assertFalse(next.contains(first.right.toDouble(), first.y.toDouble()))
-        assertTrue(next.contains(next.x.toDouble(), next.y.toDouble()))
-        assertEquals(first.y + first.height + 1, card.cell(9).y)
+        assertTrue(next.contains(first.right.toDouble(), first.y.toDouble()))
+        assertEquals(first.y + first.height, card.cell(9).y)
     }
 
     @Test
-    fun slotSizesStayFixedWhenCardsHaveExtraWidth() {
-        for (width in listOf(600, 1280, 2560)) for (columns in 1..6) {
-            val frame = StorageOverlayLayout.frame(width, 720, columns, false, 90)
-            assertEquals(20, frame.slotSize)
-            assertEquals(22, frame.playerCell(0).width)
-            val card = StorageOverlayLayout.card(frame, 0, 0, 5, true, 0, 0)
-            assertEquals(188, card.grid.width)
-            assertTrue(card.grid.x > card.bounds.x)
-            assertTrue(card.grid.right < card.bounds.right)
-        }
-    }
-
-    @Test
-    fun mockReferenceGeometryUsesOneHeaderRowAndAFloatingDock() {
-        val frame = StorageOverlayLayout.frame(1280, 720, 3, false, 90)
-        assertEquals(48, frame.header.height)
-        assertEquals(26, frame.search.height)
-        assertEquals(frame.search.y, frame.filtersButton.y)
-        assertEquals(frame.search.y, frame.closeButton.y)
-        assertEquals(StorageOverlayLayout.Rect(523, 521, 234, 134), frame.dock)
-        assertEquals(StorageOverlayLayout.Rect(533, 549, 214, 97), frame.playerGrid)
-        assertEquals(665, frame.wall.bottom)
-        assertEquals(frame.footer.y, frame.wall.bottom)
-        assertTrue(frame.dock.x > frame.wall.x)
-        assertTrue(frame.dock.right < frame.wall.right)
-    }
-
-    @Test
-    fun headerWrapsOnlyWhenTheCompactControlsCannotFit() {
-        val frame = StorageOverlayLayout.frame(400, 600, 3, true, 90)
-        assertEquals(80, frame.header.height)
-        assertTrue(frame.search.y > frame.header.y + 30)
-        assertTrue(frame.search.right < frame.filtersButton.x)
-        assertTrue(frame.filtersButton.right < frame.closeButton.x)
-        assertEquals(34, frame.filters.height)
-        assertEquals(frame.filters.bottom, frame.wall.y)
-    }
-
-    @Test
-    fun floatingDockWinsStorageHitTestsButKeepsNativePlayerSlots() {
-        val frame = StorageOverlayLayout.frame(1280, 720, 3, false, 90)
-        val player = frame.playerCell(1)
-        val x = player.x + 2.0
-        val y = player.y + 2.0
-        val behind = StorageOverlayLayout.card(frame, 1, player.y - frame.wall.y - 45, 5, true, 0, 0)
-        assertTrue(behind.cell(0).contains(x, y))
-        assertTrue(behind.bounds.intersects(frame.dock))
-        assertFalse(frame.nativeContains(false, x, y))
-        assertTrue(frame.nativeContains(true, x, y))
-        assertFalse(frame.storageContains(frame.dock.x + 1.0, frame.dock.y + 1.0))
-        assertTrue(frame.storageContains(frame.dock.x - 1.0, frame.dock.y + 1.0))
-        assertTrue(frame.storageContains(frame.dock.right.toDouble(), frame.dock.y + 1.0))
-    }
-
-    @Test
-    fun shortViewportsClipInventoryBeforeTheHeaderControls() {
-        val frame = StorageOverlayLayout.frame(400, 200, 3, false, 90)
-        assertTrue(frame.dock.y < frame.header.bottom)
-        assertEquals(frame.wall.y, frame.inventoryClip.y)
+    fun clippedWallAndScrollbarCannotReceiveNativeSlotInput() {
+        val frame = StorageOverlayLayout.frame(400, 240, 3, false, 90, contentHeight = 2000)
+        val card = StorageOverlayLayout.card(frame, 0, 0, 5, true, 0, 0)
+        val bottomCell = card.cell(44)
+        assertFalse(frame.nativeContains(false, bottomCell.x + 1.0, bottomCell.bottom - 1.0))
+        assertFalse(frame.nativeContains(false, frame.wall.right - 3.0, frame.wall.y + 3.0))
+        assertFalse(frame.nativeContains(false, frame.search.x + 1.0, frame.search.y + 1.0))
         assertFalse(frame.nativeContains(true, frame.search.x + 1.0, frame.search.y + 1.0))
+    }
+
+    @Test
+    fun shortViewportsScrollTheDockWithoutOverlappingTheWall() {
+        val first = StorageOverlayLayout.frame(400, 150, 3, false, 90, contentHeight = 1000)
+        assertTrue(first.dockContentHeight > first.dockArea.height)
+        val scroll = first.dockContentHeight - first.dockArea.height
+        val last = StorageOverlayLayout.frame(400, 150, 3, false, 90, contentHeight = 1000, dockScroll = scroll)
+        assertEquals(first.wall, last.wall)
+        assertEquals(first.playerCell(35).y - scroll, last.playerCell(35).y)
+        assertEquals(last.dock.y, last.search.y)
+        assertEquals(last.dock.y, last.filtersButton.y)
+        assertTrue(last.inventoryClip.y >= last.dockArea.y)
+        assertTrue(last.inventoryClip.bottom <= last.dockArea.bottom)
+        assertFalse(last.nativeContains(true, last.playerCell(0).x + 1.0, last.playerCell(0).y + 1.0))
     }
 }
