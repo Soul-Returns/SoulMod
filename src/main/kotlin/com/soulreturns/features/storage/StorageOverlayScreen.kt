@@ -141,7 +141,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         }
         wallHeight = if (visiblePages.isEmpty()) 110 else top - StorageOverlayLayout.GAP
         if (state.showEmpty) wallHeight += 66
-        state.vertical.content = wallHeight + 20
+        state.vertical.content = wallHeight + 20 + StorageOverlayLayout.DOCK_HEIGHT + 10
         state.vertical.view = frame.wall.height
         state.vertical.clamp()
         val newlyOpen = visiblePages.indexOfFirst { it.open }
@@ -152,7 +152,10 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
             val leftInView = columnLeft + 16 - state.horizontal.pos
             val page = visiblePages[newlyOpen]
             val cardHeight = StorageOverlayLayout.cardHeight(page.rows, page.items != null, frame.slotSize)
-            if (topInView < 0 || topInView + cardHeight > frame.wall.height) state.vertical.pos = rowTop.toFloat()
+            val cardLeft = frame.wall.x + columnLeft + 16 - state.horizontal.pos
+            val behindDock = cardLeft < frame.dock.right && cardLeft + frame.cardWidth > frame.dock.x
+            val visibleHeight = if (behindDock) max(0, frame.dock.y - frame.wall.y - 10) else frame.wall.height
+            if (topInView < 0 || topInView + cardHeight > visibleHeight) state.vertical.pos = rowTop.toFloat()
             if (leftInView < 0 || leftInView + frame.cardWidth > frame.wall.width) state.horizontal.pos = columnLeft.toFloat()
             state.vertical.clamp()
             state.horizontal.clamp()
@@ -204,8 +207,8 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
 
     private fun drawHeader(g: GuiGraphicsExtractor) {
         val h = frame.header
-        ui.text(g, "Storage", h.x + 18, h.y + 12, WHITE, 23, true)
-        ui.text(g, "Current profile · ${pages.size} pages", h.x + 18, h.y + 44, MUTED, 12)
+        ui.text(g, "Storage", h.x + 18, h.y + 15, WHITE, 18, true)
+        ui.text(g, "${pages.size} pages", h.x + 28 + ui.measure("Storage", 18), h.y + 19, MUTED, 11)
         ui.field(g, frame.search, state.search)
         ui.button(g, frame.filtersButton, filtersLabel(), state.filtersExpanded || state.filter != "all") { state.filtersExpanded = !state.filtersExpanded }
         ui.button(g, frame.closeButton, "×") { onClose() }
@@ -229,11 +232,12 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         if (wall.height <= 0) return
         ui.clip(g, wall)
         val pending = StorageOverlay.pendingPage()
+        val interactive = ready()
         for (i in visiblePages.indices) {
             val page = visiblePages[i]
             val card = cards[i]
             if (!card.bounds.intersects(wall)) continue
-            val hover = card.bounds.contains(mx.toDouble(), my.toDouble()) && wall.contains(mx.toDouble(), my.toDouble())
+            val hover = card.bounds.contains(mx.toDouble(), my.toDouble()) && frame.storageContains(mx.toDouble(), my.toDouble())
             val opening = pending == page.id
             val edge = if (opening) 0xFFBCAA77.toInt() else if (page.open) BLUE else if (hover) 0xFF555555.toInt() else EDGE
             ui.box(g, card.bounds, edge, true)
@@ -254,7 +258,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
                     val cell = card.cell(slot)
                     if (!cell.intersects(wall)) continue
                     val stack = items.getOrNull(slot) ?: ItemStack.EMPTY
-                    val realSlot = if (page.open) menu.slots.getOrNull(9 + slot) else null
+                    val realSlot = if (page.open && interactive) menu.slots.getOrNull(9 + slot) else null
                     drawCell(g, cell, realSlot?.item ?: stack, realSlot, mouseX, mouseY, page.open)
                 }
             }
@@ -278,26 +282,24 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
 
     private fun drawInventory(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         val d = frame.dock
-        g.fill(d.x, d.y, d.right, d.bottom, 0xFF181818.toInt())
-        g.fill(d.x, d.y, d.right, d.y + 1, EDGE)
-        ui.text(g, "Your inventory", d.x + 18, d.y + 11, 0xFFBBBBBB.toInt(), 12, true)
-        val hint = when {
-            !menu.carried.isEmpty -> "Holding ${menu.carried.hoverName.string}"
-            message.isNotEmpty() -> message
-            StorageOverlay.pendingPage() != null -> "Waiting for the server…"
-            else -> "Shift-click to transfer · only the blue page is open"
-        }
-        val hintWidth = (d.width - 150).coerceAtLeast(1)
-        val shown = ui.shorten(hint, hintWidth, 12)
-        ui.text(g, shown, d.right - 18 - ui.measure(shown, 12), d.y + 11, MUTED, 12)
+        if (frame.inventoryClip.width <= 0 || frame.inventoryClip.height <= 0) return
+        ui.clip(g, frame.inventoryClip)
+        ui.box(g, d, 0xFF444444.toInt(), true)
+        ui.box(g, StorageOverlayLayout.Rect(d.x + 1, d.y + 1, d.width - 2, d.height - 2), 0xFF181818.toInt(), true)
+        ui.text(g, "Your inventory", d.x + 10, d.y + 10, 0xFFBBBBBB.toInt(), 11, true)
+        val interactive = ready()
         for (i in 0 until 36) {
-            val slot = menu.slots.getOrNull(menu.rowCount * 9 + i) ?: continue
-            drawCell(g, frame.playerCell(i), slot.item, slot, mouseX, mouseY, true, searchable = false)
+            val slot = menu.slots.getOrNull(menu.rowCount * 9 + i)
+            val stack = if (interactive) slot?.item else minecraft.player?.inventory?.getItem(if (i < 27) i + 9 else i - 27)
+            drawCell(g, frame.playerCell(i), stack ?: ItemStack.EMPTY, slot.takeIf { interactive }, mouseX, mouseY, true, searchable = false)
         }
+        ui.unclip(g)
+        ui.clip(g, frame.panel)
     }
 
     private fun drawCell(g: GuiGraphicsExtractor, cell: StorageOverlayLayout.Rect, stack: ItemStack, realSlot: Slot?, mouseX: Int, mouseY: Int, open: Boolean, searchable: Boolean = true) {
-        val hovered = cell.contains(mx.toDouble(), my.toDouble())
+        val hovered = cell.contains(mx.toDouble(), my.toDouble()) &&
+            if (searchable) frame.storageContains(mx.toDouble(), my.toDouble()) else frame.nativeContains(true, mx.toDouble(), my.toDouble())
         val searching = searchable && query.isNotEmpty()
         val match = searching && matches(stack)
         val border = if (match) BLUE else if (hovered) { if (open) 0xFFB1D6FF.toInt() else 0xFF777777.toInt() } else 0xFF353535.toInt()
@@ -330,11 +332,19 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         ui.button(g, manage, "Manage storage", false, 12) {
             if (menu.carried.isEmpty) StorageOverlay.manage() else message = "Place the held item before managing storage."
         }
-        val hint = "Esc Close · / Search"
-        if (empty.x - f.x > ui.measure(hint, 11) + 24) ui.text(g, hint, f.x + 16, f.y + 12, 0xFF777777.toInt(), 11)
+        val hint = when {
+            message.isNotEmpty() -> message
+            StorageOverlay.overviewReady(menu) -> "Click a page to open it · Esc Close · / Search"
+            StorageOverlay.pendingPage() != null || !StorageOverlay.interactionReady(menu) -> "Waiting for the server…"
+            !menu.carried.isEmpty -> "Holding ${menu.carried.hoverName.string}"
+            else -> "Esc Close · / Search · Shift-click to transfer"
+        }
+        val hintWidth = empty.x - f.x - 30
+        if (hintWidth > 24) ui.text(g, ui.shorten(hint, hintWidth, 11), f.x + 16, f.y + 12, 0xFF777777.toInt(), 11)
     }
 
     override fun extractCarriedItem(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
+        if (!ready()) return
         val scale = SoulUi.factor()
         g.pose().pushMatrix()
         g.pose().scale(scale, scale)
@@ -343,13 +353,13 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
     }
 
     override fun extractTooltip(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
-        super.extractTooltip(g, mouseX, mouseY)
-        if (hoveredSlot != null || !menu.carried.isEmpty || !frame.wall.contains(mx.toDouble(), my.toDouble())) return
+        if (ready()) super.extractTooltip(g, mouseX, mouseY)
+        if (hoveredSlot != null || !menu.carried.isEmpty || !frame.storageContains(mx.toDouble(), my.toDouble())) return
         for (i in cards.indices) {
             val page = visiblePages[i]
-            if (page.open) continue
+            if (page.open && ready()) continue
             val items = page.items ?: continue
-            for (j in items.indices) if (!items[j].isEmpty && cards[i].cell(j).contains(mx.toDouble(), my.toDouble())) {
+            for (j in 0 until minOf(items.size, page.rows * 9)) if (!items[j].isEmpty && cards[i].cell(j).contains(mx.toDouble(), my.toDouble())) {
                 g.setTooltipForNextFrame(font, items[j], mouseX, mouseY)
                 return
             }
@@ -364,8 +374,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         val rect = projected.getOrNull(index) ?: return false
         val factor = SoulUi.factor()
         val px = mouseX / factor; val py = mouseY / factor
-        if (!frame.panel.contains(px, py)) return false
-        if (index < menu.rowCount * 9 && !frame.wall.contains(px, py)) return false
+        if (!frame.nativeContains(index >= menu.rowCount * 9, px, py)) return false
         return rect.contains(px, py)
     }
 
@@ -376,11 +385,12 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         layout()
         nativeGesture = false
         chromeGesture = false
-        if (StorageOverlay.pendingPage() != null || !contextReady()) return true
-        if (ui.mouseClicked(click, doubleClick)) { chromeGesture = true; return true }
         val x = click.x() / SoulUi.factor(); val y = click.y() / SoulUi.factor()
+        val overDock = frame.inventoryClip.contains(x, y)
+        if (!overDock && ui.mouseClicked(click, doubleClick)) { chromeGesture = true; return true }
         state.search.focused = false
-        if (frame.wall.contains(x, y)) {
+        if (StorageOverlay.pendingPage() != null || !contextReady()) return true
+        if (frame.storageContains(x, y)) {
             for (i in cards.indices) if (cards[i].bounds.contains(x, y)) {
                 if (!visiblePages[i].open) {
                     if (!menu.carried.isEmpty) message = "Place the held item before switching pages."
@@ -391,17 +401,20 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
             }
         }
         if (!ready()) return true
+        if (overDock && (0 until 36).none { frame.playerCell(it).contains(x, y) }) return true
         message = ""
         nativeGesture = true
         return super.mouseClicked(click, doubleClick)
     }
 
     override fun mouseDragged(click: MouseButtonEvent, dragX: Double, dragY: Double): Boolean {
-        if (StorageOverlay.pendingPage() != null || !contextReady()) return true
-        if (chromeGesture) { ui.mouseDragged(click, dragX, dragY); return true }
+        layout()
+        if (chromeGesture) {
+            if (!frame.inventoryClip.contains(click.x() / SoulUi.factor(), click.y() / SoulUi.factor())) ui.mouseDragged(click, dragX, dragY)
+            return true
+        }
         if (!ready()) return true
         if (!nativeGesture) return true
-        layout()
         return super.mouseDragged(click, dragX, dragY)
     }
 
@@ -414,10 +427,11 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
     }
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, scrollX: Double, scrollY: Double): Boolean {
-        if (StorageOverlay.pendingPage() != null || !contextReady()) return true
-        if (ready() && super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
+        layout()
         val x = mouseX / SoulUi.factor(); val y = mouseY / SoulUi.factor()
-        if (!frame.wall.contains(x, y)) return false
+        if (ready() && super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true
+        if (frame.inventoryClip.contains(x, y)) return true
+        if (!frame.storageContains(x, y)) return false
         if (scrollX != 0.0) state.horizontal.scrollBy((-scrollX * 38).toFloat())
         else state.vertical.scrollBy((-scrollY * 38).toFloat())
         return true
@@ -429,7 +443,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
             if (state.search.text.isNotEmpty()) { state.search.set(""); state.search.focused = false; state.vertical.pos = 0f; return true }
             onClose(); return true
         }
-        if (StorageOverlay.pendingPage() != null || !contextReady()) return true
+        if (!cfg.storageOverlay.enabled) return true
         if (state.search.focused) { state.search.keyPressed(event, minecraft.keyboardHandler); state.vertical.pos = 0f; return true }
         if (event.key() == GLFW.GLFW_KEY_SLASH) { state.search.focused = true; suppressSearchSlash = true; return true }
         if (!ready()) return true
@@ -442,16 +456,17 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
             if (event.codepoint() == '/'.code) return true
         }
         if (state.search.focused) { state.search.charTyped(event); state.vertical.pos = 0f; return true }
-        return super.charTyped(event)
+        return if (ready()) super.charTyped(event) else true
     }
 
     override fun onClose() {
+        if (minecraft.player?.containerMenu !== menu) { minecraft.gui.setScreen(null); return }
         if (!menu.carried.isEmpty) { message = "Place the held item first."; return }
         super.onClose()
     }
 
     override fun removed() {
-        if (!StorageOverlay.preservingMenu(menu)) super.removed()
+        if (!StorageOverlay.preservingMenu(menu) && minecraft.player?.containerMenu === menu) super.removed()
     }
 
     /** Compose the shared Soul primitives without replacing the native container event handler. */

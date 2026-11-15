@@ -5,9 +5,9 @@ import kotlin.math.min
 
 /** Geometry from mocks/storage-overlay/mock.css and mock.js, in Soul pixels. */
 internal object StorageOverlayLayout {
-    const val PLAYER_SLOT = 36
-    const val MIN_SLOT = 20
-    const val MAX_SLOT = 64
+    const val PLAYER_SLOT = 22
+    const val STORAGE_SLOT = 20
+    const val DOCK_HEIGHT = 134
     const val GAP = 10
     const val MIN_CARD = 206
 
@@ -40,6 +40,12 @@ internal object StorageOverlayLayout {
                 PLAYER_SLOT, PLAYER_SLOT)
         }
         fun playerCell(index: Int): Rect = playerCells[index]
+        val inventoryClip = Rect(max(wall.x, dock.x), max(wall.y, dock.y),
+            max(0, min(wall.right, dock.right) - max(wall.x, dock.x)),
+            max(0, min(wall.bottom, dock.bottom) - max(wall.y, dock.y)))
+        fun storageContains(x: Double, y: Double) = wall.contains(x, y) && !dock.contains(x, y)
+        fun nativeContains(player: Boolean, x: Double, y: Double) =
+            panel.contains(x, y) && if (player) inventoryClip.contains(x, y) else storageContains(x, y)
     }
 
     data class Card(val bounds: Rect, val grid: Rect, val slotSize: Int, val rows: Int) {
@@ -56,30 +62,27 @@ internal object StorageOverlayLayout {
         val innerWidth = max(1, pw - 38)
         val titleWidth = 174
         val buttonWidth = max(64, filterButtonWidth)
-        val searchWidth = min(400, max(160, innerWidth - titleWidth - buttonWidth - 18 - 42))
-        val wrapped = titleWidth + searchWidth + buttonWidth + 18 + 42 > innerWidth
-        val headerHeight = if (wrapped) 112 else 74
-        val header = Rect(panel.x + 1, panel.y + 1, pw - 2, headerHeight)
-        val close = Rect(panel.right - 37, header.y + if (wrapped) 76 else 28, 18, 18)
-        val filterButton = Rect(close.x - 14 - buttonWidth, close.y, buttonWidth, 18)
+        val wrapped = titleWidth + 120 + buttonWidth + 22 + 30 > innerWidth
+        val header = Rect(panel.x + 1, panel.y + 1, pw - 2, if (wrapped) 80 else 48)
+        val close = Rect(panel.right - 41, header.y + if (wrapped) 42 else 11, 22, 26)
+        val filterButton = Rect(close.x - 10 - buttonWidth, close.y, buttonWidth, 26)
+        val searchWidth = max(1, min(320, if (wrapped) filterButton.x - panel.x - 29 else innerWidth - titleWidth - buttonWidth - 52))
         val search = Rect(
-            if (wrapped) panel.x + 19 else filterButton.x - 14 - searchWidth,
-            header.y + if (wrapped) 66 else 19,
-            if (wrapped) max(1, min(searchWidth, filterButton.x - panel.x - 33)) else searchWidth,
-            36,
+            if (wrapped) panel.x + 19 else filterButton.x - 10 - searchWidth,
+            close.y, searchWidth, 26,
         )
         val nav = Rect(panel.x + 1, header.bottom + 1, pw - 2, if (filters) 34 else 0)
         val footer = Rect(panel.x + 1, panel.bottom - 35, pw - 2, 34)
-        val dock = Rect(panel.x + 1, footer.y - 194, pw - 2, 194)
-        val wall = Rect(panel.x + 1, nav.bottom, pw - 2, max(0, dock.y - nav.bottom))
+        val gridWidth = PLAYER_SLOT * 9 + 2 * 8
+        val dockWidth = gridWidth + 20
+        val dock = Rect(panel.x + (pw - dockWidth) / 2, footer.y - 10 - DOCK_HEIGHT, dockWidth, DOCK_HEIGHT)
+        val wall = Rect(panel.x + 1, nav.bottom, pw - 2, max(0, footer.y - nav.bottom))
         val cols = columns.coerceIn(1, 6)
         val available = max(1, wall.width - 32)
         val cardWidth = max(MIN_CARD, (available - (cols - 1) * GAP) / cols)
-        val slot = ((available - (cols - 1) * GAP) / cols - 18 - 8).div(9).coerceIn(MIN_SLOT, MAX_SLOT)
-        val gridWidth = PLAYER_SLOT * 9 + 2 * 8
         return Frame(panel, header, search, filterButton, close, nav, wall, dock,
-            Rect(panel.x + (pw - gridWidth) / 2, dock.y + 32, gridWidth, 4 * PLAYER_SLOT + 6 + 3),
-            footer, cols, cardWidth, slot, max(available, cols * cardWidth + (cols - 1) * GAP))
+            Rect(dock.x + 10, dock.y + 28, gridWidth, 4 * PLAYER_SLOT + 6 + 3),
+            footer, cols, cardWidth, STORAGE_SLOT, max(available, cols * cardWidth + (cols - 1) * GAP))
     }
 
     fun cardHeight(rows: Int, seen: Boolean, slot: Int): Int {

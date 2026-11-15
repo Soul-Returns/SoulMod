@@ -66,7 +66,7 @@ object UsedSoftware {
             Kind.BUNDLED_DATA,
         ),
         Entry(
-            "Skyblocker", "Arrow Align layouts, Metal Detector chest spots, secret-sync message format; storage-overlay compatibility reference", "https://github.com/SkyblockerMod/Skyblocker", "LGPL-3.0",
+            "Skyblocker", "Arrow Align layouts, Metal Detector chest spots, secret-sync message format; storage compatibility and API field reference", "https://github.com/SkyblockerMod/Skyblocker", "LGPL-3.0",
             Kind.BUNDLED_DATA,
         ),
         Entry(
@@ -86,7 +86,7 @@ object UsedSoftware {
             Kind.BUNDLED_DATA,
         ),
         Entry(
-            "SkyCrypt", "Slayer XP table, skill and Catacombs XP cross-checks", "https://github.com/SkyCryptWebsite/SkyCrypt", "MIT",
+            "SkyCrypt", "Slayer XP table, skill and Catacombs XP cross-checks; storage API indexing reference", "https://github.com/SkyCryptWebsite/SkyCrypt", "MIT",
             Kind.BUNDLED_DATA,
         ),
         Entry(
@@ -94,7 +94,7 @@ object UsedSoftware {
             Kind.BUNDLED_DATA, aliases = listOf("NEU"),
         ),
         Entry(
-            "SkyHelper-Networth", "Pet level table and Catacombs class XP deltas", "https://github.com/Altpapier/SkyHelper-Networth", "MIT",
+            "SkyHelper-Networth", "Pet level table, Catacombs class XP deltas; storage API field reference", "https://github.com/Altpapier/SkyHelper-Networth", "MIT",
             Kind.BUNDLED_DATA, aliases = listOf("SkyHelper"),
         ),
         Entry(

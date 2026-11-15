@@ -35,15 +35,29 @@ object LegacyItemDecoder {
     private const val LEGACY_DATA_VERSION = 99
 
     /** One stack per slot, [ItemStack.EMPTY] for empty or undecodable ones; empty list on a bad blob. */
-    fun decode(base64: String): List<ItemStack> {
+    fun decode(base64: String): List<ItemStack> = decodeItems(base64, requireComplete = false) ?: emptyList()
+
+    /** Null if the blob or any occupied slot cannot be decoded; never mistakes a failed item for air. */
+    fun decodeComplete(base64: String): List<ItemStack>? = decodeItems(base64, requireComplete = true)
+
+    private fun decodeItems(base64: String, requireComplete: Boolean): List<ItemStack>? {
         val list = try {
             NbtIo.readCompressed(ByteArrayInputStream(Base64.getDecoder().decode(base64)), NbtAccounter.unlimitedHeap())
                 .getListOrEmpty("i")
         } catch (e: Exception) {
             logger.warn("Could not read an item blob: ${e.message}")
-            return emptyList()
+            return null
         }
-        return (0 until list.size).map { fix(list.getCompoundOrEmpty(it)) }
+        if (list.isEmpty()) return emptyList()
+        val decoded = ArrayList<ItemStack>(list.size)
+        for (index in 0 until list.size) {
+            if (requireComplete && list[index] !is CompoundTag) return null
+            val legacy = list.getCompoundOrEmpty(index)
+            val stack = fix(legacy)
+            if (requireComplete && stack.isEmpty && !legacy.isEmpty && legacy.getShortOr("id", -1) != 0.toShort()) return null
+            decoded.add(stack)
+        }
+        return decoded
     }
 
     private fun fix(legacy: CompoundTag): ItemStack {

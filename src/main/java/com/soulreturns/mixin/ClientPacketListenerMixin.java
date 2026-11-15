@@ -120,6 +120,11 @@ public abstract class ClientPacketListenerMixin {
         StorageOverlay.onSlot(packet);
     }
 
+    @Inject(method = "handleContainerClose", at = @At("HEAD"))
+    private void soul$storageClosing(ClientboundContainerClosePacket packet, CallbackInfo ci) {
+        StorageOverlay.beforeClose(packet);
+    }
+
     @Inject(method = "handleContainerClose", at = @At("RETURN"))
     private void soul$islandChestClose(ClientboundContainerClosePacket packet, CallbackInfo ci) {
         IslandChests.onClose(packet);

@@ -57,6 +57,7 @@ object StorageOverlay {
     private var scopeProfile: String? = null
     private var trackedMenu: ChestMenu? = null
     private var trustedSelectors: Set<StoragePageId> = emptySet()
+    private val invalidatedApiBackpacks = mutableSetOf<StoragePageId>()
     private var watchingInputs = false
     private val inputSink = PacketTap.Sink { inbound, packet ->
         if (!inbound && packet is ServerboundContainerClickPacket && Minecraft.getInstance().isSameThread) observeManagementInput(packet)
@@ -64,6 +65,7 @@ object StorageOverlay {
     private var pending: StoragePageId? = null
     private var managing = false
     private var preservedMenu: ChestMenu? = null
+    private var transitionScreen: StorageOverlayScreen? = null
     private var bucketSeen: StorageBucket? = null
     private var snapshot: List<StoragePageView> = emptyList()
     private var summary = "Storage slots not observed yet"
@@ -72,6 +74,7 @@ object StorageOverlay {
         if (registered) return
         registered = true
         store = StorageStore(FabricLoader.getInstance().configDir.resolve("soul/storage.json"))
+        StorageApiPrefill.register { bucketSeen = null; publish() }
         SoulScope.io.launch {
             store.load()
             Minecraft.getInstance().execute { loaded = true; updateContext(); publish() }
@@ -102,6 +105,7 @@ object StorageOverlay {
     fun preservingMenu(menu: ChestMenu): Boolean = menu === preservedMenu
 
     fun interactionReady(menu: ChestMenu): Boolean = contextReady(menu) && observation.description?.page != null
+    fun overviewReady(menu: ChestMenu): Boolean = contextReady(menu) && observation.description?.page == null
 
     private fun contextReady(menu: ChestMenu): Boolean = validContext() && menu === trackedMenu &&
         Minecraft.getInstance().player?.containerMenu === menu && observation.contents != null && pending == null && !managing
@@ -168,6 +172,9 @@ object StorageOverlay {
         observation.open(packet.containerId, description)
         if (description.page == null) watchInputs()
         publish()
+        if (!managing && menu.carried.isEmpty) {
+            swap(StorageOverlayScreen(menu, mc.player!!.inventory, screen.title), menu)
+        }
     }
 
     @JvmStatic
@@ -180,6 +187,9 @@ object StorageOverlay {
         if (!validContext() || mc.player?.containerMenu !== menu || packet.containerId() != menu.containerId ||
             packet.items().size != description.size + 36) return
         if (!supportedContents(description, packet.items())) {
+            if (mc.gui.screen() is StorageOverlayScreen) {
+                swap(ContainerScreen(menu, mc.player!!.inventory, mc.gui.screen()!!.title), menu)
+            }
             observation.clear()
             trackedMenu = null
             pending = null
@@ -242,13 +252,27 @@ object StorageOverlay {
     }
 
     @JvmStatic
+    fun beforeClose(packet: ClientboundContainerClosePacket) {
+        val mc = Minecraft.getInstance()
+        if (!registered || !mc.isSameThread) return
+        transitionScreen = if (validContext() && pending != null && observation.containerId == packet.containerId)
+            mc.gui.screen() as? StorageOverlayScreen else null
+    }
+
+    @JvmStatic
     fun onClose(packet: ClientboundContainerClosePacket) {
-        if (!registered || !Minecraft.getInstance().isSameThread || observation.containerId != packet.containerId) return
+        val mc = Minecraft.getInstance()
+        if (!registered || !mc.isSameThread || observation.containerId != packet.containerId) return
+        val waiting = transitionScreen
+        transitionScreen = null
         stopWatchingInputs()
         observation.clear()
         trackedMenu = null
         bucketSeen = null
         publish()
+        if (waiting != null && pending != null && validContext() && mc.gui.screen() == null) {
+            swap(waiting, waiting.menu)
+        }
     }
 
     private fun observeContents(fullOverview: Boolean = false, changedSlot: Int? = null) {
@@ -331,14 +355,20 @@ object StorageOverlay {
         if (bucket === bucketSeen && snapshot.firstOrNull { it.open }?.id == active) return
         bucketSeen = bucket
         val pages = bucket.pages.associateBy { it.id }
-        val ids = (bucket.selectors.filter { it.state == "installed" }.map { it.id } + bucket.pages.map { it.id }).distinct().sortedWith(compareBy<StoragePageId>({ if (it.kind == "ender") 0 else 1 }, { it.index }))
+        val api = storageApiPreviews(bucket,
+            StorageApiPrefill.pages(accountId!!, MojangUuid.parse(joinedProfile!!)!!), invalidatedApiBackpacks)
+        val ids = (bucket.selectors.filter { it.state == "installed" }.map { it.id } + bucket.pages.map { it.id } + api.keys)
+            .distinct().sortedWith(compareBy<StoragePageId>({ if (it.kind == "ender") 0 else 1 }, { it.index }))
         snapshot = ids.map { id ->
             val page = pages[id]
             val selector = bucket.selectors.firstOrNull { it.id == id }
+            val prefill = api[id]
             val liveItems = if (active == id) observation.contents?.drop(9) else null
             // An unverified backpack identity cannot inherit a persisted slot's old contents.
             val remembered = if (liveItems != null || (id.kind == "backpack" && (page?.identity == null || id !in trustedSelectors))) null else decodeItems(page?.items)
-            StoragePageView(id, page?.label ?: if (id.kind == "ender") "Ender Chest ${id.index}" else "Backpack ${id.index}", page?.rows ?: selector?.rows ?: 4, liveItems ?: remembered, active == id)
+            val contents = liveItems ?: remembered ?: decodeItems(prefill?.items)
+            StoragePageView(id, page?.label ?: prefill?.label ?: if (id.kind == "ender") "Ender Chest ${id.index}" else "Backpack ${id.index}",
+                page?.rows ?: selector?.rows ?: prefill?.rows ?: 4, contents, active == id)
         }
         val empty = bucket.selectors.count { it.id.kind == "backpack" && it.state == "empty" }
         val locked = bucket.selectors.count { it.id.kind == "backpack" && it.state == "locked" }
@@ -384,8 +414,10 @@ object StorageOverlay {
         observation.clear()
         trackedMenu = null
         pending = null
+        transitionScreen = null
         managing = false
         trustedSelectors = emptySet()
+        invalidatedApiBackpacks.clear()
         stopWatchingInputs()
         bucketSeen = null
         snapshot = emptyList()
@@ -395,16 +427,18 @@ object StorageOverlay {
         updateContext()
         val mc = Minecraft.getInstance()
         val screen = mc.gui.screen() as? ContainerScreen
-        if (!validContext() && (screen is StorageOverlayScreen || screen is ManagementScreen) && mc.player?.containerMenu === screen.menu) {
-            swap(ContainerScreen(screen.menu, mc.player!!.inventory, screen.title), screen.menu)
+        if (!validContext() && (screen is StorageOverlayScreen || screen is ManagementScreen)) {
+            if (mc.player?.containerMenu === screen.menu) swap(ContainerScreen(screen.menu, mc.player!!.inventory, screen.title), screen.menu)
+            else mc.gui.setScreen(null)
         }
         if (trackedMenu != null && mc.player?.containerMenu !== trackedMenu) {
             stopWatchingInputs()
             observation.clear()
             trackedMenu = null
             bucketSeen = null
-            if (mc.gui.screen() != null) { pending = null; managing = false }
+            if (mc.gui.screen() !is StorageOverlayScreen) { pending = null; managing = false }
         }
+        if (pending != null && mc.gui.screen() !is StorageOverlayScreen) pending = null
         publish()
         if (++ticks % 20 == 0 && loaded && !stopping && store.hasChanges() && saveJob?.isActive != true) saveJob = SoulScope.io.launch { store.flush() }
     }
@@ -442,6 +476,8 @@ object StorageOverlay {
             packet.buttonNum().toInt() == 0 && menu.carried.isEmpty && selector?.state == "installed"
         if (opensPage) return
         val affected = if (slot in 27..44) setOf(StoragePageId("backpack", slot - 26)) else null
+        if (affected == null) for (index in 1..18) invalidatedApiBackpacks.add(StoragePageId("backpack", index))
+        else invalidatedApiBackpacks.addAll(affected)
         store.update(scope!!) { it.invalidateBackpacks(affected) }
         trustedSelectors = if (affected == null) emptySet() else trustedSelectors - affected
         bucketSeen = null
