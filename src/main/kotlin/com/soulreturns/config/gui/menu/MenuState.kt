@@ -16,6 +16,17 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.0" to
+                listOf(
+                    ReleaseNote("Terminal solver: all six F7/M7 terminals show what to click", listOf("f:terminals")),
+                    ReleaseNote("Device solvers: Simon Says, Lights, Arrow Align and Sharpshooter", listOf("f:devices")),
+                    ReleaseNote("Leap menu: teammate tiles with locations and dungeon map highlighting", listOf("f:leapmenu", "f:dmap")),
+                    ReleaseNote("Archer roles: your next objective and who to leap to in F7/M7", listOf("f:archerroles", "f:leapmenu")),
+                    ReleaseNote("Island chests: search stored items and enchantments, share with your co-op", listOf("f:islandchests")),
+                    ReleaseNote("Boss timers: pad tick, crush window, Storm phases and Goldor countdowns", listOf("f:bosstimers")),
+                    ReleaseNote("Dragon spawn countdown and Goldor's section not open warning", listOf("f:dragoncountdown", "f:sectionwarning")),
+                    ReleaseNote("Hide fire and the Haunted Skulls from Soulweaver Gloves", listOf("f:hidefire", "f:soulskulls")),
+                ),
             "0.3.0-beta.6" to
                 listOf(
                     ReleaseNote("Island chests: search books by enchantment and see their names and levels", listOf("f:islandchests")),
