@@ -5,7 +5,6 @@ import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.SoulRenderPipelines
-import com.soulreturns.config.gui.render.SoulRichText
 import com.soulreturns.features.inventorybuttons.InventoryButtonIcons
 import com.soulreturns.ui.SoulUi
 import com.soulreturns.ui.screen.SoulScreenBase
@@ -46,11 +45,17 @@ class IslandChestsScreen(private val parent: Screen? = null) : SoulScreenBase(Co
 
     override fun isPauseScreen() = false
 
+    override fun tick() {
+        super.tick()
+        if (!cfg.islandChests.enabled || !IslandChests.view().ownIsland) onClose()
+    }
+
     override fun onClose() {
         if (parent != null) Minecraft.getInstance().setScreenAndShow(parent) else super.onClose()
     }
 
     override fun extractRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
+        if (!cfg.islandChests.enabled || !IslandChests.view().ownIsland) return
         regions.clear()
         scrollTargets.clear()
         val scale = SoulUi.factor()
@@ -95,7 +100,7 @@ class IslandChestsScreen(private val parent: Screen? = null) : SoulScreenBase(Co
         drawText(g, ellipsize(name + if (view.ironman) " · Ironman" else "", (right - x - 180).coerceAtLeast(50), em(12)), x + 22, scopeY + 10, WHITE, em(12))
         val placeY = if (panel.compact) scopeY + 30 else scopeY + 10
         val placeX = if (panel.compact) x + 22 else x + 22 + textWidth(name + if (view.ironman) " · Ironman" else "", em(12)) + 20
-        drawText(g, ellipsize(if (view.ownIsland) "Your private island" else "Away from your island · cache only", (right - placeX - if (panel.compact) 22 else 135).coerceAtLeast(1), em(12)), placeX, placeY, MUTED, em(12))
+        drawText(g, ellipsize("Your private island", (right - placeX - if (panel.compact) 22 else 135).coerceAtLeast(1), em(12)), placeX, placeY, MUTED, em(12))
         drawText(g, "Co-op sharing", right - 112, scopeY + 10, 0xFF9DAEC5.toInt(), em(12))
         clippedRegion(right - 120, scopeY, right - 12, scopeY + 30, intArrayOf(x, panelTop, right, panelBottom)) { sharing = true; search.focused = false }
         divider(g, x, scopeY + scopeH, right)
@@ -376,10 +381,7 @@ class IslandChestsScreen(private val parent: Screen? = null) : SoulScreenBase(Co
         }
         internal fun itemColor(item: StoredChestItem): Int {
             if (itemColors.size > 512) itemColors.clear()
-            return itemColors.getOrPut(item) {
-                val color = item.displayNameRaw?.let { SoulRichText.spans(Component.literal(it)).firstOrNull { span -> span.text.isNotBlank() }?.color }
-                color?.let { 0xFF000000.toInt() or it } ?: WHITE
-            }
+            return itemColors.getOrPut(item) { item.searchColor() }
         }
         internal fun icon(g: GuiGraphicsExtractor, item: StoredChestItem, x: Int, y: Int, size: Int) {
             val look = item.look ?: InventoryButtonIcons.ItemLook(item.material)

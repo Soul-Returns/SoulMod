@@ -23,6 +23,7 @@
     "LevelExtractorMixin",
     "LocalPlayerMixin",
     "MouseHandlerMixin",
+    "MultiPlayerGameModeMixin",
     "PlayerMixin",
     "RecipeBookButtonMixin",
     "RecipeBookHideMixin",

@@ -11,9 +11,11 @@ import com.soulreturns.ui.hud.HudElement
 import com.soulreturns.ui.hud.SoulHud
 import com.soulreturns.util.KeyCombo
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.input.KeyEvent
 import net.minecraft.core.BlockPos
@@ -68,6 +70,11 @@ object IslandChestDisplay {
             }
         }
         LevelRenderEvents.BEFORE_GIZMOS.register { renderWorld() }
+        ScreenEvents.AFTER_INIT.register { _, screen, _, _ ->
+            if (screen is AbstractContainerScreen<*>) {
+                ScreenEvents.afterBackground(screen).register { _, g, _, _, _ -> highlightSlots(screen, g) }
+            }
+        }
         SoulHud.add(LocatorHud)
     }
 
@@ -82,6 +89,22 @@ object IslandChestDisplay {
     private fun active(): ChestSearchResult? {
         if (!allowed(IslandChests.view())) return null
         return IslandChests.locating()
+    }
+
+    private fun highlightSlots(screen: AbstractContainerScreen<*>, g: GuiGraphicsExtractor) {
+        if (!allowed(IslandChests.view())) return
+        val matches = IslandChests.locatingSlots(screen.menu.containerId) ?: return
+        for (index in matches.indices) {
+            if (!matches[index]) continue
+            val slot = screen.menu.slots.getOrNull(index) ?: continue
+            val x = screen.leftPos + slot.x
+            val y = screen.topPos + slot.y
+            g.fill(x, y, x + 16, y + 16, 0x4072BBFF)
+            g.fill(x, y, x + 16, y + 1, MATCH)
+            g.fill(x, y + 15, x + 16, y + 16, MATCH)
+            g.fill(x, y + 1, x + 1, y + 15, MATCH)
+            g.fill(x + 15, y + 1, x + 16, y + 15, MATCH)
+        }
     }
 
     fun handleKey(event: KeyEvent): Boolean {
@@ -103,12 +126,13 @@ object IslandChestDisplay {
     private fun handleBinding(key: InputConstants.Key, mc: Minecraft): Boolean {
         val search = KeyCombo.cached(cfg.islandChests.searchKey)
         if (search?.key == key && search.isDown(mc.window)) {
-            return searchSession.request(cfg.islandChests.enabled, mc.player != null && mc.level != null, mc.gui.screen() != null, mc.isWindowActive)
+            return searchSession.request(cfg.islandChests.enabled && IslandChests.view().ownIsland, mc.player != null && mc.level != null, mc.gui.screen() != null, mc.isWindowActive)
         }
         return false
     }
 
     private fun openSearch() {
+        if (!cfg.islandChests.enabled || !IslandChests.view().ownIsland) return
         val search = searchSession.restore(IslandChests.view().profileId, IslandChests.locating()?.key)
         IslandChests.clearLocating()
         Minecraft.getInstance().setScreenAndShow(IslandChestsScreen().apply { restore(search.query, search.itemKey) })

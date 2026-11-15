@@ -25,6 +25,10 @@ data class StoredChestItem(
     @Serializable(with = ChestItemLookSerializer::class) val look: ItemLook? = null,
 )
 
+internal fun StoredChestItem.sameSearchIdentity(other: StoredChestItem): Boolean =
+    material == other.material && skyblockId == other.skyblockId &&
+        displayNameRaw == other.displayNameRaw && loreLines == other.loreLines
+
 private val enchantmentNameLine = Regex("""[\p{L}\p{N}'’ -]+ (?:[IVXLCDM]+|[0-9]+)(?:, [\p{L}\p{N}'’ -]+ (?:[IVXLCDM]+|[0-9]+))*,?""")
 
 internal fun StoredChestItem.searchName(): String {
@@ -82,9 +86,7 @@ private fun samePhysicalObservation(a: StoredIslandChest, b: StoredIslandChest):
     return a.slots.indices.all { index ->
         val first = a.slots[index]
         val second = b.slots[index]
-        if (first == null || second == null) first == second else first.material == second.material &&
-            first.skyblockId == second.skyblockId && first.displayNameRaw == second.displayNameRaw &&
-            first.loreLines == second.loreLines && first.count == second.count
+        if (first == null || second == null) first == second else first.sameSearchIdentity(second) && first.count == second.count
     }
 }
 internal fun chestBucketKey(account: String?, profile: String?): String? {
@@ -95,7 +97,11 @@ internal fun chestBucketKey(account: String?, profile: String?): String? {
 
 internal fun StoredChestItem.searchKey(): String {
     val digest = MessageDigest.getInstance("SHA-256")
-    fun add(value: String) {
+    fun add(value: String?) {
+        if (value == null) {
+            repeat(4) { digest.update(0xFF.toByte()) }
+            return
+        }
         val bytes = value.toByteArray(Charsets.UTF_8)
         digest.update((bytes.size ushr 24).toByte())
         digest.update((bytes.size ushr 16).toByte())
@@ -104,8 +110,8 @@ internal fun StoredChestItem.searchKey(): String {
         digest.update(bytes)
     }
     add(material)
-    add(skyblockId.orEmpty())
-    add(displayNameRaw.orEmpty())
+    add(skyblockId)
+    add(displayNameRaw)
     loreLines.forEach(::add)
     return java.util.HexFormat.of().formatHex(digest.digest())
 }

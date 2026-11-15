@@ -2,6 +2,7 @@ package com.soulreturns.features.islandchests
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 class IslandChestSearchIndexTest {
@@ -41,6 +42,16 @@ class IslandChestSearchIndexTest {
         val original = book("§9Sugar Rush III").copy(skyblockId = null)
         assertEquals(listOf(original), index.search(listOf(chest(0, original)), "sugar rush").map { it.item })
         assertTrue(index.search(listOf(chest(0, book("§9Ultimate Wise V"))), "sugar rush").isEmpty())
+    }
+
+    @Test
+    fun identityKeepsAbsentMetadataDistinctFromEmptyMetadata() {
+        val absent = StoredChestItem("minecraft:vine", count = 1)
+        val emptyId = absent.copy(skyblockId = "")
+        val emptyName = absent.copy(displayNameRaw = "")
+        assertNotEquals(absent.searchKey(), emptyId.searchKey())
+        assertNotEquals(absent.searchKey(), emptyName.searchKey())
+        assertEquals(3, IslandChestSearchIndex().search(listOf(chest(0, absent, emptyId, emptyName)), "").size)
     }
 
     @Test

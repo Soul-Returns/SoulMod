@@ -39,6 +39,7 @@ import net.minecraft.network.protocol.game.ClientboundOpenScreenPacket
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
+import net.minecraft.world.inventory.AbstractContainerMenu
 import net.minecraft.world.inventory.MenuType
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.ChestBlock
@@ -72,6 +73,10 @@ object IslandChests {
         }
     }
     private val observation = IslandChestObservation()
+    private var trackedMenu: AbstractContainerMenu? = null
+    private var menuStacks: Array<ItemStack>? = null
+    private var observationBaseRevision: Long? = null
+    private var previousObservationId: String? = null
     private val index = IslandChestSearchIndex()
     private var locatingKey: String? = null
     private var lastBucket: IslandChestBucket? = null
@@ -83,6 +88,7 @@ object IslandChests {
     private var realtimeSince: Instant? = null
     @Volatile private var syncContext: IslandChestSyncContext? = null
     @Volatile private var snapshot = IslandChestView()
+    private val unavailableView = IslandChestView()
     private lateinit var store: IslandChestStore
     private lateinit var sync: IslandChestSync
 
@@ -130,6 +136,7 @@ object IslandChests {
                 updateContext()
                 val context = captureContext()
                 val topology = if (context != null && mc.gui.screen() == null) topology(hit.blockPos) else null
+                clearMenuTracking()
                 clearArm()
                 val at = System.currentTimeMillis()
                 armedPosition = if (topology != null) hit.blockPos.immutable() else null
@@ -138,24 +145,39 @@ object IslandChests {
                     watchingUse = true
                     PacketTap.register(useSink)
                     observation.arm(context, topology, at, ChestPos(hit.blockPos.x, hit.blockPos.y, hit.blockPos.z))
-                } else observation.reset()
+                } else resetObservation()
             }
             InteractionResult.PASS
         })
         ClientLifecycleEvents.CLIENT_STOPPING.register {
             stopping = true
             syncContext = null
-            observation.reset()
+            resetObservation()
             clearArm()
             store.flush()
         }
     }
 
-    fun view(): IslandChestView = snapshot
-    fun search(query: String): List<ChestSearchResult> = index.search(snapshot.chests, query)
-    fun startLocating(itemKey: String) { locatingKey = search("").firstOrNull { it.key == itemKey }?.key }
-    fun clearLocating() { locatingKey = null }
+    fun view(): IslandChestView = if (captureContext() != null) snapshot else unavailableView
+    fun search(query: String): List<ChestSearchResult> =
+        if (captureContext() == null) emptyList() else index.search(snapshot.chests, query)
+    fun startLocating(itemKey: String) {
+        val row = search("").firstOrNull { it.key == itemKey }
+        locatingKey = row?.key
+        observation.select(row?.item)
+    }
+    fun clearLocating() {
+        locatingKey = null
+        observation.select(null)
+    }
+    internal fun locatingSlots(containerId: Int): BooleanArray? {
+        val mc = Minecraft.getInstance()
+        if (!registered || !mc.isSameThread || locatingKey == null || trackedMenu == null ||
+            mc.player?.containerMenu !== trackedMenu || trackedMenu?.containerId != containerId) return null
+        return observation.locatingSlots(captureContext(), containerId)
+    }
     fun locating(): ChestSearchResult? {
+        if (captureContext() == null) return null
         val key = locatingKey ?: return null
         return search("").firstOrNull { it.key == key }
     }
@@ -172,9 +194,9 @@ object IslandChests {
         freshProfileLevel = null
         identity = null
         syncContext = null
-        observation.reset()
+        resetObservation()
         clearArm()
-        locatingKey = null
+        clearLocating()
         lastBucket = null
         remoteState = "local"
         if (loaded) publish()
@@ -196,7 +218,7 @@ object IslandChests {
                 freshProfileDashed = null
                 joinNameSeen = false
             }
-            observation.reset()
+            resetObservation()
             clearArm()
         }
         val profile = SkyblockProfileState.profileId
@@ -207,20 +229,20 @@ object IslandChests {
         } else null
         if (identity != next) {
             identity = next
-            observation.reset()
+            resetObservation()
             clearArm()
-            locatingKey = null
+            clearLocating()
             lastBucket = null
             remoteState = "local"
         }
         val sharing = cfg.islandChests.enabled && cfg.islandChests.shareWithCoop
         val previousSync = syncContext
-        syncContext = if (next == null || !sharing || stopping) null else {
+        syncContext = if (next == null || !sharing || stopping || !ownIsland()) null else {
             if (previousSync != null && previousSync.account == next.account && previousSync.profile == next.profile && previousSync.generation == next.generation) previousSync
             else IslandChestSyncContext(next.account, next.profile, next.generation)
         }
         if (!cfg.islandChests.enabled || !ownIsland()) {
-            observation.reset()
+            resetObservation()
             clearArm()
         }
     }
@@ -229,7 +251,13 @@ object IslandChests {
         SkyblockLocation.area == "Private Island" && SkyblockLocation.subLocation == "Your Island" &&
         SkyblockState.profileType != ProfileType.GUEST && SkyblockState.profileType != ProfileType.UNKNOWN
 
-    private fun captureContext(): ChestObservationContext? = identity?.takeIf { cfg.islandChests.enabled && ownIsland() && !stopping }
+    private fun captureContext(): ChestObservationContext? {
+        val mc = Minecraft.getInstance()
+        return identity?.takeIf {
+            cfg.islandChests.enabled && ownIsland() && !stopping && mc.user.profileId == accountId &&
+                mc.level === lastLevel && SkyblockProfileState.profileId == freshProfileDashed
+        }
+    }
 
     private fun tick() {
         if (!registered) return
@@ -238,6 +266,7 @@ object IslandChests {
         if (watchingUse && observation.pendingExpired(System.currentTimeMillis())) clearArm()
         if (observation.containerId != null && mc.player?.containerMenu?.containerId != observation.containerId) {
             observation.close()
+            clearMenuTracking()
             sync.refresh()
         }
         publish()
@@ -252,7 +281,7 @@ object IslandChests {
     }
 
     private fun publish() {
-        val current = identity
+        val current = captureContext()
         val sharing = cfg.islandChests.enabled && cfg.islandChests.shareWithCoop
         val bucket = if (current != null && loaded) store.read(current.account, current.profile) else null
         if (bucket == null) {
@@ -277,9 +306,15 @@ object IslandChests {
     private fun remember(chest: StoredIslandChest?) {
         val context = captureContext() ?: return
         if (chest == null) return
+        val originalBaseline = observationBaseRevision ?: return
+        val id = UUID.randomUUID().toString()
+        val previousId = previousObservationId
         store.update(context.account, context.profile) { bucket ->
-            bucket.observe(LocalChestObservation(UUID.randomUUID().toString(), bucket.revision, chest))
+            // Only an ACK may have advanced this opening's pending predecessor; a GET must not rebase it.
+            val baseline = bucket.local.firstOrNull { it.observationId == previousId }?.baseRevision ?: originalBaseline
+            bucket.observe(LocalChestObservation(id, baseline, chest))
         }
+        previousObservationId = id
         publish()
     }
 
@@ -292,8 +327,22 @@ object IslandChests {
         val resolved = position?.let(::topology)
         val size = if (packet.type === MenuType.GENERIC_9x3) 27 else if (packet.type === MenuType.GENERIC_9x6) 54 else 0
         val context = if (expected != null && resolved == expected) captureContext() else null
-        observation.open(context, packet.containerId, size, MessageDetector.stripColorCodes(packet.title.string), System.currentTimeMillis())
+        val opened = observation.open(context, packet.containerId, size, MessageDetector.stripColorCodes(packet.title.string), System.currentTimeMillis())
+        clearMenuTracking()
+        if (opened && context != null) observationBaseRevision = store.read(context.account, context.profile).revision
         clearArm()
+    }
+
+    private fun resetObservation() {
+        observation.reset()
+        clearMenuTracking()
+    }
+
+    private fun clearMenuTracking() {
+        trackedMenu = null
+        menuStacks = null
+        observationBaseRevision = null
+        previousObservationId = null
     }
 
     private fun clearArm() {
@@ -314,7 +363,10 @@ object IslandChests {
         val size = observation.activeBlocks.size * 27
         if (size == 0 || packet.items().size != size + 36) return
         val items = packet.items().mapIndexed { i, stack -> if (i < size) storedItem(stack) else null }
-        remember(observation.full(captureContext(), packet.containerId(), items, System.currentTimeMillis(), mc.user.name))
+        val chest = observation.full(captureContext(), packet.containerId(), items, System.currentTimeMillis(), mc.user.name) ?: return
+        trackedMenu = mc.player!!.containerMenu
+        menuStacks = Array(size) { packet.items()[it].copy() }
+        remember(chest)
     }
 
     @JvmStatic
@@ -323,13 +375,41 @@ object IslandChests {
         if (!registered || !mc.isSameThread || mc.player?.containerMenu?.containerId != packet.containerId) return
         updateContext()
         if (packet.slot !in 0 until observation.activeBlocks.size * 27) return
+        if (trackedMenu === mc.player?.containerMenu && observation.containerId == packet.containerId) {
+            menuStacks?.set(packet.slot, packet.item.copy())
+        }
         remember(observation.slot(captureContext(), packet.containerId, packet.slot, storedItem(packet.item), System.currentTimeMillis(), mc.user.name))
+    }
+
+    @JvmStatic
+    fun onContainerInput(containerId: Int) {
+        val mc = Minecraft.getInstance()
+        if (!registered || !mc.isSameThread) return
+        updateContext()
+        val menu = mc.player?.containerMenu ?: return
+        if (menu !== trackedMenu || menu.containerId != containerId) return
+        val context = captureContext()
+        val slots = observation.menuSlots(context, containerId) ?: return
+        val stacks = menuStacks ?: return
+        var changed: MutableList<StoredChestItem?>? = null
+        for (slot in stacks.indices) {
+            val stack = menu.getSlot(slot).item
+            if (ItemStack.matches(stacks[slot], stack)) continue
+            stacks[slot] = stack.copy()
+            val items = changed ?: slots.toMutableList().also { changed = it }
+            items[slot] = storedItem(stack)
+        }
+        changed?.let {
+            // Accepted vanilla predictions are not echoed; corrections already replace the same live view.
+            remember(observation.menu(context, containerId, it, System.currentTimeMillis(), mc.user.name))
+        }
     }
 
     @JvmStatic
     fun onClose(packet: ClientboundContainerClosePacket) {
         if (!registered || !Minecraft.getInstance().isSameThread || observation.containerId != packet.containerId) return
         observation.close()
+        clearMenuTracking()
         sync.refresh()
     }
 
