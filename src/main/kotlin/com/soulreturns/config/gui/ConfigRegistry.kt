@@ -776,6 +776,27 @@ object ConfigRegistry {
                     ),
                 )
             },
+            card("storageoverlay") {
+                FeatureCard(
+                    "storageoverlay", "Storage overlay", "Your Ender Chest and backpacks in one searchable wall", "inventory", "inventory", "chest",
+                    "Remembers pages you open, separately for each profile. Click a preview to open its real page; only the open page can move items. Manage storage returns to the normal menu for backpack changes.",
+                    master = toggle("Storage overlay", null, { cfg.storageOverlay.enabled }, { v ->
+                        ConfigManager.update { copy(storageOverlay = storageOverlay.copy(enabled = v)) }
+                    }, d.storageOverlay.enabled),
+                    simple = listOf(
+                        slider("Pages per row", "The wall scrolls instead of shrinking items to fit",
+                            { cfg.storageOverlay.columns.toDouble() }, { v ->
+                                ConfigManager.update { copy(storageOverlay = storageOverlay.copy(columns = v.toInt().coerceIn(1, 6))) }
+                            }, d.storageOverlay.columns.toDouble(), 1.0, 6.0, 1.0),
+                        toggle("Override Skyblocker storage", "Use Soul's overlay even when Skyblocker's storage overlay is enabled; its settings stay unchanged",
+                            { cfg.storageOverlay.overrideSkyblocker }, { v ->
+                                ConfigManager.update { copy(storageOverlay = storageOverlay.copy(overrideSkyblocker = v)) }
+                            }, d.storageOverlay.overrideSkyblocker),
+                    ),
+                    beta = true,
+                    synonyms = listOf("storage", "ender chest", "backpack", "search", "items"),
+                )
+            },
             card("cleanup") {
                 val book = toggle("Hide recipe book", "The book and its button; crafting tables keep theirs", { cfg.general.hideRecipeBook }, { v -> general { copy(hideRecipeBook = v) } }, d.general.hideRecipeBook)
                 val offhand = toggle("Hide off-hand slot", "SkyBlock doesn't use it", { cfg.general.hideOffhandSlot }, { v -> general { copy(hideOffhandSlot = v) } }, d.general.hideOffhandSlot)

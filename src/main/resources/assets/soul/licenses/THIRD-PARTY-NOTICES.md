@@ -30,6 +30,7 @@ https://github.com/SkyblockerMod/Skyblocker, by the Skyblocker contributors. The
 layouts (`ArrowAlignModel.LAYOUTS`, from `ArrowAlign.SOLUTIONS`), the 42 Metal Detector chest
 offsets (`MetalDetectorSolver.OFFSETS`) and the `DUNGEON_SECRETS` message schema of the secret sync
 are Skyblocker's. License text: `LGPL-3.0.txt`.
+Its storage-screen interception was consulted for optional compatibility; no storage overlay code or assets were copied.
 
 ### Odin — BSD-3-Clause
 https://github.com/odtheking/Odin. `assets/soul/shaders/core/round_rect.fsh` and `round_rect.vsh`

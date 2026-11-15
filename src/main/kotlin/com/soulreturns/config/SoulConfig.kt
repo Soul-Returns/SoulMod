@@ -102,6 +102,13 @@ data class IslandChestsConfig(
     val searchKey: String = "key.keyboard.k",
 )
 
+@Serializable
+data class StorageOverlayConfig(
+    val enabled: Boolean = false,
+    val columns: Int = 3,
+    val overrideSkyblocker: Boolean = true,
+)
+
 /**
  * The mod's configuration tree — immutable @Serializable data classes persisted as JSON.
  *
@@ -130,6 +137,7 @@ data class SoulConfig(
     val prices: PricesConfig = PricesConfig(),
     val sacks: SackTrackerConfig = SackTrackerConfig(),
     val islandChests: IslandChestsConfig = IslandChestsConfig(),
+    val storageOverlay: StorageOverlayConfig = StorageOverlayConfig(),
     val sounds: SoundsConfig = SoundsConfig(),
     /** The auto updater ([com.soulreturns.platform.updater.UpdateService]). */
     val updates: UpdatesConfig = UpdatesConfig(),

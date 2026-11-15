@@ -257,6 +257,7 @@ object Soul : ClientModInitializer {
         SackMenus.register()
         com.soulreturns.features.islandchests.IslandChests.register()
         com.soulreturns.features.islandchests.IslandChestDisplay.register()
+        com.soulreturns.features.storage.StorageOverlay.register()
         // Pet HUD data: after SkyblockSelfProfile (seeds on SelfProfileLoaded) and TabWidgets.
         PetState.register()
         PetHud.register()

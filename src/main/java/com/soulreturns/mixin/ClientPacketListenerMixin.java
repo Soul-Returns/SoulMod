@@ -10,6 +10,7 @@ import com.soulreturns.features.qol.ImplosionHider;
 import com.soulreturns.features.mining.HollowsWeather;
 import com.soulreturns.features.mining.metaldetector.MetalDetector;
 import com.soulreturns.features.islandchests.IslandChests;
+import com.soulreturns.features.storage.StorageOverlay;
 import com.soulreturns.platform.ServerTime;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -104,20 +105,24 @@ public abstract class ClientPacketListenerMixin {
     @Inject(method = "handleOpenScreen", at = @At("RETURN"))
     private void soul$islandChestOpen(ClientboundOpenScreenPacket packet, CallbackInfo ci) {
         IslandChests.onOpen(packet);
+        StorageOverlay.onOpen(packet);
     }
 
     @Inject(method = "handleContainerContent", at = @At("RETURN"))
     private void soul$islandChestContents(ClientboundContainerSetContentPacket packet, CallbackInfo ci) {
         IslandChests.onContents(packet);
+        StorageOverlay.onContents(packet);
     }
 
     @Inject(method = "handleContainerSetSlot", at = @At("RETURN"))
     private void soul$islandChestSlot(ClientboundContainerSetSlotPacket packet, CallbackInfo ci) {
         IslandChests.onSlot(packet);
+        StorageOverlay.onSlot(packet);
     }
 
     @Inject(method = "handleContainerClose", at = @At("RETURN"))
     private void soul$islandChestClose(ClientboundContainerClosePacket packet, CallbackInfo ci) {
         IslandChests.onClose(packet);
+        StorageOverlay.onClose(packet);
     }
 }

@@ -28,6 +28,7 @@
     "RecipeBookButtonMixin",
     "RecipeBookHideMixin",
     "ScreenEffectRendererMixin",
+    "SkyblockerStorageMixin",
     "SlotMixin",
     "SoundEngineMixin"
   ],

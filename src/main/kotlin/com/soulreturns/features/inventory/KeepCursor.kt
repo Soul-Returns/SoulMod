@@ -1,6 +1,7 @@
 package com.soulreturns.features.inventory
 
 import com.soulreturns.config.cfg
+import com.soulreturns.features.storage.StorageOverlay
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
@@ -51,7 +52,7 @@ object KeepCursor {
     /** The position to release the cursor at instead of the window center, or null for vanilla. */
     @JvmStatic
     fun releasePosition(): DoubleArray? {
-        if (!cfg.general.keepCursorBetweenMenus) return null
+        if (!cfg.general.keepCursorBetweenMenus && StorageOverlay.pendingPage() == null) return null
         if (Minecraft.getInstance().gui.screen() !is AbstractContainerScreen<*>) return null
         val now = System.currentTimeMillis()
         if (now - grabbedAt > WINDOW_MS || now - containerClosedAt > WINDOW_MS) return null

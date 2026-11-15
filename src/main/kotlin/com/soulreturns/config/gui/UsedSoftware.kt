@@ -66,7 +66,7 @@ object UsedSoftware {
             Kind.BUNDLED_DATA,
         ),
         Entry(
-            "Skyblocker", "Arrow Align layouts, Metal Detector chest spots, secret-sync message format", "https://github.com/SkyblockerMod/Skyblocker", "LGPL-3.0",
+            "Skyblocker", "Arrow Align layouts, Metal Detector chest spots, secret-sync message format; storage-overlay compatibility reference", "https://github.com/SkyblockerMod/Skyblocker", "LGPL-3.0",
             Kind.BUNDLED_DATA,
         ),
         Entry(

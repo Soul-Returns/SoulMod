@@ -42,6 +42,10 @@ public final class Menus implements Listener {
 
     /** @return false when no menu has that name. */
     public boolean open(Player player, String name) {
+        if (name.equals("storage")) {
+            plugin.storage().openOverview(player);
+            return true;
+        }
         JsonElement element = plugin.presets().get("menus", name);
         if (element == null) return false;
         JsonObject menu = element.getAsJsonObject();
