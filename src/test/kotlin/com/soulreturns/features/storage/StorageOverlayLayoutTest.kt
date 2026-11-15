@@ -50,7 +50,8 @@ class StorageOverlayLayoutTest {
     fun wholeContentGroupIsCenteredAndControlsAlignWithInventoryTop() {
         for (width in listOf(400, 640, 1280)) {
             val frame = StorageOverlayLayout.frame(width, 900, 3, true, BUTTONS, contentHeight = 135)
-            assertTrue(kotlin.math.abs(frame.panel.y * 2 + frame.panel.height - 900) <= 1)
+            assertTrue(kotlin.math.abs(frame.panel.y * 2 + frame.panel.height - (900 - StorageOverlayLayout.BOTTOM_RESERVE_GUI)) <= 1)
+            assertTrue(frame.panel.bottom <= 900 - StorageOverlayLayout.BOTTOM_RESERVE_GUI)
             assertTrue(frame.header.y > 12)
             assertEquals(frame.dock.y, frame.filtersButton.y)
             assertEquals(frame.dock.y, frame.search.y)

@@ -10,6 +10,8 @@ internal object StorageOverlayLayout {
     /** Inner padding of the shared panel around the page-card grid. */
     const val WALL_INSET = 12
     const val CONTROL_HEIGHT = 26
+    /** Vanilla GUI px kept free at the bottom so overlays such as REI's search bar never cover the inventory card. */
+    const val BOTTOM_RESERVE_GUI = 24
     private const val PADDING = 10
     private const val TITLE_HEIGHT = 26
     private const val MIN_SEARCH_WIDTH = 140
@@ -87,12 +89,13 @@ internal object StorageOverlayLayout {
         val filterHeight = if (filters) CONTROL_HEIGHT - 4 else 0
         val controlsHeight = CONTROL_HEIGHT + if (filters) 6 + filterHeight else 0
         val dockHeight = max(inventoryHeight, controlsHeight)
-        val availableHeight = max(0, height - 24 - TITLE_HEIGHT - groupGap * 2)
+        val bottomReserve = ceil(BOTTOM_RESERVE_GUI / factor).toInt()
+        val availableHeight = max(0, height - bottomReserve - 24 - TITLE_HEIGHT - groupGap * 2)
         val wallContent = max(0, contentHeight) + WALL_INSET * 2
         val dockViewHeight = min(dockHeight, max(0, availableHeight - min(40 + WALL_INSET * 2, wallContent)))
         val wallHeight = min(wallContent, max(0, availableHeight - dockViewHeight))
         val groupHeight = TITLE_HEIGHT + groupGap + wallHeight + groupGap + dockViewHeight
-        val top = max(12, (height - groupHeight) / 2)
+        val top = max(12, (height - bottomReserve - groupHeight) / 2)
         val header = Rect(0, top, width, TITLE_HEIGHT)
         val wallOuter = min(availableWidth, wallWidth + WALL_INSET * 2)
         val wall = Rect((width - wallOuter) / 2, header.bottom + groupGap, wallOuter, wallHeight)
