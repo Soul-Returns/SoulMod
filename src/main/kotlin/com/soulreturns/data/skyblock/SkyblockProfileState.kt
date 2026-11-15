@@ -8,11 +8,12 @@ import com.soulreturns.util.SoulLogger
 /**
  * The active SkyBlock profile name ("Banana", "Coconut", …) and its exact profile id.
  *
- * The name comes from the tab list and from Hypixel's join line `You are playing on profile: Banana
- * (Co-op)`; the id only from the line right after it, `Profile ID: <uuid>`, which Hypixel prints on
- * every SkyBlock server join. `null` when off SkyBlock or before either has arrived. Switching
- * profiles with `/profile <name>` moves you to another server instance, so a change here is always
- * accompanied by a [com.soulreturns.api.HypixelModApi.LocationChangeEvent].
+ * The name comes from the tab list and from Hypixel's name line ([ProfileChatLines]: `You are playing
+ * on profile: Banana (Co-op)` on a server join, `Your profile was changed to: Banana (Co-op)` after a
+ * switch); the id only from the line right after it, `Profile ID: <uuid>`. `null` when off SkyBlock or
+ * before either has arrived. Switching profiles with `/profile <name>` moves you to another server
+ * instance, so a change here is always accompanied by a
+ * [com.soulreturns.api.HypixelModApi.LocationChangeEvent].
  *
  * The *flavour* (co-op / bingo / ironman) is [SkyblockState.profileType].
  *
@@ -26,8 +27,8 @@ object SkyblockProfileState {
         private set
 
     /**
-     * The active profile's id, dashed lowercase (Hypixel's `profile_id` form), or null until the
-     * join line arrived for [current]. Cleared whenever the name moves to another profile.
+     * The active profile's id, dashed lowercase (Hypixel's `profile_id` form), or null until its
+     * `Profile ID:` line arrived for [current]. Cleared whenever the name moves to another profile.
      */
     @Volatile
     var profileId: String? = null

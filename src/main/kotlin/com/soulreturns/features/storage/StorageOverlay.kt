@@ -3,6 +3,7 @@ package com.soulreturns.features.storage
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.model.ChatMessage
+import com.soulreturns.data.skyblock.FreshProfileId
 import com.soulreturns.data.skyblock.OnSkyblockChanged
 import com.soulreturns.data.skyblock.ProfileChanged
 import com.soulreturns.data.skyblock.SkyblockProfileState
@@ -42,8 +43,6 @@ import java.util.UUID
 
 object StorageOverlay {
     private val logger = SoulLogger("Soul/Storage")
-    private val profileNameLine = Regex("You are playing on profile: ([A-Za-z][A-Za-z0-9_]*)(?:\\s*\\([^)]+\\))?")
-    private val profileIdLine = Regex("Profile ID: ([0-9a-fA-F-]{32,36})")
     private val observation = StorageObservation<ItemStack>()
     private var registered = false
     private var loaded = false
@@ -54,9 +53,7 @@ object StorageOverlay {
     private var account: String? = null
     private var accountId: UUID? = null
     private var level: Any? = null
-    private var joinedProfile: String? = null
-    private var joinedLevel: Any? = null
-    private var joinNameSeen = false
+    private val freshProfile = FreshProfileId()
     private var scope: String? = null
     private var scopeProfile: String? = null
     private var trackedMenu: ChestMenu? = null
@@ -98,13 +95,7 @@ object StorageOverlay {
         Events.subscribe<ChatMessage> { message ->
             if (message.source != ChatMessage.Source.SERVER) return@subscribe
             updateContext()
-            val line = MessageDetector.stripColorCodes(message.raw).trim()
-            if (profileNameLine.matches(line)) joinNameSeen = true
-            profileIdLine.matchEntire(line)?.takeIf { joinNameSeen }?.let {
-                joinedProfile = MojangUuid.parse(it.groupValues[1])?.toString()
-                joinedLevel = Minecraft.getInstance().level
-                updateContext()
-            }
+            if (freshProfile.offer(MessageDetector.stripColorCodes(message.raw).trim(), Minecraft.getInstance().level)) updateContext()
         }
         Events.subscribe<ProfileChanged> { resetIdentity() }
         Events.subscribe<OnSkyblockChanged> { if (!it.current) resetIdentity() }
@@ -397,7 +388,7 @@ object StorageOverlay {
         bucketSeen = bucket
         val pages = bucket.pages.associateBy { it.id }
         val api = storageApiPreviews(bucket,
-            StorageApiPrefill.pages(accountId!!, MojangUuid.parse(joinedProfile!!)!!), invalidatedApiBackpacks)
+            StorageApiPrefill.pages(accountId!!, MojangUuid.parse(joinedProfile()!!)!!), invalidatedApiBackpacks)
         val ids = (bucket.selectors.filter { it.state == "installed" }.map { it.id } + bucket.pages.map { it.id } + api.keys)
             .distinct().sortedWith(compareBy<StoragePageId>({ if (it.kind == "ender") 0 else 1 }, { it.index }))
         snapshot = ids.map { id ->
@@ -420,9 +411,11 @@ object StorageOverlay {
     private fun validContext(): Boolean {
         val mc = Minecraft.getInstance()
         return registered && loaded && !stopping && cfg.storageOverlay.enabled && SkyblockState.onSkyblock && mc.player != null &&
-            mc.level === level && joinedLevel === level && mc.user.profileId == accountId &&
-            joinedProfile != null && joinedProfile == SkyblockProfileState.profileId && scope != null
+            mc.level === level && mc.user.profileId == accountId && joinedProfile() != null && scope != null
     }
+
+    /** The profile announced in the current world, while it is still the one the state reader reports. */
+    private fun joinedProfile(): String? = freshProfile.resolved(level, SkyblockProfileState.profileId)
 
     private fun updateContext() {
         if (!registered) return
@@ -433,21 +426,19 @@ object StorageOverlay {
             accountId = nextAccount
             account = nextAccount.toString()
             level = mc.level
-            if (accountChanged || joinedLevel !== level) { joinedProfile = null; joinedLevel = null; joinNameSeen = false }
+            freshProfile.reset()
             scope = null
             clearSession()
         }
-        val next = if (loaded && !stopping && cfg.storageOverlay.enabled && SkyblockState.onSkyblock && mc.player != null &&
-            joinedLevel === level && joinedProfile != null && joinedProfile == SkyblockProfileState.profileId) {
-            if (scope != null && scopeProfile == joinedProfile) scope else storageScope(account, joinedProfile)
+        val joined = joinedProfile()
+        val next = if (loaded && !stopping && cfg.storageOverlay.enabled && SkyblockState.onSkyblock && mc.player != null && joined != null) {
+            if (scope != null && scopeProfile == joined) scope else storageScope(account, joined)
         } else null
-        if (scope != next) { scope = next; scopeProfile = joinedProfile.takeIf { next != null }; clearSession() }
+        if (scope != next) { scope = next; scopeProfile = joined.takeIf { next != null }; clearSession() }
     }
 
     private fun resetIdentity() {
-        joinedProfile = null
-        joinedLevel = null
-        joinNameSeen = false
+        freshProfile.reset()
         scope = null
         clearSession()
     }

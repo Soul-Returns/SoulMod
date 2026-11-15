@@ -69,12 +69,6 @@ object SkyblockStateReader {
      */
     private val PROFILE_PATTERN = Regex("Profile(?:\\s*\\([^)]+\\))?:\\s*([A-Za-z][A-Za-z0-9_]*)")
 
-    /** Join line, `You are playing on profile: Blueberry (Co-op)`; the qualifier is optional. */
-    private val JOIN_PROFILE_PATTERN = Regex("You are playing on profile: ([A-Za-z][A-Za-z0-9_]*)(?:\\s*\\([^)]+\\))?")
-
-    /** The line right after it, `Profile ID: 94f5a14d-a28f-4a3b-a404-1a3d7d9af888`. */
-    private val JOIN_PROFILE_ID_PATTERN = Regex("Profile ID: ([0-9a-fA-F-]{32,36})")
-
     /**
      * A sublocation name: ASCII letters, spaces and apostrophes, **anchored on a letter**.
      *
@@ -176,14 +170,16 @@ object SkyblockStateReader {
             pollNextTick = true
         }
 
-        // Hypixel's join lines name the profile before the tab list syncs and carry its exact id,
+        // Hypixel's profile lines name the profile before the tab list syncs and carry its exact id,
         // which nothing else on screen shows. The name goes through the same PolledValue as the tab
-        // list read, so the later tab read of the same name is a no-op.
+        // list read, so the later tab read of the same name is a no-op. Both name forms (join and
+        // `/profile` switch) count: the name must move before its id line, or a later tab read of
+        // the new name would clear the id just announced.
         Events.subscribe<ChatMessage> { msg ->
             if (msg.source != ChatMessage.Source.SERVER) return@subscribe
             val line = MessageDetector.stripColorCodes(msg.raw).trim()
-            JOIN_PROFILE_PATTERN.matchEntire(line)?.let { profile.offer(it.groupValues[1]) }
-            JOIN_PROFILE_ID_PATTERN.matchEntire(line)?.let { SkyblockProfileState.updateProfileId(it.groupValues[1]) }
+            ProfileChatLines.name(line)?.let(profile::offer)
+            ProfileChatLines.id(line)?.let(SkyblockProfileState::updateProfileId)
         }
 
         // DISCONNECT does NOT always run on the client thread: on a client shutdown it fires on the

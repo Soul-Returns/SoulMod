@@ -5,6 +5,7 @@ import com.soulreturns.api.LocationApi
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.model.ChatMessage
+import com.soulreturns.data.skyblock.FreshProfileId
 import com.soulreturns.data.skyblock.OnSkyblockChanged
 import com.soulreturns.data.skyblock.ProfileChanged
 import com.soulreturns.data.skyblock.ProfileType
@@ -46,18 +47,13 @@ import java.time.Instant
 import java.util.UUID
 
 object IslandChests {
-    private val profileIdLine = Regex("Profile ID: ([0-9a-fA-F-]{32,36})")
-    private val profileNameLine = Regex("You are playing on profile: ([A-Za-z][A-Za-z0-9_]*)(?:\\s*\\([^)]+\\))?")
     private var registered = false
     private var loaded = false
     private var stopping = false
     private var generation = 0L
     private var account: String? = null
     private var accountId: UUID? = null
-    private var freshProfile: String? = null
-    private var freshProfileDashed: String? = null
-    private var joinNameSeen = false
-    private var freshProfileLevel: Any? = null
+    private val freshProfile = FreshProfileId()
     private var identity: ChestObservationContext? = null
     private var lastLevel: Any? = null
     private var armedPosition: BlockPos? = null
@@ -104,12 +100,7 @@ object IslandChests {
         Events.subscribe<ChatMessage> { message ->
             if (message.source != ChatMessage.Source.SERVER) return@subscribe
             updateContext()
-            val line = MessageDetector.stripColorCodes(message.raw).trim()
-            if (profileNameLine.matches(line)) joinNameSeen = true
-            profileIdLine.matchEntire(line)?.takeIf { joinNameSeen }?.let {
-                freshProfileDashed = MojangUuid.parse(it.groupValues[1])?.toString()
-                freshProfile = MojangUuid.undashedOrNull(freshProfileDashed)
-                freshProfileLevel = Minecraft.getInstance().level
+            if (freshProfile.offer(MessageDetector.stripColorCodes(message.raw).trim(), Minecraft.getInstance().level)) {
                 updateContext()
                 publish()
             }
@@ -186,10 +177,7 @@ object IslandChests {
 
     private fun transfer() {
         generation++
-        freshProfile = null
-        freshProfileDashed = null
-        joinNameSeen = false
-        freshProfileLevel = null
+        freshProfile.reset()
         identity = null
         syncContext = null
         resetObservation()
@@ -211,19 +199,15 @@ object IslandChests {
         if (lastLevel !== mc.level) {
             lastLevel = mc.level
             generation++
-            if (freshProfileLevel !== mc.level) {
-                freshProfile = null
-                freshProfileDashed = null
-                joinNameSeen = false
-            }
+            freshProfile.reset()
             resetObservation()
             clearArm()
         }
-        val profile = SkyblockProfileState.profileId
+        val profile = freshProfile.resolved(lastLevel, SkyblockProfileState.profileId)?.let(MojangUuid::undashedOrNull)
         val old = identity
-        val next = if (loaded && SkyblockState.onSkyblock && profile != null && profile == freshProfileDashed && mc.player != null) {
-            if (old != null && old.account == account && old.profile == freshProfile && old.generation == generation) old
-            else ChestObservationContext(account!!, freshProfile!!, generation)
+        val next = if (loaded && SkyblockState.onSkyblock && profile != null && mc.player != null) {
+            if (old != null && old.account == account && old.profile == profile && old.generation == generation) old
+            else ChestObservationContext(account!!, profile, generation)
         } else null
         if (identity != next) {
             identity = next
@@ -257,7 +241,8 @@ object IslandChests {
     /** The exact profile's cache, readable and synced anywhere on SkyBlock; observing and locating also need [ownIsland]. */
     private fun searchContext(): ChestObservationContext? {
         val mc = Minecraft.getInstance()
-        val fresh = mc.user.profileId == accountId && mc.level === lastLevel && SkyblockProfileState.profileId == freshProfileDashed
+        val fresh = mc.user.profileId == accountId && mc.level === lastLevel &&
+            freshProfile.resolved(lastLevel, SkyblockProfileState.profileId) != null
         return IslandChestGates.readable(identity, fresh, cfg.islandChests.enabled, SkyblockState.onSkyblock, stopping)
     }
 
