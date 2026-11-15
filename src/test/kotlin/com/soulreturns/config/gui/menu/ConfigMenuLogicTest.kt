@@ -77,7 +77,7 @@ class ConfigMenuLogicTest {
         val groups = RightNow.groups(ConfigRegistry.cards, ctx)
         assertEquals(listOf("nucleus", "area"), groups.map { it.key })
         assertEquals(listOf("nucleus", "checklist", "bal"), groups[0].cards.map { it.id })
-        assertEquals(listOf("nucchat", "weathermute", "weatherhide", "mdsolver", "mdloot", "toolscounter"), groups[1].cards.map { it.id })
+        assertEquals(listOf("nucchat", "weathermute", "weatherhide", "mdsolver", "mdloot", "toolscounter", "commissionshud", "commissionsdone"), groups[1].cards.map { it.id })
         assertEquals("Crystal Hollows", groups[1].label)
         assertEquals("hollows", RightNow.tabFor("mining", ConfigRegistry.cards, ctx))
         assertEquals("Nucleus run · Crystal Hollows", RightNow.why("mining", null, groups))
@@ -180,7 +180,7 @@ class ConfigMenuLogicTest {
             }
         }
         // Empty tabs are hidden.
-        assertEquals(listOf("hollows", "divan", "mineshafts"), ConfigRegistry.tabsOf("mining").map { it.id })
+        assertEquals(listOf("hollows", "divan", "mineshafts", "dwarven", "powder"), ConfigRegistry.tabsOf("mining").map { it.id })
         assertEquals(listOf("mobs", "diana", "bosses"), ConfigRegistry.tabsOf("combat").map { it.id })
     }
 }

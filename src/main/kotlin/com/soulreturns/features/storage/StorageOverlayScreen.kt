@@ -4,6 +4,7 @@ import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.ui.SlotMark
 import com.soulreturns.ui.SoulUi
 import com.soulreturns.ui.screen.SoulScreenBase
 import com.soulreturns.ui.screen.SoulTextField
@@ -386,12 +387,8 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         g.fill(0, 0, 18, 18, border)
         g.fill(1, 1, 17, 17, if (match) 0xFF253B57.toInt() else if (hovered) { if (open) 0xFF384B66.toInt() else 0xFF363636.toInt() } else 0xFF292929.toInt())
         if (markPage && markMatches(stack)) {
-            // Search everywhere's match: the island chest locator's 16×16 fill and 1 px inset edge, behind the item.
-            g.fill(1, 1, 17, 17, 0x4072BBFF)
-            g.fill(1, 1, 17, 2, BLUE)
-            g.fill(1, 16, 17, 17, BLUE)
-            g.fill(1, 2, 2, 16, BLUE)
-            g.fill(16, 2, 17, 16, BLUE)
+            // Search everywhere's match: the island chest locator's mark, behind the item.
+            SlotMark.draw(g, 1, 1, BLUE)
         }
         g.pose().pushMatrix()
         g.pose().translate(1f, 1f)

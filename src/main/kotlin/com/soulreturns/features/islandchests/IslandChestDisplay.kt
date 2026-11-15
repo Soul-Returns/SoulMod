@@ -7,6 +7,7 @@ import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.features.dungeons.DungeonCommandGuard
 import com.soulreturns.features.search.SearchItems
+import com.soulreturns.ui.SlotMark
 import com.soulreturns.ui.SoulUi
 import com.soulreturns.ui.hud.HudElement
 import com.soulreturns.ui.hud.SoulHud
@@ -140,11 +141,7 @@ object IslandChestDisplay {
             val slot = screen.menu.slots.getOrNull(index) ?: continue
             val x = screen.leftPos + slot.x
             val y = screen.topPos + slot.y
-            g.fill(x, y, x + 16, y + 16, 0x4072BBFF)
-            g.fill(x, y, x + 16, y + 1, MATCH)
-            g.fill(x, y + 15, x + 16, y + 16, MATCH)
-            g.fill(x, y + 1, x + 1, y + 15, MATCH)
-            g.fill(x + 15, y + 1, x + 16, y + 15, MATCH)
+            SlotMark.draw(g, x, y, MATCH)
         }
     }
 

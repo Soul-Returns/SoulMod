@@ -943,16 +943,32 @@ data class DungeonMapColors(
     val classTank: ChromaColor = ChromaColor(com.soulreturns.features.dungeons.DungeonClass.TANK.color),
 )
 
-/** Mining features: Glacite Mineshafts, the Mines of Divan, Crystal Nucleus runs and the Hollows weather mute. */
+/** Mining features: Glacite Mineshafts, the Mines of Divan, Crystal Nucleus runs, commissions and particle/weather hiders. */
 @Serializable
 data class MiningConfig(
     val mineshaft: MineshaftConfig = MineshaftConfig(),
     val metalDetector: MetalDetectorConfig = MetalDetectorConfig(),
     val nucleus: NucleusConfig = NucleusConfig(),
+    val commissions: CommissionsConfig = CommissionsConfig(),
     /** Mute the Crystal Hollows weather's sounds (`HollowsWeather`); visuals stay. */
     val muteHollowsWeather: Boolean = false,
     /** Drop the Crystal Hollows weather's particle packets (`HollowsWeather`); sounds stay. */
     val hideHollowsWeatherVisuals: Boolean = false,
+    /** Drop Divan's Powder Coating dust around players (`PowderCoatingParticles`). */
+    val hidePowderCoatingParticles: Boolean = false,
+)
+
+/** Dwarven Mines / Crystal Hollows commissions (`com.soulreturns.features.mining.commissions`). */
+@Serializable
+data class CommissionsConfig(
+    /** Mark COMPLETED commissions in the `Commissions` menu. */
+    val highlightCompleted: Boolean = false,
+    /** Commission list with progress, from the tab list (menu as fallback). */
+    val hud: Boolean = false,
+    /** Default: left edge, vertically centered. */
+    val hudTransform: HudTransform = HudTransform(hAnchor = HudAnchor.START, vAnchor = HudAnchor.CENTER, offsetX = 9.5f),
+    val hudBackground: Boolean = true,
+    val hudBackgroundColor: ChromaColor = ChromaColor(0x90000000.toInt()),
 )
 
 /** Crystal Nucleus runs in the Crystal Hollows (`com.soulreturns.features.mining.nucleus`). */

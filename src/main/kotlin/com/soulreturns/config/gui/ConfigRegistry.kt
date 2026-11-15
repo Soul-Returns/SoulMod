@@ -1,6 +1,7 @@
 package com.soulreturns.config.gui
 
 import com.soulreturns.config.ChromaColor
+import com.soulreturns.config.CommissionsConfig
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.config.DragonsConfig
 import com.soulreturns.config.FishingConfig
@@ -187,6 +188,8 @@ object ConfigRegistry {
 
     private fun nucleus(block: NucleusConfig.() -> NucleusConfig) = ConfigManager.update { copy(mining = mining.copy(nucleus = mining.nucleus.block())) }
 
+    private fun commissions(block: CommissionsConfig.() -> CommissionsConfig) = ConfigManager.update { copy(mining = mining.copy(commissions = mining.commissions.block())) }
+
     private fun fishing(block: FishingConfig.() -> FishingConfig) = ConfigManager.update { copy(fishing = fishing.block()) }
 
     private fun dragons(block: DragonsConfig.() -> DragonsConfig) = ConfigManager.update { copy(combat = combat.copy(dragons = combat.dragons.block())) }
@@ -206,6 +209,7 @@ object ConfigRegistry {
 
     private val HOLLOWS = listOf("Crystal Hollows")
     private val MINESHAFTS = listOf("Mineshaft")
+    private val COMMISSION_AREAS = listOf("Dwarven Mines", "Crystal Hollows")
     private val FISHING_AREAS = listOf("Backwater Bayou", "Crimson Isle")
 
     // ---------------------------------------------------------------- feature cards
@@ -515,6 +519,36 @@ object ConfigRegistry {
                     simple = listOf(position("the counter")),
                     where = HOLLOWS, contexts = listOf(Detector.METAL_DETECTOR), hud = true,
                     synonyms = listOf("scavenged", "tools", "divan", "counter"),
+                )
+            },
+            // Mining › Dwarven Mines
+            card("commissionshud") {
+                FeatureCard(
+                    "commissionshud", "Commissions HUD", "Your commissions with their progress on screen", "mining", "dwarven", "list",
+                    "One row per commission with its progress, DONE in green. Read from the tab list's Commissions widget; without that widget, from the last time you opened the Commissions menu, while you are where commissions are.",
+                    master = toggle("Commissions HUD", null, { cfg.mining.commissions.hud }, { v -> commissions { copy(hud = v) } }, d.mining.commissions.hud),
+                    simple = listOf(position("the list")),
+                    advanced = background("the list", { cfg.mining.commissions.hudBackground }, { v -> commissions { copy(hudBackground = v) } }, d.mining.commissions.hudBackground,
+                        { cfg.mining.commissions.hudBackgroundColor }, { v -> commissions { copy(hudBackgroundColor = v) } }, d.mining.commissions.hudBackgroundColor),
+                    where = COMMISSION_AREAS, hud = true,
+                    synonyms = listOf("commissions", "comms", "king", "progress", "tab list"),
+                )
+            },
+            card("commissionsdone") {
+                FeatureCard(
+                    "commissionsdone", "Highlight completed commissions", "Finished commissions stand out in the Commissions menu", "mining", "dwarven", "check",
+                    "In the Commissions menu, every commission that reads COMPLETED gets a green mark, however many commission slots you have.",
+                    master = toggle("Highlight completed commissions", null, { cfg.mining.commissions.highlightCompleted }, { v -> commissions { copy(highlightCompleted = v) } }, d.mining.commissions.highlightCompleted),
+                    where = COMMISSION_AREAS, synonyms = listOf("commissions", "comms", "claim", "completed", "highlight"),
+                )
+            },
+            // Mining › Powder & pickaxe
+            card("powdercoating") {
+                FeatureCard(
+                    "powdercoating", "Hide Powder Coating particles", "The white and gold dust around coated Divan armor", "mining", "powder", "eyeoff",
+                    "Hides the dust Divan's Powder Coating puts around anyone wearing coated Armor of Divan, you and other players. Only that exact dust close to a player is hidden; the coating's effect stays.",
+                    master = toggle("Hide Powder Coating particles", null, { cfg.mining.hidePowderCoatingParticles }, { v -> ConfigManager.update { copy(mining = mining.copy(hidePowderCoatingParticles = v)) } }, d.mining.hidePowderCoatingParticles),
+                    synonyms = listOf("divan", "powder coating", "particles", "dust", "armor", "fps"),
                 )
             },
             // Mining › Mineshafts

@@ -52,6 +52,8 @@ import com.soulreturns.features.fishing.FishingTimer
 import com.soulreturns.features.fishing.FishingTracker
 import com.soulreturns.features.fishing.FishingXpTracker
 import com.soulreturns.features.fishing.FishingVisibility
+import com.soulreturns.features.mining.commissions.Commissions
+import com.soulreturns.features.mining.commissions.CommissionsHud
 import com.soulreturns.features.mining.mineshaft.MineshaftCorpsesHud
 import com.soulreturns.features.darkui.DarkUi
 import com.soulreturns.features.inventory.EquipmentDisplay
@@ -235,6 +237,7 @@ object Soul : ClientModInitializer {
         NucleusRuns.register()
         BalState.register()
         NucleusChatCompactor.register()
+        Commissions.register()
         // Dragons. After PartyManager (both announcements gate /pc on party membership) and after
         // SkyblockStateReader (every listener gates on the Dragon's Nest sublocation it publishes).
         // The detector is the only parser of the death banner; the scanner and the Legion announcer
@@ -301,6 +304,7 @@ object Soul : ClientModInitializer {
         SoulHud.add(NucleusHud)
         SoulHud.add(CrystalChecklistHud)
         SoulHud.add(BalHud)
+        SoulHud.add(CommissionsHud)
         SoulHud.add(MetalDetectorToolsHud)
         SoulHud.add(AlertHud)
         SoulHud.add(MobHealthHud)
@@ -325,6 +329,7 @@ object Soul : ClientModInitializer {
         MovableHudRegistry.register(NucleusHud)
         MovableHudRegistry.register(CrystalChecklistHud)
         MovableHudRegistry.register(BalHud)
+        MovableHudRegistry.register(CommissionsHud)
         MovableHudRegistry.register(MetalDetectorToolsHud)
         MovableHudRegistry.register(AlertHud)
         MovableHudRegistry.register(MobHealthHud)

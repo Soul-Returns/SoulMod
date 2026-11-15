@@ -9,7 +9,8 @@
     "dungeon":   { "location": "dungeon",   "sidebar": "dungeon",   "tab": "dungeon",   "actionbar": "dungeon", "chat": "join" },
     "end":       { "location": "end",       "sidebar": "end",       "tab": "end",       "actionbar": "stats",   "chat": "join" },
     "mineshaft": { "location": "mineshaft", "sidebar": "mineshaft", "tab": "mineshaft", "actionbar": "stats",   "chat": "join" },
-    "divan":     { "location": "crystal_hollows", "sidebar": "mines_of_divan", "chat": "join" }
+    "divan":     { "location": "crystal_hollows", "sidebar": "mines_of_divan", "chat": "join" },
+    "dwarven":   { "location": "dwarven",   "sidebar": "dwarven_mines", "tab": "dwarven", "actionbar": "stats", "chat": "join" }
   },
 
   "locations": {
@@ -133,6 +134,21 @@
         " Late Autumn 11th",
         " §72:00am §b☽",
         " §7⏣ §aMines of Divan",
+        "",
+        "Purse: §61,234,567",
+        "Bits: §b12,345",
+        "",
+        "§ewww.hypixel.net"
+      ]
+    },
+    "dwarven_mines": {
+      "title": "§e§lSKYBLOCK",
+      "lines": [
+        "§7{date} §8{serverShort}",
+        "",
+        " Late Autumn 11th",
+        " §72:00am §b☽",
+        " §7⏣ §bRoyal Mines",
         "",
         "Purse: §61,234,567",
         "Bits: §b12,345",
@@ -285,6 +301,56 @@
           " §7[Lvl 200] §6Golden Dragon§d ✦",
           " §6+§e335,977,671.1 XP"
         ],
+        []
+      ]
+    },
+    "dwarven": {
+      "header": "\n§bYou are playing on §e§lMC.HYPIXEL.NET\n",
+      "footer": "\n§aRanks, Boosters & MORE! §c§lSTORE.HYPIXEL.NET",
+      "columns": [
+        [
+          "§a§lPlayers §f(1)",
+          "§8[§9285§8] §b{player}"
+        ],
+        [
+          "§b§lArea: §7Dwarven Mines",
+          " Server: §8{server}",
+          "",
+          "§e§lProfile: §aBanana",
+          " SB Level§f: §8[§4607§8] §b72§3/§b100 XP",
+          "",
+          "§9§lCommissions:",
+          "§r §r§fGoblin Raid Slayer: §r§c0%",
+          "§r §r§fRaffle: §r§c0%",
+          "§r §r§fRoyal Mines Mithril: §r§e47.5%",
+          "§r §r§fUpper Mines Titanium: §r§aDONE",
+          "§r §r§fIce Walker Slayer: §r§e30%",
+          "",
+          "§9§lPowders:",
+          "§r Mithril: §r§266,017",
+          "§r Gemstone: §r§d13,076",
+          "§r Glacite: §r§b0"
+        ],
+        [],
+        []
+      ]
+    },
+    "dwarven_nocomm": {
+      "header": "\n§bYou are playing on §e§lMC.HYPIXEL.NET\n",
+      "footer": "\n§aRanks, Boosters & MORE! §c§lSTORE.HYPIXEL.NET",
+      "columns": [
+        [
+          "§a§lPlayers §f(1)",
+          "§8[§9285§8] §b{player}"
+        ],
+        [
+          "§b§lArea: §7Dwarven Mines",
+          " Server: §8{server}",
+          "",
+          "§9§lPowders:",
+          "§r Mithril: §r§266,017"
+        ],
+        [],
         []
       ]
     }
@@ -556,6 +622,32 @@
         "13": { "material": "GOLDEN_CARROT", "name": "§eView Bids", "lore": ["§7You don't have any outstanding", "§7bids.", "", "§eClick to view!"] },
         "15": { "material": "GOLDEN_HORSE_ARMOR", "name": "§aCreate Auction", "lore": ["§7Set your own items on auction", "§7for other players to purchase.", "", "§eClick to become rich!"] },
         "31": { "material": "BARRIER", "name": "§cClose", "action": "close" }
+      }
+    },
+    "commissions": {
+      "title": "Commissions",
+      "rows": 4,
+      "filler": "BLACK_STAINED_GLASS_PANE",
+      "slots": {
+        "11": { "material": "WRITABLE_BOOK", "name": "§6Commission #1", "lore": ["§7Commissions are tasks given directly", "§7by the king which give bountiful", "§7rewards.", "", "§9Goblin Raid Slayer", "§7Slay §a20 §cGoblins §7during the §cGoblin", "§cRaid §7Event.", "", "§9Rewards", "§7- §5+410 HOTM Exp", "§7- §2500 Mithril Powder", "§7- §3+7.5k Mining Exp", "§7- §b10 Bits", "", "§9Progress", "§f§l§m                    §r§9 0%"] },
+        "12": { "material": "WRITABLE_BOOK", "name": "§6Commission #2", "lore": ["§7Commissions are tasks given directly", "§7by the king which give bountiful", "§7rewards.", "", "§9Raffle", "§7Participate in the §6Raffle §7Event.", "", "§9Rewards", "§7- §5+410 HOTM Exp", "§7- §2500 Mithril Powder", "§7- §3+7.5k Mining Exp", "§7- §b10 Bits", "", "§a§lCOMPLETED", "§eClick to claim rewards!"] },
+        "14": { "material": "WRITABLE_BOOK", "name": "§6Commission #3", "lore": ["§7Commissions are tasks given directly", "§7by the king which give bountiful", "§7rewards.", "", "§9Royal Mines Mithril", "§7Mine §a250 §7Mithril Ore in §bRoyal Mines§7.", "", "§9Rewards", "§7- §5+410 HOTM Exp", "§7- §2500 Mithril Powder", "§7- §3+7.5k Mining Exp", "§7- §b10 Bits", "", "§9Progress", "§a§l§m         §f§l§m           §r§9 47.5%"] },
+        "15": { "material": "WRITABLE_BOOK", "name": "§6Commission #4 §r§a§lNEW", "lore": ["§7Commissions are tasks given directly", "§7by the king which give bountiful", "§7rewards.", "", "§9Upper Mines Titanium", "§7Mine §a10 §7Titanium Ore in §bUpper Mines§7.", "", "§9Rewards", "§7- §5+410 HOTM Exp", "§7- §2500 Mithril Powder", "§7- §3+7.5k Mining Exp", "§7- §b10 Bits", "", "§a§lCOMPLETED", "§eClick to claim rewards!"] },
+        "30": { "material": "FILLED_MAP", "name": "§eCommission Milestones", "lore": ["§7View milestone progress and rewards!", "§7Progress to milestone V: §e83.6§6%", "", "§eClick to view!"] },
+        "31": { "material": "BARRIER", "name": "§cClose", "action": "close" },
+        "32": { "material": "ENDER_EYE", "name": "§aFilter", "lore": ["§a▶ §2Dwarven Mines", "§7  §5Crystal Hollows", "", "§eClick to switch filter!", "§bRight-Click to go backwards!"] }
+      }
+    },
+    "commissions_2": {
+      "title": "Commissions",
+      "rows": 4,
+      "filler": "BLACK_STAINED_GLASS_PANE",
+      "slots": {
+        "12": { "material": "WRITABLE_BOOK", "name": "§6Commission #1", "lore": ["§7Commissions are tasks given directly", "§7by the king which give bountiful", "§7rewards.", "", "§9Lava Springs Mithril", "§7Mine §a350 §7Mithril Ore in §bLava Springs§7.", "", "§9Rewards", "§7- §5+410 HOTM Exp", "§7- §2500 Mithril Powder", "", "§9Progress", "§a§l§m    §f§l§m                §r§9 20%"] },
+        "14": { "material": "WRITABLE_BOOK", "name": "§6Commission #2", "lore": ["§7Commissions are tasks given directly", "§7by the king which give bountiful", "§7rewards.", "", "§9Ice Walker Slayer", "§7Slay §a50 §bIce Walkers§7.", "", "§9Rewards", "§7- §5+410 HOTM Exp", "§7- §2500 Mithril Powder", "", "§a§lCOMPLETED", "§eClick to claim rewards!"] },
+        "30": { "material": "FILLED_MAP", "name": "§eCommission Milestones", "lore": ["§7View milestone progress and rewards!", "", "§eClick to view!"] },
+        "31": { "material": "BARRIER", "name": "§cClose", "action": "close" },
+        "32": { "material": "ENDER_EYE", "name": "§aFilter", "lore": ["§a▶ §2Dwarven Mines", "§7  §5Crystal Hollows", "", "§eClick to switch filter!", "§bRight-Click to go backwards!"] }
       }
     }
   }

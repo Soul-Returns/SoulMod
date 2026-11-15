@@ -8,6 +8,7 @@ import com.soulreturns.features.dungeons.devices.SimonSays;
 import com.soulreturns.features.dungeons.terminals.TerminalSolver;
 import com.soulreturns.features.qol.ImplosionHider;
 import com.soulreturns.features.mining.HollowsWeather;
+import com.soulreturns.features.mining.PowderCoatingParticles;
 import com.soulreturns.features.mining.metaldetector.MetalDetector;
 import com.soulreturns.features.islandchests.IslandChests;
 import com.soulreturns.features.storage.StorageOverlay;
@@ -36,6 +37,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * thread (vanilla re-schedules onto the render thread right after), so a drop happens before that.
  * {@link MetalDetector} only observes sounds, on the render-thread pass. {@link HollowsWeather} observes
  * sounds (the weather's creaking marks it active) and drops the weather's particle packets.
+ * {@link PowderCoatingParticles} drops coated Divan armor's dust on the render-thread pass (it reads players).
  * {@link ServerTime} anchors at each {@code set_time}'s arrival (the netty pass) and {@link F7Boss} stamps
  * sounds, titles, chat lines and the Storm boss bar with the server tick of their arrival there; {@link GoldorPhase}
  * stamps boss lines and Storm's death strike the same way for Goldor's phase start; {@link EntityAdds} passes lone
@@ -48,7 +50,7 @@ public abstract class ClientPacketListenerMixin {
     @Inject(method = "handleParticleEvent", at = @At("HEAD"), cancellable = true)
     private void soul$hideImplosion(ClientboundLevelParticlesPacket packet, CallbackInfo ci) {
         DragonCountdown.onParticle(packet);
-        if (ImplosionHider.onParticle(packet) || HollowsWeather.onParticle(packet)) ci.cancel();
+        if (ImplosionHider.onParticle(packet) || HollowsWeather.onParticle(packet) || PowderCoatingParticles.onParticle(packet)) ci.cancel();
     }
 
     @Inject(method = "handleSoundEvent", at = @At("HEAD"), cancellable = true)

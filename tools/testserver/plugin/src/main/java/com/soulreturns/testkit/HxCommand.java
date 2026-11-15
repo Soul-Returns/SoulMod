@@ -55,6 +55,7 @@ public final class HxCommand implements TabExecutor {
         {"md keepers <on|off>", "Metal Detector: name or un-name the keeper stands (Hypixel names them only while you are near)"},
         {"md loot <lapis|golden|diamond|emerald|gem|gem2|powder>", "Metal Detector: one loot chat line (tool, gemstone, gemstone x2, Gemstone Powder)"},
         {"md give|take <lapis|golden|diamond|emerald|all>", "Metal Detector: add or remove nucleus tool items (all-tools warning)"},
+        {"coating on|decoy|off", "Divan's Powder Coating dust around you as captured (4 white + 4 gold dust packets every 4 ticks, sent to everyone in the world); decoy = the same burst also 4 blocks ahead, away from any player"},
         {"nucleus enter", "Crystal Nucleus: Crystal Hollows location, sidebar sublocation, tab list; fresh run"},
         {"nucleus run [speed] [normal|rare|claw]", "Crystal Nucleus: a whole run with the captured lines (legs x speed, default 0.15), placing, loot bundle"},
         {"nucleus area <name…>", "Crystal Nucleus: sidebar sublocation (Khazad-dûm, Jungle Temple, …)"},
@@ -106,9 +107,11 @@ public final class HxCommand implements TabExecutor {
         Arrays.stream(HELP).map(h -> h[0].split(" ")[0])).distinct().toList();
 
     private final SoulTestKit plugin;
+    private final CoatingSim coating;
 
     public HxCommand(SoulTestKit plugin) {
         this.plugin = plugin;
+        this.coating = new CoatingSim(plugin);
     }
 
     @Override
@@ -362,6 +365,15 @@ public final class HxCommand implements TabExecutor {
                 }
             }
             case "nucleus" -> nucleus(sender, target, who, rest);
+            case "coating" -> {
+                need(rest, 1, "coating <on|decoy|off>");
+                String mode = rest[0].toLowerCase(Locale.ROOT);
+                if (mode.equals("off")) sender.sendMessage("§a" + who + (coating.stop(target) ? "coating dust stopped" : "no coating dust running"));
+                else if (mode.equals("on") || mode.equals("decoy")) {
+                    coating.start(target, mode.equals("decoy"));
+                    sender.sendMessage("§a" + who + "coating dust " + mode);
+                } else throw new Problem("coating <on|decoy|off>");
+            }
             case "terminal" -> {
                 try {
                     sender.sendMessage("§a" + who + plugin.terminals().command(target, rest, sender));
@@ -633,6 +645,7 @@ public final class HxCommand implements TabExecutor {
                 case "mob" -> List.of("damage", "list", "clear");
                 case "md" -> List.of("start", "found", "stop", "keepers", "loot", "give", "take");
                 case "nucleus" -> List.of("enter", "run", "area", "kit", "found", "place", "loot", "bal", "spam", "tab", "state", "stop");
+                case "coating" -> List.of("on", "decoy", "off");
                 case "terminal" -> plugin.terminals().completions(1, new String[0]);
                 case "ss" -> plugin.simonSays().completions(1);
                 case "lights" -> plugin.lights().completions(1);
