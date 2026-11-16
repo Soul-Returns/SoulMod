@@ -107,12 +107,16 @@ object ForgeEngine {
     /** The player's menu duration: base × (1 − Quick Forge), whole seconds (`Math.round`). */
     fun shownSeconds(base: Long, qf: Double): Long = Math.round(base * (1 - qf))
 
+    /**
+     * The goal means "forge one more": the root takes nothing from owned stock (a held or borrowed copy of the
+     * goal never covers it) and leaves that id's pool for deeper uses of the same id, which subtract as usual.
+     */
     fun expand(goal: String, book: ForgeRecipeBook, have: (String) -> Long): ForgeNode {
         val pool = HashMap<String, Long>()
         fun left(id: String) = pool[id] ?: have(id)
         fun walk(id: String, need: Long, per: Long, depth: Int, path: List<String>, key: String): ForgeNode {
-            val use = min(left(id), need)
-            pool[id] = left(id) - use
+            val use = if (depth == 0) 0L else min(left(id), need)
+            if (use > 0) pool[id] = left(id) - use
             val missing = need - use
             val recipe = if (id in path) null else book.recipeOf(id)
             val kind = if (id == COINS) StepKind.COINS else recipe?.kind ?: StepKind.BASE

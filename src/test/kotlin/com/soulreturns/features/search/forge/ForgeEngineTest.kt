@@ -154,6 +154,46 @@ class ForgeEngineTest {
     }
 
     @Test
+    fun anOwnedCopyOfTheGoalNeverCoversIt() {
+        // A borrowed DR-X655 in the inventory: the plan still forges one, inputs exactly as without it.
+        val owned = have("mid")
+        val withCopy = ForgeEngine.expand(goal, book) { if (it == goal) 1L else owned(it) }
+        val without = ForgeEngine.expand(goal, book, owned)
+        assertEquals(0, withCopy.use)
+        assertEquals(1, withCopy.missing)
+        assertEquals(1, withCopy.times)
+        assertEquals(StepState.MISSING, ForgeEngine.status(withCopy).state)
+        assertEquals(ForgeEngine.nodes(without).map { "${it.key} ${it.use} ${it.missing} ${it.times} ${it.make}" }.toList(),
+            ForgeEngine.nodes(withCopy).map { "${it.key} ${it.use} ${it.missing} ${it.times} ${it.make}" }.toList())
+
+        // All inputs owned plus a copy of the goal: still "forge the final item".
+        val ready = have("ready")
+        val root = ForgeEngine.expand(goal, book) { if (it == goal) 1L else ready(it) }
+        assertEquals(StepState.READY, ForgeEngine.status(root).state)
+        assertEquals(1, ForgeEngine.readyTimes(root))
+    }
+
+    @Test
+    fun theGoalIdDeeperDownStillTakesOwnedCopies() {
+        // No served recipe contains its own output (checked against the catalog), so a synthetic cycle:
+        // GOAL forges from 2 PART + 1 GOAL, PART crafts from ORE.
+        val synthetic = ForgeRecipeBook { id ->
+            if (id == "GOAL") ForgeRecipe(StepKind.FORGE, listOf("PART" to 2L, "GOAL" to 1L), 1, 3600)
+            else if (id == "PART") ForgeRecipe(StepKind.CRAFT, listOf("ORE" to 4L), 1)
+            else null
+        }
+        val owned = mapOf("GOAL" to 1L, "ORE" to 8L)
+        val root = ForgeEngine.expand("GOAL", synthetic) { owned[it] ?: 0L }
+        assertEquals(0, root.use)
+        assertEquals(1, root.times)
+        val inner = root.children.first { it.id == "GOAL" }
+        assertEquals(1, inner.use)
+        assertEquals(0, inner.missing)
+        assertNull(inner.recipe)
+        assertEquals(StepState.READY, ForgeEngine.status(root).state)
+    }
+
+    @Test
     fun lockedRecipesStartNothing() {
         val locked = ForgeRecipes(index, mapOf("REFINED_TITANIUM" to "Requires Tungsten Collection III"))
         val root = ForgeEngine.expand(goal, locked, have("mid"))

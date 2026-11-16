@@ -89,14 +89,10 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
         c.button(g, btnX1, bar.y + 17, 28, SectionAction(btnLabel) { s.picking = true; s.preview = id; s.cat = d.cats.categoryOf(id) ?: "all"; s.recipeScroll.pos = 0f; ForgeTab.focusRequested = true }, vis, 12, 12)
         var statsRight = btnX1 - btnW - 12
         if (!compact) {
-            val done = root.missing == 0L
             val ready = root.times == 1L && ForgeEngine.readyTimes(root) == 1L
             val t = m.time
             val b = m.best
-            if (done) {
-                val where = d.owned.bySource(id).joinToString(", ") { (ForgeOwned.source(it.source)?.label ?: it.source).lowercase() }
-                statsRight = okStat(g, statsRight, bar, vis, "You have it", "${ui.name(id)} is in your $where")
-            } else if (ready && lock == null) {
+            if (ready && lock == null) {
                 val n = root.recipe!!.inputs.count { it.first != ForgeEngine.COINS }
                 val best = ui.bestDur(root.recipe.baseSeconds, 4)
                 statsRight = okStat(g, statsRight, bar, vis, "Ready to forge", "all $n inputs owned · ${ui.dur(root.recipe.baseSeconds)}" + (best?.let { " · $it at QF 20" } ?: ""))
