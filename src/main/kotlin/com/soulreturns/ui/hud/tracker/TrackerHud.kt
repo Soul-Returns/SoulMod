@@ -265,9 +265,9 @@ abstract class TrackerHud<T : Any>(
      * Whether the panel draws at all this frame.
      *
      * Beyond the spec's own gate, this suppresses the **in-game HUD layer** while a container screen
-     * is open, because [TrackerHudHost] redraws the panel on top of that screen. Drawing both would
-     * cost a second full layout for a copy nobody can read through the inventory's dim — and would
-     * leave `liveRegions` describing whichever pass happened to run last.
+     * is open, because [TrackerHudHost] redraws the panel over that screen's background. Drawing both
+     * would cost a second full layout for a copy nobody can read through the inventory's dim — and
+     * would leave `liveRegions` describing whichever pass happened to run last.
      */
     final override fun isEnabled(): Boolean {
         if (!spec.isVisible()) return false

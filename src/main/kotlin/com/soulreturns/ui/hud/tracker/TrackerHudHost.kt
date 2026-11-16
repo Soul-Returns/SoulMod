@@ -15,12 +15,13 @@ import java.util.concurrent.CopyOnWriteArrayList
  * What makes a tracker panel usable **inside a container screen** — the half of the legacy HUD
  * runtime that a plain Fabric HUD layer cannot do.
  *
- * ### Why a second render pass
+ * ### Why a second render pass, and why at `afterBackground`
  * A HUD layer draws as part of the in-game GUI, which the screen then paints over: its dim
  * background lands on top and the panel goes murky and unreadable exactly when you opened the
- * inventory to read it. So every registered tracker is drawn **again** at `afterExtract`, which runs
- * at the end of the screen's own render — the same trick the legacy mod used at `Screen.render`
- * TAIL, and the reason its trackers looked crisp over an open inventory.
+ * inventory to read it. So every registered tracker is drawn **again** at `afterBackground`: after
+ * the dim, blur and inventory frame, in the stratum before the screen's content. Everything the
+ * screen draws after that (slots, carried item, tooltips, overlays like REI's item list, which
+ * draws inside `AbstractContainerScreen.extractContents`) paints over the panel where they overlap.
  *
  * ### Why only the player inventory
  * Trackers show on the in-game HUD and over [InventoryScreen], nowhere else. Chests, Hypixel's
@@ -81,8 +82,8 @@ object TrackerHudHost {
             ScreenEvents.AfterInit { _, screen, _, _ ->
                 if (screen !is InventoryScreen) return@AfterInit
 
-                ScreenEvents.afterExtract(screen).register(
-                    ScreenEvents.AfterExtract { s, g, mouseX, mouseY, _ -> draw(s, g, mouseX, mouseY) },
+                ScreenEvents.afterBackground(screen).register(
+                    ScreenEvents.AfterBackground { s, g, mouseX, mouseY, _ -> draw(s, g, mouseX, mouseY) },
                 )
                 ScreenEvents.remove(screen).register(
                     ScreenEvents.Remove { _ ->
@@ -121,8 +122,8 @@ object TrackerHudHost {
     }
 
     /**
-     * Draw every enabled tracker on top of the screen. [mouseX]/[mouseY] arrive in MC-scaled screen
-     * pixels; the panels lay out in Soul-logical ones, hence the divide by the global factor.
+     * Draw every enabled tracker over the screen's background. [mouseX]/[mouseY] arrive in MC-scaled
+     * screen pixels; the panels lay out in Soul-logical ones, hence the divide by the global factor.
      */
     private fun draw(
         screen: net.minecraft.client.gui.screens.Screen,
