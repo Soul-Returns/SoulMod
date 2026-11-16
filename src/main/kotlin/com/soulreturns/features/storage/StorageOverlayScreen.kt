@@ -25,6 +25,8 @@ import net.minecraft.world.inventory.Slot
 import net.minecraft.world.item.ItemStack
 import org.lwjgl.glfw.GLFW
 import java.util.IdentityHashMap
+import kotlin.math.ceil
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -99,6 +101,18 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
     private var layoutX = -1
     private var layoutY = -1
     private var layoutDock = -1
+    /**
+     * The panel in GUI px, REI's screen bounds for this screen (`StorageReiPlugin`): REI places its side panels,
+     * its notice box and its search bar around this instead of the vanilla chest frame hidden under the wall.
+     */
+    internal var guiPanel = StorageOverlayLayout.Rect(0, 0, 0, 0)
+        private set
+    /** GUI-px boxes REI keeps its item list out of: the panel and the title pill, which can be wider. A new list only when one moves. */
+    internal var occupiedBoxes: List<StorageOverlayLayout.Rect> = emptyList()
+        private set
+    private var occupiedPill = StorageOverlayLayout.Rect(0, 0, 0, 0)
+    private var occupiedPanel = occupiedPill
+    private var occupiedScale = 0f
 
     init {
         for (slot in menu.slots) nativeCoordinates[coordinateKey(slot.x, slot.y)] = slot.index
@@ -227,6 +241,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         layoutScale = scale
         layoutX = state.horizontal.pos.roundToInt(); layoutY = state.vertical.pos.roundToInt()
         layoutDock = state.dock.pos.roundToInt()
+        occupy(occupiedPill)
     }
 
     override fun extractBackground(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
@@ -259,7 +274,9 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         val countWidth = ui.measure(count, 11)
         val pillWidth = titleWidth + 9 + countWidth + 28
         val x = h.x + (h.width - pillWidth) / 2
-        ui.surface(g, StorageOverlayLayout.Rect(x, h.y, pillWidth, h.height), pill = true)
+        val pill = StorageOverlayLayout.Rect(x, h.y, pillWidth, h.height)
+        ui.surface(g, pill, pill = true)
+        occupy(pill)
         ui.text(g, "Storage", x + 14, h.y + 4, WHITE, 18, true)
         ui.text(g, count, x + 14 + titleWidth + 9, h.y + 9, MUTED, 11)
     }
@@ -286,13 +303,15 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         val name = SearchItems.name(mark.item)
         val label = pages.firstOrNull { it.id == mark.page }?.label ?: "this page"
         val detail = "${SearchItems.number(mark.count)} in $label · $markedStacks ${if (markedStacks == 1) "stack" else "stacks"} marked"
-        val keys = "${KeyCombo.label(cfg.islandChests.searchKey)} Back to search · Esc Close"
+        val keys = "${KeyCombo.label(cfg.islandChests.searchKey)} ${SearchEverywhere.backLabel()} · Esc Close"
         val nameW = ui.measure(name, 13)
         val detailW = ui.measure(detail, 11)
         val keysW = ui.measure(keys, 10)
         val pillW = minOf(h.width - 24, 14 + 16 + 8 + nameW + 10 + detailW + 14 + keysW + 14)
         val x = h.x + (h.width - pillW) / 2
-        ui.surface(g, StorageOverlayLayout.Rect(x, h.y, pillW, h.height), pill = true)
+        val pill = StorageOverlayLayout.Rect(x, h.y, pillW, h.height)
+        ui.surface(g, pill, pill = true)
+        occupy(pill)
         SearchItems.icon(g, mark.item, x + 14, h.y + 5, 16)
         var cx = x + 38
         ui.text(g, ui.shorten(name, x + pillW - 14 - cx, 13), cx, h.y + 7, SearchItems.color(mark.item), 13, true)
@@ -300,6 +319,20 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         if (cx < x + pillW - 14) ui.text(g, ui.shorten(detail, x + pillW - 14 - cx, 11), cx, h.y + 9, 0xFFB9D5F8.toInt(), 11)
         cx += detailW + 14
         if (cx < x + pillW - 14) ui.text(g, ui.shorten(keys, x + pillW - 14 - cx, 10), cx, h.y + 10, MUTED, 10)
+    }
+
+    /** From [layout] with the last pill, then with each frame's pill; the panel already holds the wall, the filters row and the dock. */
+    private fun occupy(pill: StorageOverlayLayout.Rect) {
+        val scale = SoulUi.factor()
+        if (pill == occupiedPill && frame.panel == occupiedPanel && scale == occupiedScale) return
+        occupiedPill = pill; occupiedPanel = frame.panel; occupiedScale = scale
+        guiPanel = guiBox(frame.panel, scale)
+        occupiedBoxes = listOf(guiPanel, guiBox(pill, scale))
+    }
+
+    private fun guiBox(r: StorageOverlayLayout.Rect, scale: Float): StorageOverlayLayout.Rect {
+        val x = floor(r.x * scale).toInt(); val y = floor(r.y * scale).toInt()
+        return StorageOverlayLayout.Rect(x, y, ceil(r.right * scale).toInt() - x, ceil(r.bottom * scale).toInt() - y)
     }
 
     private fun drawWall(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {

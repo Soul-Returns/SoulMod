@@ -22,6 +22,9 @@
         "adapter": "kotlin",
         "value": "com.soulreturns.Soul"
       }
+    ],
+    "rei_client": [
+      "com.soulreturns.features.storage.StorageReiPlugin"
     ]
   },
   "depends": {

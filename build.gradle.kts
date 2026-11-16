@@ -22,6 +22,11 @@ repositories {
     maven("https://maven.fabricmc.net/") { name = "Fabric" }
     maven("https://api.modrinth.com/maven") { name = "Modrinth" }
     maven("https://repo.hypixel.net/repository/Hypixel/") { name = "Hypixel" }
+    // REI's API for its exclusion zones (StorageReiPlugin); nothing else comes from this repository.
+    exclusiveContent {
+        forRepository { maven("https://maven.shedaniel.me/") { name = "Shedaniel" } }
+        filter { includeGroup("me.shedaniel"); includeGroup("me.shedaniel.cloth") }
+    }
     mavenCentral()
 }
 
@@ -48,6 +53,12 @@ dependencies {
     compileOnly("net.hypixel:mod-api:1.0.2")
     implementation("maven.modrinth:hypixel-mod-api:1.0.2+build.1+mc26.1")
     include("maven.modrinth:hypixel-mod-api:1.0.2+build.1+mc26.1")
+
+    // Roughly Enough Items API (MIT) and the cloth basic-math `Rectangle` its exclusion zones use
+    // (Unlicense): compile-only, never bundled. The `rei_client` entrypoint that needs them only
+    // loads when the player has REI installed (which brings both at runtime).
+    compileOnly("me.shedaniel:RoughlyEnoughItems-api-fabric:26.2.820") { isTransitive = false }
+    compileOnly("me.shedaniel.cloth:basic-math:0.6.1") { isTransitive = false }
 
     // JLayer (LGPL-2.0-or-later) decodes imported .mp3 files for the sound library; Minecraft only ships an
     // Ogg decoder. Plain library, so Loom wraps it as a nested jar.
