@@ -35,11 +35,16 @@ public final class HxCommand implements TabExecutor {
         {"chat <text…>", "system chat line (legacy codes, & works)"},
         {"pet <line…> [| xp line…]|none|reset", "replace the tab Pet widget's body lines (one body line each side of |; none = ' No pet selected'), re-sends the tab"},
         {"title <title…> [| subtitle…]", "title + subtitle"},
-        {"menu <name|sacks>", "open a SkyBlock chest GUI (clicks cancelled); sacks = Sack of Sacks, click a sack to open it"},
+        {"menu <name|sacks|forge|hotm>", "open a SkyBlock chest GUI (clicks cancelled); sacks = Sack of Sacks, click a sack to open it; forge = The Forge, hotm = Heart of the Mountain with Quick Forge (see forge)"},
         {"sacks add <ID> <n> [<ID> <n>…] [<s>s]", "change sack counts (n may be negative), update an open sack, send the [Sacks] summary (window default 30s)"},
         {"sacks say <ID> <n> [<ID> <n>…] [<s>s]", "send only the [Sacks] summary (counts unchanged): the delayed report of a manual removal made with sacks set"},
         {"sacks set <ID> <n>", "set a sack count silently (no chat), as with the summary disabled"},
         {"sacks get <ID>", "print a sack count"},
+        {"forge open|hotm", "The Forge (7 slots, recipes of the 9 categories, Confirm Process) / Heart of the Mountain with the Quick Forge perk at slot 24, as captured; real menus, clicks navigate"},
+        {"forge qf <0-20>", "Quick Forge level (0 = not unlocked; 10 + 0.5 x level %, 30 % at 20): changes the HotM item, every shown Duration and the remaining time of running processes"},
+        {"forge slots <free|three|chamber>", "forge slot state: all idle / Refined Titanium x2 + Mithril Plate with different remaining times / all 7 Gemstone Chamber at 35m 5s (30 %); counting down once per second"},
+        {"forge lock <OUTPUT_ID…|none|default>", "locked recipes (gray_dye + red 'Requires …', clicking echoes the line as chat): default = the 29 Kiwi had locked, none = all unlocked"},
+        {"forge start <slot 1-7> <OUTPUT_ID>|status", "start a recipe in a slot with its shown duration (Confirm never starts anything) / Quick Forge, locks and slots"},
         {"give <skyblock id> [count]", "SkyBlock item with custom_data"},
         {"item", "print custom_data of the held item"},
         {"mob <name> <level> <hp> <max> [type]", "SkyBlock mob with a [Lv#] Name hp/max❤ armor-stand nametag; '_' in name = space"},
@@ -275,12 +280,19 @@ public final class HxCommand implements TabExecutor {
                 sender.sendMessage("§a" + who + "title sent");
             }
             case "menu" -> {
-                need(rest, 1, "menu <" + String.join("|", plugin.presets().keys("menus")) + "|sacks>");
+                need(rest, 1, "menu <" + String.join("|", plugin.presets().keys("menus")) + "|sacks|forge|hotm>");
                 if (rest[0].equalsIgnoreCase("sacks")) plugin.sacks().openOverview(target);
                 else if (!plugin.menus().open(target, rest[0])) throw new Problem("unknown menu " + rest[0]);
                 sender.sendMessage("§a" + who + "opened " + rest[0]);
             }
             case "sacks" -> sacks(sender, target, who, rest);
+            case "forge" -> {
+                try {
+                    for (String line : plugin.forge().command(target, rest, sender)) sender.sendMessage("§a" + who + line);
+                } catch (IllegalArgumentException e) {
+                    throw new Problem(e.getMessage());
+                }
+            }
             case "give" -> {
                 need(rest, 1, "give <skyblock id> [count]");
                 String id = rest[0].toUpperCase(Locale.ROOT);
@@ -636,7 +648,7 @@ public final class HxCommand implements TabExecutor {
                 case "sidebar" -> with(p.keys("sidebars"), "clear");
                 case "tab" -> with(p.keys("tabs"), "clear");
                 case "actionbar" -> with(p.keys("actionbars"), "clear");
-                case "menu" -> with(p.keys("menus"), "sacks");
+                case "menu" -> with(with(with(p.keys("menus"), "sacks"), "forge"), "hotm");
                 case "sacks" -> List.of("add", "say", "set", "get");
                 case "give" -> p.keys("items");
                 case "party" -> List.of("none", "leader", "member");
@@ -651,6 +663,7 @@ public final class HxCommand implements TabExecutor {
                 case "lights" -> plugin.lights().completions(1);
                 case "arrows" -> plugin.arrows().completions(1);
                 case "sharp" -> plugin.sharp().completions(1);
+                case "forge" -> plugin.forge().completions(1, new String[0]);
                 case "leap" -> List.of("setup", "open", "clicks", "selftest");
                 case "world" -> List.of("list", "load", "unload", "tp", "compare", "selftest");
                 case "marks" -> List.of("show", "list", "tp", "clear");
@@ -667,6 +680,7 @@ public final class HxCommand implements TabExecutor {
         if (sub.equals("world") && pos == 3 && args[offset + 1].equalsIgnoreCase("selftest")) return match(List.of("build"), current);
         if (sub.equals("marks") && pos == 3 && args[offset + 1].equalsIgnoreCase("show")) return match(with(List.of(), "latest"), current);
         if (sub.equals("terminal")) return match(plugin.terminals().completions(pos - 1, Arrays.copyOfRange(args, offset + 1, args.length)), current);
+        if (sub.equals("forge")) return match(plugin.forge().completions(pos - 1, Arrays.copyOfRange(args, offset + 1, args.length)), current);
         if (sub.equals("party")) return match(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), current);
         if (sub.equals("mob") && pos == 6) return match(List.of("zombie", "enderman", "skeleton", "spider", "pig", "iron_golem"), current);
         if (sub.equals("storm") && pos == 3) {

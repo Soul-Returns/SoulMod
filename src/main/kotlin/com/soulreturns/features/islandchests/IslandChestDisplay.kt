@@ -6,6 +6,7 @@ import com.soulreturns.config.gui.render.RoundRectRenderState
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.features.dungeons.DungeonCommandGuard
+import com.soulreturns.features.search.SearchEverywhere
 import com.soulreturns.features.search.SearchItems
 import com.soulreturns.ui.SlotMark
 import com.soulreturns.ui.SoulUi
@@ -228,7 +229,7 @@ object IslandChestDisplay {
             text(g, fit(title, if (compact) right - left - 68 else (right - left) / 2 - 25, 19), left + 53, titleY + 27, SearchItems.color(result.item), 19)
             text(g, "${result.matches.size} matching ${IslandChestLayout.chests(result.matches.size)} · ${SearchItems.number(result.count)} last observed", left + 15, titleY + 57, 0xFFB9D5F8.toInt(), 12)
             val controlsX = if (compact) left + 15 else left + (right - left) / 2 + 12
-            text(g, "Back to search [${KeyCombo.label(cfg.islandChests.searchKey)}]", controlsX, controlsY, WHITE, 11)
+            text(g, "${SearchEverywhere.backLabel()} [${KeyCombo.label(cfg.islandChests.searchKey)}]", controlsX, controlsY, WHITE, 11)
             text(g, "Cancel locating [Esc]", controlsX, controlsY + 19, WHITE, 11)
             text(g, "Both halves outlined · look at a chest for details · open it normally", left + 15, titleY + h - 20, MUTED, 10)
             text(g, "Blue: last observed match    Amber: checked before the newest matching chest", left, titleY + h + 8, MUTED, 9)

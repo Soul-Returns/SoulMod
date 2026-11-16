@@ -1,5 +1,6 @@
 package com.soulreturns.features.search
 
+import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.soulreturns.api.LocationApi
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.Theme
@@ -10,6 +11,9 @@ import com.soulreturns.data.skyblock.SkyblockLocation
 import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.data.skyblock.SkyblockState
 import com.soulreturns.features.islandchests.IslandChests
+import com.soulreturns.features.search.forge.Forge
+import com.soulreturns.features.search.forge.ForgeCanvas
+import com.soulreturns.features.search.forge.ForgeTab
 import com.soulreturns.features.search.SearchEverywhereLayout.Rect
 import com.soulreturns.ui.SoulUi
 import com.soulreturns.ui.screen.SoulScreenBase
@@ -25,7 +29,10 @@ import org.lwjgl.glfw.GLFW
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-/** The Search everywhere screen, `mocks/search-everywhere/` variant merged; numbers from [SearchEverywhereLayout]. */
+/**
+ * The Search everywhere screen, `mocks/search-everywhere/` variant merged; numbers from [SearchEverywhereLayout].
+ * Its Forge tab ([ForgeTab]) shares this chrome and helpers through [forgeCanvas].
+ */
 class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBase(Component.literal("Search everywhere")) {
     private val search = SoulTextField().apply {
         focused = true
@@ -43,6 +50,11 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
     private var view = intArrayOf(0, 0, 0, 0)
     private var mx = 0
     private var my = 0
+    /** `search` or `forge`; the tab used last opens first (K, `/soul search`). */
+    private var mode = if (Forge.enabled() && Forge.lastMode() == MODE_FORGE) MODE_FORGE else MODE_SEARCH
+    /** The key a section action leaves behind for K to return to: the Forge tab's material, else the selected row. */
+    private var runKey: String? = null
+    private val forge = ForgeTab(forgeCanvas(), ::showInSearch)
 
     internal fun restore(query: String, itemKey: String?) {
         search.set(query)
@@ -71,11 +83,13 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
             listScroll.pos = 0f
             placesScroll.pos = 0f
         }
+        if (mode == MODE_FORGE && !Forge.enabled()) mode = MODE_SEARCH
+        val forgeMode = mode == MODE_FORGE
         val active = SearchEverywhere.active()
         val rows = SearchEverywhere.rows(active)
         if (filter != "all" && active.none { it.id == filter }) filter = "all"
         val filtered = filtered(active)
-        val results = SearchEverywhere.index.search(search.text, filtered.map { it.id })
+        val results = if (forgeMode) emptyList() else SearchEverywhere.index.search(search.text, filtered.map { it.id })
         val selected = selectedKey?.let { key -> rows.firstOrNull { it.key == key } }
         val frame = SearchEverywhereLayout.frame(w, h, detailHeight, bodyScroll.pos.roundToInt())
         val o = frame.outer
@@ -86,12 +100,17 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         roundRect(g, o.x + 1, o.y + 1, o.right - 1, o.bottom - 1, BG, SoulRenderPipelines.ROUND_LARGE)
         beginClip(g, o.x, o.y, o.right, o.bottom)
         drawHeader(g, frame)
-        drawScope(g, frame.scope, active)
+        if (forgeMode) {
+            forge.begin()
+            forge.drawScope(g, frame.scope)
+        } else drawScope(g, frame.scope, active)
         drawFoot(g, frame, selected != null)
         endClip(g)
         val body = frame.body
         view = intArrayOf(body.x, body.y, body.right, body.bottom)
-        if (frame.compact) {
+        if (forgeMode) {
+            forge.drawBody(g, body, frame.compact)
+        } else if (frame.compact) {
             bodyScroll.content = SearchEverywhereLayout.COMPACT_SEARCH + max(SearchEverywhereLayout.COMPACT_DETAIL, detailHeight)
             bodyScroll.view = body.height
             bodyScroll.clamp()
@@ -118,11 +137,61 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         roundRect(g, r.x + 22, r.y + 20, r.x + 60, r.y + 58, 0xFF202F46.toInt())
         drawTextV(g, "S", r.x + 41 - textWidth("S", em(25), MsdfFonts.menuSemibold) / 2, r.y + 20, r.y + 58, 0xFF86B4FF.toInt(), em(25), MsdfFonts.menuSemibold)
         drawTextV(g, "Search everywhere", r.x + 72, r.y + 15, r.y + 43, WHITE, em(25), MsdfFonts.menuSemibold)
-        drawTextV(g, "Every item you have seen, wherever it is.", r.x + 72, r.y + 45, r.y + 64, MUTED, em(12))
+        drawTextV(g, if (mode == MODE_FORGE) "Plan a forge recipe down to what you own." else "Every item you have seen, wherever it is.", r.x + 72, r.y + 45, r.y + 64, MUTED, em(12))
+        var right = r.right - 22
         if (!frame.compact) {
             val label = KeyCombo.label(cfg.islandChests.searchKey).ifEmpty { "Unbound" }
-            kbd(g, label, r.right - 22 - kbdWidth(label), r.y + 30)
+            kbd(g, label, right - kbdWidth(label), r.y + 30)
+            right -= kbdWidth(label) + 12
         }
+        if (Forge.enabled()) drawModes(g, right, r.y + 21)
+    }
+
+    /** `.modes`: the Search | Forge segmented control left of the K key (mock header). */
+    private fun drawModes(g: GuiGraphicsExtractor, right: Int, y: Int) {
+        val tabs = listOf(MODE_SEARCH to "Search", MODE_FORGE to "Forge")
+        val widths = tabs.map { textWidth(it.second, em(13)) + 32 }
+        val x = right - (8 + widths.sum() + 2)
+        roundRect(g, x, y, right, y + 36, EDGE, SoulRenderPipelines.ROUND_MEDIUM)
+        roundRect(g, x + 1, y + 1, right - 1, y + 35, SCOPE_BG, SoulRenderPipelines.ROUND_MEDIUM)
+        var bx = x + 4
+        for ((i, tab) in tabs.withIndex()) {
+            val on = mode == tab.first
+            val hover = mx in bx until bx + widths[i] && my in y + 4 until y + 32
+            if (on) {
+                roundRect(g, bx, y + 4, bx + widths[i], y + 32, 0xFF385A87.toInt(), SoulRenderPipelines.ROUND_SMALL)
+                roundRect(g, bx + 1, y + 5, bx + widths[i] - 1, y + 31, 0xFF202D40.toInt(), SoulRenderPipelines.ROUND_SMALL)
+            } else if (hover) roundRect(g, bx, y + 4, bx + widths[i], y + 32, 0xFF252525.toInt(), SoulRenderPipelines.ROUND_SMALL)
+            drawTextV(g, tab.second, bx + 16, y + 4, y + 32, if (on || hover) WHITE else 0xFF999999.toInt(), em(13))
+            region(bx, y + 4, bx + widths[i], y + 32) { switchMode(tab.first) }
+            bx += widths[i] + 2
+        }
+    }
+
+    /** Switches the tab and remembers it: K and `/soul search` open the tab used last. */
+    private fun switchMode(to: String) {
+        if (mode == to || (to == MODE_FORGE && !Forge.enabled())) return
+        mode = to
+        Forge.setMode(to)
+        closeTooltip()
+        if (to == MODE_FORGE) {
+            search.focused = false
+            forge.begin()
+            forge.entered()
+        } else {
+            forge.field.focused = false
+            search.focused = true
+        }
+    }
+
+    /** "Show in Search" of a material's details: the search tab with that item selected and its name as the query. */
+    private fun showInSearch(row: SearchRow) {
+        search.set(SearchItems.name(row.item))
+        selectedKey = row.key
+        filter = "all"
+        listScroll.pos = 0f
+        placesScroll.pos = 0f
+        switchMode(MODE_SEARCH)
     }
 
     private fun drawScope(g: GuiGraphicsExtractor, r: Rect, active: List<SearchSource>) {
@@ -147,10 +216,13 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         val r = frame.foot
         roundRect(g, r.x, r.y, r.right, r.bottom, HEAD_BG, SoulRenderPipelines.ROUND_BOTTOM)
         g.fill(r.x, r.y, r.right, r.y + 1, DIVIDER)
-        val left = "Island chests refresh when a chest is opened, storage when a page is opened."
+        val forgeMode = mode == MODE_FORGE
+        val left = if (forgeMode) forge.footerLeft() else "Island chests refresh when a chest is opened, storage when a page is opened."
         drawTextV(g, ellipsize(left, r.width - 40 - if (frame.compact) 0 else 230, em(9)), r.x + 20, r.y + 1, r.bottom, FAINT, em(9))
         if (frame.compact) return
-        val parts = listOf("Tab" to "Source ·", "Enter" to "First result ·", "Esc" to if (selected) "Clear selection" else "Close")
+        val parts = if (forgeMode) forge.footerKeys()
+            else (if (Forge.enabled()) listOf("Ctrl+Tab" to "Forge ·") else emptyList()) +
+                listOf("Tab" to "Source ·", "Enter" to "First result ·", "Esc" to if (selected) "Clear selection" else "Close")
         var x = r.right - 20 - parts.sumOf { (key, text) -> kbdWidth(key) + 4 + textWidth(text, em(9)) } - 4 * (parts.size - 1)
         for ((key, text) in parts) {
             kbd(g, key, x, r.y + 6)
@@ -169,22 +241,24 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         drawTextV(g, label, x + 5, y, y + 18, MUTED, em(10))
     }
 
-    /** `.s-btn`: 0 10 padding, font 11; accent blue, disabled dimmed without a click region. */
-    private fun button(g: GuiGraphicsExtractor, x1: Int, y: Int, h: Int, action: SectionAction, clip: IntArray): Int {
-        val w = textWidth(action.label, em(11)) + 20
+    /** `.s-btn`: 0 [pad] padding, font [size]; accent blue, disabled dimmed without a click region. */
+    private fun button(g: GuiGraphicsExtractor, x1: Int, y: Int, h: Int, action: SectionAction, clip: IntArray, size: Int = 11, pad: Int = 10): Int {
+        val w = textWidth(action.label, em(size)) + 2 * pad
         val x = x1 - w
         val hover = action.enabled && mx in x until x1 && my in y until y + h && inside(clip)
         val fill = if (!action.enabled) 0xFF232323.toInt() else if (action.accent) { if (hover) Theme.ACCENT else Theme.ACCENT_DIM } else if (hover) 0xFF353535.toInt() else 0xFF2A2A2A.toInt()
         if (!action.accent || !action.enabled) roundRect(g, x, y, x1, y + h, 0xFF3A3A3A.toInt(), SoulRenderPipelines.ROUND_SMALL)
         roundRect(g, x + if (action.accent && action.enabled) 0 else 1, y + if (action.accent && action.enabled) 0 else 1,
             x1 - if (action.accent && action.enabled) 0 else 1, y + h - if (action.accent && action.enabled) 0 else 1, fill, SoulRenderPipelines.ROUND_SMALL)
-        drawTextV(g, action.label, x + 10, y, y + h, if (action.enabled) WHITE else 0xFF666666.toInt(), em(11))
-        if (action.enabled) clippedRegion(x, y, x1, y + h, clip) { run(action) }
+        drawTextV(g, action.label, x + pad, y, y + h, if (action.enabled) WHITE else 0xFF666666.toInt(), em(size))
+        val key = runKey ?: selectedKey
+        if (action.enabled) clippedRegion(x, y, x1, y + h, clip) { run(action, key) }
         return w
     }
 
-    private fun run(action: SectionAction) {
-        selectedKey?.let { SearchEverywhere.remember(search.text, it) }
+    /** Leaves [key] (the row or material the action acts on) for K to return to, then runs the action. */
+    private fun run(action: SectionAction, key: String?) {
+        key?.let { SearchEverywhere.remember(search.text, it) }
         action.run()
     }
 
@@ -426,14 +500,11 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         drawTextV(g, splitText, inner.right - textWidth(splitText, em(10)), col.y + 106, col.y + 122, FAINT, em(10))
         g.fill(inner.x, col.y + 136, inner.right, col.y + 137, DIVIDER)
 
-        val built = sources.map { it to it.section(row.item, row.key, row.hitsIn(it.id)) }
-        val stale = built.any { it.second.stale }
+        val plan = planSections(row, sources, inner.width)
+        val stale = plan.built.any { it.second.stale }
         val note = if (stale) "Older observations included. Items may have moved since." else "What you last saw, not a live count. Opening a chest or page refreshes it."
         val noteLines = wrapText(note, inner.width, em(10))
-        val noteWidth = inner.width - 14
-        val sourceNotes = built.map { (_, s) -> s.note?.let { wrapText(it, noteWidth, em(10)) }.orEmpty() }
-        val boxes = SearchEverywhereLayout.sections(sourceNotes.map { it.size }, built.map { (source, s) -> if (source.id in expanded) s.cards.size else 0 })
-        val contentH = boxes.lastOrNull()?.bottom ?: 0
+        val contentH = plan.height
         val places = if (independent) SearchEverywhereLayout.places(col, noteLines.size)
             else Rect(inner.x, col.y + SearchEverywhereLayout.PLACES_TOP, inner.right, col.y + SearchEverywhereLayout.PLACES_TOP + contentH)
         endClip(g)
@@ -443,20 +514,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
             placesScroll.view = places.height
             placesScroll.clamp()
         }
-        val top = places.y - if (independent) placesScroll.pos.roundToInt() else 0
-        for ((i, pair) in built.withIndex()) {
-            val (source, s) = pair
-            val box = boxes[i]
-            drawSectionHeader(g, source, s, row, Rect(places.x, top + box.top, places.right - 2, top + box.top + SearchEverywhereLayout.SECTION_H), placesClip)
-            sourceNotes[i].forEachIndexed { line, text ->
-                val y = top + box.noteTop + line * SearchEverywhereLayout.NOTE_LINE
-                drawTextV(g, text, places.x + 14, y, y + 15, if (s.noteWarn) AMBER else MUTED, em(10))
-            }
-            if (source.id in expanded) s.cards.forEachIndexed { c, card ->
-                val y = top + box.cardsTop + c * (SearchEverywhereLayout.CARD_H + SearchEverywhereLayout.SECTION_GAP)
-                drawCard(g, source, card, Rect(places.x, y, places.right - 2, y + SearchEverywhereLayout.CARD_H), placesClip)
-            }
-        }
+        drawPlan(g, plan, row, places.x, places.right, places.y - if (independent) placesScroll.pos.roundToInt() else 0, placesClip)
         endClip(g)
         if (independent) drawScrollbar(g, mx, my, placesScroll, places.x, places.y, places.right + 6, places.bottom)
         val noteTop = if (independent) inner.bottom - noteLines.size * SearchEverywhereLayout.NOTE_LINE else places.bottom + 10
@@ -466,6 +524,36 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         }
         endClip(g)
         return SearchEverywhereLayout.PLACES_TOP + contentH + 10 + noteLines.size * 15 + SearchEverywhereLayout.PAD_Y
+    }
+
+    /** A row's source sections laid out for a places area [width] wide (also the Forge tab's material details). */
+    private class SectionPlan(val built: List<Pair<SearchSource, SearchSection>>, val notes: List<List<String>>, val boxes: List<SearchEverywhereLayout.SectionBox>) {
+        val height get() = boxes.lastOrNull()?.bottom ?: 0
+    }
+
+    private fun planSections(row: SearchRow, sources: List<SearchSource>, width: Int): SectionPlan {
+        val built = sources.map { it to it.section(row.item, row.key, row.hitsIn(it.id)) }
+        val noteWidth = width - 14
+        val notes = built.map { (_, s) -> s.note?.let { wrapText(it, noteWidth, em(10)) }.orEmpty() }
+        val boxes = SearchEverywhereLayout.sections(notes.map { it.size }, built.map { (source, s) -> if (source.id in expanded) s.cards.size else 0 })
+        return SectionPlan(built, notes, boxes)
+    }
+
+    /** Headers, notes and (for expanded sources) cards from [top], in the places area [x]..[right]. */
+    private fun drawPlan(g: GuiGraphicsExtractor, plan: SectionPlan, row: SearchRow, x: Int, right: Int, top: Int, clip: IntArray) {
+        for ((i, pair) in plan.built.withIndex()) {
+            val (source, s) = pair
+            val box = plan.boxes[i]
+            drawSectionHeader(g, source, s, row, Rect(x, top + box.top, right - 2, top + box.top + SearchEverywhereLayout.SECTION_H), clip)
+            plan.notes[i].forEachIndexed { line, text ->
+                val y = top + box.noteTop + line * SearchEverywhereLayout.NOTE_LINE
+                drawTextV(g, text, x + 14, y, y + 15, if (s.noteWarn) AMBER else MUTED, em(10))
+            }
+            if (source.id in expanded) s.cards.forEachIndexed { c, card ->
+                val y = top + box.cardsTop + c * (SearchEverywhereLayout.CARD_H + SearchEverywhereLayout.SECTION_GAP)
+                drawCard(g, source, card, Rect(x, y, right - 2, y + SearchEverywhereLayout.CARD_H), clip)
+            }
+        }
     }
 
     private fun drawSectionHeader(g: GuiGraphicsExtractor, source: SearchSource, s: SearchSection, row: SearchRow, r: Rect, clip: IntArray) {
@@ -557,6 +645,17 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
 
     override fun keyPressed(event: KeyEvent): Boolean {
         val key = event.key()
+        if (key == GLFW.GLFW_KEY_TAB && event.hasControlDown() && Forge.enabled()) {
+            switchMode(if (mode == MODE_FORGE) MODE_SEARCH else MODE_FORGE)
+            return true
+        }
+        if (mode == MODE_FORGE) {
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                if (!forge.escape()) onClose()
+                return true
+            }
+            return forge.keyPressed(event) || super.keyPressed(event)
+        }
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             if (selectedKey != null) selectedKey = null else onClose()
             return true
@@ -583,13 +682,58 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
     }
 
     override fun charTyped(event: CharacterEvent): Boolean =
-        if (search.focused) search.charTyped(event) else super.charTyped(event)
+        if (mode == MODE_FORGE) forge.charTyped(event) || super.charTyped(event)
+        else if (search.focused) search.charTyped(event) else super.charTyped(event)
 
     override fun mouseScrolled(mouseX: Double, mouseY: Double, horizontalAmount: Double, verticalAmount: Double): Boolean {
         val scale = SoulUi.factor()
         val target = scrollTargetAt((mouseX / scale).roundToInt(), (mouseY / scale).roundToInt()) ?: return false
         target.state.scrollBy((-verticalAmount * 30).toFloat())
         return true
+    }
+
+    // ---------------------------------------------------------------- Forge tab host
+
+    /**
+     * The screen's helpers for [ForgeTab]: `SoulScreenBase` keeps them protected, and the tab lives in its own
+     * files, so it draws through this adapter (same clip, regions, tooltips, scrollbars and source sections).
+     */
+    private fun forgeCanvas(): ForgeCanvas {
+        val s = this
+        return object : ForgeCanvas {
+            override val mx get() = s.mx
+            override val my get() = s.my
+            override fun em(size: Number) = SearchItems.em(size)
+            override fun rrect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, pipeline: RenderPipeline) = s.roundRect(g, x0, y0, x1, y1, color, pipeline)
+            override fun text(g: GuiGraphicsExtractor, s2: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, semibold: Boolean) =
+                s.drawTextV(g, s2, x, top, bottom, color, size, if (semibold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular)
+            override fun width(s2: String, size: Float) = s.textWidth(s2, size)
+            override fun fit(s2: String, maxW: Int, size: Float) = s.ellipsize(s2, maxW.coerceAtLeast(1), size)
+            override fun wrap(s2: String, maxW: Int, size: Float) = s.wrapText(s2, maxW.coerceAtLeast(1), size)
+            override fun clip(g: GuiGraphicsExtractor, r: Rect) = s.clip(g, r)
+            override fun endClip(g: GuiGraphicsExtractor) = s.endClip(g)
+            override fun region(r: Rect, clip: IntArray, action: () -> Unit) = s.clippedRegion(r.x, r.y, r.right, r.bottom, clip, action)
+            override fun hovered(r: Rect, clip: IntArray) = r.contains(s.mx, s.my) && s.inside(clip)
+            override fun tip(r: Rect, lines: List<String>) = s.tooltip(r.x, r.y, r.right, r.bottom, lines)
+            override fun kbdWidth(label: String) = s.kbdWidth(label)
+            override fun kbd(g: GuiGraphicsExtractor, label: String, x: Int, y: Int) = s.kbd(g, label, x, y)
+            override fun tracked(g: GuiGraphicsExtractor, text: String, x: Int, top: Int, bottom: Int, size: Int, color: Int) = s.tracked(g, text, x, top, bottom, size, color)
+            override fun scrollbar(g: GuiGraphicsExtractor, st: ScrollState, x0: Int, y0: Int, x1: Int, y1: Int) = s.drawScrollbar(g, s.mx, s.my, st, x0, y0, x1, y1)
+            override fun bodyScrollbar(g: GuiGraphicsExtractor, st: ScrollState, r: Rect) {
+                s.drawScrollbar(g, s.mx, s.my, st, r.x, r.y, r.right, r.bottom)
+                s.scrollTargets.add(0, s.scrollTargets.removeAt(s.scrollTargets.lastIndex))
+            }
+            override fun polygon(g: GuiGraphicsExtractor, points: FloatArray, color: Int) = s.fillPolygon(g, points, color)
+            override fun icon(g: GuiGraphicsExtractor, name: String, x: Int, y: Int, size: Int, color: Int) = s.drawIcon(g, name, x, y, size, color)
+            override fun textField(g: GuiGraphicsExtractor, r: Rect, field: SoulTextField, placeholder: String, clip: IntArray) =
+                s.drawTextField(g, r.x, r.y, r.right, r.bottom, field, placeholder, clip, inset = 38, background = 0xFF242424.toInt(), border = 0xFF3A3A3A.toInt())
+            override fun button(g: GuiGraphicsExtractor, x1: Int, y: Int, h: Int, action: SectionAction, clip: IntArray, size: Int, pad: Int) = s.button(g, x1, y, h, action, clip, size, pad)
+            override fun sectionsHeight(row: SearchRow, sources: List<SearchSource>, width: Int) = s.planSections(row, sources, width).height
+            override fun drawSections(g: GuiGraphicsExtractor, row: SearchRow, sources: List<SearchSource>, x: Int, right: Int, top: Int, clip: IntArray) {
+                s.runKey = row.key
+                try { s.drawPlan(g, s.planSections(row, sources, right - x), row, x, right, top, clip) } finally { s.runKey = null }
+            }
+        }
     }
 
     companion object {
@@ -605,6 +749,8 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         private val FAINT = 0xFF777777.toInt()
         private val AMBER = 0xFFBC9A61.toInt()
         private val AWAY = 0xFFD0B986.toInt()
+        private const val MODE_SEARCH = "search"
+        private const val MODE_FORGE = "forge"
         private fun em(size: Int) = SearchItems.em(size)
     }
 }

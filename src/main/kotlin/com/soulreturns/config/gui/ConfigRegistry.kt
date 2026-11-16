@@ -790,7 +790,7 @@ object ConfigRegistry {
             card("searcheverywhere") {
                 FeatureCard(
                     "searcheverywhere", "Search everywhere", "One search over your island chests and storage", "inventory", "inventory", "search",
-                    "Finds an item in everything Soul remembers for this profile: chests you opened on your island and the storage pages you looked at. Press the key or use /soul search anywhere on SkyBlock. Each source takes part while its own feature is on.",
+                    "Finds an item in everything Soul remembers for this profile: chests you opened on your island and the storage pages you looked at. Press the key or use /soul search anywhere on SkyBlock. Each source takes part while its own feature is on. Its Forge tab (Ctrl+Tab) plans a forge recipe down to what you own.",
                     master = null, openAction = "openSearchEverywhere",
                     simple = listOf(
                         action("Find stored items", "Search every remembered island chest and storage page", "Search", "openSearchEverywhere"),
@@ -799,7 +799,7 @@ object ConfigRegistry {
                         }, d.islandChests.searchKey),
                     ),
                     beta = true,
-                    synonyms = listOf("search", "find", "items", "where", "chest", "storage", "ender chest", "backpack"),
+                    synonyms = listOf("search", "find", "items", "where", "chest", "storage", "ender chest", "backpack", "forge", "recipe", "quick forge"),
                 )
             },
             card("islandchests") {

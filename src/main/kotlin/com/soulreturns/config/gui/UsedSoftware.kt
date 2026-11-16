@@ -27,6 +27,9 @@ object UsedSoftware {
         /** Not in the jar but required to run (Fabric API, Fabric Language Kotlin). */
         REQUIRED,
 
+        /** Not in the jar and not required: compiled against, used only when the player installs it (REI). */
+        OPTIONAL,
+
         /** A public data service the mod or its backend reads. */
         SERVICE,
 
@@ -90,7 +93,7 @@ object UsedSoftware {
             Kind.BUNDLED_DATA,
         ),
         Entry(
-            "NotEnoughUpdates REPO", "Pet level XP table", "https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO", "MIT",
+            "NotEnoughUpdates REPO", "Pet level XP table; forge and crafting recipes of the Forge tab (served by the Soul backend)", "https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO", "MIT",
             Kind.BUNDLED_DATA, aliases = listOf("NEU"),
         ),
         Entry(
@@ -144,6 +147,14 @@ object UsedSoftware {
         Entry(
             "kotlinx.serialization", "Config persistence", "https://github.com/Kotlin/kotlinx.serialization", "Apache-2.0",
             Kind.REQUIRED, covers = listOf("lib:org.jetbrains.kotlinx:kotlinx-serialization-json"),
+        ),
+        Entry(
+            "Roughly Enough Items", "Optional integration: keeps its item list off the storage overlay; not bundled", "https://github.com/shedaniel/RoughlyEnoughItems", "MIT",
+            Kind.OPTIONAL, covers = listOf("lib:me.shedaniel:RoughlyEnoughItems-api-fabric"),
+        ),
+        Entry(
+            "Cloth basic-math", "Rectangle type of REI's API, not bundled", "https://github.com/shedaniel/cloth-basic-math", "Unlicense",
+            Kind.OPTIONAL, covers = listOf("lib:me.shedaniel.cloth:basic-math"),
         ),
     )
 

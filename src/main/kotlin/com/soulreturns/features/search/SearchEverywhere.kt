@@ -6,6 +6,7 @@ import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.data.skyblock.SkyblockState
 import com.soulreturns.features.islandchests.IslandChestDisplay
 import com.soulreturns.features.islandchests.IslandChestSearchSession
+import com.soulreturns.features.search.forge.Forge
 import com.soulreturns.util.KeyCombo
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.minecraft.client.Minecraft
@@ -62,6 +63,9 @@ object SearchEverywhere {
         val mc = Minecraft.getInstance()
         if (mc.gui.screen() is SearchEverywhereScreen) mc.gui.setScreen(null)
     }
+
+    /** The text of "K Back to …" on the locator and page bars: the Forge tab is where K returns when it was used last. */
+    internal fun backLabel(): String = if (Forge.enabled() && Forge.lastMode() == "forge") "Back to Forge" else "Back to search"
 
     /** Back to search from a screen this search led to (the storage page it opened). */
     internal fun requestFromScreen(): Boolean {

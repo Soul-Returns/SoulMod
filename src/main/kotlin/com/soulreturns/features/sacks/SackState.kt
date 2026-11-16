@@ -126,7 +126,16 @@ object SackState {
         Events.subscribe<ChatMessage> { onChat(it) }
     }
 
-    fun enabled(): Boolean = cfg.sacks.hud
+    /** Other features that need the counts (the Forge tab's owned sacks); see [enabled]. */
+    private val consumers = java.util.concurrent.CopyOnWriteArrayList<() -> Boolean>()
+
+    /** Keep counting whenever [needed] says so, even with the Sack tracker off. */
+    fun requireCounts(needed: () -> Boolean) {
+        consumers += needed
+    }
+
+    /** Counts are collected (menus, chat, API) while the Sack tracker or another consumer needs them. */
+    fun enabled(): Boolean = cfg.sacks.hud || consumers.any { it() }
 
     fun count(id: String): SackCount? = counts.read().items[id]
 
@@ -253,7 +262,7 @@ object SackState {
      * window: the summary reports items gathered over the previous N seconds.
      */
     private fun recordChange(id: String, delta: Long, windowMs: Long) {
-        if (delta == 0L || cfg.sacks.tracked.none { it.id == id }) return
+        if (delta == 0L || !cfg.sacks.hud || cfg.sacks.tracked.none { it.id == id }) return
         counts.update {
             val prev = sessions[id] ?: SackSession()
             val start = if (prev.startClock == 0L) (TrackerSessions.clock() - windowMs).coerceAtLeast(1L) else prev.startClock

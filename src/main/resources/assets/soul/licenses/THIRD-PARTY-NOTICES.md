@@ -86,7 +86,9 @@ the table is kept here with credit to the authors above by the maintainer's deci
   Catacombs curves. Its storage API indexing was consulted for account/profile-scoped previews;
   no storage implementation was copied.
 - NotEnoughUpdates REPO, https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO, Copyright (c)
-  2020 Moulberry: the pet level XP table (`PetLevels`, `constants/pets.json`).
+  2020 Moulberry: the pet level XP table (`PetLevels`, `constants/pets.json`), and the forge and
+  crafting recipes of the Search everywhere Forge tab (`items/*.json`), normalized and served by the
+  Soul backend as `/recipes` and cached on disk by the mod (`recipe_catalog.json`).
 - SkyHelper-Networth, https://github.com/Altpapier/SkyHelper-Networth, Copyright (c) 2022 Altpapier:
   the same pet table as published there, and the Catacombs class XP deltas. Its inventory API
   field layout was consulted for storage previews; no parser code was copied.
@@ -134,6 +136,15 @@ files. Soul uses it under the GNU GPL / LGPL-2.1 (`LGPL-2.1.txt`).
 Fabric Loader, Fabric API and Fabric Language Kotlin (with kotlinx.serialization and
 kotlinx.coroutines): Apache-2.0, installed by the player next to Soul. Hypixel's public API and the
 Elite SkyBlock lowest-BIN mirror are read by the Soul backend, not by the jar.
+
+## Optional integrations, not bundled
+
+Roughly Enough Items, https://github.com/shedaniel/RoughlyEnoughItems, Copyright (c) 2018-2023
+shedaniel, MIT: Soul compiles against its API (`RoughlyEnoughItems-api-fabric`) and, only when the
+player installs REI, registers exclusion zones so REI's item list stays off the storage overlay
+(`StorageReiPlugin`). Cloth basic-math, https://github.com/shedaniel/cloth-basic-math, by
+shedaniel, The Unlicense: the `Rectangle` type of that API. Neither is included in this jar; REI
+brings both at runtime.
 
 ## Strategy references, not bundled
 

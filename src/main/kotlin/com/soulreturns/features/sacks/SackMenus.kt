@@ -112,7 +112,8 @@ object SackMenus {
     /** @return true when the click toggled a tracked item and must not reach the screen. */
     private fun click(screen: AbstractContainerScreen<*>, click: MouseButtonEvent): Boolean {
         if (click.button() != GLFW.GLFW_MOUSE_BUTTON_MIDDLE || InventoryButtons.picking) return false
-        if (active() !== screen) return false
+        // Tracking is the Sack tracker's own UX: other count consumers never take the middle click.
+        if (!cfg.sacks.hud || active() !== screen) return false
         val slot = screen.hoveredSlot ?: return false
         if (slot.container is Inventory) return false
         val item = read(slot.item) ?: return false
@@ -162,6 +163,7 @@ object SackMenus {
     fun onExtractSlot(g: GuiGraphicsExtractor, slot: Slot) {
         val screen = screenSeen ?: return
         if (slot.container is Inventory || Minecraft.getInstance().gui.screen() !== screen) return
+        if (!cfg.sacks.hud) return
         val item = slotItems[slot.index] ?: return
         if (!isTracked(item.id)) return
         // A 4 px corner triangle, top left: the count text owns the bottom right.

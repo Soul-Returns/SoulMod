@@ -46,6 +46,14 @@ public final class Menus implements Listener {
             plugin.storage().openOverview(player);
             return true;
         }
+        if (name.equals("forge")) {
+            plugin.forge().open(player);
+            return true;
+        }
+        if (name.equals("hotm")) {
+            plugin.forge().openHotm(player);
+            return true;
+        }
         JsonElement element = plugin.presets().get("menus", name);
         if (element == null) return false;
         JsonObject menu = element.getAsJsonObject();

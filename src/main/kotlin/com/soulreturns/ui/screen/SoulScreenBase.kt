@@ -819,6 +819,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
                     '7' -> 0xFFAAAAAA.toInt()
                     '8' -> 0xFF777777.toInt()
                     'a' -> 0xFF4ADE80.toInt()
+                    '6' -> 0xFFFFAA00.toInt()
                     else -> Theme.TEXT
                 }
                 i += 2

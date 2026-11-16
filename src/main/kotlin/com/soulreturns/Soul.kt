@@ -177,9 +177,9 @@ object Soul : ClientModInitializer {
         SkyblockStateReader.register()
         TabWidgets.register()
         PartyManager.register()
-        // Backend catalogs declare themselves, then CatalogRegistry loads all four from disk, wires
+        // Backend catalogs declare themselves, then CatalogRegistry loads them all from disk, wires
         // the one invalidate subscription and the staleness tick, and kicks off the first refresh.
-        // Prices are one of the four: they back the profit panel and the per-kill announcement, and
+        // Prices are one of them: they back the profit panel and the per-kill announcement, and
         // they refresh unconditionally — see PriceCache for why gating that on being in SkyBlock was
         // a mistake worth not repeating.
         // Declare before init: a catalog registered afterwards is initialised on its own, which works
@@ -188,6 +188,7 @@ object Soul : ClientModInitializer {
         DropCatalogClient.init()
         ItemCatalogClient.init()
         PriceCatalogClient.init()
+        com.soulreturns.data.recipes.RecipeCatalogClient.init()
         CatalogRegistry.init()
         // Market values merge deltas rather than swapping snapshots, so they sit beside the
         // registry with their own subscription (kind `market` is unclaimed there).
@@ -262,6 +263,7 @@ object Soul : ClientModInitializer {
         com.soulreturns.features.islandchests.IslandChestDisplay.register()
         com.soulreturns.features.storage.StorageOverlay.register()
         com.soulreturns.features.search.SearchEverywhere.register()
+        com.soulreturns.features.search.forge.Forge.register()
         // Pet HUD data: after SkyblockSelfProfile (seeds on SelfProfileLoaded) and TabWidgets.
         PetState.register()
         PetHud.register()

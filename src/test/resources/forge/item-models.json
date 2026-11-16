@@ -1,0 +1,960 @@
+{
+ "source": "docs/research/raw/forge-2026-11-16 (item_model of every captured SkyBlock id; names from /items)",
+ "models": [
+  {
+   "id": "ABIPHONE_BASIC",
+   "name": "Abiphone Basic",
+   "model": "hypixel_skyblock:item/abiphones/abiphone_basic"
+  },
+  {
+   "id": "ABIPHONE_FLIP_PLUS_LUNAR",
+   "name": null,
+   "model": "hypixel_skyblock:item/abiphones/flip_plus/abiphone_flip_plus_lunar"
+  },
+  {
+   "id": "AMBER_CRYSTAL",
+   "name": "Amber Crystal",
+   "model": "hypixel_skyblock:item/uncategorized/amber_crystal"
+  },
+  {
+   "id": "AMBER_MATERIAL",
+   "name": "Amber Material",
+   "model": "hypixel_skyblock:item/reforge_stones/amber_material"
+  },
+  {
+   "id": "AMBER_NECKLACE",
+   "name": "Amber Necklace",
+   "model": "hypixel_skyblock:item/uncategorized/amber_necklace"
+  },
+  {
+   "id": "AMBER_POLISHED_DRILL_ENGINE",
+   "name": "Amber-Polished Drill Engine",
+   "model": "hypixel_skyblock:item/uncategorized/amber_polished_drill_engine"
+  },
+  {
+   "id": "AMETHYST_GAUNTLET",
+   "name": "Amethyst Gauntlet",
+   "model": "hypixel_skyblock:item/uncategorized/amethyst_gauntlet"
+  },
+  {
+   "id": "ANCIENT_CLOAK",
+   "name": "Ancient Cloak",
+   "model": "hypixel_skyblock:item/uncategorized/ancient_cloak"
+  },
+  {
+   "id": "ARACHNE_NECKLACE",
+   "name": "Arachne's Necklace",
+   "model": "hypixel_skyblock:item/combat_1/arachne_necklace"
+  },
+  {
+   "id": "ARACK",
+   "name": "Arack",
+   "model": "hypixel_skyblock:item/combat_1/arack"
+  },
+  {
+   "id": "ASPECT_OF_THE_DRAGON",
+   "name": "Aspect of the Dragons",
+   "model": "hypixel_skyblock:item/uncategorized/aspect_of_the_dragon"
+  },
+  {
+   "id": "ASPECT_OF_THE_END",
+   "name": "Aspect of the End",
+   "model": "hypixel_skyblock:item/uncategorized/aspect_of_the_end"
+  },
+  {
+   "id": "ASPECT_OF_THE_VOID",
+   "name": "Aspect of the Void",
+   "model": "hypixel_skyblock:item/slayer/enderman/aspect_of_the_void"
+  },
+  {
+   "id": "BEJEWELED_HANDLE",
+   "name": "Bejeweled Handle",
+   "model": "hypixel_skyblock:item/uncategorized/bejeweled_handle"
+  },
+  {
+   "id": "CLEAVER",
+   "name": "Cleaver",
+   "model": "hypixel_skyblock:item/uncategorized/cleaver"
+  },
+  {
+   "id": "CONCENTRATED_STONE",
+   "name": "Concentrated Stone",
+   "model": "hypixel_skyblock:item/uncategorized/concentrated_stone"
+  },
+  {
+   "id": "CORLEONITE",
+   "name": "Corleonite",
+   "model": "hypixel_skyblock:item/uncategorized/corleonite"
+  },
+  {
+   "id": "DARK_CLAYMORE",
+   "name": "Dark Claymore",
+   "model": "hypixel_skyblock:item/uncategorized/dark_claymore"
+  },
+  {
+   "id": "DAY_CRYSTAL",
+   "name": "Day Crystal",
+   "model": "hypixel_skyblock:item/uncategorized/day_crystal"
+  },
+  {
+   "id": "DIAMOND_ATOM",
+   "name": "Diamond Atom",
+   "model": "hypixel_skyblock:item/reforge_stones/diamond_atom"
+  },
+  {
+   "id": "DIAMONITE",
+   "name": "Diamonite",
+   "model": "hypixel_skyblock:item/reforge_stones/diamonite"
+  },
+  {
+   "id": "DIVAN_ALLOY",
+   "name": "Divan's Alloy",
+   "model": "hypixel_skyblock:item/uncategorized/divans_alloy"
+  },
+  {
+   "id": "DIVAN_DRILL",
+   "name": "Divan's Drill",
+   "model": "hypixel_skyblock:item/uncategorized/divans_drill"
+  },
+  {
+   "id": "DIVAN_PENDANT",
+   "name": "Pendant of Divan",
+   "model": "hypixel_skyblock:item/glacite/uncategorized/divan_pendant"
+  },
+  {
+   "id": "DRAGON_SHORTBOW",
+   "name": "Dragon Shortbow",
+   "model": "hypixel_skyblock:item/island_relevant/combat_3/dragon_shortbow"
+  },
+  {
+   "id": "DRILL_ENGINE",
+   "name": "Drill Motor",
+   "model": "hypixel_skyblock:item/uncategorized/drill_motor"
+  },
+  {
+   "id": "DWARVEN_HANDWARMERS",
+   "name": "Dwarven Handwarmers",
+   "model": "hypixel_skyblock:item/glacite/uncategorized/dwarven_handwarmers"
+  },
+  {
+   "id": "EMERALD_BLADE",
+   "name": "Emerald Blade",
+   "model": "hypixel_skyblock:item/uncategorized/emerald_blade"
+  },
+  {
+   "id": "ENCHANTED_GLACITE",
+   "name": "Enchanted Glacite",
+   "model": "hypixel_skyblock:item/glacite/glacite/glacite"
+  },
+  {
+   "id": "ENCHANTED_MITHRIL",
+   "name": "Enchanted Mithril",
+   "model": "hypixel_skyblock:item/uncategorized/mithril"
+  },
+  {
+   "id": "ENCHANTED_MYCELIUM_CUBE",
+   "name": "Enchanted Mycelium Cube",
+   "model": "hypixel_skyblock:item/uncategorized/enchanted_mycelium_cube"
+  },
+  {
+   "id": "ENCHANTED_TITANIUM",
+   "name": "Enchanted Titanium",
+   "model": "hypixel_skyblock:item/uncategorized/titanium"
+  },
+  {
+   "id": "FLAWLESS_RUBY_GEM",
+   "name": "Flawless Ruby Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/ruby/flawless_ruby_gem"
+  },
+  {
+   "id": "FRIGID_HUSK",
+   "name": "Frigid Husk",
+   "model": "hypixel_skyblock:item/reforge_stones/frigid_husk"
+  },
+  {
+   "id": "FUEL_TANK",
+   "name": "Fuel Canister",
+   "model": "hypixel_skyblock:item/uncategorized/fuel_canister"
+  },
+  {
+   "id": "GEMSTONE_DRILL_1",
+   "name": "Ruby Drill TX-15",
+   "model": "hypixel_skyblock:item/uncategorized/ruby_drill_tx_15"
+  },
+  {
+   "id": "GEMSTONE_DRILL_2",
+   "name": "Gemstone Drill LT-522",
+   "model": "hypixel_skyblock:item/uncategorized/gemstone_drill_lt_522"
+  },
+  {
+   "id": "GEMSTONE_DRILL_3",
+   "name": "Topaz Drill KGR-12",
+   "model": "hypixel_skyblock:item/uncategorized/topaz_drill_kgr_12"
+  },
+  {
+   "id": "GEMSTONE_DRILL_4",
+   "name": "Jasper Drill X",
+   "model": "hypixel_skyblock:item/uncategorized/jasper_drill_x"
+  },
+  {
+   "id": "GEMSTONE_FUEL_TANK",
+   "name": "Gemstone Fuel Tank",
+   "model": "hypixel_skyblock:item/uncategorized/gemstone_fuel_tank"
+  },
+  {
+   "id": "GEMSTONE_MIXTURE",
+   "name": "Gemstone Mixture",
+   "model": "hypixel_skyblock:item/uncategorized/gemstone_mixture"
+  },
+  {
+   "id": "GLACITE_AMALGAMATION",
+   "name": "Glacite Amalgamation",
+   "model": "hypixel_skyblock:item/glacite/glacite/glacite_amalgamation"
+  },
+  {
+   "id": "GLACITE_CHISEL",
+   "name": "Glacite-Plated Chisel",
+   "model": "hypixel_skyblock:item/glacite/chisel/glacite_plated_chisel"
+  },
+  {
+   "id": "GLEAMING_CRYSTAL",
+   "name": "Gleaming Crystal",
+   "model": "hypixel_skyblock:item/reforge_stones/gleaming_crystal"
+  },
+  {
+   "id": "GOBLIN_OMELETTE",
+   "name": "Goblin Omelette",
+   "model": "hypixel_skyblock:item/island_relevant/mining_3/forge/omelettes/goblin_omelette"
+  },
+  {
+   "id": "GOBLIN_OMELETTE_BLUE_CHEESE",
+   "name": "Blue Cheese Goblin Omelette",
+   "model": "hypixel_skyblock:item/island_relevant/mining_3/forge/omelettes/blue_cheese_goblin_omelette"
+  },
+  {
+   "id": "GOBLIN_OMELETTE_PESTO",
+   "name": "Pesto Goblin Omelette",
+   "model": "hypixel_skyblock:item/island_relevant/mining_3/forge/omelettes/pesto_goblin_omelette"
+  },
+  {
+   "id": "GOBLIN_OMELETTE_SPICY",
+   "name": "Spicy Goblin Omelette",
+   "model": "hypixel_skyblock:item/island_relevant/mining_3/forge/omelettes/spicy_goblin_omelette"
+  },
+  {
+   "id": "GOBLIN_OMELETTE_SUNNY_SIDE",
+   "name": "Sunny Side Goblin Omelette",
+   "model": "hypixel_skyblock:item/island_relevant/mining_3/forge/omelettes/sunny_side_goblin_omelette"
+  },
+  {
+   "id": "GOLDEN_PLATE",
+   "name": "Golden Plate",
+   "model": "hypixel_skyblock:item/uncategorized/golden_plate"
+  },
+  {
+   "id": "HOT_STUFF",
+   "name": "Scorched Topaz",
+   "model": "hypixel_skyblock:item/reforge_stones/hot_stuff"
+  },
+  {
+   "id": "HYPERION",
+   "name": "Hyperion",
+   "model": "hypixel_skyblock:item/uncategorized/hyperion"
+  },
+  {
+   "id": "JADE_BELT",
+   "name": "Jade Belt",
+   "model": "hypixel_skyblock:item/uncategorized/jade_belt"
+  },
+  {
+   "id": "JUNGLE_PICKAXE",
+   "name": "Jungle Pickaxe",
+   "model": "hypixel_skyblock:item/uncategorized/jungle_pickaxe"
+  },
+  {
+   "id": "LOTUS_DIAMOND",
+   "name": "Diamond Lotus",
+   "model": "hypixel_skyblock:item/collections/lotus/diamond_lotus"
+  },
+  {
+   "id": "MAGMA_FISH_DIAMOND",
+   "name": "Diamond Magmafish",
+   "model": "hypixel_skyblock:item/fishing/trophy/lava/magmafish_diamond"
+  },
+  {
+   "id": "MITHRIL_BELT",
+   "name": "Mithril Belt",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_belt"
+  },
+  {
+   "id": "MITHRIL_CLOAK",
+   "name": "Mithril Cloak",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_cloak"
+  },
+  {
+   "id": "MITHRIL_DRILL_1",
+   "name": "Mithril Drill SX-R226",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_drill_sx_r226"
+  },
+  {
+   "id": "MITHRIL_DRILL_2",
+   "name": "Mithril Drill SX-R326",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_drill_sx_r326"
+  },
+  {
+   "id": "MITHRIL_DRILL_ENGINE",
+   "name": "Mithril-Plated Drill Engine",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_plated_drill_engine"
+  },
+  {
+   "id": "MITHRIL_FUEL_TANK",
+   "name": "Mithril-Infused Fuel Tank",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_infused_fuel_tank"
+  },
+  {
+   "id": "MITHRIL_GAUNTLET",
+   "name": "Mithril Gauntlet",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_gauntlet"
+  },
+  {
+   "id": "MITHRIL_NECKLACE",
+   "name": "Mithril Necklace",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_necklace"
+  },
+  {
+   "id": "MITHRIL_PLATE",
+   "name": "Mithril Plate",
+   "model": "hypixel_skyblock:item/uncategorized/mithril_plate"
+  },
+  {
+   "id": "NEX_TITANUM",
+   "name": "Prime Huntaxe - Nex Titanum",
+   "model": "hypixel_skyblock:item/island_relevant/foraging_2/hunting_weapons/prime_huntaxe"
+  },
+  {
+   "id": "ONYX",
+   "name": "Black Diamond",
+   "model": "hypixel_skyblock:item/reforge_stones/onyx"
+  },
+  {
+   "id": "PERFECTLY_CUT_FUEL_TANK",
+   "name": "Perfectly-Cut Fuel Tank",
+   "model": "hypixel_skyblock:item/uncategorized/perfectly_cut_fuel_tank"
+  },
+  {
+   "id": "PERFECT_AMBER_GEM",
+   "name": "Perfect Amber Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/amber/perfect_amber_gem"
+  },
+  {
+   "id": "PERFECT_AMETHYST_GEM",
+   "name": "Perfect Amethyst Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/amethyst/perfect_amethyst_gem"
+  },
+  {
+   "id": "PERFECT_AQUAMARINE_GEM",
+   "name": "Perfect Aquamarine Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/aquamarine/perfect_aquamarine_gem"
+  },
+  {
+   "id": "PERFECT_CHISEL",
+   "name": "Perfect Chisel",
+   "model": "hypixel_skyblock:item/glacite/chisel/perfect_chisel"
+  },
+  {
+   "id": "PERFECT_CITRINE_GEM",
+   "name": "Perfect Citrine Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/citrine/perfect_citrine_gem"
+  },
+  {
+   "id": "PERFECT_JADE_GEM",
+   "name": "Perfect Jade Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/jade/perfect_jade_gem"
+  },
+  {
+   "id": "PERFECT_JASPER_GEM",
+   "name": "Perfect Jasper Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/jasper/perfect_jasper_gem"
+  },
+  {
+   "id": "PERFECT_ONYX_GEM",
+   "name": "Perfect Onyx Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/onyx/perfect_onyx_gem"
+  },
+  {
+   "id": "PERFECT_OPAL_GEM",
+   "name": "Perfect Opal Gemstone",
+   "model": "hypixel_skyblock:item/slayer/blaze/gemstones/perfect_opal_gem"
+  },
+  {
+   "id": "PERFECT_PERIDOT_GEM",
+   "name": "Perfect Peridot Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/peridot/perfect_peridot_gem"
+  },
+  {
+   "id": "PERFECT_PLATE",
+   "name": "Perfect Plate",
+   "model": "hypixel_skyblock:item/glacite/uncategorized/perfect_plate"
+  },
+  {
+   "id": "PERFECT_RUBY_GEM",
+   "name": "Perfect Ruby Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/ruby/perfect_ruby_gem"
+  },
+  {
+   "id": "PERFECT_SAPPHIRE_GEM",
+   "name": "Perfect Sapphire Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/sapphire/perfect_sapphire_gem"
+  },
+  {
+   "id": "PERFECT_TOPAZ_GEM",
+   "name": "Perfect Topaz Gemstone",
+   "model": "hypixel_skyblock:item/collections/gemstone/topaz/perfect_topaz_gem"
+  },
+  {
+   "id": "PETRIFIED_STARFALL",
+   "name": "Petrified Starfall",
+   "model": "hypixel_skyblock:item/reforge_stones/petrified_starfall"
+  },
+  {
+   "id": "PICKONIMBUS",
+   "name": "Pickonimbus 2000",
+   "model": "hypixel_skyblock:item/uncategorized/pickonimbus_2000"
+  },
+  {
+   "id": "POCKET_ICEBERG",
+   "name": "Pocket Iceberg",
+   "model": "hypixel_skyblock:item/reforge_stones/pocket_iceberg"
+  },
+  {
+   "id": "POLISHED_TOPAZ_ROD",
+   "name": "Topaz Rod",
+   "model": "hypixel_skyblock:item/fishing/rod/topaz_rod"
+  },
+  {
+   "id": "POWDER_OF_ONE",
+   "name": "Powder of One",
+   "model": "hypixel_skyblock:item/island_relevant/mining_3/accessories/powder_of_one"
+  },
+  {
+   "id": "POWDER_OF_THE_FEW",
+   "name": "Powder of the Few",
+   "model": "hypixel_skyblock:item/island_relevant/mining_3/accessories/powder_of_the_few"
+  },
+  {
+   "id": "POWDER_OF_THE_MANY",
+   "name": "Powder of the Many",
+   "model": "hypixel_skyblock:item/island_relevant/mining_3/accessories/powder_of_the_many"
+  },
+  {
+   "id": "PURE_MITHRIL",
+   "name": "Pure Mithril",
+   "model": "hypixel_skyblock:item/reforge_stones/pure_mithril"
+  },
+  {
+   "id": "RARE_DIAMOND",
+   "name": "Rare Diamond",
+   "model": "hypixel_skyblock:item/reforge_stones/rare_diamond"
+  },
+  {
+   "id": "REFINED_DIAMOND",
+   "name": "Refined Diamond",
+   "model": "hypixel_skyblock:item/uncategorized/refined_diamond"
+  },
+  {
+   "id": "REFINED_MITHRIL",
+   "name": "Refined Mithril",
+   "model": "hypixel_skyblock:item/uncategorized/refined_mithril"
+  },
+  {
+   "id": "REFINED_TITANIUM",
+   "name": "Refined Titanium",
+   "model": "hypixel_skyblock:item/uncategorized/refined_titanium"
+  },
+  {
+   "id": "REFINED_TUNGSTEN",
+   "name": "Refined Tungsten",
+   "model": "hypixel_skyblock:item/glacite/tungsten/refined_tungsten"
+  },
+  {
+   "id": "REFINED_UMBER",
+   "name": "Refined Umber",
+   "model": "hypixel_skyblock:item/glacite/umber/refined_umber"
+  },
+  {
+   "id": "REINFORCED_CHISEL",
+   "name": "Reinforced Chisel",
+   "model": "hypixel_skyblock:item/glacite/chisel/reinforced_chisel"
+  },
+  {
+   "id": "ROCK_GEMSTONE",
+   "name": "Dwarven Geode",
+   "model": "hypixel_skyblock:item/reforge_stones/rock_gemstone"
+  },
+  {
+   "id": "RUBY_CRYSTAL",
+   "name": "Ruby Crystal",
+   "model": "hypixel_skyblock:item/uncategorized/ruby_crystal"
+  },
+  {
+   "id": "RUBY_POLISHED_DRILL_ENGINE",
+   "name": "Ruby-Polished Drill Engine",
+   "model": "hypixel_skyblock:item/uncategorized/ruby_polished_drill_engine"
+  },
+  {
+   "id": "SAPPHIRE_CLOAK",
+   "name": "Sapphire Cloak",
+   "model": "hypixel_skyblock:item/uncategorized/sapphire_cloak"
+  },
+  {
+   "id": "SAPPHIRE_POLISHED_DRILL_ENGINE",
+   "name": "Sapphire-Polished Drill Engine",
+   "model": "hypixel_skyblock:item/uncategorized/sapphire_polished_drill_engine"
+  },
+  {
+   "id": "SKELETON_KEY",
+   "name": "Skeleton Key",
+   "model": "hypixel_skyblock:item/glacite/uncategorized/skeleton_key"
+  },
+  {
+   "id": "STARFALL_SEASONING",
+   "name": "Starfall Seasoning",
+   "model": "hypixel_skyblock:item/glacite/uncategorized/starfall_seasoning"
+  },
+  {
+   "id": "STARTER_LAVA_ROD",
+   "name": "Starter Lava Rod",
+   "model": "hypixel_skyblock:item/fishing/rod/starter_lava_rod"
+  },
+  {
+   "id": "TERMINATOR",
+   "name": "Terminator",
+   "model": "hypixel_skyblock:item/slayer/enderman/weapons/terminator"
+  },
+  {
+   "id": "TITANIUM_BELT",
+   "name": "Titanium Belt",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_belt"
+  },
+  {
+   "id": "TITANIUM_CLOAK",
+   "name": "Titanium Cloak",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_cloak"
+  },
+  {
+   "id": "TITANIUM_DRILL_1",
+   "name": "Titanium Drill DR-X355",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_drill_dr_x355"
+  },
+  {
+   "id": "TITANIUM_DRILL_2",
+   "name": "Titanium Drill DR-X455",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_drill_dr_x455"
+  },
+  {
+   "id": "TITANIUM_DRILL_3",
+   "name": "Titanium Drill DR-X555",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_drill_dr_x555"
+  },
+  {
+   "id": "TITANIUM_DRILL_4",
+   "name": "Titanium Drill DR-X655",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_drill_dr_x655"
+  },
+  {
+   "id": "TITANIUM_DRILL_ENGINE",
+   "name": "Titanium-Plated Drill Engine",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_plated_drill_engine"
+  },
+  {
+   "id": "TITANIUM_FUEL_TANK",
+   "name": "Titanium-Infused Fuel Tank",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_infused_fuel_tank"
+  },
+  {
+   "id": "TITANIUM_GAUNTLET",
+   "name": "Titanium Gauntlet",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_gauntlet"
+  },
+  {
+   "id": "TITANIUM_NECKLACE",
+   "name": "Titanium Necklace",
+   "model": "hypixel_skyblock:item/uncategorized/titanium_necklace"
+  },
+  {
+   "id": "TITANIUM_ORE",
+   "name": "Titanium",
+   "model": "hypixel_skyblock:item/uncategorized/titanium"
+  },
+  {
+   "id": "TITANIUM_TESSERACT",
+   "name": "Titanium Tesseract",
+   "model": "hypixel_skyblock:item/reforge_stones/titanium_tesseract"
+  },
+  {
+   "id": "TITAN_LINE",
+   "name": "Titan Line",
+   "model": "hypixel_skyblock:item/fishing/rod_part/line/titan_line"
+  },
+  {
+   "id": "TUNGSTEN_KEY",
+   "name": "Tungsten Key",
+   "model": "hypixel_skyblock:item/glacite/tungsten/tungsten_key"
+  },
+  {
+   "id": "TUNGSTEN_KEYCHAIN",
+   "name": "Tungsten Regulator",
+   "model": "hypixel_skyblock:item/glacite/uncategorized/tungsten_regulator"
+  },
+  {
+   "id": "TUNGSTEN_PLATE",
+   "name": "Tungsten Plate",
+   "model": "hypixel_skyblock:item/glacite/tungsten/tungsten_plate"
+  },
+  {
+   "id": "UMBER_KEY",
+   "name": "Umber Key",
+   "model": "hypixel_skyblock:item/glacite/umber/umber_key"
+  },
+  {
+   "id": "UMBER_PLATE",
+   "name": "Umber Plate",
+   "model": "hypixel_skyblock:item/glacite/umber/umber_plate"
+  },
+  {
+   "id": "WITHER_CLOAK",
+   "name": "Wither Cloak Sword",
+   "model": "hypixel_skyblock:item/uncategorized/wither_cloak_sword"
+  }
+ ],
+ "withoutModel": [
+  {
+   "id": "ARACHNE_BOOTS",
+   "name": "Arachne's Boots"
+  },
+  {
+   "id": "ARACHNE_CHESTPLATE",
+   "name": "Arachne's Chestplate"
+  },
+  {
+   "id": "ARACHNE_CRYSTAL",
+   "name": "Arachne Crystal"
+  },
+  {
+   "id": "ARACHNE_HELMET",
+   "name": "Arachne's Helmet"
+  },
+  {
+   "id": "AUTO_SMELTER",
+   "name": "Auto Smelter"
+  },
+  {
+   "id": "BASE_CAMP_TRAVEL_SCROLL",
+   "name": "Travel Scroll to the Dwarven Base Camp"
+  },
+  {
+   "id": "BEACON_1",
+   "name": "Beacon I"
+  },
+  {
+   "id": "BEACON_2",
+   "name": "Beacon II"
+  },
+  {
+   "id": "BEACON_3",
+   "name": "Beacon III"
+  },
+  {
+   "id": "BEACON_4",
+   "name": "Beacon IV"
+  },
+  {
+   "id": "BEACON_5",
+   "name": "Beacon V"
+  },
+  {
+   "id": "BEGINNER_MINING_SACK",
+   "name": "Beginner Mining Sack"
+  },
+  {
+   "id": "BEJEWELED_COLLAR",
+   "name": null
+  },
+  {
+   "id": "BUDGET_HOPPER",
+   "name": "Budget Hopper"
+  },
+  {
+   "id": "CATALYST",
+   "name": "Catalyst"
+  },
+  {
+   "id": "COAL",
+   "name": "Coal"
+  },
+  {
+   "id": "COMPACTOR",
+   "name": "Compactor"
+  },
+  {
+   "id": "CORRUPT_SOIL",
+   "name": "Corrupt Soil"
+  },
+  {
+   "id": "DARK_QUEENS_SOUL_DROP",
+   "name": "Dark Queen's Soul"
+  },
+  {
+   "id": "DAY_SAVER",
+   "name": "Day Saver"
+  },
+  {
+   "id": "DESERT_BIOME_STICK",
+   "name": "Desert Biome Stick"
+  },
+  {
+   "id": "DIAMOND",
+   "name": "Diamond"
+  },
+  {
+   "id": "DIAMOND_SPREADING",
+   "name": "Diamond Spreading"
+  },
+  {
+   "id": "DIVAN_BOOTS",
+   "name": "Boots of Divan"
+  },
+  {
+   "id": "DIVAN_CHESTPLATE",
+   "name": "Chestplate of Divan"
+  },
+  {
+   "id": "DIVAN_HELMET",
+   "name": "Helmet of Divan"
+  },
+  {
+   "id": "DIVAN_LEGGINGS",
+   "name": "Leggings of Divan"
+  },
+  {
+   "id": "DIVAN_POWDER_COATING",
+   "name": "Divan's Powder Coating"
+  },
+  {
+   "id": "DWARVEN_COMPACTOR",
+   "name": "Dwarven Super Compactor"
+  },
+  {
+   "id": "DWARVEN_METAL",
+   "name": "Dwarven Metal Talisman"
+  },
+  {
+   "id": "DWARVEN_METAL_DETECTOR",
+   "name": "Metal Detector"
+  },
+  {
+   "id": "EMERALD_ARMOR_BOOTS",
+   "name": "Emerald Armor Boots"
+  },
+  {
+   "id": "EMERALD_ARMOR_CHESTPLATE",
+   "name": "Emerald Armor Chestplate"
+  },
+  {
+   "id": "EMERALD_ARMOR_HELMET",
+   "name": "Emerald Armor Helmet"
+  },
+  {
+   "id": "EMERALD_ARMOR_LEGGINGS",
+   "name": "Emerald Armor Leggings"
+  },
+  {
+   "id": "EMERALD_RING",
+   "name": "Emerald Ring"
+  },
+  {
+   "id": "ENCHANTED_CHARCOAL",
+   "name": "Enchanted Charcoal"
+  },
+  {
+   "id": "ENCHANTED_COAL",
+   "name": "Enchanted Coal"
+  },
+  {
+   "id": "ENCHANTED_COAL_BLOCK",
+   "name": "Enchanted Coal Block"
+  },
+  {
+   "id": "ENCHANTED_COBBLESTONE",
+   "name": "Enchanted Cobblestone"
+  },
+  {
+   "id": "ENCHANTED_DIAMOND",
+   "name": "Enchanted Diamond"
+  },
+  {
+   "id": "ENCHANTED_DIAMOND_BLOCK",
+   "name": "Enchanted Diamond Block"
+  },
+  {
+   "id": "ENCHANTED_EMERALD",
+   "name": "Enchanted Emerald"
+  },
+  {
+   "id": "ENCHANTED_EMERALD_BLOCK",
+   "name": "Enchanted Emerald Block"
+  },
+  {
+   "id": "ENCHANTED_ENDSTONE",
+   "name": "Enchanted End Stone"
+  },
+  {
+   "id": "ENCHANTED_FLINT",
+   "name": "Enchanted Flint"
+  },
+  {
+   "id": "ENCHANTED_GLOWSTONE",
+   "name": "Enchanted Glowstone"
+  },
+  {
+   "id": "ENCHANTED_GLOWSTONE_DUST",
+   "name": "Enchanted Glowstone Dust"
+  },
+  {
+   "id": "ENCHANTED_GOLD",
+   "name": "Enchanted Gold Ingot"
+  },
+  {
+   "id": "ENCHANTED_GOLD_BLOCK",
+   "name": "Enchanted Gold Block"
+  },
+  {
+   "id": "ENCHANTED_HARD_STONE",
+   "name": "Enchanted Hard Stone"
+  },
+  {
+   "id": "ENCHANTED_HOPPER",
+   "name": "Enchanted Hopper"
+  },
+  {
+   "id": "ENCHANTED_ICE",
+   "name": "Enchanted Ice"
+  },
+  {
+   "id": "ENCHANTED_IRON",
+   "name": "Enchanted Iron Ingot"
+  },
+  {
+   "id": "ENCHANTED_IRON_BLOCK",
+   "name": "Enchanted Iron Block"
+  },
+  {
+   "id": "ENCHANTED_LAPIS_LAZULI",
+   "name": "Enchanted Lapis Lazuli"
+  },
+  {
+   "id": "ENCHANTED_LAPIS_LAZULI_BLOCK",
+   "name": "Enchanted Lapis Lazuli Block"
+  },
+  {
+   "id": "ENCHANTED_LAVA_BUCKET",
+   "name": "Enchanted Lava Bucket"
+  },
+  {
+   "id": "ENCHANTED_MYCELIUM",
+   "name": "Enchanted Mycelium"
+  },
+  {
+   "id": "ENCHANTED_QUARTZ",
+   "name": "Enchanted Nether Quartz"
+  },
+  {
+   "id": "ENCHANTED_TIME_CLOCK",
+   "name": "Enchanted Clock"
+  },
+  {
+   "id": "FORGE_TRAVEL_SCROLL",
+   "name": "Travel Scroll to the Dwarven Forge"
+  },
+  {
+   "id": "GEMSTONE_CHAMBER",
+   "name": "Gemstone Chamber"
+  },
+  {
+   "id": "GLACITE_LANTERN",
+   "name": "Glacite Lantern"
+  },
+  {
+   "id": "GRAPPLING_HOOK",
+   "name": "Grappling Hook"
+  },
+  {
+   "id": "HARD_STONE",
+   "name": "Hard Stone"
+  },
+  {
+   "id": "MITHRIL_LANTERN",
+   "name": "Mithril Lantern"
+  },
+  {
+   "id": "PERSONAL_DELETOR_4000",
+   "name": "Personal Deletor 4000"
+  },
+  {
+   "id": "PORTABLE_CAMPFIRE",
+   "name": "Portable Campfire"
+  },
+  {
+   "id": "POWER_ARTIFACT",
+   "name": "Artifact of Power"
+  },
+  {
+   "id": "POWER_CRYSTAL",
+   "name": "Power Crystal"
+  },
+  {
+   "id": "POWER_RELIC",
+   "name": "Relic of Power"
+  },
+  {
+   "id": "POWER_RING",
+   "name": "Ring of Power"
+  },
+  {
+   "id": "SECRET_RAILROAD_PASS",
+   "name": "Secret Railroad Pass"
+  },
+  {
+   "id": "SKYBLOCK_MENU",
+   "name": "SkyBlock Menu"
+  },
+  {
+   "id": "TITANIC_EXP_BOTTLE",
+   "name": "Titanic Experience Bottle"
+  },
+  {
+   "id": "TITANIUM_ARTIFACT",
+   "name": "Titanium Artifact"
+  },
+  {
+   "id": "TITANIUM_LANTERN",
+   "name": "Titanium Lantern"
+  },
+  {
+   "id": "TITANIUM_RELIC",
+   "name": "Titanium Relic"
+  },
+  {
+   "id": "TITANIUM_RING",
+   "name": "Titanium Ring"
+  },
+  {
+   "id": "TITANIUM_TALISMAN",
+   "name": "Titanium Talisman"
+  },
+  {
+   "id": "WILL_O_WISP",
+   "name": "Will-o'-wisp"
+  }
+ ]
+}

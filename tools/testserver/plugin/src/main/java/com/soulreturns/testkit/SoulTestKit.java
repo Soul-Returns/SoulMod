@@ -48,6 +48,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
     private final SharpshooterSim sharp = new SharpshooterSim(this);
     private final LeapSim leap = new LeapSim(this);
     private final StorageSim storage = new StorageSim(this);
+    private final ForgeSim forge = new ForgeSim(this);
     private final DevBridgeSim devBridge = new DevBridgeSim(this);
     private final WorldLoader worlds = new WorldLoader(this);
     private final MarkMarkers marks = new MarkMarkers(this);
@@ -71,6 +72,8 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(sharp, this);
         Bukkit.getPluginManager().registerEvents(leap, this);
         Bukkit.getPluginManager().registerEvents(storage, this);
+        Bukkit.getPluginManager().registerEvents(forge, this);
+        forge.enable();
         terminals.enable();
         var command = getCommand("hx");
         var hx = new HxCommand(this);
@@ -97,6 +100,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         sharp.stop();
         states.values().forEach(s -> { if (s.actionbarTask != null) s.actionbarTask.cancel(); });
         terminals.disable();
+        forge.disable();
         mobs.clear();
         worlds.disable();
         marks.clear();
@@ -126,6 +130,10 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
 
     public StorageSim storage() {
         return storage;
+    }
+
+    public ForgeSim forge() {
+        return forge;
     }
 
     public Sacks sacks() {
