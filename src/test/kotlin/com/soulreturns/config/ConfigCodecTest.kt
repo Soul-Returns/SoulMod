@@ -472,7 +472,7 @@ class ConfigCodecTest {
 
     @Test
     fun storedChestSharingOptOutSurvivesWithoutMigration() {
-        val old = """{"configVersion":19,"islandChests":{"enabled":true,"shareWithCoop":false,"searchKey":"key.keyboard.f8"}}"""
+        val old = """{"configVersion":20,"islandChests":{"enabled":true,"shareWithCoop":false,"searchKey":"key.keyboard.f8"}}"""
         val decoded = ConfigCodec.decode(old)
         assertEquals(false, decoded.migrated)
         assertEquals(IslandChestsConfig(enabled = true, shareWithCoop = false, searchKey = "key.keyboard.f8"), decoded.config.islandChests)
@@ -491,6 +491,34 @@ class ConfigCodecTest {
                 assertEquals(originalSection, migrated["islandChests"])
             }
         }
+    }
+
+    // v19 -> v20: Magic Find's on/off becomes Combat Wisdom's; the Combat Exp row is gone.
+    @Test
+    fun comboMagicFindSwitchBecomesCombatWisdom() {
+        for (shown in listOf(true, false)) {
+            val old = """{"configVersion":19,"combo":{"enabled":true,"showMagicFind":$shown,"showCombatExp":false,"showCoins":false}}"""
+            val decoded = ConfigCodec.decode(old)
+            assertEquals(emptyList(), decoded.notes)
+            assertEquals(shown, decoded.config.combo.showCombatWisdom)
+            assertEquals(false, decoded.config.combo.showCoins)
+            assertTrue(decoded.config.combo.enabled)
+            val written = ConfigCodec.json.parseToJsonElement(ConfigCodec.encode(decoded.config)).jsonObject.getValue("combo").jsonObject
+            assertEquals(null, written["showMagicFind"])
+            assertEquals(null, written["showCombatExp"])
+        }
+        // An absent switch keeps the default; an already-new key is not overwritten; odd shapes pass through.
+        assertEquals(SoulConfig().combo.showCombatWisdom, ConfigCodec.decode("""{"configVersion":19,"combo":{"enabled":true}}""").config.combo.showCombatWisdom)
+        val both = ConfigMigrations.migrate(ConfigCodec.json.parseToJsonElement("""{"combo":{"showMagicFind":true,"showCombatWisdom":false}}""").jsonObject, 19)
+        assertEquals(JsonPrimitive(false), both.getValue("combo").jsonObject["showCombatWisdom"])
+        for (odd in listOf("null", "42", "[]")) {
+            val root = ConfigCodec.json.parseToJsonElement("""{"combo":$odd}""").jsonObject
+            assertEquals(root.getValue("combo"), ConfigMigrations.migrate(root, 19).getValue("combo"))
+        }
+        val fixture = ConfigCodec.decode(fixtures.first { it.name.startsWith("v20-combo-wisdom") }.readText())
+        assertEquals(false, fixture.config.combo.showCombatWisdom)
+        val v19 = ConfigCodec.decode(fixtures.first { it.name.startsWith("v19-") }.readText())
+        assertEquals(true, v19.config.combo.showCombatWisdom)
     }
 
     @Test

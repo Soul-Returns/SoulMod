@@ -13,12 +13,12 @@ import net.minecraft.resources.Identifier
 import org.joml.Matrix3x2f
 
 /**
- * The Magic-Find sparkle (✦) drawn for the combo overlay — the star isn't in the MSDF atlas charset
- * (nor in the text fonts), so it's a white texture blitted and tinted per [ComboConfig]. Mirrors the
+ * The Combat Wisdom sign (☯) drawn for the combo overlay: it isn't in the MSDF atlas charset (nor in
+ * the text fonts), so it's a white texture (the project's own drawing) blitted and tinted. Mirrors the
  * dungeon map's `map_arrow` texture path.
  */
-object StarIcon {
-    private val TEX = Identifier.fromNamespaceAndPath("soul", "textures/gui/combo_star.png")
+object WisdomIcon {
+    private val TEX = Identifier.fromNamespaceAndPath("soul", "textures/gui/combo_wisdom.png")
 
     private fun setup(): TextureSetup? =
         try {
@@ -33,7 +33,7 @@ object StarIcon {
             null
         }
 
-    /** Draw the star with top-left at ([x], [y]), [size]×[size] px, tinted [color] (ARGB). */
+    /** Draw the sign with top-left at ([x], [y]), [size]×[size] px, tinted [color] (ARGB). */
     fun draw(g: GuiGraphicsExtractor, x: Float, y: Float, size: Float, color: Int) {
         val s = setup() ?: return
         val pose = Matrix3x2f(g.pose())

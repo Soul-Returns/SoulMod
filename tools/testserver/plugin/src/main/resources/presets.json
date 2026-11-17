@@ -471,6 +471,35 @@
         "noMove": false
       }
     },
+    "PET_GRANDMA_WOLF": {
+      "id": "PET",
+      "material": "PLAYER_HEAD",
+      "name": "§7[Lvl 76] §5Grandma Wolf",
+      "unique": true,
+      "lore": [
+        "§8Combat Pet", "", "§7Health: §a+14", "", "§6Kill Combo",
+        "§7Gain buffs for combo kills. Effects", "§7stack as you increase your combo.",
+        "§25 Combo §7(lasts §a9.5s§7)", "§3+4☯ Combat Wisdom",
+        "§210 Combo §7(lasts §a7.5s§7)", "§6+8 §7coins per kill",
+        "§215 Combo §7(lasts §a5.5s§7)", "§3+4☯ Combat Wisdom",
+        "§220 Combo §7(lasts §a4.5s§7)", "§6+8 §7coins per kill",
+        "§225 Combo §7(lasts §a3.7s§7)", "§3+4☯ Combat Wisdom",
+        "§230 Combo §7(lasts §a2.7s§7)", "§6+8 §7coins per kill",
+        "§8This pet's perks are active even", "§8when the pet is not summoned!", "", "§5§lEPIC"
+      ],
+      "petInfo": {
+        "type": "GRANDMA_WOLF",
+        "active": false,
+        "exp": 1500000.0,
+        "tier": "EPIC",
+        "hideInfo": false,
+        "candyUsed": 0,
+        "uuid": "{uuid}",
+        "uniqueId": "{uuid}",
+        "hideRightClick": false,
+        "noMove": false
+      }
+    },
     "PET_ENDER_DRAGON": {
       "id": "PET",
       "material": "PLAYER_HEAD",
@@ -592,6 +621,7 @@
         "4": { "material": "BONE", "name": "§aPets", "lore": ["§7View and manage all of your", "§7Pets.", "", "§7Pet Score Bonus: §d+12 ✯ Magic Find"] },
         "10": "PET_GOLDEN_DRAGON",
         "11": "PET_ENDER_DRAGON",
+        "12": "PET_GRANDMA_WOLF",
         "48": { "material": "ARROW", "name": "§aGo Back", "action": "open:skyblock_menu", "lore": ["§7To SkyBlock Menu"] },
         "49": { "material": "BARRIER", "name": "§cClose", "action": "close" }
       }

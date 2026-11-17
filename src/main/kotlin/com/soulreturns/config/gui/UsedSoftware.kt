@@ -85,7 +85,7 @@ object UsedSoftware {
             Kind.REFERENCE,
         ),
         Entry(
-            "SBCombo", "Kill Combo bonus table and chat patterns by Eval, Debug, MPG1 and Altpapier; no license file, kept with credit by the maintainer's decision", "https://github.com/Eval427/SBCombo", null,
+            "SBCombo", "Kill Combo duration table and chat patterns by Eval, Debug, MPG1 and Altpapier; no license file, kept with credit by the maintainer's decision", "https://github.com/Eval427/SBCombo", null,
             Kind.BUNDLED_DATA,
         ),
         Entry(
@@ -169,7 +169,7 @@ object UsedSoftware {
         "assets/soul/lang",
         // Icons are drawn as SVG paths in mocks/config-menu/mock.js and rasterized by scripts/config_icons.mjs.
         "assets/soul/textures/gui/icons",
-        "assets/soul/textures/gui/combo_star.png",
+        "assets/soul/textures/gui/combo_wisdom.png",
         "assets/soul/textures/gui/map_arrow.png",
         "assets/soul/shaders/core/pet_glow.fsh",
         // The license and notice texts themselves.

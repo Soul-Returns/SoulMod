@@ -20,12 +20,12 @@ import java.util.Locale
 /**
  * The SkyBlock kill-combo overlay (SBCombo port), in two layouts matching the module's Short/Long
  * modes (`cfg.combo.mode`):
- *  - **Full** (0): `Current Combo: +N` header + three bonus lines (Magic Find / Coins per Kill /
- *    Combat Exp),
- *  - **Compact** (1): a single `+N +M✦ +C +X%` line.
+ *  - **Full** (0): `Current Combo: +N` header + a line per stacked bonus (Combat Wisdom / Coins per
+ *    Kill; a bonus the pet does not give, or has not reached yet, has no line),
+ *  - **Compact** (1): a single `+N +12☯ +16` line (the ☯ is a tinted texture, [WisdomIcon]).
  *
  * A [MovableHud], so position/anchor/scale come from [ComboConfig.hud] and are edited in the Move
- * GUI. Colors + text follow the module (see [ComboData]); the ✦ is a tinted texture ([StarIcon]).
+ * GUI. The totals are [ComboTracker.bonuses]; colors follow [ComboData].
  */
 object ComboHud : MovableHud("combo", "Combo Overlay", "general") {
     private const val SIZE = 10f
@@ -34,19 +34,18 @@ object ComboHud : MovableHud("combo", "Combo Overlay", "general") {
     private fun step(): Int = (SIZE * 1.3f).toInt()
 
     /**
-     * Star size matched to the active font's cap height, so the ✦ reads the same weight as the
-     * digits beside it. Minecraft's font has tall caps (~0.9 em); the vector fonts are shorter
-     * (~0.7 em), so a fixed size looked oversized against them.
+     * Sign size matched to the active font's cap height, so the ☯ reads the same weight as the digits
+     * beside it. Minecraft's font has tall caps (~0.9 em); the vector fonts are shorter (~0.7 em).
      */
-    private fun starSize(choice: Int): Float =
+    private fun signSize(choice: Int): Float =
         if (choice == MsdfFonts.MINECRAFT) SIZE * 0.9f else fontFor(false, choice).capHeightPx(SIZE)
 
     private sealed interface Seg
 
     private class Txt(val s: String, val color: Int, val bold: Boolean) : Seg
 
-    /** The Magic-Find star (✦), always tinted [ComboData.MAGIC_FIND] (light-blue). */
-    private object StarSeg : Seg
+    /** The Combat Wisdom sign (☯) Hypixel prints after the amount, tinted [ComboData.COMBAT_WISDOM]. */
+    private object WisdomSign : Seg
 
     override fun isEnabled(): Boolean = cfg.combo.enabled && ComboTracker.displayCombo() >= 5
 
@@ -90,13 +89,12 @@ object ComboHud : MovableHud("combo", "Combo Overlay", "general") {
                     val font = fontFor(seg.bold || bold, choice)
                     SoulText.draw(g, seg.s, x, y, SIZE, seg.color, font = font, forceCustom = false, shadow = shadow, fontChoice = choice)
                     x += SoulText.width(seg.s, SIZE, font, fontChoice = choice)
-                } else if (seg is StarSeg) {
-                    // Center the star on the line's font-aware visual center so it lines up with the
+                } else {
+                    // Center the sign on the line's font-aware visual center so it lines up with the
                     // text regardless of font (the vector fonts sit lower in the em box than Minecraft's).
-                    val cy = y + lineCenterOffset(choice)
-                    val ss = starSize(choice)
-                    StarIcon.draw(g, x.toFloat() + 1f, cy - ss / 2f, ss, ComboData.MAGIC_FIND)
-                    x += ss.toInt() + 2
+                    val size = signSize(choice)
+                    WisdomIcon.draw(g, x.toFloat() + 1f, y + lineCenterOffset(choice) - size / 2f, size, ComboData.COMBAT_WISDOM)
+                    x += size.toInt() + 1
                 }
             }
         }
@@ -106,21 +104,22 @@ object ComboHud : MovableHud("combo", "Combo Overlay", "general") {
 
     private fun buildLines(preview: Boolean): List<List<Seg>> {
         val c = if (preview) 25 else ComboTracker.displayCombo()
-        val t = ComboData.tierFor(c)
+        val color = ComboData.colorFor(c)
+        val wisdom = if (preview) 12.0 else ComboTracker.bonuses.combatWisdom
+        val coins = if (preview) 16.0 else ComboTracker.bonuses.coinsPerKill
         val showCount = cfg.combo.showCount
-        val showMf = cfg.combo.showMagicFind
-        val showCoins = cfg.combo.showCoins
-        val showXp = cfg.combo.showCombatExp
+        // A bonus the pet does not give (or that has not shown yet) has nothing to show.
+        val showWisdom = cfg.combo.showCombatWisdom && wisdom > 0.0
+        val showCoins = cfg.combo.showCoins && coins > 0.0
         return if (cfg.combo.mode == 1) {
-            // Compact: one line of "+N +M✦ +C +X%"; each element is optional, so the "+" separators
+            // Compact: one line of "+N +CW☯ +C"; each element is optional, so the "+" separators
             // and the timer are placed relative to what's actually shown (no leading/dangling "+").
             val line = buildList {
                 var first = true
                 fun plus() = Txt(if (first) "+" else " +", ComboData.PLUS, false).also { first = false }
-                if (showCount) { add(Txt("+$c", t.color, true)); first = false }
-                if (showMf) { add(plus()); add(Txt("${t.magicFind}", ComboData.MAGIC_FIND, false)); add(StarSeg) }
-                if (showCoins) { add(plus()); add(Txt("${t.coinsPerKill}", ComboData.COINS, false)) }
-                if (showXp) { add(plus()); add(Txt("${t.combatXp}%", ComboData.COMBAT_XP, false)) }
+                if (showCount) { add(Txt("+$c", color, true)); first = false }
+                if (showWisdom) { add(plus()); add(Txt(amount(wisdom), ComboData.COMBAT_WISDOM, false)); add(WisdomSign) }
+                if (showCoins) { add(plus()); add(Txt(amount(coins), ComboData.COINS, false)) }
                 appendTimer(this, preview)
             }
             if (line.isEmpty()) emptyList() else listOf(line)
@@ -130,18 +129,18 @@ object ComboHud : MovableHud("combo", "Combo Overlay", "general") {
                 val header = buildList {
                     if (showCount) {
                         add(Txt("Current Combo: ", ComboData.LABEL, false))
-                        add(Txt("+$c", t.color, true))
+                        add(Txt("+$c", color, true))
                     }
                     appendTimer(this, preview)
                 }
                 if (header.isNotEmpty()) add(header)
-                if (showMf) {
+                if (showWisdom) {
                     add(
                         listOf(
                             Txt("+", ComboData.PLUS, false),
-                            Txt("${t.magicFind} ", ComboData.MAGIC_FIND, false),
-                            StarSeg,
-                            Txt(" Magic Find", ComboData.MAGIC_FIND, false),
+                            Txt(amount(wisdom), ComboData.COMBAT_WISDOM, false),
+                            WisdomSign,
+                            Txt(" Combat Wisdom", ComboData.COMBAT_WISDOM, false),
                         ),
                     )
                 }
@@ -149,23 +148,18 @@ object ComboHud : MovableHud("combo", "Combo Overlay", "general") {
                     add(
                         listOf(
                             Txt("+", ComboData.PLUS, false),
-                            Txt("${t.coinsPerKill} ", ComboData.COINS, false),
+                            Txt("${amount(coins)} ", ComboData.COINS, false),
                             Txt("Coins per Kill", ComboData.LABEL, false),
-                        ),
-                    )
-                }
-                if (showXp) {
-                    add(
-                        listOf(
-                            Txt("+", ComboData.PLUS, false),
-                            Txt("${t.combatXp}% ", ComboData.COMBAT_XP, false),
-                            Txt("Combat Exp", ComboData.LABEL, false),
                         ),
                     )
                 }
             }
         }
     }
+
+    /** A bonus total as Hypixel prints it: whole numbers plain, anything else with one decimal. */
+    private fun amount(v: Double): String =
+        if (v == Math.rint(v)) v.toLong().toString() else String.format(Locale.ROOT, "%.1f", v)
 
     /** Append the red expiration countdown (`5.8s`) to [line] if the timer element is enabled. */
     private fun appendTimer(line: MutableList<Seg>, preview: Boolean) {
@@ -190,7 +184,7 @@ object ComboHud : MovableHud("combo", "Combo Overlay", "general") {
         if (seg is Txt) {
             SoulText.width(seg.s, SIZE, fontFor(seg.bold || bold, choice), fontChoice = choice)
         } else {
-            starSize(choice).toInt() + 3
+            signSize(choice).toInt() + 2
         }
 
     private fun fontFor(bold: Boolean, choice: Int) =

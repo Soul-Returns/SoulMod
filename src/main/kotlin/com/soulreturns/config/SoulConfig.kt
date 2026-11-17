@@ -457,18 +457,16 @@ data class ComboConfig(
     // Which elements of the combo overlay to draw (toggled together via the "Display" checkbox row).
     /** Show the combo count (`Current Combo: +N` / the `+N` in compact mode). */
     val showCount: Boolean = true,
-    /** Show the Magic Find bonus line/segment (incl. the ✦ star). */
-    val showMagicFind: Boolean = true,
-    /** Show the Coins-per-Kill bonus line/segment. */
+    /** Show the stacked Combat Wisdom bonus line/segment (replaced Magic Find in SkyBlock 0.27.3). */
+    val showCombatWisdom: Boolean = true,
+    /** Show the stacked Coins-per-Kill bonus line/segment. */
     val showCoins: Boolean = true,
-    /** Show the Combat Exp bonus line/segment. */
-    val showCombatExp: Boolean = true,
     /**
      * Show a red countdown (e.g. `5.8s`) of the estimated time until the combo expires. Resets on
      * each kill when a Blood God Crest/Sigil (best — counts all kills) or a Book of Stats weapon is
      * in your inventory (see [com.soulreturns.features.combo.ComboKillCounter]); otherwise it counts
-     * down from the last chat milestone. Assumes a level-100 pet — only the timer changes with pet
-     * level (not the bonuses); lower levels aren't modeled yet.
+     * down from the last chat milestone. The durations are the Grandma Wolf's own once its lore has
+     * been seen in the Pets menu ([com.soulreturns.features.combo.ComboDurations]), else a level-100 table.
      */
     val showExpireTimer: Boolean = false,
     /** Draw a rounded background card behind the overlay. */

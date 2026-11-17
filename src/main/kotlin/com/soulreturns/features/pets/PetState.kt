@@ -177,7 +177,7 @@ object PetState {
 
     // ------------------------------------------------------------------ menus
 
-    private fun isPetsMenu(title: String): Boolean = title == "Pets" || title.endsWith(") Pets") || title.startsWith("Pets (") || title.startsWith("Pets: ")
+    fun isPetsMenu(title: String): Boolean = title == "Pets" || title.endsWith(") Pets") || title.startsWith("Pets (") || title.startsWith("Pets: ")
 
     /** `(1/3) Loadouts`: slot 21 holds the equipped pet, and the menu reopens with the new one after a switch. */
     private fun isLoadoutsMenu(title: String): Boolean = title == "Loadouts" || title.endsWith(") Loadouts")

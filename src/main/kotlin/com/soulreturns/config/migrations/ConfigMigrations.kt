@@ -67,9 +67,12 @@ import java.util.Locale
  * - 18: dungeon map class defaults follow the leap palette; custom colors stay ([mapClassColorsFromLeap]).
  * - 19: the chest search binding opens and reopens search; `islandChests.clearKey` is retired.
  *   Every stored `searchKey` stays unchanged, including unbound and the former default I.
+ * - 20: SkyBlock 0.27.3 replaced the combo's Magic Find with Combat Wisdom: `combo.showMagicFind` becomes
+ *   `combo.showCombatWisdom` (same on/off), `combo.showCombatExp` is dropped with the Combat Exp row
+ *   ([comboMagicFindToWisdom]).
  */
 object ConfigMigrations {
-    const val CURRENT = 19
+    const val CURRENT = 20
 
     /** `steps[n]` turns a version-n root into version n+1. */
     private val steps: List<(Map<String, JsonElement>) -> Map<String, JsonElement>> =
@@ -93,6 +96,7 @@ object ConfigMigrations {
             ::deviceOverridePerDevice, // 16 → 17
             ::mapClassColorsFromLeap, // 17 → 18
             { root -> root.withObject("islandChests") { it - "clearKey" } }, // 18 → 19
+            ::comboMagicFindToWisdom, // 19 → 20
         )
 
     init {
@@ -343,6 +347,14 @@ object ConfigMigrations {
                 }
                 out
             }
+        }
+
+    /** The player's Magic Find switch carries over as the Combat Wisdom switch; an existing new key wins. */
+    private fun comboMagicFindToWisdom(root: Map<String, JsonElement>): Map<String, JsonElement> =
+        root.withObject("combo") { combo ->
+            val shown = combo["showMagicFind"]
+            val rest = combo - "showMagicFind" - "showCombatExp"
+            if (shown != null && "showCombatWisdom" !in rest) rest + ("showCombatWisdom" to shown) else rest
         }
 
     private fun Map<String, JsonElement>.withObject(

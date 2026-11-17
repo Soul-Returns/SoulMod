@@ -1,0 +1,864 @@
+{
+  "configVersion": 20,
+  "general": {
+    "prefixOutgoingMessages": false,
+    "uiScale": 1.5,
+    "fontChoice": 0,
+    "menuFontChoice": 0,
+    "hudBoldFont": false,
+    "hudTextShadow": true,
+    "trackerControlsOnHover": true,
+    "moveGui": {
+      "edgeSnap": 8.0,
+      "linkGap": 5.0,
+      "confirmDetach": true,
+      "openOnSelect": false,
+      "barPinned": false,
+      "controlsOpen": true,
+      "controlsAdvanced": false
+    },
+    "pauseMenuButtons": true,
+    "noFrontCamera": false,
+    "toggleSprint": false,
+    "toggleSprintUnderwater": false,
+    "toggleSprintKey": "",
+    "toggleSprintHud": false,
+    "toggleSprintHudTransform": {
+      "hAnchor": 1,
+      "vAnchor": 2,
+      "offsetX": -138.0,
+      "offsetY": -22.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": {
+        "target": "vanilla:hotbar",
+        "h": -1,
+        "v": -1,
+        "offsetX": -4.0,
+        "offsetY": 0.0,
+        "follow": true,
+        "auto": false,
+        "fixed": false,
+        "whenHidden": 0
+      }
+    },
+    "toggleSprintHudBackground": false,
+    "toggleSprintHudBackgroundColor": {
+      "argb": -1879048192,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "toggleSprintHudColor": {
+      "argb": -11141291,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "soulActionBar": false,
+    "actionBarTransform": {
+      "hAnchor": 1,
+      "vAnchor": 2,
+      "offsetX": 0.0,
+      "offsetY": 0.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": null
+    },
+    "actionBarCustomPosition": false,
+    "alertTransform": {
+      "hAnchor": 1,
+      "vAnchor": 1,
+      "offsetX": 0.0,
+      "offsetY": -65.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": null
+    },
+    "preventAbilityItemPlace": false,
+    "hideHeldItemTooltip": false,
+    "hideEffects": false,
+    "hideEffectsHud": true,
+    "hideEffectsInventory": true,
+    "cleanUpInventory": true,
+    "hideRecipeBook": true,
+    "hideOffhandSlot": true,
+    "hideCraftingGrid": true,
+    "equipmentDisplay": false,
+    "equipmentJoinFrame": false,
+    "darkUi": false,
+    "keepCursorBetweenMenus": false,
+    "hideFoliage": false,
+    "hideStuckDianaMobs": false,
+    "quietImplosion": false,
+    "hideImplosionParticles": true,
+    "hideImplosionExplosionSound": true,
+    "hideImplosionTeleportSound": true,
+    "hideFireOverlay": true,
+    "hideEntityFire": true
+  },
+  "fishing": {
+    "doubleHookMessageEnabled": false,
+    "doubleHookMessageText": "Woot Woot!",
+    "trackerHud": false,
+    "trackerHudTransform": {
+      "hAnchor": 0,
+      "vAnchor": 0,
+      "offsetX": 9.5,
+      "offsetY": 11.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": null
+    },
+    "trackerHudBackground": true,
+    "trackerHudBackgroundColor": {
+      "argb": -669378022,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "trackerScrollable": true,
+    "trackerFestivalTimer": true,
+    "trackerShowRates": false,
+    "trackerTab": "Session",
+    "trackerSort": "catches",
+    "trackerFilter": [],
+    "trackerColumns": {},
+    "bobbinAlert": false,
+    "bobbinThreshold": 3,
+    "bobbinAlertSound": null,
+    "doubleHookSound": null
+  },
+  "combo": {
+    "enabled": false,
+    "mode": 0,
+    "hideComboMessages": false,
+    "hideExpireMessage": false,
+    "decaySeconds": 0.0,
+    "trackBest": false,
+    "bestCombo": 0,
+    "showCount": true,
+    "showCombatWisdom": false,
+    "showCoins": true,
+    "showExpireTimer": false,
+    "background": true,
+    "backgroundColor": {
+      "argb": -1879048192,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "hud": {
+      "hAnchor": 1,
+      "vAnchor": 1,
+      "offsetX": 0.0,
+      "offsetY": -81.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": null
+    }
+  },
+  "dungeons": {
+    "mapEnabled": false,
+    "mapHideInBoss": false,
+    "mapFontChoice": 0,
+    "mapHud": {
+      "hAnchor": 1,
+      "vAnchor": 1,
+      "offsetX": 74.0,
+      "offsetY": 74.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": null
+    },
+    "mapBackground": true,
+    "mapBorder": false,
+    "mapRoundedCorners": true,
+    "mapBackgroundColor": {
+      "argb": -938471404,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "mapBorderColor": {
+      "argb": -12961212,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "colors": {
+      "unopened": {
+        "argb": -12698042,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "normal": {
+        "argb": -7708350,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "rare": {
+        "argb": -13479,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "entrance": {
+        "argb": -15224802,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "puzzle": {
+        "argb": -7713360,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "trap": {
+        "argb": -2588101,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "miniboss": {
+        "argb": -2566075,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "fairy": {
+        "argb": -1077320,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "blood": {
+        "argb": -6090222,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "doorWither": {
+        "argb": -15263973,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "doorBlood": {
+        "argb": -6090222,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "doorEntrance": {
+        "argb": -15224802,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "markerSelf": {
+        "argb": -14494738,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "classArcher": {
+        "argb": -16711936,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "classBerserk": {
+        "argb": -43691,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "classMage": {
+        "argb": -11141121,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "classHealer": {
+        "argb": -43521,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "classTank": {
+        "argb": -11155371,
+        "chroma": false,
+        "speed": 6.0
+      }
+    },
+    "mapShowSecrets": true,
+    "mapShowRoomNames": true,
+    "mapSecretsPosition": 0,
+    "mapNamePosition": 1,
+    "mapCenterPair": false,
+    "mapSecretsAboveName": false,
+    "mapCenterNamelessRooms": true,
+    "mapAutoScaleNames": true,
+    "mapTextScale": 1.0,
+    "mapShowNames": false,
+    "mapNamesOnlyWithLeap": false,
+    "mapPlayerHeadsOthers": true,
+    "mapPlayerHeadSelf": false,
+    "mapClassColorBorders": true,
+    "mapPlayerHeadScale": 1.0,
+    "mapPlayerScaleSelf": 1.0,
+    "mapOthersAboveText": false,
+    "mapSelfAboveText": false,
+    "debugHudEnabled": false,
+    "debugHudX": 250.0,
+    "debugHudY": 10.0,
+    "debugHudScale": 0.75,
+    "secretsSyncEnabled": false,
+    "blockLeavingCommands": false,
+    "allowDungeonHubWarp": true,
+    "terminals": {
+      "enabled": false
+    },
+    "hideSoulweaverSkulls": false,
+    "boss": {
+      "crushWindow": true,
+      "units": 1,
+      "digitSize": 40.0,
+      "offset": 24.0,
+      "showWindow": true,
+      "showPurple": false,
+      "showGiga": true,
+      "showGoldor": true,
+      "showHigh": true,
+      "lateAmount": true,
+      "markPillar": false,
+      "stormEta": true,
+      "nextFireball": true,
+      "onM7": false,
+      "showPad": true,
+      "padWhen": 0,
+      "showArm": true
+    },
+    "devices": {
+      "enabled": true,
+      "simonSays": true,
+      "blockWrongClicks": true,
+      "simonSaysOverride": "sneaking",
+      "lightsOverride": "sneaking",
+      "arrowAlignOverride": "sneaking"
+    }
+  },
+  "mining": {
+    "mineshaft": {
+      "logVisits": true,
+      "corpsesHud": false,
+      "corpsesHudBackground": true,
+      "corpsesHudBackgroundColor": {
+        "argb": -1879048192,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "corpsesHudTransform": {
+        "hAnchor": 1,
+        "vAnchor": 0,
+        "offsetX": 0.0,
+        "offsetY": 21.5,
+        "autoAnchor": true,
+        "scale": 1.0,
+        "fontMode": 0,
+        "fontChoice": 0,
+        "textShadowMode": 0,
+        "link": null
+      },
+      "corpsesHudColors": {
+        "lapis": {
+          "argb": -11184641,
+          "chroma": false,
+          "speed": 6.0
+        },
+        "umber": {
+          "argb": -22016,
+          "chroma": false,
+          "speed": 6.0
+        },
+        "tungsten": {
+          "argb": -1,
+          "chroma": false,
+          "speed": 6.0
+        },
+        "vanguard": {
+          "argb": -5635926,
+          "chroma": false,
+          "speed": 6.0
+        },
+        "other": {
+          "argb": -2236963,
+          "chroma": false,
+          "speed": 6.0
+        },
+        "looted": {
+          "argb": -11141291,
+          "chroma": false,
+          "speed": 6.0
+        },
+        "total": {
+          "argb": -43691,
+          "chroma": false,
+          "speed": 6.0
+        },
+        "title": {
+          "argb": -11141121,
+          "chroma": false,
+          "speed": 6.0
+        },
+        "none": {
+          "argb": -5592406,
+          "chroma": false,
+          "speed": 6.0
+        }
+      },
+      "littlefootPtme": false,
+      "littlefootWaypoint": false,
+      "lapisPtme": false,
+      "lapisThreshold": 3,
+      "vanguardPtme": false,
+      "alertSound": null
+    },
+    "metalDetector": {
+      "enabled": true,
+      "toolsAlert": true,
+      "toolsAlertSound": null,
+      "hud": true,
+      "toolsCounter": false,
+      "toolsCounterTransform": {
+        "hAnchor": 2,
+        "vAnchor": 0,
+        "offsetX": -5.0,
+        "offsetY": 5.0,
+        "autoAnchor": true,
+        "scale": 1.0,
+        "fontMode": 0,
+        "fontChoice": 0,
+        "textShadowMode": 0,
+        "link": {
+          "target": "hud:metal_detector_tracker",
+          "h": -1,
+          "v": 0,
+          "offsetX": -5.0,
+          "offsetY": 0.0,
+          "follow": true,
+          "auto": false,
+          "fixed": false,
+          "whenHidden": 0
+        }
+      },
+      "waypointColor": {
+        "argb": -11141121,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "lineWidth": 3.0,
+      "hudTransform": {
+        "hAnchor": 2,
+        "vAnchor": 0,
+        "offsetX": -5.0,
+        "offsetY": 5.0,
+        "autoAnchor": true,
+        "scale": 1.0,
+        "fontMode": 0,
+        "fontChoice": 0,
+        "textShadowMode": 0,
+        "link": null
+      },
+      "hudBackground": true,
+      "hudBackgroundColor": {
+        "argb": -669378022,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "hudScrollable": true,
+      "hudTab": "Total",
+      "hudSort": "found",
+      "hudFilter": [
+        "none"
+      ],
+      "hudColumns": {}
+    },
+    "nucleus": {
+      "tracker": true,
+      "rareDropAlert": true,
+      "rareDropThresholdM": 1.0,
+      "hudTransform": {
+        "hAnchor": 0,
+        "vAnchor": 0,
+        "offsetX": 9.5,
+        "offsetY": 11.0,
+        "autoAnchor": true,
+        "scale": 1.0,
+        "fontMode": 0,
+        "fontChoice": 0,
+        "textShadowMode": 0,
+        "link": null
+      },
+      "hudBackground": true,
+      "hudBackgroundColor": {
+        "argb": -669378022,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "hudScrollable": true,
+      "hudTab": "Session",
+      "hudSort": "value",
+      "hudFilter": [],
+      "hudColumns": {},
+      "priceMode": 0,
+      "checklist": true,
+      "checklistTransform": {
+        "hAnchor": 2,
+        "vAnchor": 2,
+        "offsetX": -9.5,
+        "offsetY": -89.5,
+        "autoAnchor": true,
+        "scale": 1.0,
+        "fontMode": 0,
+        "fontChoice": 0,
+        "textShadowMode": 0,
+        "link": null
+      },
+      "checklistBackground": true,
+      "checklistBackgroundColor": {
+        "argb": -1609560048,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "bal": true,
+      "balTransform": {
+        "hAnchor": 2,
+        "vAnchor": 2,
+        "offsetX": -9.5,
+        "offsetY": -41.0,
+        "autoAnchor": true,
+        "scale": 1.0,
+        "fontMode": 0,
+        "fontChoice": 0,
+        "textShadowMode": 0,
+        "link": null
+      },
+      "balBackground": true,
+      "balWarning": true,
+      "compactChat": true,
+      "compactFound": true,
+      "compactLoot": true,
+      "hideAlreadyObtained": true,
+      "hideBlocksInWay": true
+    },
+    "muteHollowsWeather": false,
+    "hideHollowsWeatherVisuals": false
+  },
+  "combat": {
+    "dragons": {
+      "enabled": false,
+      "profitHud": false,
+      "profitHudTransform": {
+        "hAnchor": 2,
+        "vAnchor": 0,
+        "offsetX": -9.5,
+        "offsetY": 11.0,
+        "autoAnchor": true,
+        "scale": 1.0,
+        "fontMode": 0,
+        "fontChoice": 0,
+        "textShadowMode": 0,
+        "link": null
+      },
+      "profitHudBackground": true,
+      "profitHudBackgroundColor": {
+        "argb": -669378022,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "profitScrollable": true,
+      "useNpcPriceIfHigher": false,
+      "sendDragonProfit": false,
+      "sendDragonProfitToPartyChat": false,
+      "sendLegionOnDeath": false,
+      "sendLegionToPartyChat": false,
+      "profitTab": "Session",
+      "profitSort": "value",
+      "profitFilter": [],
+      "profitColumns": {},
+      "profitSourceFilter": "ALL",
+      "priceMode": 0
+    },
+    "mobHealth": {
+      "enabled": false,
+      "background": true,
+      "backgroundColor": {
+        "argb": -1879048192,
+        "chroma": false,
+        "speed": 6.0
+      },
+      "hud": {
+        "hAnchor": 1,
+        "vAnchor": 1,
+        "offsetX": 0.0,
+        "offsetY": 50.0,
+        "autoAnchor": true,
+        "scale": 1.0,
+        "fontMode": 0,
+        "fontChoice": 0,
+        "textShadowMode": 0,
+        "link": null
+      }
+    }
+  },
+  "petHud": {
+    "enabled": true,
+    "style": 0,
+    "noPet": 0,
+    "icon": true,
+    "level": true,
+    "xpBar": true,
+    "percent": true,
+    "heldItem": true,
+    "xpPerHour": true,
+    "xpNumbers": true,
+    "timeToLevel": true,
+    "overflow": true,
+    "rarityName": true,
+    "skinStar": true,
+    "progressToMax": false,
+    "badges": true,
+    "animations": true,
+    "numberFormat": 0,
+    "barMode": 0,
+    "barColor": {
+      "argb": -12877066,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "background": true,
+    "backgroundColor": {
+      "argb": -1879048192,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "hud": {
+      "hAnchor": 1,
+      "vAnchor": 2,
+      "offsetX": 160.0,
+      "offsetY": 0.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": {
+        "target": "vanilla:hotbar",
+        "h": 3,
+        "v": 2,
+        "offsetX": 6.0,
+        "offsetY": 0.0,
+        "follow": true,
+        "auto": false,
+        "fixed": false,
+        "whenHidden": 0
+      }
+    }
+  },
+  "notifications": {
+    "toastEnabled": false,
+    "chatEnabled": true,
+    "toastSeconds": 6.0,
+    "background": true,
+    "backgroundColor": {
+      "argb": -1879048192,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "hud": {
+      "hAnchor": 1,
+      "vAnchor": 0,
+      "offsetX": 0.0,
+      "offsetY": 65.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": null
+    },
+    "sound": null
+  },
+  "profileViewer": {
+    "enabled": true,
+    "shareSoulStats": false
+  },
+  "commandBindings": [
+    {
+      "command": "warp dh",
+      "key": "key.keyboard.f6",
+      "enabled": true
+    },
+    {
+      "command": "pc !ptme",
+      "key": "",
+      "enabled": true
+    },
+    {
+      "command": "soul sounds",
+      "key": "key.keyboard.left.alt+key.keyboard.s",
+      "enabled": true
+    }
+  ],
+  "commandKeybinds": {
+    "enabled": true,
+    "presetsOpen": true,
+    "presets": {
+      "storage": {
+        "key": "key.keyboard.right.control+key.keyboard.1",
+        "enabled": true
+      },
+      "pets": {
+        "key": "key.keyboard.x",
+        "enabled": true
+      }
+    },
+    "ignoreDebugKeyConflicts": true
+  },
+  "inventoryButtons": {
+    "buttons": [
+      {
+        "command": "",
+        "label": "",
+        "item": "minecraft:paper",
+        "skin": "",
+        "model": "",
+        "glint": false,
+        "spot": "G:3:0",
+        "inventoryOnly": true
+      }
+    ],
+    "profiles": [],
+    "activeEverywhere": "default",
+    "activeByArea": {},
+    "seenAreas": [
+      "Hub",
+      "Crystal Hollows"
+    ],
+    "showOuterButtons": true
+  },
+  "inventoryInfo": {
+    "enabled": true,
+    "progressBars": true,
+    "soulFont": true,
+    "layout": 0,
+    "hoverDetails": true,
+    "levelColor": true,
+    "entries": [
+      "skyblock_level",
+      "profile",
+      "skill_average",
+      "catacombs",
+      "class_average"
+    ]
+  },
+  "prices": {
+    "tooltips": false,
+    "fairValue": true,
+    "bazaar": true,
+    "lowestBin": true,
+    "trend": true,
+    "sellSpeed": true,
+    "stackTotal": true,
+    "shiftForDetails": true
+  },
+  "sacks": {
+    "hud": true,
+    "tracked": [
+      {
+        "id": "LOTUS",
+        "name": "Lotus",
+        "color": -11141291,
+        "item": "minecraft:paper",
+        "skin": "",
+        "model": "",
+        "glint": false
+      },
+      {
+        "id": "CHUM",
+        "name": "Chum",
+        "color": -11141291,
+        "item": "minecraft:paper",
+        "skin": "",
+        "model": "",
+        "glint": false
+      }
+    ],
+    "hudTransform": {
+      "hAnchor": 1,
+      "vAnchor": 2,
+      "offsetX": -37.5,
+      "offsetY": -71.0,
+      "autoAnchor": true,
+      "scale": 1.0,
+      "fontMode": 0,
+      "fontChoice": 0,
+      "textShadowMode": 0,
+      "link": null
+    },
+    "hudBackground": true,
+    "hudBackgroundColor": {
+      "argb": -669378022,
+      "chroma": false,
+      "speed": 6.0
+    },
+    "hudTimer": true,
+    "sort": "session",
+    "columns": {}
+  },
+  "sounds": {
+    "replacerEnabled": false,
+    "replaceRules": []
+  },
+  "updates": {
+    "channel": "stable",
+    "autoInstall": false,
+    "skippedVersion": ""
+  },
+  "dev": {
+    "debugMode": false,
+    "logWebsocket": false,
+    "backendUrl": "",
+    "realtimeAlwaysOn": false,
+    "presence": {
+      "enabled": true
+    },
+    "keybinds": {
+      "copyOpenedGui": "",
+      "copyItemUnderCursor": "",
+      "copyHeldItem": "",
+      "copyScoreboard": "",
+      "copyTablist": "",
+      "copyNearbyEntities": ""
+    }
+  },
+  "menu": {
+    "pins": [],
+    "recent": [],
+    "seenNew": {
+      "version": "0.1.2",
+      "ids": [
+        "f:pethud",
+        "f:invbuttons"
+      ]
+    },
+    "sidebarCollapsed": true,
+    "alwaysAdvanced": false,
+    "onboardingDone": true
+  },
+  "islandChests": {
+    "enabled": true,
+    "shareWithCoop": true,
+    "searchKey": "key.keyboard.right.control+key.mouse.4"
+  }
+}

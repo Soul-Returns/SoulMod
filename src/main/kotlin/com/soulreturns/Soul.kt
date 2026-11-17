@@ -17,6 +17,7 @@ import com.soulreturns.data.skyblock.FishingFestivalState
 import com.soulreturns.data.skyblock.SkyblockSelfProfile
 import com.soulreturns.data.skyblock.SkyblockStateReader
 import com.soulreturns.data.skyblock.TabWidgets
+import com.soulreturns.features.combo.ComboDurations
 import com.soulreturns.features.combo.ComboHud
 import com.soulreturns.features.combo.ComboKillCounter
 import com.soulreturns.features.combo.ComboTracker
@@ -235,6 +236,7 @@ object Soul : ClientModInitializer {
         PriceTooltip.register()
         ComboTracker.register()
         ComboKillCounter.register()
+        ComboDurations.register()
         MobHealthTracker.register()
         // After PartyManager (its alerts gate /pc on party membership) and after SkyblockStateReader
         // (it drives the whole feature off AreaChanged).

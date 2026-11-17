@@ -13,15 +13,16 @@ import net.minecraft.network.chat.Component
 /**
  * Detects the SkyBlock kill combo (Grandma Wolf Pet perk) from chat and drives [ComboHud].
  *
- * Ported from the SBCombo ChatTriggers module: three chat patterns — a milestone with a bonus
- * (`+N Kill Combo +X …`), a bare milestone past the bonus range (`+N Kill Combo`), and the expiry
- * line (`Your Kill Combo has expired! You reached a N Kill Combo!`). Detection runs off the chat
+ * Ported from the SBCombo ChatTriggers module: chat patterns for a milestone with its bonus
+ * (`+N Kill Combo +4☯ Combat Wisdom`), a bare milestone and the expiry line
+ * (`Your Kill Combo has expired! You reached a N Kill Combo!`), parsed by [ComboChat]. Bonuses are read
+ * from each milestone line and stacked in [bonuses]; nothing about them is hard-coded. Detection runs off the chat
  * event pipeline; **hiding** the vanilla lines is display-only via [ChatDisplayFilter] (registered
  * here) so other mods still receive them.
  */
 object ComboTracker {
-    private val MILESTONE = Regex("^\\+(\\d+) Kill Combo")
-    private val EXPIRE = Regex("Your Kill Combo has expired! You reached a (\\d+) Kill Combo!")
+    /** Bonuses stacked over the running combo; reset when it expires. */
+    val bonuses = ComboRun()
 
     @Volatile
     private var combo: Int = 0
@@ -39,8 +40,8 @@ object ComboTracker {
     }
 
     /**
-     * Estimated seconds until the current combo expires (clamped to 0). Assumes a **level-100 pet**
-     * (the tier durations are the level-100 values). Accuracy depends on the kill signal: with a
+     * Estimated seconds until the current combo expires (clamped to 0). The duration per milestone is
+     * the pet's own, learned from its lore ([ComboDurations]), else the level-100 table. Accuracy depends on the kill signal: with a
      * kill-counter item in the inventory ([ComboKillCounter]) the anchor refreshes on every kill, so
      * this is exact; without one it can only re-anchor on the every-5-kills milestone line, so it
      * over-counts elapsed time between milestones. Returns 0 when no combo is active.
@@ -49,7 +50,7 @@ object ComboTracker {
         val c = combo
         if (c < 5) return 0f
         val elapsed = (System.currentTimeMillis() - lastUpdateMs) / 1000f
-        return (ComboData.tierFor(c).durationSeconds - elapsed).coerceAtLeast(0f)
+        return (ComboDurations.seconds(c) - elapsed).coerceAtLeast(0f)
     }
 
     /**
@@ -84,26 +85,30 @@ object ComboTracker {
     private fun onChat(raw: String) {
         if (!cfg.combo.enabled) return
         val clean = MessageDetector.stripColorCodes(raw).trim()
-        EXPIRE.find(clean)?.let { m ->
-            onExpire(m.groupValues[1].toIntOrNull() ?: 0)
-            return
+        when (val line = ComboChat.parse(clean)) {
+            is ComboChat.Expired -> onExpire(line.reached)
+            is ComboChat.Milestone -> onMilestone(line)
+            null -> Unit
         }
-        MILESTONE.find(clean)?.let { m ->
-            val n = m.groupValues[1].toIntOrNull() ?: return
-            lastUpdateMs = System.currentTimeMillis()
-            if (ComboKillCounter.hasCounter()) {
-                // A kill counter is driving the exact count — use this milestone only as a delayed
-                // floor, so the kill that triggered it isn't counted twice (once by chat, once by NBT).
-                ComboKillCounter.setFloor(n)
-            } else {
-                combo = n // no counter: the milestone chat is the only signal, so it sets the count
-            }
+    }
+
+    private fun onMilestone(line: ComboChat.Milestone) {
+        val n = line.count
+        lastUpdateMs = System.currentTimeMillis()
+        bonuses.onMilestone(n, line.bonuses)
+        if (ComboKillCounter.hasCounter()) {
+            // A kill counter is driving the exact count — use this milestone only as a delayed
+            // floor, so the kill that triggered it isn't counted twice (once by chat, once by NBT).
+            ComboKillCounter.setFloor(n)
+        } else {
+            combo = n // no counter: the milestone chat is the only signal, so it sets the count
         }
     }
 
     private fun onExpire(reached: Int) {
         combo = 0
         lastUpdateMs = 0L
+        bonuses.reset()
         ComboKillCounter.cancelFloor() // drop any milestone floor waiting to apply — the combo is over
         // config.json is shared by both datasets: an Alpha (or not yet confirmed) combo is no record.
         if (cfg.combo.trackBest && reached > cfg.combo.bestCombo && PlayerDataset.confirmedProduction()) {
@@ -117,8 +122,8 @@ object ComboTracker {
     private fun shouldHide(message: Component): Boolean {
         if (!cfg.combo.enabled) return false
         val clean = MessageDetector.stripColorCodes(message.string).trim()
-        if (EXPIRE.containsMatchIn(clean)) return cfg.combo.hideExpireMessage
-        if (MILESTONE.containsMatchIn(clean)) return cfg.combo.hideComboMessages
+        if (ComboChat.isExpiry(clean)) return cfg.combo.hideExpireMessage
+        if (ComboChat.isMilestone(clean)) return cfg.combo.hideComboMessages
         return false
     }
 }

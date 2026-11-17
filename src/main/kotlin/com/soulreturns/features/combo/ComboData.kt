@@ -1,13 +1,14 @@
 package com.soulreturns.features.combo
 
 /**
- * SkyBlock Kill-Combo bonus tiers (Grandma Wolf Pet perk), ported verbatim from the SBCombo
- * ChatTriggers module's `data` table. Keyed by combo milestone (a multiple of 5); each holds the
- * **cumulative** bonuses granted at that milestone. Above 30 the module (and this port) caps at the
- * 30-tier totals.
+ * Colors and the fallback combo durations of the SkyBlock Kill Combo (Grandma Wolf pet perk).
  *
- * `color` is the ARGB the combo count is drawn in (matches the module's tier color code):
- * 5/10 green, 15 dark-blue, 20/25 dark-purple, 30 gold.
+ * The bonuses are **not** stored here: since SkyBlock 0.27.3 their kind and size depend on the pet
+ * (Combat Wisdom or coins per kill, scaled by level and rarity), so [ComboRun] takes them from each
+ * milestone's chat line. The duration table below follows the SBCombo tier table (credited in
+ * `UsedSoftware`); the pet's own values are learned from its lore ([ComboDurations]).
+ *
+ * The count color is the tier color of the module: 5/10 green, 15 dark-blue, 20/25 dark-purple, 30 gold.
  */
 object ComboData {
     /** ARGB colors matching the module's Minecraft color codes. */
@@ -16,40 +17,29 @@ object ComboData {
     const val DARK_PURPLE = 0xFFC030D0.toInt() // §5 (brightened to match the mockup's magenta)
     const val GOLD = 0xFFFFAA00.toInt() // §6
 
-    // Bonus-value colors (module: §b magic find, §6 coins, §3 combat xp, §7 label, §8 plus).
-    const val MAGIC_FIND = 0xFF55FFFF.toInt() // §b aqua
+    // Bonus colors as Hypixel prints them: §3 Combat Wisdom, §6 coins, §7 label, §8 plus.
+    const val COMBAT_WISDOM = 0xFF33CCCC.toInt() // §3 dark-aqua (brightened)
     const val COINS = 0xFFFFAA00.toInt() // §6 gold
-    const val COMBAT_XP = 0xFF33CCCC.toInt() // §3 dark-aqua (brightened)
     const val LABEL = 0xFFAAAAAA.toInt() // §7 gray
     const val PLUS = 0xFF7A7A7A.toInt() // §8 dark-gray (brightened)
-    const val TIMER = 0xFFFF5555.toInt() // §c red — combo-expiration countdown
+    const val TIMER = 0xFFFF5555.toInt() // §c red, combo-expiration countdown
 
-    class Tier(
-        val color: Int,
-        val magicFind: Int,
-        val coinsPerKill: Int,
-        val combatXp: Int,
-        /**
-         * Seconds the combo lasts after a kill at this tier, **assuming a level-100 pet**. Only the
-         * duration scales with pet level (the bonuses don't), so lower pet levels shorten these — not
-         * yet modeled (see the timer toggle note).
-         */
-        val durationSeconds: Float,
-    )
+    /** Highest milestone the pet's table lists; a longer combo keeps this tier's color and duration. */
+    const val LAST_MILESTONE = 30
 
-    private val tiers: Map<Int, Tier> =
-        mapOf(
-            5 to Tier(GREEN, 3, 0, 0, 10f),
-            10 to Tier(GREEN, 3, 10, 0, 8f),
-            15 to Tier(DARK_BLUE, 6, 10, 0, 6f),
-            20 to Tier(DARK_PURPLE, 6, 10, 15, 5f),
-            25 to Tier(DARK_PURPLE, 9, 10, 15, 4f),
-            30 to Tier(GOLD, 9, 20, 15, 3f),
-        )
+    /** Count color of [combo]: its milestone (a multiple of 5) clamped to 5..30. */
+    fun colorFor(combo: Int): Int = colors.getValue(milestoneOf(combo))
 
-    /** Bonuses for [combo]: floor to the nearest milestone, clamped to 5..30 (the module's cap). */
-    fun tierFor(combo: Int): Tier {
-        val key = (combo / 5 * 5).coerceIn(5, 30)
-        return tiers.getValue(key)
-    }
+    /** The milestone [combo] sits on or just past, clamped to 5..[LAST_MILESTONE]. */
+    fun milestoneOf(combo: Int): Int = (combo / 5 * 5).coerceIn(5, LAST_MILESTONE)
+
+    /**
+     * Seconds the combo lasts after a kill at each milestone for a **level-100** pet, used until the
+     * pet's own lore has been seen ([ComboDurations]). Level 76 EPIC measured 9.5 / 7.5 / 5.5 / 4.5 /
+     * 3.7 / 2.7 on 2026-11-17, so the table is at most half a second long for mid-level pets.
+     */
+    val defaultDurations: Map<Int, Float> = mapOf(5 to 10f, 10 to 8f, 15 to 6f, 20 to 5f, 25 to 4f, 30 to 3f)
+
+    private val colors: Map<Int, Int> =
+        mapOf(5 to GREEN, 10 to GREEN, 15 to DARK_BLUE, 20 to DARK_PURPLE, 25 to DARK_PURPLE, 30 to GOLD)
 }

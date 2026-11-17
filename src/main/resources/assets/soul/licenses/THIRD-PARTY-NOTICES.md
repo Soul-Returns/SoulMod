@@ -76,8 +76,9 @@ buttons idea. No code or data is taken.
 
 ### SBCombo — no license published
 https://github.com/Eval427/SBCombo, a ChatTriggers module by Eval, Debug, MPG1 and Altpapier. The Kill
-Combo bonus table (`ComboData`) and the three chat patterns (`ComboTracker`) follow the module. The
-numbers are Hypixel game mechanics. The repository has no license file, so no permission is on record;
+Combo duration table (`ComboData`, the fallback until the pet's own lore has been read) and the chat
+patterns (`ComboChat`) follow the module. The bonus amounts are no longer a table: they come from the
+chat lines. The numbers are Hypixel game mechanics. The repository has no license file, so no permission is on record;
 the table is kept here with credit to the authors above by the maintainer's decision (2026-11-13).
 
 ### SkyCrypt, NotEnoughUpdates REPO, SkyHelper-Networth — MIT

@@ -702,8 +702,8 @@ object ConfigRegistry {
                 val c = { cfg.combo }
                 fun combo(block: com.soulreturns.config.ComboConfig.() -> com.soulreturns.config.ComboConfig) = ConfigManager.update { copy(combo = combo.block()) }
                 FeatureCard(
-                    "combo", "Kill Combo overlay", "Your Grandma Wolf combo and its bonuses", "combat", "mobs", "paw",
-                    "Tracks the kill combo from chat. The live count is exact with a Blood God Crest/Sigil, close with a Book of Stats weapon, otherwise it follows the every-5-kills milestones.",
+                    "combo", "Kill Combo overlay", "Your Grandma Wolf combo and its stacked bonuses", "combat", "mobs", "paw",
+                    "Tracks the kill combo from chat and adds up the Combat Wisdom and coins per kill each milestone gives. The live count is exact with a Blood God Crest/Sigil, close with a Book of Stats weapon, otherwise it follows the every-5-kills milestones. The timer learns your Grandma Wolf's durations when you open the Pets menu.",
                     master = toggle("Kill Combo overlay", null, { c().enabled }, { v -> combo { copy(enabled = v) } }, d.combo.enabled),
                     simple = listOf(
                         cycle("Layout", "Full: several lines with labels. Compact: one line", { c().mode }, { v -> combo { copy(mode = v) } }, listOf("Full", "Compact"), d.combo.mode),
@@ -712,9 +712,8 @@ object ConfigRegistry {
                             "Show", null,
                             listOf(
                                 check("Combo", { c().showCount }, { v -> combo { copy(showCount = v) } }, d.combo.showCount),
-                                check("Magic Find", { c().showMagicFind }, { v -> combo { copy(showMagicFind = v) } }, d.combo.showMagicFind),
+                                check("Combat Wisdom", { c().showCombatWisdom }, { v -> combo { copy(showCombatWisdom = v) } }, d.combo.showCombatWisdom),
                                 check("Coins", { c().showCoins }, { v -> combo { copy(showCoins = v) } }, d.combo.showCoins),
-                                check("Combat Exp", { c().showCombatExp }, { v -> combo { copy(showCombatExp = v) } }, d.combo.showCombatExp),
                                 check("Timer", { c().showExpireTimer }, { v -> combo { copy(showExpireTimer = v) } }, d.combo.showExpireTimer),
                             ),
                         ),
@@ -727,7 +726,7 @@ object ConfigRegistry {
                             toggle("Hide expiry message", "\"Your Kill Combo has expired!\"", { c().hideExpireMessage }, { v -> combo { copy(hideExpireMessage = v) } }, d.combo.hideExpireMessage),
                             toggle("Track best combo", "Say in chat when you beat your record", { c().trackBest }, { v -> combo { copy(trackBest = v) } }, d.combo.trackBest),
                         ),
-                    hud = true, synonyms = listOf("combo", "grandma wolf", "magic find", "kill combo", "sbcombo"),
+                    hud = true, synonyms = listOf("combo", "grandma wolf", "combat wisdom", "magic find", "kill combo", "sbcombo"),
                 )
             },
             // Combat › Diana
