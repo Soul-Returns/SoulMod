@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Experimentation Table fixtures: the container signals cut from a dev bridge recording (format v2).
+
+    tools/devbridge/exp-fixtures <recording.rec.ndjson.zst> <out-dir> [cid ...]
+    tools/devbridge/exp-fixtures --menus <recording.rec.ndjson.zst> <out.ndjson.gz> TITLE-REGEX ...
+
+Game mode writes one `exp-<cid>.ndjson.gz` per game container (default: every Chronomatron,
+Ultrasequencer and Superpairs container), from its open to 10 ticks after the next menu opened
+(Experiment Over / Superpairs Rewards), so the hand-over is part of the fixture.
+Menu mode writes, for each container whose stripped title matches one of the regexes, its open and
+its last full contents (one menu per line pair).
+
+One compact line per event; `t` = client arrival in ms, `tick` = the recording's server tick:
+  {"t","tick","k":"open","cid","title","type"}                 screen_open (title with § codes)
+  {"t","tick","k":"slot","cid","slot","item"}                  one container_set_slot (container slots only)
+  {"t","tick","k":"content","cid","items":{slot: item}}        one container_set_content (container slots only)
+  {"t","tick","k":"sound","name","source","vol","pitch"}       every sound packet (ambience included)
+  {"t","tick","k":"click","cid","slot","button","mode"}        the player's outbound container_click
+  {"t","tick","k":"close","by":"client|server","cid"}          container_close sent / screen closed by the server
+`item` is the bridge's item JSON as recorded ({id,count,name,lore,components?,custom_data?}).
+Used by the experiment model tests (src/test/resources/experiments/).
+"""
+import gzip
+import json
+import re
+import subprocess
+import sys
+
+
+def strip(s):
+    return re.sub("§.", "", s or "")
+
+
+GAME = re.compile(r"^(Chronomatron|Ultrasequencer|Superpairs) \(\w+\)$")
+
+
+PRIVATE = re.compile(r'(?:timestamp:-?\d+L|uuid:"[^"]*"),?')
+
+
+def scrub(item):
+    """No per-item uuid/timestamp (custom_data and nested gems): the models never read them, and the fixtures are public."""
+    if item is None or item == "empty":
+        return None
+    item = dict(item)
+    if isinstance(item.get("custom_data"), str):
+        item["custom_data"] = PRIVATE.sub("", item["custom_data"]).replace(",}", "}")
+    return item
+
+
+def events(path):
+    """Container slots only: the player's inventory, cursor and identity never reach the fixtures."""
+    sizes = {}
+    p = subprocess.Popen(["zstd", "-dc", path], stdout=subprocess.PIPE, text=True)
+    for line in p.stdout:
+        o = json.loads(line)
+        k = o["kind"]
+        d = o["data"]
+        base = {"t": o["t"], "tick": o["tick"]}
+        if k == "screen_open":
+            sizes[d["container_id"]] = d.get("container_slots") or 54
+            yield {**base, "k": "open", "cid": d["container_id"], "title": d["title"], "type": d.get("menu_type"), "size": d.get("container_slots")}
+        elif k == "slot_update":
+            if d["slot"] < 0 or d["slot"] >= sizes.get(d["container_id"], 0):
+                continue
+            yield {**base, "k": "slot", "cid": d["container_id"], "slot": d["slot"], "item": scrub(d["item"])}
+        elif k == "screen_contents":
+            n = d.get("container_slots", 54)
+            items = {str(s["slot"]): scrub(s["item"]) for s in d["slots"] if 0 <= s["slot"] < n}
+            yield {**base, "k": "content", "cid": d["container_id"], "items": {a: b for a, b in items.items() if b}}
+        elif k == "screen_close":
+            if d.get("by") == "server":
+                yield {**base, "k": "close", "by": "server", "cid": d["container_id"]}
+        elif k == "packet":
+            t = d["type"]
+            p_ = d["data"]
+            if t == "minecraft:sound" and d.get("dir") == "in":
+                yield {**base, "k": "sound", "name": p_["sound"].replace("minecraft:", ""), "source": p_["source"], "vol": p_["volume"], "pitch": round(p_["pitch"], 4)}
+            elif t == "minecraft:container_click" and d.get("dir") == "out":
+                yield {**base, "k": "click", "cid": p_.get("containerId"), "slot": p_["slotNum"], "button": p_["buttonNum"], "mode": p_["containerInput"]}
+            elif t == "minecraft:container_close" and d.get("dir") == "out":
+                yield {**base, "k": "close", "by": "client", "cid": p_.get("containerId")}
+    p.wait()
+
+
+def write(path, rows):
+    with gzip.open(path, "wt") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False, separators=(",", ":")) + "\n")
+
+
+def games(rec, out, only):
+    evs = list(events(rec))
+    opens = [e for e in evs if e["k"] == "open"]
+    for i, o in enumerate(opens):
+        if not GAME.match(strip(o["title"])) or (only and o["cid"] not in only):
+            continue
+        cid = o["cid"]
+        start = evs.index(o)
+        nxt = opens[i + 1] if i + 1 < len(opens) else None
+        end_tick = nxt["tick"] + 10 if nxt else o["tick"] + 20 * 120
+        keep = {cid, nxt["cid"]} if nxt else {cid}
+        rows = []
+        for e in evs[start:]:
+            if e["tick"] > end_tick:
+                break
+            if e["k"] in ("slot", "content", "open") and e.get("cid") not in keep:
+                continue
+            rows.append(e)
+        write(f"{out}/exp-{cid}.ndjson.gz", rows)
+        print(f"exp-{cid}: {strip(o['title'])}, {len(rows)} events, ticks {o['tick']}..{end_tick}")
+
+
+def menus(rec, out, patterns):
+    res = [re.compile(p) for p in patterns]
+    evs = list(events(rec))
+    rows = []
+    taken = set()
+    for i, e in enumerate(evs):
+        if e["k"] != "open":
+            continue
+        title = strip(e["title"])
+        hit = next((r for r in res if r.search(title)), None)
+        if hit is None or title in taken:
+            continue
+        last = None
+        for f in evs[i + 1:]:
+            if f["k"] == "open":
+                break
+            if f["k"] == "content" and f["cid"] == e["cid"]:
+                last = f
+        if last is None:
+            continue
+        taken.add(title)
+        rows += [e, last]
+        print(f"menu {title} (cid {e['cid']})")
+    write(out, rows)
+
+
+if __name__ == "__main__":
+    a = sys.argv[1:]
+    if a and a[0] == "--menus":
+        menus(a[1], a[2], a[3:])
+    else:
+        games(a[0], a[1], {int(x) for x in a[2:]})

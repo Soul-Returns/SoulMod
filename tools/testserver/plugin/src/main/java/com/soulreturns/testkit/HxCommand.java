@@ -74,6 +74,14 @@ public final class HxCommand implements TabExecutor {
         {"terminal board <cid>|list", "open a captured Appendix A board exactly (cid 13..38) / list types and boards"},
         {"terminal lag <ms>|counter <n> [total]|melody <pause>|aligned <on|off>|world <on|off>|status|close", "response delay (default 150, 0 = same tick), completion counter, melody pause after a wrong lock / next lane target in the locked column (skip test), right-click on terminal command blocks in loaded captures"},
         {"terminal selftest", "solves every type and checks each documented wrong input, the captured boards and the delay through the real click path"},
+        {"exp table [charges=0..3] [renewed=0..3] [addons=pending|chrono|done] [practice=on|off]", "Experimentation Table as Hypixel sends it (raw container packets, Hypixel's container ids): clicks page to Stakes / RNG Meter, Renew at 0 charges, Close"},
+        {"exp stakes chrono|ultra|sp [status=<Tier>:<play|low|xp>]", "a Stakes menu; status = Click to play! / Enchanting level too low! / Not enough experience!; a playable tier starts its game"},
+        {"exp chrono|ultra <tier> [seed|c6|c22|c26|c10|c30] [round=N]", "Chronomatron / Ultrasequencer directly; cN replays recorded container N's sequence"},
+        {"exp sp <tier> [seed|c17|c36|books|instant|plus3] [clicks=N] [rare=none|meter|header|both|selected]", "Superpairs directly; c17/c36 = the recorded boards; rare cards: the meter's Thunderbolt VII, an ULTRA-RARE header book, or the selected RNG drop"},
+        {"exp over chrono|ultra <closed|wrong|time> <n> [tier=<Tier>]|rewards", "Experiment Over (claim: close + chat, decline: close) / container 17's Superpairs Rewards"},
+        {"exp rng [1-3] [selected=<Name_With_Underscores>]", "the RNG Meter pages as recorded; selected= makes another drop (e.g. Growth_VI, 5.3191 %) the selected one"},
+        {"exp lag <ms>|freeze <ms>|split on|off|resync|reopen|lateclick on|off|status|close", "faults: round trip (default 120), a lag spike, slot packets over two ticks, an extra set_content, the open screen re-sent, a click one tick early counted"},
+        {"exp selftest", "plays the recorded games through the real click path and checks menus, timings, sounds and end screens (server log: N checks, M failed)"},
         {"ss start [seed]|reset [seed]|status|stop", "F7 Simon Says at its place in a loaded f7-boss capture (dungeon location + F7 sidebar on start): lamps, button grid, start button, the three-press skip and the fourth press as recorded; presses are real right clicks"},
         {"lights start|reset|prefinish|status|stop", "F7 Lights at its place in a loaded f7-boss capture (dungeon location + F7 sidebar on start): 20 levers x 58-62, y 133-136, z 142, a lamp behind each; a right click turns a lever on and lights its lamp and the neighbours' lamps one tick later (a second click turns it off); all 20 lit = pling + completed a device. prefinish: the usual six levers on and every lamp lit but not complete (lit in Storm's phase); touching a lever that is not on completes it"},
         {"arrows start [layout 1-9] [seed]|reset|status|stop", "F7 Arrow Align at its place in a loaded f7-boss capture (dungeon location + F7 sidebar on start): one of the nine layouts as item frames x -2, y 120-124, z 75-79 (arrows at random rotations, Start / End wool), sea lantern / blue terracotta behind each at x -3; a right click turns an arrow one step (+1, the lantern is lit exactly at the target); all at target = pling + completed a device"},
@@ -194,6 +202,12 @@ public final class HxCommand implements TabExecutor {
                 } catch (IllegalArgumentException e) {
                     throw new Problem(e.getMessage());
                 }
+                return;
+            }
+            case "exp" -> {
+                if (rest.length == 0 || !rest[0].equalsIgnoreCase("selftest")) break;
+                Player who = only != null ? only : sender instanceof Player p ? p : Bukkit.getOnlinePlayers().stream().findFirst().orElse(null);
+                sender.sendMessage("§a" + plugin.exp().selftest(who));
                 return;
             }
             case "as" -> {
@@ -389,6 +403,13 @@ public final class HxCommand implements TabExecutor {
             case "terminal" -> {
                 try {
                     sender.sendMessage("§a" + who + plugin.terminals().command(target, rest, sender));
+                } catch (IllegalArgumentException e) {
+                    throw new Problem(e.getMessage());
+                }
+            }
+            case "exp" -> {
+                try {
+                    for (String line : plugin.exp().command(target, rest)) sender.sendMessage("§a" + who + line);
                 } catch (IllegalArgumentException e) {
                     throw new Problem(e.getMessage());
                 }
@@ -659,6 +680,7 @@ public final class HxCommand implements TabExecutor {
                 case "nucleus" -> List.of("enter", "run", "area", "kit", "found", "place", "loot", "bal", "spam", "tab", "state", "stop");
                 case "coating" -> List.of("on", "decoy", "off");
                 case "terminal" -> plugin.terminals().completions(1, new String[0]);
+                case "exp" -> plugin.exp().completions(1, new String[0]);
                 case "ss" -> plugin.simonSays().completions(1);
                 case "lights" -> plugin.lights().completions(1);
                 case "arrows" -> plugin.arrows().completions(1);
@@ -680,6 +702,7 @@ public final class HxCommand implements TabExecutor {
         if (sub.equals("world") && pos == 3 && args[offset + 1].equalsIgnoreCase("selftest")) return match(List.of("build"), current);
         if (sub.equals("marks") && pos == 3 && args[offset + 1].equalsIgnoreCase("show")) return match(with(List.of(), "latest"), current);
         if (sub.equals("terminal")) return match(plugin.terminals().completions(pos - 1, Arrays.copyOfRange(args, offset + 1, args.length)), current);
+        if (sub.equals("exp")) return match(plugin.exp().completions(pos - 1, Arrays.copyOfRange(args, offset + 1, args.length)), current);
         if (sub.equals("forge")) return match(plugin.forge().completions(pos - 1, Arrays.copyOfRange(args, offset + 1, args.length)), current);
         if (sub.equals("party")) return match(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList(), current);
         if (sub.equals("mob") && pos == 6) return match(List.of("zombie", "enderman", "skeleton", "spider", "pig", "iron_golem"), current);

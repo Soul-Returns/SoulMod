@@ -115,6 +115,7 @@ legacy-formatted: `§` or `&` codes.
 | `hx terminal freeze <ms>` | a server-wide lag spike as the client sees it: every packet to the player is held for that long, then sent at once in order (clicks are still taken and answered, the answers wait too) |
 | `hx terminal counter <n> [total]` / `melody <pauseTicks>` / `melody aligned <on\|off>` / `world <on\|off>` / `status` / `close` | the completion counter (`n` done, total 7 by default) / melody's pause after a wrong lock (20) / the next melody lane's target is the locked column, so a lock on it right after the previous one skips it (off) / right-click on a terminal's command block in a loaded capture opens a random terminal (on) / settings and the open terminal / close it |
 | `hx terminal selftest` | solves every type from what the open menu shows (5 boards each), tries every documented wrong input, compares every captured board to its own cells and checks the delay, all through real `InventoryClickEvent`s; prints `N checks, M failed` |
+| `hx exp …` | the Experimentation Table: table, stakes, Chronomatron, Ultrasequencer, Superpairs, the end menus, the RNG Meter and fault knobs as raw container packets (see "Experimentation Table"); `hx exp selftest` prints `N checks, M failed` |
 | `hx ss start [seed]` / `reset [seed]` | F7 Simon Says at its place in a loaded `f7-boss` capture (see "F7 Simon Says"): lamps out, no buttons, the start button at (110, 121, 91), round 1; `start` also applies the `dungeon` location, sidebar (F7), tab and action bar. Real right clicks on the start button and the grid drive it |
 | `hx ss status` / `stop` | state, round, progress, the expected sequence and the last device events / stop the device's clock (blocks stay) |
 | `hx ss selftest` | plays the device on a virtual clock (the press and step calls the right clicks make) and solves it only from the blocks: a normal run, the skip, four start presses, a wrong button, a slow second press; prints `N checks, M failed` |
@@ -405,6 +406,67 @@ terminal label states.
 boards, compares what the client receives with Appendix A slot by slot, saves screenshots of the vanilla menus and runs
 real clicks. In a loaded capture (`hx world load f7-boss entry`), right-clicking a terminal's command block or its head
 opens a random terminal (`hx terminal world off` disables that), so they can be used in place.
+
+## Experimentation Table
+
+`hx exp` plays Hypixel's Experimentation Table (`ExperimentsSim.java`) as recorded on 2026-11-17
+(`docs/research/experiments-2026-11-17.md` §1, §1.4, §1.5, §6, §7; raw dumps in `docs/research/raw/experiments-2026-11-17/`,
+per-event fixtures in `src/test/resources/experiments/`). The rules live in `plugin/src/main/java/com/soulreturns/testkit/experiments/`
+(no Bukkit; `ExperimentModelTest` compares the built table, stakes and Over menus with the fixtures, replays the recorded
+Superpairs clicks of containers 17 and 36 to their recorded Rewards menus and runs the self-test). `plugin/src/main/resources/experiments/captured.json`
+is cut from those fixtures: the three RNG Meter pages exactly as recorded (every slot's item JSON) and the final boards
+of containers 17 and 36 (28 cards each, without the `Click any to proceed!` lines).
+
+There is no server-side menu. Every screen is raw packets with Hypixel's own container ids (counting `%100+1`):
+`block.lever.click` (BLOCKS 0.5/1.0), `open_screen`, one `set_slot` per menu slot and per player slot in the same tick,
+the full `set_content` 4-6 ticks later. A click on a menu pages to the next one (a new `open_screen`, no close). In
+game, sounds go out with the click's tick and slot changes one tick later, as a per-tick diff in slot order (unchanged
+slots are never re-sent). Every click except a middle click (CLONE) that leaves the screen open is answered with a full
+`set_content` 7-8 ticks later. Pitches are quantised to n/63 as Hypixel sends them. A Netty tap (`soul_exp_tap`) takes
+the client's `container_click` / `container_close` for the sim's containers off the wire. Opening a real server
+inventory or quitting drops the screen. Strings are the bridge's rendering minus the leading `§r` (as for the terminals).
+
+| Command | What |
+|---|---|
+| `hx exp table [charges=0..3] [renewed=0..3] [addons=pending\|chrono\|done] [practice=on\|off]` | `Experimentation Table` (`generic_9x6`): status panes 20/21 and 23/24, Superpairs 22, Chronomatron 29, Ultrasequencer 33, Renew 31 (only at 0 charges; a click: chat `☕ You bought a bonus charge … (n/3)`, the table re-opens), RNG Meter 48 (page 1), Close 49 (server close), Experience Bottles 50. Knobs persist per player (default 1 charge, add-ons pending, practice on) |
+| `hx exp stakes chrono\|ultra\|sp [status=<Tier>:<play\|low\|xp>]…` | the Stakes menus (`generic_9x5` / `9x5` / `9x6`); status sets a tier's last line to `Click to play!` / `Enchanting level too low!` / `Not enough experience!` (default: all playable, Superpairs Metaphysical too low). A playable tier starts its game, Go Back opens the table |
+| `hx exp chrono <tier> [seed\|c6\|c22\|c26] [round=N]` | Chronomatron. `cN` replays recorded container N's colors; first note lit 16 ticks after the open, then every 18, lit 8 ticks; pling 1-2 ticks before its cells; the last note's cells and the clock (`Timer: N+2s`) in one tick. Input counts from the last pling's tick (recorded at tick 5625). An answer: echo pling now, lit next tick, unlit 8 later; the last answer: levelup (111/63) and the next round in the next tick. Wrong color: Over 3 ticks later, Esc: Over 4 ticks later |
+| `hx exp ultra <tier> [seed\|c10\|c30] [round=N]` | Ultrasequencer. `cN` replays recorded container N's positions; numbers shown 41 + 6(N-1) ticks, then hidden with `Timer: N+3s` in one tick; input counts from the hide; each answer `entity.item.pickup` at the recorded rising pitch, the last one levelup; wrong number: Over next tick, Esc: 4 ticks later. Rewards pay the round whose input began (container 10: 5 numbers, 6 x 7k) |
+| `hx exp sp <tier> [seed\|c17\|c36\|books\|instant\|plus3] [clicks=N] [rare=none\|meter\|header\|both\|selected]` | Superpairs. `c17`/`c36` = the recorded boards (start 23/24 clicks as recorded); `books` = container 36 with its 30k pair replaced by container 17's Thunderbolt VI (two different `Enchanted Book`s), `instant`/`plus3` = container 36 with Instant Find / +3 Clicks moved to slot 10. Pressure plate at 0.15 x remaining, burp on a mismatch (auto-hide 31 ticks after the click; a click on `?` only hides it, free; a click arriving in the hide's tick is a first click), levelup on a match, Instant Find (levelup + hats 107/113/119 over 6 ticks, next card and its partner revealed), +3 Clicks as second card (+3 -1, the first card stays open). At 0 clicks the next click shows the final board (`Click any to proceed!`, glint on matched cards and used powerups); a click after it opens `Superpairs Rewards` with `block.wood.break` (0.2/1.0); Esc anywhere: Rewards 4 ticks later. `rare=` deals the meter's Thunderbolt VII, an `ULTRA-RARE BOOK!` header book that is not on the meter, both, or the selected RNG drop (Growth VI: container 36's card) |
+| `hx exp over chrono\|ultra <closed\|wrong\|time> <n> [tier=<Tier>]` / `rewards` | `Experiment Over` (`generic_9x3`, head 11, Decline 15) for chain / series n / container 17's `Superpairs Rewards`. Claim: server close, then the claim chat; Decline: server close, no chat, the stakes show their starting costs |
+| `hx exp rng [1-3] [selected=<Name_With_Underscores>]` | `(n/3) Experimentation Table RNG` as recorded (Looting V selected, 0.0263 %); `selected=Growth_VI` makes a 5.3191 % book the selected entry (struck base odds, current odds, progress bar, `SELECTED`), Looting V unselected, and the meter head (4), Reset (51) and the table's head name it |
+| `hx exp lag <ms>` / `freeze <ms>` / `split on\|off` | round trip (default 120 ms: half before the server judges a click, half on every answer) / every packet held that long, then sent in order / a tick's slot packets spread over two ticks |
+| `hx exp resync` / `reopen` / `lateclick on\|off` | one extra `set_content` now / the open screen again with the same title and a new container id, every slot, the game goes on / Chronomatron and Ultrasequencer also count a click arriving one tick before the input window |
+| `hx exp status` / `close` / `selftest` | screen, game state, knobs and the last 10 judged clicks / server close / the scenario suite |
+
+`hx exp selftest` (also `s cmd "hx exp selftest"`, with or without a player) plays, through real click packets on a
+session of its own (lag 0, nothing sent to the client): the open burst, table navigation, the RNG pages, Renew,
+Superpairs stakes, the selected-drop page, Chronomatron timing and lateclick, c26 to its max-clicks line and Esc, c22's
+wrong color and Decline, c6, Ultrasequencer c30 (7 rounds, wrong number) and c10 (Esc in round 6), Superpairs c36 (match,
+mismatch, dismiss, Instant Find, +3 Clicks, out of clicks, final board, Rewards, claim), c17's last click, the rare
+cards and the faults (resync, reopen, split, lag). Clicks are decided only from what the client was sent. Expect
+`experiments selftest: N checks, 0 failed` in `s log` (failures follow as warnings). To click the menus in the test
+client, use the slot pixel formula in `.agents/skills/test-client/SKILL.md` ("F7 terminals", `slot_xy` in `terminal-verify`).
+
+**Assumptions** (not captured; code, not Hypixel fact):
+
+- Uncaptured tiers: Chronomatron High to Transcendent as one row of colors (`model.js` GUESS_ROW); Ultrasequencer Supreme /
+  Transcendent as 7x3 / 7x4 blocks at columns 1-7; Superpairs Beginner 7x2 and High / Grand 5x4 grids; Superpairs stakes
+  XP except Transcendent's 300,000; Ultrasequencer retry costs equal Chronomatron's for the same tier name.
+- Chronomatron: Pink's pitch (44/63); timer expiry (`Time ran out!`).
+- Ultrasequencer: number items and pane colors from 9 on; pickup pitches beyond the recorded ones (+7.75/63 per answer); timer
+  expiry (`Time ran out`).
+- Both: the max-clicks chat line as plain text (only seen behind a SkyHanni prefix); right, shift, number-key and drop
+  clicks ignored, a drag phase on a cell counts like a click; `over ultra` paying n + 1 rounds (as every capture that ended during an input).
+- Superpairs: the rare cards (meter: diamond_block x7 `Enchanted Book` / `Rare Book!` / `Thunderbolt VII`; header:
+  enchanted_book x7 `ULTRA-RARE BOOK!` / `Smite VII`; any selected drop but Growth VI built from its meter entry);
+  +3 Clicks as a first card and Instant Find as a second card; clicks on face-up cards ignored; the final board takes
+  a click 30 ticks after it shows (recorded: ignored at 3/21/24, taken at 36); timer expiry shows the final board.
+- Menus: the full resync after menu clicks; a middle click on a button counts; Go Back on the RNG pages opens the table;
+  Experience Bottles does nothing; locked tiers and add-ons on cooldown do nothing; practice (right-click on an add-on on
+  cooldown opens its stakes; its claims change nothing); Renew's third price (150 levels, 450 bits); the RNG pages for a
+  selected drop other than Looting V (odds = base x (1 + 2 x progress), fitted to Looting V's 0.0263 → 0.0293 % at 5.8 %).
+- The 120 ms default round trip. Not simulated: XP, levels and bits, Metaphysical Serum, other players.
 
 ## Spirit Leap
 

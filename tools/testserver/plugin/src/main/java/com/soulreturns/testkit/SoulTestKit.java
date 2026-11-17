@@ -41,6 +41,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
     private final StormSim storm = new StormSim(this);
     private final LateBossSim late = new LateBossSim(this);
     private final Terminals terminals = new Terminals(this);
+    private final ExperimentsSim exp = new ExperimentsSim(this);
     private final SimonSaysSim simonSays = new SimonSaysSim(this);
     private final LightsSim lights = new LightsSim(this);
     private final ArrowAlignSim arrows = new ArrowAlignSim(this);
@@ -66,6 +67,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(storm, this);
         Bukkit.getPluginManager().registerEvents(mobs, this);
         Bukkit.getPluginManager().registerEvents(terminals, this);
+        Bukkit.getPluginManager().registerEvents(exp, this);
         Bukkit.getPluginManager().registerEvents(simonSays, this);
         Bukkit.getPluginManager().registerEvents(lights, this);
         Bukkit.getPluginManager().registerEvents(arrows, this);
@@ -75,6 +77,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         Bukkit.getPluginManager().registerEvents(forge, this);
         forge.enable();
         terminals.enable();
+        exp.enable();
         var command = getCommand("hx");
         var hx = new HxCommand(this);
         command.setExecutor(hx);
@@ -100,6 +103,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         sharp.stop();
         states.values().forEach(s -> { if (s.actionbarTask != null) s.actionbarTask.cancel(); });
         terminals.disable();
+        exp.disable();
         forge.disable();
         mobs.clear();
         worlds.disable();
@@ -174,6 +178,10 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
 
     public Terminals terminals() {
         return terminals;
+    }
+
+    public ExperimentsSim exp() {
+        return exp;
     }
 
     public SimonSaysSim simonSays() {

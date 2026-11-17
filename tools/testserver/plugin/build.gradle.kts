@@ -20,6 +20,8 @@ dependencies {
     // Round-trip tests decode the plugin's bytes with Hypixel's own mod-api classes.
     testImplementation("net.hypixel:mod-api:1.0.2")
     testImplementation(fileTree(paperServerDir) { include("libraries/io/netty/**/*.jar") })
+    // The experiment model tests read the item JSON resources and fixtures with Paper's own Gson.
+    testImplementation(fileTree(paperServerDir) { include("libraries/com/google/code/gson/**/*.jar") })
     testImplementation(platform("org.junit:junit-bom:5.14.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
