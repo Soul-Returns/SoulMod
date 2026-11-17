@@ -170,3 +170,34 @@ jobs:
             exit 1
           fi
           echo "Published $(gh release view "$TAG" --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"
+
+  # Its own job on purpose: it holds the Modrinth token and runs no build, so no Gradle plugin or
+  # dependency ever shares a machine with the token or with the jar being uploaded.
+  modrinth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          path: .release-tools
+          sparse-checkout: tools/release
+
+      - name: Fetch, verify and upload the signed release
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          # Minecraft versions the jar runs on, space-separated; extend when 26.2.x patches appear.
+          MODRINTH_GAME_VERSIONS: "26.2"
+        run: |
+          version="${TAG#v}"
+          MODRINTH_TOKEN= bash .release-tools/tools/release/fetch-signed.sh "$version" signed
+          bash .release-tools/tools/release/modrinth-upload.sh "$version" "signed/soul-$version.jar" "release-notes/$version.md" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
