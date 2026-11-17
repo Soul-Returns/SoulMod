@@ -1,12 +1,14 @@
-# Build the mod and publish it as a GitHub release on a version tag, with the committed
-# player-facing notes (release-notes/<version>.md) as the release body.
+# Publish a GitHub release on a version tag: the signed jar players get from the updater, its
+# manifest and signature, and the committed notes (release-notes/<version>.md) as the body.
 #
 # Trigger: pushing a tag like `v0.1.0` (prerelease suffixes such as `v0.2.0-beta.3` work too).
-# Players get updates from the backend (`make publish`), which builds the tag locally and needs
-# none of this; the GitHub release is the public download and changelog.
+# Run `make publish` BEFORE pushing the tag: the jar attached here is the one the backend serves,
+# fetched and verified against TrustedKeys.kt (tools/release/fetch-signed.sh). The job builds the
+# tag too, but only as a check: two machines never produce the same jar bytes, so a second build
+# would give the public download a different hash than the signed one.
 #
 # Safe to re-run: an existing release for the tag is updated in place, never duplicated, and a
-# release only becomes public after its jar is attached.
+# release only becomes public after its files are attached.
 name: Release
 
 on:
@@ -84,18 +86,27 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: ./gradlew build "-Pmod_version=$VERSION" --no-daemon --stacktrace
 
-      - name: Pick the mod jar
-        id: jar
+      - name: Fetch and verify the signed release
+        id: signed
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # `withSourcesJar()` also puts a -sources.jar in build/libs; the release ships only the
-          # loadable mod jar.
-          jar="build/libs/soul-$VERSION.jar"
-          test -s "$jar" || { echo "::error::expected $jar, got:"; ls -la build/libs; exit 1; }
-          echo "path=$jar" >> "$GITHUB_OUTPUT"
-          # For comparing with what `make sign` downloads (it checks the asset digest too).
-          echo "\`$(basename "$jar")\` sha256 \`$(sha256sum "$jar" | cut -d' ' -f1)\`" >> "$GITHUB_STEP_SUMMARY"
+          bash tools/release/fetch-signed.sh "$VERSION" signed
+          echo "dir=signed" >> "$GITHUB_OUTPUT"
+          echo "\`soul-$VERSION.jar\` sha256 \`$(sha256sum "signed/soul-$VERSION.jar" | cut -d' ' -f1)\` (signed, as served by the updater)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compare the signed jar with this build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Informational: a different compiler patch level may change class bytes, and that must
+          # not block a release that is already live for players.
+          if python3 tools/release/compare-jars.py "signed/soul-$VERSION.jar" "build/libs/soul-$VERSION.jar" > compare.txt; then
+            echo "Signed jar content matches a fresh build of this tag: $(cat compare.txt)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::the signed jar's content differs from a fresh build of this tag; see the job log"
+            cat compare.txt
+          fi
 
       - name: Publish the release
         env:
@@ -103,7 +114,7 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           VERSION: ${{ steps.version.outputs.version }}
           NOTES: ${{ steps.version.outputs.notes }}
-          JAR: ${{ steps.jar.outputs.path }}
+          DIR: ${{ steps.signed.outputs.dir }}
         run: |
           # `x.y.z-suffix` tags are the updater's Beta channel; mark them as prereleases.
           prerelease=false
@@ -111,20 +122,21 @@ jobs:
             *-*) prerelease=true ;;
           esac
 
-          # Draft first, jar second, public last: a visible release always has its jar. A re-run
+          # Draft first, files second, public last: a visible release always has its jar. A re-run
           # (or a release someone created by hand) is updated instead of duplicated.
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES" "--prerelease=$prerelease"
           else
             gh release create "$TAG" --verify-tag --draft --title "$TAG" --notes-file "$NOTES" "--prerelease=$prerelease"
           fi
-          gh release upload "$TAG" "$JAR" --clobber
+          gh release upload "$TAG" --clobber \
+            "$DIR/soul-$VERSION.jar" "$DIR/soul-$VERSION.manifest.json" "$DIR/soul-$VERSION.manifest.sig"
           gh release edit "$TAG" --draft=false
 
           # Prove what the public now sees.
           state="$(gh release view "$TAG" --json isDraft,isPrerelease,assets \
-            -q '"\(.isDraft) \(.isPrerelease) \([.assets[].name] | join(","))"')"
-          want="false $prerelease soul-$VERSION.jar"
+            -q '"\(.isDraft) \(.isPrerelease) \([.assets[].name] | sort | join(","))"')"
+          want="false $prerelease soul-$VERSION.jar,soul-$VERSION.manifest.json,soul-$VERSION.manifest.sig"
           if [ "$state" != "$want" ]; then
             echo "::error::release $TAG is '$state', expected '$want'"
             exit 1
