@@ -16,6 +16,12 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.2-beta.1" to
+                listOf(
+                    ReleaseNote("Forge tab: compacted forms listed under their base materials", listOf("f:searcheverywhere")),
+                    ReleaseNote("Kill Combo overlay: Combat Wisdom and coins, stacked per milestone", listOf("f:combo")),
+                    ReleaseNote("Pet HUD: correct name and level right after summoning", listOf("f:pethud")),
+                ),
             "0.3.1" to
                 listOf(
                     ReleaseNote("Experimentation Table: solvers for all three games that block misclicks", listOf("f:experiments")),
