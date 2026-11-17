@@ -1,0 +1,2007 @@
+{
+ "source": "src/test/resources/experiments (dev bridge recordings of 2026-11-17, see docs/research/experiments-2026-11-17.md)",
+ "rng": [
+  {
+   "title": "§r(1/3) Experimentation Table RNG",
+   "slots": {
+    "0": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "1": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "2": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "3": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "4": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§dExperimentation Table RNG Meter",
+     "lore": [
+      "§r§7Your §r§dExperimentation Table RNG",
+      "§r§dMeter §r§7fills with §r§3Enchanting XP §r§7every",
+      "§r§7time you complete your §r§dSuperpairs§r§7!",
+      "",
+      "§r§7Your selected §r§dRNG Drop §r§7will be",
+      "§r§7guaranteed to appear in your next",
+      "§r§dSuperpairs§r§7 once your RNG Meter is",
+      "§r§7full!",
+      "",
+      "§r§7Selected Drop",
+      "§r§aLooting V",
+      "",
+      "§r§7Progress: §r§d5.8§r§5%",
+      "§r§d§l§m  §r§f§l§m                       §r §r§d28,775§r§5/§r§d500k"
+     ],
+     "components": {
+      "texture": "81b843451184a8ccd8e6e49d0edf3451d3dea50fde5b6a2f98ab7cf1138bcece"
+     }
+    },
+    "5": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "6": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "7": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "8": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "9": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "10": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§9Titanic Experience Bottle",
+     "lore": [
+      "§r§7Odds: §r§5Extraordinary §r§7(§r§71.0638%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d15,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "texture": "e8452831c100a14756082c588178e62704c6ebb730517c915ce28504118a50af"
+     }
+    },
+    "11": {
+     "id": "minecraft:pufferfish",
+     "count": 1,
+     "name": "§r§cExperiment the Fish",
+     "lore": [
+      "§r§7Odds: §r§5Extraordinary §r§7(§r§71.0638%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d50,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"EXPERIMENT_THE_FISH\"}",
+     "components": {
+      "glint_override": true,
+      "tooltip_style": "hypixel_skyblock:special"
+     }
+    },
+    "12": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§5Metaphysical Serum",
+     "lore": [
+      "§r§7Odds: §r§5Extraordinary §r§7(§r§71.0638%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d50,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"METAPHYSICAL_SERUM\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:epic",
+      "texture": "1dbf5e10d0837f20dd7ae691aa6b5c508e4ce11eb1c5aa7b0acc71a554fcbd81"
+     }
+    },
+    "13": {
+     "id": "minecraft:player_head",
+     "count": 5,
+     "name": "§r§aScavenger V",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "texture": "16b90f4fa3ec106bfef21f3b75f541a18e4757674f7d58250fa7e74952f087dc"
+     }
+    },
+    "14": {
+     "id": "minecraft:diamond_sword",
+     "count": 1,
+     "name": "§r§9Sharpness VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "15": {
+     "id": "minecraft:nether_wart",
+     "count": 4,
+     "name": "§r§fLife Steal IV",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "16": {
+     "id": "minecraft:bow",
+     "count": 1,
+     "name": "§r§9Power VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "17": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "18": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "19": {
+     "id": "minecraft:ender_pearl",
+     "count": 6,
+     "name": "§r§9Ender Slayer VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "20": {
+     "id": "minecraft:diamond_block",
+     "count": 6,
+     "name": "§r§9Thunderbolt VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "21": {
+     "id": "minecraft:leather_chestplate",
+     "count": 1,
+     "name": "§r§9Growth VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "dye": "#667f33"
+     }
+    },
+    "22": {
+     "id": "minecraft:glowstone",
+     "count": 4,
+     "name": "§r§fChance IV",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "23": {
+     "id": "minecraft:iron_leggings",
+     "count": 1,
+     "name": "§r§9Blast Protection VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "24": {
+     "id": "minecraft:golden_apple",
+     "count": 3,
+     "name": "§r§fRespite III",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "25": {
+     "id": "minecraft:magma_cream",
+     "count": 6,
+     "name": "§r§9Venomous VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "26": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "27": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "28": {
+     "id": "minecraft:leather_helmet",
+     "count": 1,
+     "name": "§r§9Projectile Protection VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "29": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§7[Lvl 1] §r§6Guardian",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"PET\",petInfo:'{\"type\":\"GUARDIAN\",\"active\":false,\"exp\":0.0,\"tier\":\"LEGENDARY\",\"hideInfo\":false,\"candyUsed\":0,\"hideRightClick\":false,\"noMove\":false,\"petSoulbound\":false}'}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "221025434045bda7025b3e514b316a4b770c6faa4ba9adb4be3809526db77f9d"
+     }
+    },
+    "30": {
+     "id": "minecraft:leather_leggings",
+     "count": 1,
+     "name": "§r§9Fire Protection VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "dye": "#993333"
+     }
+    },
+    "31": {
+     "id": "minecraft:enchanted_book",
+     "count": 1,
+     "name": "§r§9Woodsplitter VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "glint_override": true
+     }
+    },
+    "32": {
+     "id": "minecraft:zombie_head",
+     "count": 6,
+     "name": "§r§9Giant Killer VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "33": {
+     "id": "minecraft:poppy",
+     "count": 4,
+     "name": "§r§fDrain IV",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "34": {
+     "id": "minecraft:diamond_chestplate",
+     "count": 1,
+     "name": "§r§9Protection VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "35": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "36": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "37": {
+     "id": "minecraft:dragon_egg",
+     "count": 6,
+     "name": "§r§9Titan Killer VI",
+     "lore": [
+      "§r§7Odds: §r§bRare §r§7(§r§75.3191%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d150,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "38": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6A Beginner's Guide to Pesthunting",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"PESTHUNTING_GUIDE\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "38a7c9e0c1dab89e14b788d96157ab0152136f8fd7a23d6db3eebe555d448ec3"
+     }
+    },
+    "39": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Severed Pincer",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"SEVERED_PINCER\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "7e1e0701f1f9e974765e4f2a7c33a9458c598334401538dc9f21f5ed7e35f79a"
+     }
+    },
+    "40": {
+     "id": "minecraft:glowstone",
+     "count": 5,
+     "name": "§r§aChance V",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "41": {
+     "id": "minecraft:anvil",
+     "count": 7,
+     "name": "§r§5Thunderlord VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "42": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Ensnared Snail",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"ENSNARED_SNAIL\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "64532b7e0fbd976d559fbb218d9f4e53c9354f68b1f363c0482127092724274d"
+     }
+    },
+    "43": {
+     "id": "minecraft:zombie_head",
+     "count": 7,
+     "name": "§r§5Giant Killer VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "44": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "45": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "46": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "47": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "48": {
+     "id": "minecraft:arrow",
+     "count": 1,
+     "name": "§r§aGo Back",
+     "lore": [
+      "§r§7To RNG Meter"
+     ]
+    },
+    "49": {
+     "id": "minecraft:barrier",
+     "count": 1,
+     "name": "§r§cClose",
+     "lore": []
+    },
+    "50": {
+     "id": "minecraft:oak_sign",
+     "count": 1,
+     "name": "§r§aSearch",
+     "lore": [
+      "§r§7Find drops by name!",
+      "",
+      "§r§eClick to search!"
+     ]
+    },
+    "51": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§dReset RNG Drop",
+     "lore": [
+      "§r§7Resets the selected drop for this",
+      "§r§dRNG Meter§r§7. You still earn progress",
+      "§r§7without a drop selected.",
+      "",
+      "§r§7Selected Drop",
+      "§r§aLooting V",
+      "",
+      "§r§eClick to reset!"
+     ],
+     "components": {
+      "texture": "7c8489c03357d6d6abd9f4a3bd8824eb0f2841685ade95ff987ebe15b2e65fad"
+     }
+    },
+    "52": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "53": {
+     "id": "minecraft:arrow",
+     "count": 1,
+     "name": "§r§aNext Page",
+     "lore": [
+      "§r§ePage 2"
+     ]
+    }
+   }
+  },
+  {
+   "title": "§r(2/3) Experimentation Table RNG",
+   "slots": {
+    "0": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "1": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "2": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "3": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "4": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§dExperimentation Table RNG Meter",
+     "lore": [
+      "§r§7Your §r§dExperimentation Table RNG",
+      "§r§dMeter §r§7fills with §r§3Enchanting XP §r§7every",
+      "§r§7time you complete your §r§dSuperpairs§r§7!",
+      "",
+      "§r§7Your selected §r§dRNG Drop §r§7will be",
+      "§r§7guaranteed to appear in your next",
+      "§r§dSuperpairs§r§7 once your RNG Meter is",
+      "§r§7full!",
+      "",
+      "§r§7Selected Drop",
+      "§r§aLooting V",
+      "",
+      "§r§7Progress: §r§d5.8§r§5%",
+      "§r§d§l§m  §r§f§l§m                       §r §r§d28,775§r§5/§r§d500k"
+     ],
+     "components": {
+      "texture": "81b843451184a8ccd8e6e49d0edf3451d3dea50fde5b6a2f98ab7cf1138bcece"
+     }
+    },
+    "5": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "6": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "7": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "8": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "9": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "10": {
+     "id": "minecraft:enchanted_book",
+     "count": 1,
+     "name": "§r§9Gravity VI",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "glint_override": true
+     }
+    },
+    "11": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Golden Bounty",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"GOLDEN_BOUNTY\"}",
+     "components": {
+      "glint_override": true,
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "8e6e10a9ef1b2cdd998557554b209f369ada7bc50b47c81ed14ab2632dab3834"
+     }
+    },
+    "12": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Severed Hand",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"SEVERED_HAND\"}",
+     "components": {
+      "glint_override": true,
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "111ee65b56d50cd1ef81a7d33ae2421927592ccd92ad7c2ec4fb1aac29ba422f"
+     }
+    },
+    "13": {
+     "id": "minecraft:golden_sword",
+     "count": 1,
+     "name": "§r§5Critical VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "14": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Vibrant Coral",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"VIBRANT_CORAL\"}",
+     "components": {
+      "model": "minecraft:tube_coral",
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "453dd6c6add09c11ff19f5fe75370b6cec17324945cac05c0e2c4631ff418672"
+     }
+    },
+    "15": {
+     "id": "minecraft:apple",
+     "count": 4,
+     "name": "§r§fSnipe IV",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "16": {
+     "id": "minecraft:nether_wart",
+     "count": 5,
+     "name": "§r§aLife Steal V",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "17": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "18": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "19": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Gold Bottle Cap",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"GOLD_BOTTLE_CAP\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "269698fd92fb14827af97e54a3f28f5e2685d7e94bd128c0c27f259df996717c"
+     }
+    },
+    "20": {
+     "id": "minecraft:wheat",
+     "count": 5,
+     "name": "§r§aLooting V",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§8§m0.0263%§r §r§70.0293%)",
+      "",
+      "§r§7Progress: §r§d5.8§r§5%",
+      "§r§d§l§m  §r§f§l§m                       §r §r§d28,775§r§5/§r§d500k",
+      "",
+      "§r§7Filling the meter increases the drop",
+      "§r§7chance of this item. Reaching §r§a100%",
+      "§r§7will guarantee it to drop!",
+      "",
+      "§r§a§lSELECTED"
+     ]
+    },
+    "21": {
+     "id": "minecraft:glistering_melon_slice",
+     "count": 5,
+     "name": "§r§aFirst Strike V",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "22": {
+     "id": "minecraft:leather_leggings",
+     "count": 1,
+     "name": "§r§5Fire Protection VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "dye": "#993333"
+     }
+    },
+    "23": {
+     "id": "minecraft:diamond_block",
+     "count": 7,
+     "name": "§r§5Thunderbolt VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "24": {
+     "id": "minecraft:enchanted_book",
+     "count": 1,
+     "name": "§r§9Cubism VI",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "glint_override": true
+     }
+    },
+    "25": {
+     "id": "minecraft:lead",
+     "count": 5,
+     "name": "§r§aTriple-Strike V",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "26": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "27": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "28": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Chain of the End Times",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"CHAIN_END_TIMES\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "93d9bc6294ecb85d9c4af66136027faf67413f1dbabbe1b6dfee289083fc2049"
+     }
+    },
+    "29": {
+     "id": "minecraft:poppy",
+     "count": 5,
+     "name": "§r§aDrain V",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "30": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Fateful Stinger",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"FATEFUL_STINGER\"}",
+     "components": {
+      "glint_override": true,
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "4e2c26ad88fdd10381284650770d9b59d3688a52868b3bcc7762f88a34303de8"
+     }
+    },
+    "31": {
+     "id": "minecraft:iron_leggings",
+     "count": 1,
+     "name": "§r§5Blast Protection VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "32": {
+     "id": "minecraft:melon_seeds",
+     "count": 6,
+     "name": "§r§9Cleave VI",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "33": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Octopus Tendril",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"OCTOPUS_TENDRIL\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "4bf58283ffca8bdc59436e83d94e9f134426316b99bab5b9af90dffdb082a056"
+     }
+    },
+    "34": {
+     "id": "minecraft:dragon_egg",
+     "count": 7,
+     "name": "§r§5Titan Killer VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "35": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "36": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "37": {
+     "id": "minecraft:leather",
+     "count": 7,
+     "name": "§r§5Luck VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "38": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6End Stone Idol",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"ENDSTONE_IDOL\"}",
+     "components": {
+      "glint_override": true,
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "c24d46459b70b9ad641506f97b8d93349d8705d0935ebbf16012fad3aca32cb4"
+     }
+    },
+    "39": {
+     "id": "minecraft:bone",
+     "count": 6,
+     "name": "§r§9Execute VI",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "40": {
+     "id": "minecraft:bow",
+     "count": 1,
+     "name": "§r§5Power VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "41": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§6Troubled Bubble",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"TROUBLED_BUBBLE\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "bdfcc530ad4f645a201abc05912f194862611c33739a0826a8bb9ad0d9b98375"
+     }
+    },
+    "42": {
+     "id": "minecraft:leather_helmet",
+     "count": 1,
+     "name": "§r§5Projectile Protection VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "43": {
+     "id": "minecraft:leather_chestplate",
+     "count": 1,
+     "name": "§r§5Growth VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "components": {
+      "dye": "#667f33"
+     }
+    },
+    "44": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "45": {
+     "id": "minecraft:arrow",
+     "count": 1,
+     "name": "§r§aPrevious Page",
+     "lore": [
+      "§r§ePage 1"
+     ]
+    },
+    "46": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "47": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "48": {
+     "id": "minecraft:arrow",
+     "count": 1,
+     "name": "§r§aGo Back",
+     "lore": [
+      "§r§7To RNG Meter"
+     ]
+    },
+    "49": {
+     "id": "minecraft:barrier",
+     "count": 1,
+     "name": "§r§cClose",
+     "lore": []
+    },
+    "50": {
+     "id": "minecraft:oak_sign",
+     "count": 1,
+     "name": "§r§aSearch",
+     "lore": [
+      "§r§7Find drops by name!",
+      "",
+      "§r§eClick to search!"
+     ]
+    },
+    "51": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§dReset RNG Drop",
+     "lore": [
+      "§r§7Resets the selected drop for this",
+      "§r§dRNG Meter§r§7. You still earn progress",
+      "§r§7without a drop selected.",
+      "",
+      "§r§7Selected Drop",
+      "§r§aLooting V",
+      "",
+      "§r§eClick to reset!"
+     ],
+     "components": {
+      "texture": "7c8489c03357d6d6abd9f4a3bd8824eb0f2841685ade95ff987ebe15b2e65fad"
+     }
+    },
+    "52": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "53": {
+     "id": "minecraft:arrow",
+     "count": 1,
+     "name": "§r§aNext Page",
+     "lore": [
+      "§r§ePage 3"
+     ]
+    }
+   }
+  },
+  {
+   "title": "§r(3/3) Experimentation Table RNG",
+   "slots": {
+    "0": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "1": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "2": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "3": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "4": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§dExperimentation Table RNG Meter",
+     "lore": [
+      "§r§7Your §r§dExperimentation Table RNG",
+      "§r§dMeter §r§7fills with §r§3Enchanting XP §r§7every",
+      "§r§7time you complete your §r§dSuperpairs§r§7!",
+      "",
+      "§r§7Your selected §r§dRNG Drop §r§7will be",
+      "§r§7guaranteed to appear in your next",
+      "§r§dSuperpairs§r§7 once your RNG Meter is",
+      "§r§7full!",
+      "",
+      "§r§7Selected Drop",
+      "§r§aLooting V",
+      "",
+      "§r§7Progress: §r§d5.8§r§5%",
+      "§r§d§l§m  §r§f§l§m                       §r §r§d28,775§r§5/§r§d500k"
+     ],
+     "components": {
+      "texture": "81b843451184a8ccd8e6e49d0edf3451d3dea50fde5b6a2f98ab7cf1138bcece"
+     }
+    },
+    "5": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "6": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "7": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "8": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "9": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "10": {
+     "id": "minecraft:diamond_sword",
+     "count": 1,
+     "name": "§r§5Sharpness VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "11": {
+     "id": "minecraft:diamond_chestplate",
+     "count": 1,
+     "name": "§r§5Protection VII",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "12": {
+     "id": "minecraft:sea_lantern",
+     "count": 6,
+     "name": "§r§9Prosecute VI",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.0263%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d500,000",
+      "",
+      "§r§eClick to select!"
+     ]
+    },
+    "13": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§dNadeshiko Dye",
+     "lore": [
+      "§r§7Odds: §r§cRNGesus Incarnate §r§7(§r§70.004%)",
+      "",
+      "§r§7Experimental XP: §r§d28,775§r§5/§r§d2,500,000",
+      "",
+      "§r§eClick to select!"
+     ],
+     "custom_data": "{id:\"DYE_NADESHIKO\"}",
+     "components": {
+      "tooltip_style": "hypixel_skyblock:legendary",
+      "texture": "34e5f13bd7f2b9e5dd8c00c1d245995d2b33ba4f841e3c37da663997ab01251f"
+     }
+    },
+    "17": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "18": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "26": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "27": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "35": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "36": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "44": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "45": {
+     "id": "minecraft:arrow",
+     "count": 1,
+     "name": "§r§aPrevious Page",
+     "lore": [
+      "§r§ePage 2"
+     ]
+    },
+    "46": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "47": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "48": {
+     "id": "minecraft:arrow",
+     "count": 1,
+     "name": "§r§aGo Back",
+     "lore": [
+      "§r§7To RNG Meter"
+     ]
+    },
+    "49": {
+     "id": "minecraft:barrier",
+     "count": 1,
+     "name": "§r§cClose",
+     "lore": []
+    },
+    "50": {
+     "id": "minecraft:oak_sign",
+     "count": 1,
+     "name": "§r§aSearch",
+     "lore": [
+      "§r§7Find drops by name!",
+      "",
+      "§r§eClick to search!"
+     ]
+    },
+    "51": {
+     "id": "minecraft:player_head",
+     "count": 1,
+     "name": "§r§dReset RNG Drop",
+     "lore": [
+      "§r§7Resets the selected drop for this",
+      "§r§dRNG Meter§r§7. You still earn progress",
+      "§r§7without a drop selected.",
+      "",
+      "§r§7Selected Drop",
+      "§r§aLooting V",
+      "",
+      "§r§eClick to reset!"
+     ],
+     "components": {
+      "texture": "7c8489c03357d6d6abd9f4a3bd8824eb0f2841685ade95ff987ebe15b2e65fad"
+     }
+    },
+    "52": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    },
+    "53": {
+     "id": "minecraft:black_stained_glass_pane",
+     "count": 1,
+     "name": "",
+     "lore": []
+    }
+   }
+  }
+ ],
+ "boards": {
+  "c17": [
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§9Titanic Experience Bottle",
+    "lore": [
+     "§r§7Smash it open to receive experience!",
+     "",
+     "§r§9§lRARE"
+    ],
+    "components": {
+     "texture": "e8452831c100a14756082c588178e62704c6ebb730517c915ce28504118a50af"
+    }
+   },
+   {
+    "id": "minecraft:purple_dye",
+    "count": 1,
+    "name": "§r§342k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§aGrand Experience Bottle",
+    "lore": [
+     "§r§7Smash it open to receive experience!",
+     "",
+     "§r§a§lUNCOMMON"
+    ],
+    "components": {
+     "texture": "a2828a8d0e5df698c8dfb7a0d0ad96bd61c156df60ed1152cab36b11df881fa3"
+    }
+   },
+   {
+    "id": "minecraft:light_blue_dye",
+    "count": 1,
+    "name": "§r§336k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:purple_dye",
+    "count": 1,
+    "name": "§r§342k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:lapis_lazuli",
+    "count": 1,
+    "name": "§r§341k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:magenta_dye",
+    "count": 1,
+    "name": "§r§3120k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:magenta_dye",
+    "count": 1,
+    "name": "§r§3120k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:diamond_block",
+    "count": 6,
+    "name": "§r§9Enchanted Book",
+    "lore": [
+     "§r§9Rare Book!",
+     "",
+     "§r§9Thunderbolt VI",
+     "§r§7Every §r§c3 §r§7hits on a monster, strike",
+     "§r§elightning§r§7, dealing §r§a25% §r§7of the hit's",
+     "§r§7damage to up to 10 monsters within 2",
+     "§r§7blocks."
+    ]
+   },
+   {
+    "id": "minecraft:lapis_lazuli",
+    "count": 1,
+    "name": "§r§341k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§9Titanic Experience Bottle",
+    "lore": [
+     "§r§7Smash it open to receive experience!",
+     "",
+     "§r§9§lRARE"
+    ],
+    "components": {
+     "texture": "e8452831c100a14756082c588178e62704c6ebb730517c915ce28504118a50af"
+    }
+   },
+   {
+    "id": "minecraft:red_dye",
+    "count": 1,
+    "name": "§r§375k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:lime_dye",
+    "count": 1,
+    "name": "§r§345k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:orange_dye",
+    "count": 1,
+    "name": "§r§3124k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:cocoa_beans",
+    "count": 1,
+    "name": "§r§335k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:green_dye",
+    "count": 1,
+    "name": "§r§330k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:orange_dye",
+    "count": 1,
+    "name": "§r§3124k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:diamond",
+    "count": 1,
+    "name": "§r§bInstant Find",
+    "lore": [
+     "§r §r§a+1 Click",
+     "§r§d§lPowerup for next click!"
+    ]
+   },
+   {
+    "id": "minecraft:green_dye",
+    "count": 1,
+    "name": "§r§330k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:yellow_dye",
+    "count": 1,
+    "name": "§r§3130k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:red_dye",
+    "count": 1,
+    "name": "§r§375k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:cocoa_beans",
+    "count": 1,
+    "name": "§r§335k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:lime_dye",
+    "count": 1,
+    "name": "§r§345k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:diamond_block",
+    "count": 6,
+    "name": "§r§9Enchanted Book",
+    "lore": [
+     "§r§9Rare Book!",
+     "",
+     "§r§9Thunderbolt VI",
+     "§r§7Every §r§c3 §r§7hits on a monster, strike",
+     "§r§elightning§r§7, dealing §r§a25% §r§7of the hit's",
+     "§r§7damage to up to 10 monsters within 2",
+     "§r§7blocks."
+    ]
+   },
+   {
+    "id": "minecraft:feather",
+    "count": 1,
+    "name": "§r§eGained +3 Clicks",
+    "lore": [
+     "§r§d§lInstant powerup!"
+    ]
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§aGrand Experience Bottle",
+    "lore": [
+     "§r§7Smash it open to receive experience!",
+     "",
+     "§r§a§lUNCOMMON"
+    ],
+    "components": {
+     "texture": "a2828a8d0e5df698c8dfb7a0d0ad96bd61c156df60ed1152cab36b11df881fa3"
+    }
+   },
+   {
+    "id": "minecraft:yellow_dye",
+    "count": 1,
+    "name": "§r§3130k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:light_blue_dye",
+    "count": 1,
+    "name": "§r§336k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   }
+  ],
+  "c36": [
+   {
+    "id": "minecraft:cyan_dye",
+    "count": 1,
+    "name": "§r§330k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:magenta_dye",
+    "count": 1,
+    "name": "§r§325k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:leather_chestplate",
+    "count": 1,
+    "name": "§r§9Enchanted Book",
+    "lore": [
+     "§r§9Rare Book!",
+     "",
+     "§r§9Growth VI",
+     "§r§7Grants §r§a+90 §r§c Health§r§7."
+    ],
+    "components": {
+     "dye": "#667f33"
+    }
+   },
+   {
+    "id": "minecraft:pink_dye",
+    "count": 1,
+    "name": "§r§344k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§9Titanic Experience Bottle",
+    "lore": [
+     "§r§7Smash it open to receive experience!",
+     "",
+     "§r§9§lRARE"
+    ],
+    "components": {
+     "texture": "e8452831c100a14756082c588178e62704c6ebb730517c915ce28504118a50af"
+    }
+   },
+   {
+    "id": "minecraft:feather",
+    "count": 1,
+    "name": "§r§eGained +3 Clicks",
+    "lore": [
+     "§r§d§lInstant powerup!"
+    ]
+   },
+   {
+    "id": "minecraft:purple_dye",
+    "count": 1,
+    "name": "§r§344k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:red_dye",
+    "count": 1,
+    "name": "§r§373k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:lime_dye",
+    "count": 1,
+    "name": "§r§3100k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§aGrand Experience Bottle",
+    "lore": [
+     "§r§7Smash it open to receive experience!",
+     "",
+     "§r§a§lUNCOMMON"
+    ],
+    "components": {
+     "texture": "e2eef4fbc7e174809d6bf6b880d3f48b853eb6e337517d89686075aa470e13d6"
+    }
+   },
+   {
+    "id": "minecraft:leather_chestplate",
+    "count": 1,
+    "name": "§r§9Enchanted Book",
+    "lore": [
+     "§r§9Rare Book!",
+     "",
+     "§r§9Growth VI",
+     "§r§7Grants §r§a+90 §r§c Health§r§7."
+    ],
+    "components": {
+     "dye": "#667f33"
+    }
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§7[Lvl 1] §r§5Guardian",
+    "lore": [
+     "§r§8Enchanting Pet",
+     "",
+     "§r§7Defense: §r§a+0.5",
+     "§r§7Intelligence: §r§b+1",
+     "",
+     "§r§6Laserbeam",
+     "§r§7Zaps your enemies for §r§b0.2x §r§7your §r§b",
+     "§r§bIntelligence §r§7every §r§a3s§r§7.",
+     "",
+     "§r§6Enchanting Wisdom Boost",
+     "§r§7Grants §r§3+0.3☯ Enchanting Wisdom§r§7.",
+     "",
+     "§r§7Progress to Level 2: §r§e0%",
+     "§r§f§l§m                         §r §r§e0§r§6/§r§e440",
+     "",
+     "§r§eRight-click to add this pet to your pet menu!",
+     "",
+     "§r§8Can be upgraded at Kat in The Hub!",
+     "§r§5§lEPIC PET"
+    ],
+    "custom_data": "{id:\"PET\",petInfo:'{\"type\":\"GUARDIAN\",\"active\":false,\"exp\":0.0,\"tier\":\"EPIC\",\"hideInfo\":false,\"candyUsed\":0,\"hideRightClick\":false,\"noMove\":false,\"petSoulbound\":false}'}",
+    "components": {
+     "tooltip_style": "hypixel_skyblock:epic",
+     "texture": "221025434045bda7025b3e514b316a4b770c6faa4ba9adb4be3809526db77f9d"
+    }
+   },
+   {
+    "id": "minecraft:orange_dye",
+    "count": 1,
+    "name": "§r§3101k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:yellow_dye",
+    "count": 1,
+    "name": "§r§3127k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§9Titanic Experience Bottle",
+    "lore": [
+     "§r§7Smash it open to receive experience!",
+     "",
+     "§r§9§lRARE"
+    ],
+    "components": {
+     "texture": "e8452831c100a14756082c588178e62704c6ebb730517c915ce28504118a50af"
+    }
+   },
+   {
+    "id": "minecraft:diamond",
+    "count": 1,
+    "name": "§r§bInstant Find",
+    "lore": [
+     "§r §r§a+1 Click",
+     "§r§d§lPowerup for next click!"
+    ]
+   },
+   {
+    "id": "minecraft:green_dye",
+    "count": 1,
+    "name": "§r§3112k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:yellow_dye",
+    "count": 1,
+    "name": "§r§3127k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:green_dye",
+    "count": 1,
+    "name": "§r§3112k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:cyan_dye",
+    "count": 1,
+    "name": "§r§330k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:purple_dye",
+    "count": 1,
+    "name": "§r§344k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§7[Lvl 1] §r§5Guardian",
+    "lore": [
+     "§r§8Enchanting Pet",
+     "",
+     "§r§7Defense: §r§a+0.5",
+     "§r§7Intelligence: §r§b+1",
+     "",
+     "§r§6Laserbeam",
+     "§r§7Zaps your enemies for §r§b0.2x §r§7your §r§b",
+     "§r§bIntelligence §r§7every §r§a3s§r§7.",
+     "",
+     "§r§6Enchanting Wisdom Boost",
+     "§r§7Grants §r§3+0.3☯ Enchanting Wisdom§r§7.",
+     "",
+     "§r§7Progress to Level 2: §r§e0%",
+     "§r§f§l§m                         §r §r§e0§r§6/§r§e440",
+     "",
+     "§r§eRight-click to add this pet to your pet menu!",
+     "",
+     "§r§8Can be upgraded at Kat in The Hub!",
+     "§r§5§lEPIC PET"
+    ],
+    "custom_data": "{id:\"PET\",petInfo:'{\"type\":\"GUARDIAN\",\"active\":false,\"exp\":0.0,\"tier\":\"EPIC\",\"hideInfo\":false,\"candyUsed\":0,\"hideRightClick\":false,\"noMove\":false,\"petSoulbound\":false}'}",
+    "components": {
+     "tooltip_style": "hypixel_skyblock:epic",
+     "texture": "221025434045bda7025b3e514b316a4b770c6faa4ba9adb4be3809526db77f9d"
+    }
+   },
+   {
+    "id": "minecraft:lime_dye",
+    "count": 1,
+    "name": "§r§3100k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:pink_dye",
+    "count": 1,
+    "name": "§r§344k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:player_head",
+    "count": 1,
+    "name": "§r§aGrand Experience Bottle",
+    "lore": [
+     "§r§7Smash it open to receive experience!",
+     "",
+     "§r§a§lUNCOMMON"
+    ],
+    "components": {
+     "texture": "e2eef4fbc7e174809d6bf6b880d3f48b853eb6e337517d89686075aa470e13d6"
+    }
+   },
+   {
+    "id": "minecraft:red_dye",
+    "count": 1,
+    "name": "§r§373k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:magenta_dye",
+    "count": 1,
+    "name": "§r§325k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   },
+   {
+    "id": "minecraft:orange_dye",
+    "count": 1,
+    "name": "§r§3101k Enchanting Exp",
+    "lore": [
+     "§r§8Skill Exp Reward"
+    ]
+   }
+  ]
+ }
+}
