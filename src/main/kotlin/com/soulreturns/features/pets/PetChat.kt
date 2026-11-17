@@ -17,8 +17,8 @@ object PetChat {
     /** `Autopet equipped your [Lvl 100] Flying Fish! VIEW RULE`; the hover holds the rule's held item. */
     data class Autopet(val name: String, val level: Int, val rarity: SkyblockRarity?, val skinned: Boolean, val held: PetHeld?) : Line
 
-    /** `You summoned your Mole!`: no level. */
-    data class Summon(val name: String, val rarity: SkyblockRarity?, val skinned: Boolean) : Line
+    /** `You summoned your Mole!`, or since SkyBlock 0.27.3 `You summoned your [Lvl 80] Ammonite!` (level then known). */
+    data class Summon(val name: String, val rarity: SkyblockRarity?, val skinned: Boolean, val level: Int? = null) : Line
 
     /** `You despawned your Mole!` (wiki wording; not captured yet). */
     data class Despawn(val name: String) : Line
@@ -30,8 +30,8 @@ object PetChat {
     data class Holding(val held: PetHeld) : Line
 
     private val AUTOPET = Regex("Autopet equipped your \\[Lvl ([\\d,]+)] (?:\\[\\d+(✦)] )?(.+?)( ✦)?! VIEW RULE")
-    private val SUMMON = Regex("You summoned your (.+?)( ✦)?!")
-    private val DESPAWN = Regex("You despawned your (.+?)( ✦)?!")
+    private val SUMMON = Regex("You summoned your (?:\\[Lvl ([\\d,]+)] )?(?:\\[\\d+(✦)] )?(.+?)( ✦)?!")
+    private val DESPAWN = Regex("You despawned your (?:\\[Lvl [\\d,]+] )?(?:\\[\\d+✦] )?(.+?)( ✦)?!")
     private val LEVEL_UP = Regex("Your (.+?) leveled up to level ([\\d,]+)!")
     private val HOLDING = Regex("Your pet is now holding (.+)\\.")
     private val HELD_ITEM = Regex("Held Item: (.+)")
@@ -49,8 +49,13 @@ object PetChat {
             )
         }
         SUMMON.matchEntire(plain)?.let { m ->
-            val name = m.groupValues[1]
-            return Summon(name, rarityOf(legacy, name), m.groupValues[2].isNotEmpty())
+            val name = m.groupValues[3]
+            return Summon(
+                name = name,
+                rarity = rarityOf(legacy, name),
+                skinned = m.groupValues[2].isNotEmpty() || m.groupValues[4].isNotEmpty(),
+                level = m.groupValues[1].replace(",", "").toIntOrNull(),
+            )
         }
         DESPAWN.matchEntire(plain)?.let { return Despawn(it.groupValues[1]) }
         LEVEL_UP.matchEntire(plain)?.let { m ->

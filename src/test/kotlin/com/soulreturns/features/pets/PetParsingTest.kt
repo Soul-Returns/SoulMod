@@ -43,6 +43,10 @@ class PetParsingTest {
     fun summonLevelUpHolding() {
         assertEquals(PetChat.Summon("Mole", SkyblockRarity.LEGENDARY, false), PetChat.parse("§r§aYou summoned your §r§6Mole§r§a!"))
         assertEquals(PetChat.Summon("Rabbit", SkyblockRarity.MYTHIC, true), PetChat.parse("§aYou summoned your §r§dRabbit§r§9 ✦§r§a!"))
+        assertEquals(PetChat.Summon("Ammonite", SkyblockRarity.LEGENDARY, false, 80), PetChat.parse("§r§aYou summoned your §r§7[Lvl 80] §r§6Ammonite§r§a!"))
+        assertEquals(PetChat.Summon("Bal", SkyblockRarity.LEGENDARY, false, 100), PetChat.parse("§r§aYou summoned your §r§7[Lvl 100] §r§6Bal§r§a!"))
+        assertEquals(PetChat.Summon("Mole", null, true, 5), PetChat.parse("You summoned your [Lvl 5] [122✦] Mole!"))
+        assertEquals(PetChat.Despawn("Ammonite"), PetChat.parse("§r§aYou despawned your §r§7[Lvl 80] §r§6Ammonite§r§a!"))
         assertEquals(PetChat.LevelUp("Orchid Mantis", 95), PetChat.parse("§r§aYour §r§6Orchid Mantis §r§aleveled up to level §r§995§r§a!"))
         assertEquals(PetChat.Holding(PetHeld("Hephaestus Relic", '6')), PetChat.parse("§r§aYour pet is now holding §r§6Hephaestus Relic§r§a."))
         assertEquals(PetChat.Despawn("Mole"), PetChat.parse("§r§aYou despawned your §r§6Mole§r§a!"))

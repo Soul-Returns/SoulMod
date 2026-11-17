@@ -147,7 +147,7 @@ class PetTracker(
         lastTabAt = 0L
         levelChatAt = 0L
         lastExpSaveAt.clear()
-        val data = load()
+        val data = dropMalformed(load())
         val rec = data.active?.let { data.pets[it] }
         if (rec != null) {
             active = Active(data.active, rec.name, rarity(rec), rec.skinned, rec.level.takeIf { it > 0 })
@@ -155,6 +155,15 @@ class PetTracker(
         } else {
             state = if (data.none) NONE else UNKNOWN
         }
+    }
+
+    /** Drops records keyed `name:[lvl N] …` (written by the 0.27.3 summon line before it was parsed) and an active pointer to one. */
+    private fun dropMalformed(data: PetProfileData): PetProfileData {
+        val bad = data.pets.keys.filter { MALFORMED_KEY.matches(it) }
+        if (bad.isEmpty()) return data
+        val fixed = data.copy(pets = data.pets - bad.toSet(), active = data.active?.takeIf { it !in bad })
+        save(fixed)
+        return fixed
     }
 
     fun record(key: String): PetRecord? = load().pets[key]
@@ -172,8 +181,10 @@ class PetTracker(
             assertActive(Active(key, line.name, line.rarity ?: rarity(record(key)), line.skinned, line.level), now, "AUTOPET")
         } else if (line is PetChat.Summon) {
             val key = keyForName(line.name)
-            update(key, now) { copy(name = line.name, skinned = line.skinned, rarity = line.rarity?.name ?: rarity) }
-            val level = record(key)?.level?.takeIf { it > 0 }
+            update(key, now) {
+                copy(name = line.name, skinned = line.skinned, rarity = line.rarity?.name ?: rarity, level = line.level ?: level)
+            }
+            val level = line.level ?: record(key)?.level?.takeIf { it > 0 }
             assertActive(Active(key, line.name, line.rarity ?: rarity(record(key)), line.skinned, level), now, "SUMMONED")
         } else if (line is PetChat.Despawn) {
             val wasActive = state == ACTIVE
@@ -479,6 +490,7 @@ class PetTracker(
     }
 
     companion object {
+        private val MALFORMED_KEY = Regex("name:\\[lvl \\d+] .+")
         const val UNKNOWN = 0
         const val NONE = 1
         const val ACTIVE = 2
