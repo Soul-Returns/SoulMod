@@ -16,6 +16,10 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.1-beta.9" to
+                listOf(
+                    ReleaseNote("Experimentation Table: solvers for all three games that block misclicks", listOf("f:experiments")),
+                ),
             "0.3.1-beta.8" to listOf(),
             "0.3.1-beta.7" to listOf(),
             "0.3.1-beta.6" to
