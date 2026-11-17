@@ -15,13 +15,21 @@ on:
   push:
     tags:
       - "v*"
+  # Manual run for an existing tag (Actions tab, or `gh workflow run release.yml -f tag=v0.3.1`):
+  # repairs or refreshes that release with this branch's version of the job.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)publish, e.g. v0.3.1"
+        required: true
+        type: string
 
 # Needed by `gh release` to write the release.
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 defaults:
@@ -36,11 +44,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+
+      # The job's own scripts, from the commit that defines this workflow: on a tag push that is
+      # the tag itself, on a manual run the branch it was started from (older tags lack them).
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+          path: .release-tools
+          sparse-checkout: tools/release
 
       - name: Resolve version and notes from the tag
         id: version
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          tag="$GITHUB_REF_NAME"
+          tag="$TAG"
           version="${tag#v}"
           # Same shape `make bump` accepts. Everything below trusts these two values.
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
@@ -91,7 +111,7 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          bash tools/release/fetch-signed.sh "$VERSION" signed
+          bash .release-tools/tools/release/fetch-signed.sh "$VERSION" signed
           echo "dir=signed" >> "$GITHUB_OUTPUT"
           echo "\`soul-$VERSION.jar\` sha256 \`$(sha256sum "signed/soul-$VERSION.jar" | cut -d' ' -f1)\` (signed, as served by the updater)" >> "$GITHUB_STEP_SUMMARY"
 
@@ -101,7 +121,7 @@ jobs:
         run: |
           # Informational: a different compiler patch level may change class bytes, and that must
           # not block a release that is already live for players.
-          if python3 tools/release/compare-jars.py "signed/soul-$VERSION.jar" "build/libs/soul-$VERSION.jar" > compare.txt; then
+          if python3 .release-tools/tools/release/compare-jars.py "signed/soul-$VERSION.jar" "build/libs/soul-$VERSION.jar" > compare.txt; then
             echo "Signed jar content matches a fresh build of this tag: $(cat compare.txt)" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "::warning::the signed jar's content differs from a fresh build of this tag; see the job log"
