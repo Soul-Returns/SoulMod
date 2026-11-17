@@ -1,6 +1,7 @@
 package com.soulreturns.features.dev
 
 import com.soulreturns.Soul
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.api.LocationApi
 import com.soulreturns.config.cfg
 import com.soulreturns.features.dungeons.DungeonRunState
@@ -436,6 +437,11 @@ object BackendTest {
                 "runClient§e from a terminal once and complete the DevAuth login."
         }
         lines += "§7  server: §f${mc.currentServer?.ip ?: if (mc.isLocalServer) "singleplayer" else "not connected"}"
+        lines += "§7  network: §f${HypixelNetwork.current}" + if (HypixelNetwork.isAlpha) {
+            "§c · uploads blocked§8 (${BackendClient.status().alphaRefused} refused; presence without SkyBlock fields; realtime off)"
+        } else {
+            ""
+        }
 
         val base = SoulHttp.backendBaseUrl()
         val property = System.getProperty("soul.backendUrl")?.takeIf { it.isNotBlank() }

@@ -41,7 +41,8 @@ sealed interface BackendResult<out T> {
     /**
      * @property status the HTTP status, or one of the synthetic codes below when the request never
      *   produced one: [TRANSPORT] (connect/read failure), [TIMEOUT], [NO_AUTH] (no bearer could be
-     *   obtained), [MALFORMED] (2xx whose body did not deserialize).
+     *   obtained), [MALFORMED] (2xx whose body did not deserialize), [ALPHA_BLOCKED] (refused before
+     *   sending: the connection is on the Hypixel Alpha network, see [AlphaGate]).
      * @property retryAfter honoured `Retry-After` on a 429, else null.
      */
     data class Failure(val status: Int, val message: String, val retryAfter: Duration? = null) :
@@ -51,6 +52,7 @@ sealed interface BackendResult<out T> {
             const val TIMEOUT = -2
             const val NO_AUTH = -3
             const val MALFORMED = -4
+            const val ALPHA_BLOCKED = -5
         }
     }
 }
@@ -85,6 +87,10 @@ fun <T> BackendResult<T>.valueOrNull(): T? = if (this is BackendResult.Ok) value
  * ### Single-flight
  * Concurrent identical GETs share one in-flight request. A burst of realtime invalidates therefore
  * produces one refetch, not one per event.
+ *
+ * ### Hypixel Alpha
+ * While [com.soulreturns.api.HypixelNetwork.isAlpha], [AlphaGate] refuses every request it does not
+ * allow before cache, cooldown or network ([BackendResult.Failure.ALPHA_BLOCKED], never retried).
  */
 object BackendClient {
     private val logger = SoulLogger("Soul/Backend")
@@ -138,6 +144,8 @@ object BackendClient {
         val cacheMisses: Long,
         val requests: Long,
         val failures: Long,
+        /** Requests [AlphaGate] refused this session. */
+        val alphaRefused: Long,
         val inFlight: Int,
         /** endpoint → when its rate-limit cooldown ends (only entries still in the future). */
         val cooldowns: Map<String, Instant>,
@@ -152,6 +160,7 @@ object BackendClient {
             cacheMisses = cacheMisses.get(),
             requests = requests.get(),
             failures = failures.get(),
+            alphaRefused = AlphaGate.refused,
             inFlight = inFlight.size,
             cooldowns = cooldowns.filterValues { it.isAfter(now) },
             lastErrors = lastErrors.toMap(),
@@ -179,6 +188,7 @@ object BackendClient {
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
     ): BackendResult<T> {
         val path = normalize(endpoint)
+        AlphaGate.refusal("GET", path)?.let { return it }
         val key = cacheKey(path)
 
         if (!bypassCache) {
@@ -211,6 +221,7 @@ object BackendClient {
         timeoutMs: Long = DEFAULT_TIMEOUT_MS,
     ): BackendResult<JsonObject> {
         val path = normalize(endpoint)
+        AlphaGate.refusal("POST", path)?.let { return it }
         val encoded = try {
             json.encodeToString(bodySerializer, body)
         } catch (t: Throwable) {
@@ -269,6 +280,7 @@ object BackendClient {
         onProgress: (Long, Long) -> Unit = { _, _ -> },
     ): BackendResult<Downloaded> {
         val path = normalize(endpoint)
+        AlphaGate.refusal("GET", path)?.let { return it }
         cooldowns[path]?.let { until ->
             val remaining = Duration.between(Instant.now(), until)
             if (!remaining.isNegative && !remaining.isZero) {

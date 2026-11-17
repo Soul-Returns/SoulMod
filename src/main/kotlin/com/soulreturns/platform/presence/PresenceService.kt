@@ -1,6 +1,7 @@
 package com.soulreturns.platform.presence
 
 import com.soulreturns.api.HypixelModApi
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.skyblock.AreaChanged
@@ -271,6 +272,7 @@ object PresenceService {
         // The server *address* has no event of its own, but every switch that changes it also brings
         // a location packet — so this replaces the legacy mod's per-tick `currentServer.ip` poll.
         Events.subscribe<HypixelModApi.LocationChangeEvent> { schedulePush() }
+        Events.subscribe<HypixelNetwork.AlphaDetected> { schedulePush() }
 
         ClientPlayConnectionEvents.JOIN.register(
             ClientPlayConnectionEvents.Join { _, _, _ ->
@@ -450,11 +452,12 @@ object PresenceService {
      * The SkyBlock fields are masked by `onSkyblock` on purpose: the readers hold their last value
      * for a poll or two after a transition and the profile name survives a warp entirely, so an
      * unmasked read can ship a stale Hub area from a Bedwars lobby. Null means "unknown", which is
-     * exactly right here.
+     * exactly right here. On the Hypixel Alpha network the player reads as off SkyBlock: its area
+     * and profiles are test data that must not reach the backend.
      */
     private fun currentState(event: String, cleared: Boolean = false): PresenceState {
         if (cleared) return PresenceState(null, null, null, null, null, event, shareSoulStats())
-        val onSkyblock = SkyblockState.onSkyblock
+        val onSkyblock = SkyblockState.onSkyblock && !HypixelNetwork.isAlpha
         return PresenceState(
             server = currentServer(),
             onSkyblock = onSkyblock,

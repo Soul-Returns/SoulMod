@@ -4,6 +4,7 @@ import com.soulreturns.core.events.Event
 import com.soulreturns.core.events.Events
 import com.soulreturns.util.SoulLogger
 import net.hypixel.modapi.HypixelModAPI
+import net.hypixel.modapi.packet.impl.clientbound.ClientboundHelloPacket
 import net.hypixel.modapi.packet.impl.clientbound.ClientboundPartyInfoPacket
 import net.hypixel.modapi.packet.impl.clientbound.event.ClientboundLocationPacket
 import net.hypixel.modapi.packet.impl.serverbound.ServerboundPartyInfoPacket
@@ -49,6 +50,10 @@ object HypixelModApi {
             )
             logger.debug("Location: $event")
             Events.publish(event)
+        }
+
+        api.createHandler(ClientboundHelloPacket::class.java) { packet ->
+            HypixelNetwork.onEnvironment(packet.environment.name)
         }
 
         api.createHandler(ClientboundPartyInfoPacket::class.java) { packet ->

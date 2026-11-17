@@ -1,5 +1,6 @@
 package com.soulreturns.features.mining.mineshaft
 
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.core.events.HandleEvent
@@ -54,6 +55,9 @@ object MineshaftVisitTracker {
     private val SENDING_TO_MINESHAFT = Regex("Sending to Mineshaft\\.\\.\\.", RegexOption.IGNORE_CASE)
     private val SUMMONED_BY_LEADER = Regex("""^Party Leader, (.+?), summoned you to their server\.$""")
 
+    /** Stamped at entry: a visit can end after the disconnect that clears [HypixelNetwork]. */
+    private var visitOnAlpha = false
+
     fun register() {
         Events.subscribe(this)
         MineshaftOutbox.load()
@@ -89,6 +93,7 @@ object MineshaftVisitTracker {
     }
 
     private fun startVisit() {
+        visitOnAlpha = HypixelNetwork.isAlpha
         MineshaftState.beginVisit(System.currentTimeMillis())
         // Clear here, not on leaving: finishVisit() has to see the counts from the moment we left.
         MineshaftCorpses.clear()
@@ -104,6 +109,7 @@ object MineshaftVisitTracker {
      */
     fun tick(littlefoot: Entity?) {
         if (MineshaftState.enteredAt == null) return
+        if (HypixelNetwork.isAlpha) visitOnAlpha = true
         MineshaftState.captureProfile()
 
         if (MineshaftState.mineshaftType == null) {
@@ -139,6 +145,11 @@ object MineshaftVisitTracker {
         MineshaftState.endVisit()
 
         if (!cfg.mining.mineshaft.logVisits) return
+        // The outbox replays later, possibly from production, so an Alpha visit must never enter it.
+        if (visitOnAlpha || HypixelNetwork.isAlpha) {
+            DebugLogger.logFeatureEvent("Mineshaft: not logging the visit — Hypixel Alpha network")
+            return
+        }
         if (type == null || instance == null) {
             // No identifier means the sidebar never rendered one — a mineshaft we cannot name is not
             // a data point, and the endpoint requires both fields anyway.

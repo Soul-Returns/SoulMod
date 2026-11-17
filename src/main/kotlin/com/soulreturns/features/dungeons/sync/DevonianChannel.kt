@@ -1,6 +1,7 @@
 package com.soulreturns.features.dungeons.sync
 
 import com.soulreturns.api.HypixelModApi
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.features.dungeons.map.DungeonDataset
@@ -75,11 +76,14 @@ object DevonianChannel : SecretSyncChannel {
         }
         // When any room becomes identified, retry buffered devonian counts against it.
         Events.subscribe<DungeonGrid.RoomMatchedEvent> { flushPending() }
+        // A socket opened before the connection was recognised as Alpha closes at once, without a goodbye.
+        Events.subscribe<HypixelNetwork.AlphaDetected> { onDungeonEnd() }
     }
 
     // Always-on fallback: whenever secret sync is enabled we also speak devonian, so teammates
-    // running devonian (not Soul) are reached automatically with no separate toggle.
-    override fun isEnabled(): Boolean = cfg.dungeons.secretsSyncEnabled
+    // running devonian (not Soul) are reached automatically with no separate toggle. Never from the
+    // Hypixel Alpha network: nothing from there goes to a third-party server (rule://backend).
+    override fun isEnabled(): Boolean = cfg.dungeons.secretsSyncEnabled && !HypixelNetwork.isAlpha
 
     override fun onDungeonStart(serverId: String) {
         if (active) return // idempotent — the lifecycle reconcile may call every tick
@@ -101,8 +105,12 @@ object DevonianChannel : SecretSyncChannel {
         pendingCounts.clear()
         socket.getAndSet(null)?.let {
             try {
-                it.sendText("Disconnect", true)
-                it.sendClose(WebSocket.NORMAL_CLOSURE, "left dungeon")
+                if (HypixelNetwork.isAlpha) {
+                    it.abort()
+                } else {
+                    it.sendText("Disconnect", true)
+                    it.sendClose(WebSocket.NORMAL_CLOSURE, "left dungeon")
+                }
             } catch (_: Throwable) {
             }
         }
@@ -127,6 +135,10 @@ object DevonianChannel : SecretSyncChannel {
     // ---------------------------------------------------------------- connection
 
     private fun connect() {
+        if (HypixelNetwork.isAlpha) {
+            active = false
+            return
+        }
         val mc = Minecraft.getInstance()
         val session = mc.user ?: return
         val name = session.name ?: return
@@ -157,6 +169,8 @@ object DevonianChannel : SecretSyncChannel {
                         SyncLog.ws("devonian", "ws connect FAILED: ${error.message}")
                         logger.warn("devonian ws connect failed: ${error.message}")
                         active = false
+                    } else if (HypixelNetwork.isAlpha) {
+                        ws.abort()
                     } else {
                         socket.set(ws)
                         SyncLog.ws("devonian", "websocket connected — waiting for 3002 auth ack before Party subscribe")
@@ -177,6 +191,10 @@ object DevonianChannel : SecretSyncChannel {
         private val parts = StringBuilder()
 
         override fun onOpen(webSocket: WebSocket) {
+            if (HypixelNetwork.isAlpha) {
+                webSocket.abort()
+                return
+            }
             SyncLog.ws("devonian", "→ Authenticate[$name, <token>]")
             webSocket.sendText("Authenticate[$name, $r]", true)
             webSocket.request(1)
@@ -214,6 +232,10 @@ object DevonianChannel : SecretSyncChannel {
 
     private fun send(msg: String) {
         val ws = socket.get()
+        if (HypixelNetwork.isAlpha) {
+            SyncLog.ws("devonian", "send dropped (Hypixel Alpha network): $msg")
+            return
+        }
         if (ws == null) {
             SyncLog.ws("devonian", "send dropped (not connected): $msg")
             return

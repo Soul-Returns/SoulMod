@@ -1,5 +1,6 @@
 package com.soulreturns.platform.realtime
 
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.platform.concurrent.SoulScope
@@ -56,7 +57,7 @@ import java.util.concurrent.atomic.AtomicReference
  * Connects once the player is on a `hypixel.net` server and a bearer is obtainable; disconnects on
  * server leave and on `CLIENT_STOPPING`. There is no point holding a stream open on the title
  * screen, and the gate makes the connection lifecycle observable. `dev.realtimeAlwaysOn` lifts the
- * Hypixel half of the gate for local backend work.
+ * Hypixel half of the gate for local backend work. The Hypixel Alpha network closes it regardless.
  *
  * ### Topics
  * The token's topics are subscribed to verbatim, never filtered or rewritten. [requestTopic] adds a
@@ -203,6 +204,8 @@ object RealtimeClient {
                 Events.publish(BackendNotification(message, severity))
             }
         }
+        // Entering Alpha closes the gate now rather than at the next slow-tick reconcile.
+        Events.subscribe<HypixelNetwork.AlphaDetected> { reconcile() }
 
         ClientPlayConnectionEvents.JOIN.register(
             ClientPlayConnectionEvents.Join { _, _, _ -> reconcile() },
@@ -296,6 +299,8 @@ object RealtimeClient {
      * bearer is still required either way.
      */
     private fun shouldConnect(): Boolean {
+        // The stream is inbound, but its events trigger requests (island-chest refetches): Alpha is off Hypixel.
+        if (HypixelNetwork.isAlpha) return false
         val alwaysOn = try {
             cfg.dev.realtimeAlwaysOn
         } catch (_: Throwable) {
@@ -317,6 +322,7 @@ object RealtimeClient {
             false
         }
         return when {
+            HypixelNetwork.isAlpha -> "on the Hypixel Alpha network (no backend traffic from there)"
             (alwaysOn || BackendAuth.testBearerActive()) && Minecraft.getInstance().user == null -> "no session"
             alwaysOn -> "dev.realtimeAlwaysOn"
             BackendAuth.testBearerActive() -> "test bearer (-Dsoul.testBearerToken)"

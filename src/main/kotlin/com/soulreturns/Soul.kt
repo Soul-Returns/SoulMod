@@ -1,6 +1,7 @@
 package com.soulreturns
 
 import com.soulreturns.api.HypixelModApi
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.api.LocationApi
 import com.soulreturns.commands.SoulCommand
 import com.soulreturns.config.ConfigManager
@@ -171,6 +172,8 @@ object Soul : ClientModInitializer {
     }
 
     private fun registerFeatures() {
+        // First: its JOIN handler must latch the Alpha network before any other JOIN handler sends.
+        HypixelNetwork.register()
         HypixelModApi.register()
         LocationApi.register()
         // After LocationApi: it turns the location packet into `inSkyblock`, which the reader reads.

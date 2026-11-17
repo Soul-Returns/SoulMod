@@ -1,6 +1,7 @@
 package com.soulreturns.features.islandchests
 
 import com.soulreturns.api.HypixelModApi
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.api.LocationApi
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
@@ -217,7 +218,7 @@ object IslandChests {
             lastBucket = null
         }
         val readable = searchContext()
-        val nextSync = IslandChestGates.sync(readable, cfg.islandChests.shareWithCoop, syncContext)
+        val nextSync = IslandChestGates.sync(readable, cfg.islandChests.shareWithCoop && !HypixelNetwork.isAlpha, syncContext)
         if (nextSync != null && nextSync != lastSyncIdentity) {
             lastSyncIdentity = nextSync
             remoteState = "local"
@@ -292,6 +293,8 @@ object IslandChests {
 
     private fun remember(chest: StoredIslandChest?) {
         val context = captureContext() ?: return
+        // Pending observations are an upload queue: one recorded on Alpha would upload from production later.
+        if (HypixelNetwork.isAlpha) return
         if (chest == null) return
         val originalBaseline = observationBaseRevision ?: return
         val id = UUID.randomUUID().toString()
