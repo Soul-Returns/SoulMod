@@ -274,6 +274,7 @@ object Soul : ClientModInitializer {
         CeilingHashMatcher.register()
         TerminalSolver.register()
         LeapMenu.register()
+        com.soulreturns.features.experiments.Experiments.register()
         DeviceSolvers.register()
         ServerTime.register()
         F7Boss.register()

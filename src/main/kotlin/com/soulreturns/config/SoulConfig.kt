@@ -110,6 +110,17 @@ data class StorageOverlayConfig(
     val openLastPage: Boolean = false,
 )
 
+/** Experimentation Table: Soul's screens + solvers (rule://experiments). */
+@Serializable
+data class ExperimentsConfig(
+    val enabled: Boolean = false,
+    /** Wrong answers, clicks during the reveal and known Superpairs mismatches send nothing. */
+    val blockClicks: Boolean = true,
+    /** Banner, highlight and sound when a rare reward card is revealed in Superpairs. */
+    val rareWarning: Boolean = true,
+    val rareSound: SoundRef? = SoundRef.vanilla("minecraft:ui.toast.challenge_complete"),
+)
+
 /**
  * The mod's configuration tree — immutable @Serializable data classes persisted as JSON.
  *
@@ -139,6 +150,7 @@ data class SoulConfig(
     val sacks: SackTrackerConfig = SackTrackerConfig(),
     val islandChests: IslandChestsConfig = IslandChestsConfig(),
     val storageOverlay: StorageOverlayConfig = StorageOverlayConfig(),
+    val experiments: ExperimentsConfig = ExperimentsConfig(),
     val sounds: SoundsConfig = SoundsConfig(),
     /** The auto updater ([com.soulreturns.platform.updater.UpdateService]). */
     val updates: UpdatesConfig = UpdatesConfig(),

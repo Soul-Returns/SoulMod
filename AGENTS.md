@@ -47,4 +47,5 @@ Read the matching file in **`.agents/rules/` before changing its area**. These f
 | [dungeons](.agents/rules/dungeons.md), [dragon-profit](.agents/rules/dragon-profit.md) | Dungeons, solvers, dragon tracking |
 | [metaldetector](.agents/rules/metaldetector.md), [mineshaft](.agents/rules/mineshaft.md), [nucleus](.agents/rules/nucleus.md), [commissions](.agents/rules/commissions.md) | Mining features |
 | [fishing](.agents/rules/fishing.md), [sacks](.agents/rules/sacks.md), [pet-hud](.agents/rules/pet-hud.md) | Fishing, sacks, pets |
+| [experiments](.agents/rules/experiments.md) | Experimentation Table screens and solvers |
 | [porting](.agents/rules/porting.md) | Feature ports and third-party attribution |

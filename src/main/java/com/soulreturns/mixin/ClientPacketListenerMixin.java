@@ -6,6 +6,7 @@ import com.soulreturns.features.dungeons.boss.F7Boss;
 import com.soulreturns.features.dungeons.devices.GoldorPhase;
 import com.soulreturns.features.dungeons.devices.SimonSays;
 import com.soulreturns.features.dungeons.terminals.TerminalSolver;
+import com.soulreturns.features.experiments.Experiments;
 import com.soulreturns.features.qol.ImplosionHider;
 import com.soulreturns.features.mining.HollowsWeather;
 import com.soulreturns.features.mining.PowderCoatingParticles;
@@ -66,6 +67,7 @@ public abstract class ClientPacketListenerMixin {
         GoldorPhase.onSound(packet);
         SimonSays.onSound(packet);
         TerminalSolver.onSound(packet);
+        Experiments.onSound(packet);
     }
 
     @Inject(method = "handleSetTime", at = @At("HEAD"))
@@ -108,18 +110,21 @@ public abstract class ClientPacketListenerMixin {
     private void soul$islandChestOpen(ClientboundOpenScreenPacket packet, CallbackInfo ci) {
         IslandChests.onOpen(packet);
         StorageOverlay.onOpen(packet);
+        Experiments.onOpen(packet);
     }
 
     @Inject(method = "handleContainerContent", at = @At("RETURN"))
     private void soul$islandChestContents(ClientboundContainerSetContentPacket packet, CallbackInfo ci) {
         IslandChests.onContents(packet);
         StorageOverlay.onContents(packet);
+        Experiments.onContents(packet);
     }
 
     @Inject(method = "handleContainerSetSlot", at = @At("RETURN"))
     private void soul$islandChestSlot(ClientboundContainerSetSlotPacket packet, CallbackInfo ci) {
         IslandChests.onSlot(packet);
         StorageOverlay.onSlot(packet);
+        Experiments.onSlot(packet);
     }
 
     @Inject(method = "handleContainerClose", at = @At("HEAD"))
@@ -131,5 +136,6 @@ public abstract class ClientPacketListenerMixin {
     private void soul$islandChestClose(ClientboundContainerClosePacket packet, CallbackInfo ci) {
         IslandChests.onClose(packet);
         StorageOverlay.onClose(packet);
+        Experiments.onClose(packet);
     }
 }

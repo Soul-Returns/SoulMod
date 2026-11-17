@@ -786,6 +786,23 @@ object ConfigRegistry {
                     synonyms = listOf("mouse", "cursor", "storage", "reset"),
                 )
             },
+            card("experiments") {
+                val e = { cfg.experiments }
+                fun experiments(block: com.soulreturns.config.ExperimentsConfig.() -> com.soulreturns.config.ExperimentsConfig) = ConfigManager.update { copy(experiments = experiments.block()) }
+                val de = d.experiments
+                FeatureCard(
+                    "experiments", "Experimentation Table", "Chronomatron, Ultrasequencer and Superpairs in Soul's window", "inventory", "menus", "grid",
+                    "The whole table opens in Soul's window: where to click next is ringed, clicks during the reveal and wrong answers send nothing, and Superpairs remembers every card. Every click is yours: one click sends one click, never on its own. Closing always works. Anything unexpected shows the normal menu.",
+                    master = toggle("Experimentation Table", null, { e().enabled }, { v -> experiments { copy(enabled = v) } }, de.enabled),
+                    simple = listOf(
+                        toggle("Block misclicks", "Wrong answers, clicks while the pattern plays and known Superpairs mismatches send nothing", { e().blockClicks }, { v -> experiments { copy(blockClicks = v) } }, de.blockClicks),
+                        toggle("Rare reward warning", "Banner and sound when Superpairs reveals a rare card (open /rng once so Soul learns which ones)", { e().rareWarning }, { v -> experiments { copy(rareWarning = v) } }, de.rareWarning),
+                        sound("Rare reward sound", "Played with the rare reward banner", "Rare Superpairs reward", { e().rareSound }, { v -> experiments { copy(rareSound = v) } }, de.rareSound, visible = { e().rareWarning }),
+                    ),
+                    beta = true,
+                    synonyms = listOf("experiments", "experimentation", "enchanting", "superpairs", "chronomatron", "ultrasequencer", "add-ons", "rng meter", "solver"),
+                )
+            },
             // Inventory & Items › Inventory
             card("searcheverywhere") {
                 FeatureCard(
