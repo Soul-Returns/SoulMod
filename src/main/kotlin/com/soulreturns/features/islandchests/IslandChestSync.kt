@@ -184,7 +184,8 @@ internal class IslandChestSyncSchedule {
 }
 
 internal class IslandChestSync(
-    private val store: IslandChestStore,
+    /** The open dataset's store; each run keeps the one it started with, so it never reaches another dataset's. */
+    private val currentStore: () -> IslandChestStore,
     private val context: () -> IslandChestSyncContext?,
     private val changed: () -> Unit,
     private val status: (String) -> Unit,
@@ -216,13 +217,14 @@ internal class IslandChestSync(
         if (job?.isActive == true || !schedule.due(now)) return
         schedule.started()
         val serial = ++runId
+        val store = currentStore()
         val previous = stopped
         stopped = null
         status("syncing")
         job = SoulScope.io.launch {
             previous?.join()
             val outcome = try {
-                reconcile(current, activeBlocks)
+                reconcile(current, activeBlocks, store)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
@@ -260,13 +262,13 @@ internal class IslandChestSync(
 
     private fun stillCurrent(c: IslandChestSyncContext): Boolean = context() == c
 
-    private fun apply(c: IslandChestSyncContext, change: (IslandChestBucket) -> IslandChestBucket) {
+    private fun apply(store: IslandChestStore, c: IslandChestSyncContext, change: (IslandChestBucket) -> IslandChestBucket) {
         if (!stillCurrent(c)) return
         store.update(c.account, c.profile, change)
         Minecraft.getInstance().execute { if (stillCurrent(c)) changed() }
     }
 
-    private suspend fun reconcile(c: IslandChestSyncContext, activeBlocks: List<ChestPos>): Outcome {
+    private suspend fun reconcile(c: IslandChestSyncContext, activeBlocks: List<ChestPos>, store: IslandChestStore): Outcome {
         if (!stillCurrent(c)) return interrupted
         val endpoint = "/skyblock/profiles/${c.profile}/island-chests"
         val known = store.read(c.account, c.profile).snapshotRevision
@@ -298,7 +300,7 @@ internal class IslandChestSync(
             query = cursorQuery(download.nextCursor!!)
         }
         staged = null
-        apply(c, download::reconcile)
+        apply(store, c, download::reconcile)
         val observations = store.read(c.account, c.profile).local
         var state = "shared"
         for (observation in observations) {
@@ -310,7 +312,7 @@ internal class IslandChestSync(
             if (latest.local.none { it.observationId == observation.observationId && !it.blocked }) continue
             val payload = observation.wire()
             if (payload == null) {
-                apply(c) { it.reject(observation.observationId) }
+                apply(store, c) { it.reject(observation.observationId) }
                 state = "too-large"
                 continue
             }
@@ -319,19 +321,19 @@ internal class IslandChestSync(
             if (posted is BackendResult.Ok) {
                 val ack = try { chestWireJson.decodeFromJsonElement(ChestWireAck.serializer(), posted.value) } catch (_: Exception) { return Outcome("error") }
                 if (ack.schemaVersion != 1 || MojangUuid.undashedOrNull(ack.profileUuid) != c.profile || ack.observationId != observation.observationId || ack.key != observation.chest.key || ack.revision <= observation.baseRevision) return Outcome("error")
-                apply(c) { it.acknowledge(observation, ack.revision) }
+                apply(store, c) { it.acknowledge(observation, ack.revision) }
             } else {
                 val error = posted as BackendResult.Failure
                 if (error.status == 422) {
-                    apply(c) { it.reject(observation.observationId, "quota") }
+                    apply(store, c) { it.reject(observation.observationId, "quota") }
                     return Outcome("quota", 60_000)
                 }
                 if (error.status == 409) {
-                    apply(c) { it.reject(observation.observationId) }
+                    apply(store, c) { it.reject(observation.observationId) }
                     refreshOnClient()
                     return Outcome("conflict", 1_000)
                 }
-                if (error.status == 400 || error.status == 413) apply(c) { it.reject(observation.observationId) }
+                if (error.status == 400 || error.status == 413) apply(store, c) { it.reject(observation.observationId) }
                 return failure(error)
             }
         }

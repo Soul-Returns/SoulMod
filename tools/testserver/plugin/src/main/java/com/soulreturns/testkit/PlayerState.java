@@ -30,6 +30,8 @@ public final class PlayerState {
     public String rankPrefix;
 
     public String sidebar;
+    /** {@code hx alpha on}: every sidebar footer reads alpha.hypixel.net, as on Hypixel's Alpha network. */
+    public boolean alpha;
     public String tab;
     public List<UUID> tabEntries = new ArrayList<>();
     /** Body lines replacing the tab's Pet widget ({@code hx pet}); null = the preset's own. */

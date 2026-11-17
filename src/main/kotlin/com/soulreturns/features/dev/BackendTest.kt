@@ -12,6 +12,7 @@ import com.soulreturns.platform.http.SoulHttp
 import com.soulreturns.platform.presence.PresenceService
 import com.soulreturns.platform.realtime.MercureSseReader
 import com.soulreturns.platform.realtime.RealtimeClient
+import com.soulreturns.stats.PlayerDataset
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
@@ -442,6 +443,8 @@ object BackendTest {
         } else {
             ""
         }
+        lines += "§7  player data: §f${PlayerDataset.active}§8 (${PlayerDataset.dir()})" +
+            if (HypixelNetwork.dataset == null) "§e · waiting for the sidebar footer" else ""
 
         val base = SoulHttp.backendBaseUrl()
         val property = System.getProperty("soul.backendUrl")?.takeIf { it.isNotBlank() }

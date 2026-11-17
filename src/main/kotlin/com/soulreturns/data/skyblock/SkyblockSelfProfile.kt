@@ -1,11 +1,13 @@
 package com.soulreturns.data.skyblock
 
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.core.events.Event
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.hypixel.HypixelProfileClient
 import com.soulreturns.data.hypixel.SkyblockProfileMember
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.platform.http.BackendResult
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.util.MojangUuid
 import com.soulreturns.util.SoulLogger
 import kotlinx.coroutines.launch
@@ -37,8 +39,16 @@ import java.util.concurrent.atomic.AtomicLong
  * every consumer with the *previous* profile's data — silently, and in the direction that looks
  * plausible. If the profile is not in the response, this loads nothing and says so; stale data
  * that looks current is worse than no data.
+ *
+ * ### Not on Alpha
+ * Hypixel's API only knows the production profile, never the Alpha network's copy, so on Alpha
+ * there is no snapshot: nothing loads, [snapshot] reads null and every consumer degrades as it does
+ * when the API is unreachable. A load asked for while the connection's network is still unknown
+ * waits for [PlayerDataset.Resolved] (rule://skyblock-state).
  */
 object SkyblockSelfProfile {
+    private const val UNAVAILABLE_ON_ALPHA = "unavailable on the Hypixel Alpha network (the API only has the production profile)"
+
     private val logger = SoulLogger("Soul/SelfProfile")
 
     private val registered = AtomicBoolean(false)
@@ -51,7 +61,11 @@ object SkyblockSelfProfile {
 
     @Volatile
     var snapshot: SelfProfileSnapshot? = null
+        get() = if (PlayerDataset.active == PlayerDataset.ALPHA || HypixelNetwork.isAlpha) null else field
         private set
+
+    /** A load that waits for the connection's network; the client thread only. */
+    private var deferred: Pair<String, String>? = null
 
     /** Why the last attempt ended as it did — `/soul dev profile` prints this. */
     @Volatile
@@ -70,6 +84,18 @@ object SkyblockSelfProfile {
                 return@subscribe
             }
             load(profile, reason = "profile changed")
+        }
+        Events.subscribe<PlayerDataset.Resolved> { event ->
+            if (event.dataset == PlayerDataset.ALPHA) {
+                generation.incrementAndGet()
+                deferred = null
+                snapshot = null
+                lastOutcome = UNAVAILABLE_ON_ALPHA
+                return@subscribe
+            }
+            val (profile, reason) = deferred ?: return@subscribe
+            deferred = null
+            load(profile, reason)
         }
     }
 
@@ -100,6 +126,16 @@ object SkyblockSelfProfile {
     }
 
     private fun load(profileName: String, reason: String, bypassCache: Boolean = false) {
+        val dataset = HypixelNetwork.dataset
+        if (dataset == PlayerDataset.ALPHA || PlayerDataset.active == PlayerDataset.ALPHA) {
+            lastOutcome = UNAVAILABLE_ON_ALPHA
+            return
+        }
+        if (dataset == null) {
+            deferred = profileName to reason
+            lastOutcome = "waiting for the sidebar to name the network"
+            return
+        }
         val uuid = selfUuid()
         if (uuid == null) {
             lastOutcome = "no Mojang uuid available"
@@ -123,7 +159,7 @@ object SkyblockSelfProfile {
             HypixelProfileClient.INTENT_SELF,
             bypassCache = bypassCache,
         )
-        if (generation.get() != mine) {
+        if (generation.get() != mine || HypixelNetwork.dataset != PlayerDataset.PRODUCTION) {
             logger.debug("Dropping stale self-profile response for '$profileName'")
             return
         }

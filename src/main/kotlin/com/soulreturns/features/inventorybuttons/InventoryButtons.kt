@@ -11,6 +11,7 @@ import com.soulreturns.data.skyblock.AreaChanged
 import com.soulreturns.data.skyblock.SkyblockLocation
 import com.soulreturns.features.dungeons.DungeonCommandGuard
 import com.soulreturns.features.inventory.EquipmentDisplay
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.ui.SoulUi
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents
@@ -97,6 +98,8 @@ object InventoryButtons {
             activeId = liveProfileId()
             remember(event.current)
         }
+        // An area entered before the connection's network was known is remembered once it is production.
+        Events.subscribe<PlayerDataset.Resolved> { if (it.dataset == PlayerDataset.PRODUCTION) remember(SkyblockLocation.area) }
         Events.subscribe<LocationApi.DungeonStateEvent> { activeId = liveProfileId() }
         ScreenEvents.AFTER_INIT.register(
             ScreenEvents.AfterInit { _, screen, _, _ ->
@@ -134,9 +137,13 @@ object InventoryButtons {
         )
     }
 
-    /** Add [area] to the picker's list the first time the client is there; not in a run, which is its own condition. */
+    /**
+     * Add [area] to the picker's list the first time the client is there; not in a run, which is its own condition.
+     * `config.json` is shared by both datasets, so an Alpha (or not yet confirmed) area is not stored.
+     */
     private fun remember(area: String?) {
         if (area.isNullOrBlank() || LocationApi.inDungeon || area in cfg.inventoryButtons.seenAreas) return
+        if (!PlayerDataset.confirmedProduction()) return
         ConfigManager.update { copy(inventoryButtons = inventoryButtons.copy(seenAreas = inventoryButtons.seenAreas + area)) }
     }
 

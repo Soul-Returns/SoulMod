@@ -88,4 +88,77 @@ class HypixelNetworkTest {
         assertEquals(2, detected.get())
         assertTrue(HypixelNetwork.alphaConnection > firstConnection)
     }
+
+    private val productionSidebar = listOf(
+        "§707/11/26 §8m61A",
+        "",
+        "Late Autumn 9th",
+        "§75:20pm §e☀",
+        "§7⏣ §aYour Island",
+        "",
+        "Purse: §61,234",
+        "",
+        "§ewww.hypixel.net",
+    )
+
+    @Test
+    fun sidebarFooterNamesTheNetwork() {
+        assertEquals(HypixelNetwork.PRODUCTION, HypixelNetwork.sidebarNetwork(productionSidebar))
+        assertEquals(HypixelNetwork.ALPHA, HypixelNetwork.sidebarNetwork(productionSidebar.dropLast(1) + "§ealpha.hypixel.net"))
+    }
+
+    @Test
+    fun sidebarFooterIgnoresColorCodesSpacingAndCase() {
+        assertEquals(HypixelNetwork.ALPHA, HypixelNetwork.sidebarNetwork(listOf("§e§lalpha§r.§ehypixel.net§r")))
+        assertEquals(HypixelNetwork.ALPHA, HypixelNetwork.sidebarNetwork(listOf("  §eAlpha.Hypixel.NET \u00a0")))
+        assertEquals(HypixelNetwork.PRODUCTION, HypixelNetwork.sidebarNetwork(listOf("§e www.hypixel.net\u200b", "", "  ")))
+    }
+
+    @Test
+    fun noFooterIsNoSignal() {
+        assertNull(HypixelNetwork.sidebarNetwork(emptyList()))
+        assertNull(HypixelNetwork.sidebarNetwork(productionSidebar.dropLast(1)))
+        assertNull(HypixelNetwork.sidebarNetwork(listOf("§estore.hypixel.net", "§ealpha.hypixel.net.evil", "Visit www.hypixel.net")))
+
+        HypixelNetwork.onEnvironment("PRODUCTION")
+        HypixelNetwork.onSidebar(productionSidebar.dropLast(1))
+        assertEquals(HypixelNetwork.PRODUCTION, HypixelNetwork.current)
+        assertNull(HypixelNetwork.dataset, "a Hypixel connection stays unresolved until a footer names it")
+    }
+
+    @Test
+    fun productionFooterConfirmsTheDatasetWhateverTheAddress() {
+        val confirmed = AtomicInteger()
+        Events.subscribe<HypixelNetwork.ProductionConfirmed> { confirmed.incrementAndGet() }
+        assertEquals(HypixelNetwork.PRODUCTION, HypixelNetwork.dataset, "off Hypixel is production")
+
+        for (address in listOf("hypixel.net", "mc.hypixel.net", "eu.hypixel.net", "203.0.113.7")) {
+            HypixelNetwork.reset()
+            HypixelNetwork.onAddress(address)
+            HypixelNetwork.onEnvironment("PRODUCTION")
+            assertNull(HypixelNetwork.dataset, address)
+            HypixelNetwork.onSidebar(productionSidebar)
+            HypixelNetwork.onSidebar(productionSidebar)
+            assertEquals(HypixelNetwork.PRODUCTION, HypixelNetwork.dataset, address)
+        }
+        assertEquals(4, confirmed.get())
+    }
+
+    @Test
+    fun alphaFooterLatchesAndNeverUnlatches() {
+        HypixelNetwork.onAddress("mc.hypixel.net")
+        HypixelNetwork.onEnvironment("PRODUCTION")
+        HypixelNetwork.onSidebar(productionSidebar.dropLast(1) + "§ealpha.hypixel.net")
+        assertTrue(HypixelNetwork.isAlpha)
+        assertEquals(HypixelNetwork.ALPHA, HypixelNetwork.dataset)
+
+        HypixelNetwork.onSidebar(productionSidebar)
+        HypixelNetwork.onSidebar(emptyList())
+        HypixelNetwork.onAddress("mc.hypixel.net")
+        assertTrue(HypixelNetwork.isAlpha)
+        assertEquals(HypixelNetwork.ALPHA, HypixelNetwork.dataset)
+
+        HypixelNetwork.reset()
+        assertEquals(HypixelNetwork.PRODUCTION, HypixelNetwork.dataset)
+    }
 }

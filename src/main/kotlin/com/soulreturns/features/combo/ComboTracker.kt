@@ -4,6 +4,7 @@ import com.soulreturns.config.ConfigManager
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.model.ChatMessage
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.util.ChatDisplayFilter
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.soulChat
@@ -104,7 +105,8 @@ object ComboTracker {
         combo = 0
         lastUpdateMs = 0L
         ComboKillCounter.cancelFloor() // drop any milestone floor waiting to apply — the combo is over
-        if (cfg.combo.trackBest && reached > cfg.combo.bestCombo) {
+        // config.json is shared by both datasets: an Alpha (or not yet confirmed) combo is no record.
+        if (cfg.combo.trackBest && reached > cfg.combo.bestCombo && PlayerDataset.confirmedProduction()) {
             val old = cfg.combo.bestCombo
             ConfigManager.update { copy(combo = combo.copy(bestCombo = reached)) }
             soulChat("§aNew best kill combo: §d$reached §a(was §6$old§a)")

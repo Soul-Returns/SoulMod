@@ -106,6 +106,7 @@ public final class HxCommand implements TabExecutor {
         {"party <none|leader|member> [names…]", "answer for hypixel:party_info requests"},
         {"rank <none|vip|vip+|mvp|mvp+|mvp++|youtuber|staff|admin> [prefix…]", "answer for hypixel:player_info"},
         {"hello", "re-send hypixel:hello (client re-registers, location follows)"},
+        {"alpha <on|off>", "Hypixel Alpha network: every sidebar footer reads alpha.hypixel.net instead of www.hypixel.net (kept across rejoin; hello stays PRODUCTION, so only the sidebar tells)"},
         {"modapi", "mod API state: hello, subscriptions, last packets"},
         {"textmode <inline|components>", "legacy codes inside literal text (Hypixel) or as styles"},
         {"list", "names of all presets, locations, sidebars, tabs, actionbars, menus, items"},
@@ -488,6 +489,14 @@ public final class HxCommand implements TabExecutor {
             case "hello" -> {
                 plugin.modApi().sendHello(target);
                 sender.sendMessage("§a" + who + "hypixel:hello sent");
+            }
+            case "alpha" -> {
+                need(rest, 1, "alpha <on|off>");
+                String mode = rest[0].toLowerCase(Locale.ROOT);
+                if (!mode.equals("on") && !mode.equals("off")) throw new Problem("alpha <on|off>");
+                state.alpha = mode.equals("on");
+                if (state.sidebar != null) plugin.applySidebar(target, state.sidebar);
+                sender.sendMessage("§a" + who + "sidebar footer " + (state.alpha ? "alpha.hypixel.net" : "www.hypixel.net"));
             }
             case "modapi" -> {
                 sender.sendMessage("§e" + who + "hello " + (state.helloSent ? "sent" : "not sent")

@@ -273,6 +273,7 @@ object PresenceService {
         // a location packet — so this replaces the legacy mod's per-tick `currentServer.ip` poll.
         Events.subscribe<HypixelModApi.LocationChangeEvent> { schedulePush() }
         Events.subscribe<HypixelNetwork.AlphaDetected> { schedulePush() }
+        Events.subscribe<HypixelNetwork.ProductionConfirmed> { schedulePush() }
 
         ClientPlayConnectionEvents.JOIN.register(
             ClientPlayConnectionEvents.Join { _, _, _ ->
@@ -453,11 +454,12 @@ object PresenceService {
      * for a poll or two after a transition and the profile name survives a warp entirely, so an
      * unmasked read can ship a stale Hub area from a Bedwars lobby. Null means "unknown", which is
      * exactly right here. On the Hypixel Alpha network the player reads as off SkyBlock: its area
-     * and profiles are test data that must not reach the backend.
+     * and profiles are test data that must not reach the backend. So does a Hypixel connection whose
+     * sidebar footer has not confirmed production yet ([HypixelNetwork.dataset]).
      */
     private fun currentState(event: String, cleared: Boolean = false): PresenceState {
         if (cleared) return PresenceState(null, null, null, null, null, event, shareSoulStats())
-        val onSkyblock = SkyblockState.onSkyblock && !HypixelNetwork.isAlpha
+        val onSkyblock = SkyblockState.onSkyblock && HypixelNetwork.dataset == HypixelNetwork.PRODUCTION
         return PresenceState(
             server = currentServer(),
             onSkyblock = onSkyblock,

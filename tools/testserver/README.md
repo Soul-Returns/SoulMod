@@ -149,6 +149,7 @@ legacy-formatted: `§` or `&` codes.
 | `hx section start` / `next` / `done` / `gate` / `core` / `status` / `selftest` | Goldor's sections (`LateBossSim`, see "Goldor sections and dragons"): `Who dares trespass…` with S1 open, the open section's next / full `<you> activated a terminal! (n/N)` (N = 7, 8, 7, 7), `The gate has been destroyed!`, `The Core entrance is opening!`; a section begins when the previous one is full and its gate is down |
 | `hx dragon <red\|orange\|green\|blue\|purple>` / `stop` / `selftest` | an M7 P5 dragon spawn: 10 pulses 10 ticks apart (`flame` 20, `enchant` / `large_smoke` / `witch` 40 at the spawn x/z, y 19.0, forced), an AI-less `ender_dragon` at y 14 100 ticks after the first pulse, removed 60 ticks later |
 | `hx hello` | re-send `hypixel:hello` (the client re-registers; the location follows) |
+| `hx alpha <on\|off>` | Hypixel Alpha network: every sidebar footer reads `alpha.hypixel.net` instead of `www.hypixel.net` (kept across a rejoin; hello stays `PRODUCTION`, so only the sidebar tells) |
 | `hx modapi` | hello state, subscriptions, current location, party, rank, last 15 mod API packets both ways |
 | `hx textmode <inline\|components>` | see "Text" below |
 | `hx list` | every name in every presets.json section |

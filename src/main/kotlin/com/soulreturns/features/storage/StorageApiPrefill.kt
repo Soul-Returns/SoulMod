@@ -9,6 +9,7 @@ import com.soulreturns.data.skyblock.SelfProfileSnapshot
 import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.data.skyblock.SkyblockSelfProfile
 import com.soulreturns.platform.concurrent.SoulScope
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.util.MojangUuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -37,16 +38,20 @@ internal object StorageApiPrefill {
         this.onChanged = onChanged
         if (registered) return
         registered = true
-        Events.subscribe<ProfileChanged> {
-            generation++
-            decodeJob?.cancel()
-            source = null
-            sourceScope = null
-            decodedPages = emptyList()
-            this.onChanged()
-        }
+        Events.subscribe<ProfileChanged> { clear() }
+        // The API only has production pages; Alpha shows only what its own menus showed.
+        Events.subscribe<PlayerDataset.Resolved> { if (it.switched) clear() }
         Events.subscribe<SelfProfileLoaded> { prefill(it.snapshot) }
         SkyblockSelfProfile.snapshot?.let(::prefill)
+    }
+
+    private fun clear() {
+        generation++
+        decodeJob?.cancel()
+        source = null
+        sourceScope = null
+        decodedPages = emptyList()
+        onChanged()
     }
 
     /** Client-thread access; a missing exact join-chat profile id never falls back to a cute name. */

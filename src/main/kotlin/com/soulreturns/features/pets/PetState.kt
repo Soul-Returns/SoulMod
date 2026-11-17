@@ -16,6 +16,7 @@ import com.soulreturns.data.skyblock.TabWidgets
 import com.soulreturns.data.skyblock.TabWidgetsChanged
 import com.soulreturns.features.inventorybuttons.InventoryButtonIcons
 import com.soulreturns.stats.PersistentStats
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.stats.StatsHandle
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.toLegacyText
@@ -90,6 +91,8 @@ object PetState {
         }
         Events.subscribe<ChatMessage> { onChat(it) }
         Events.subscribe<SelfProfileLoaded> { seed() }
+        // The other dataset's pet cache is open now: read the active pet from it before the next save.
+        Events.subscribe<PlayerDataset.Resolved> { if (it.switched) restored = false }
         ClientTickEvents.END_CLIENT_TICK.register(
             ClientTickEvents.EndTick {
                 if (!ready()) {

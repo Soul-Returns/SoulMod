@@ -1,5 +1,6 @@
 package com.soulreturns.config
 
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.util.SoulLogger
 import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
@@ -11,7 +12,8 @@ import java.time.format.DateTimeFormatter
 /**
  * Copies of player data taken before Soul rewrites it: before a migration, before a file that
  * could not be fully read is overwritten, before an older Soul saves over a newer Soul's file.
- * Lives in `config/soul/backups/`, newest [KEEP] per file.
+ * Lives in `config/soul/backups/`, newest [KEEP] per file; files of the Alpha dataset
+ * ([PlayerDataset]) back up into `config/soul/alpha/backups/`, so they never rotate production copies out.
  */
 object DataBackups {
     private const val KEEP = 10
@@ -24,7 +26,7 @@ object DataBackups {
     fun backup(file: Path, reason: String): Path? {
         if (!Files.isRegularFile(file)) return null
         return try {
-            val dir = dir()
+            val dir = if (file.parent == PlayerDataset.dir(PlayerDataset.ALPHA)) file.parent.resolve("backups") else dir()
             Files.createDirectories(dir)
             val name = file.fileName.toString()
             val stem = name.substringBeforeLast('.')

@@ -1,7 +1,6 @@
 package com.soulreturns.features.islandchests
 
 import com.soulreturns.api.HypixelModApi
-import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.api.LocationApi
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
@@ -19,6 +18,7 @@ import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.platform.http.BackendAuthenticated
 import com.soulreturns.platform.realtime.RealtimeClient
 import com.soulreturns.platform.realtime.SyncInvalidate
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.MojangUuid
 import kotlinx.coroutines.Job
@@ -27,7 +27,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.event.player.UseBlockCallback
-import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
@@ -48,6 +47,8 @@ import java.time.Instant
 import java.util.UUID
 
 object IslandChests {
+    private const val FILE = "island-chests.json"
+
     private var registered = false
     private var loaded = false
     private var stopping = false
@@ -92,12 +93,15 @@ object IslandChests {
         registered = true
         accountId = Minecraft.getInstance().user.profileId
         account = MojangUuid.undashed(accountId!!)
-        store = IslandChestStore(FabricLoader.getInstance().configDir.resolve("soul/island-chests.json"))
-        sync = IslandChestSync(store, { syncContext }, ::publish) { remoteState = it; publish() }
-        SoulScope.io.launch {
-            store.load()
-            Minecraft.getInstance().execute { loaded = true; updateContext(); publish(); sync.refresh() }
-        }
+        sync = IslandChestSync({ store }, { syncContext }, ::publish) { remoteState = it; publish() }
+        openStore()
+        PlayerDataset.attach(
+            object : PlayerDataset.Store {
+                override fun flush() = store.flush()
+
+                override fun open(dataset: String) = openStore()
+            },
+        )
         Events.subscribe<ChatMessage> { message ->
             if (message.source != ChatMessage.Source.SERVER) return@subscribe
             updateContext()
@@ -110,6 +114,7 @@ object IslandChests {
         Events.subscribe<ProfileChanged> { transfer() }
         Events.subscribe<OnSkyblockChanged> { if (!it.current) transfer() }
         Events.subscribe<BackendAuthenticated> { onClient { sync.refresh() } }
+        Events.subscribe<PlayerDataset.Resolved> { updateContext(); publish(); sync.refresh() }
         Events.subscribe<SyncInvalidate> { event ->
             onClient {
                 val expected = account?.let { "user/$it" }
@@ -189,6 +194,31 @@ object IslandChests {
         if (loaded) publish()
     }
 
+    /** Opens the dataset's file ([PlayerDataset]); the previous store was flushed or dropped by the switch. */
+    private fun openStore() {
+        val next = IslandChestStore(PlayerDataset.file(FILE))
+        store = next
+        loaded = false
+        // Not transfer(): the join chat's profile id stays valid for the same server.
+        generation++
+        identity = null
+        syncContext = null
+        resetObservation()
+        clearArm()
+        clearLocating()
+        lastBucket = null
+        SoulScope.io.launch {
+            next.load()
+            Minecraft.getInstance().execute {
+                if (store !== next) return@execute
+                loaded = true
+                updateContext()
+                publish()
+                sync.refresh()
+            }
+        }
+    }
+
     private fun updateContext() {
         val mc = Minecraft.getInstance()
         val nextAccountId = mc.user.profileId
@@ -218,7 +248,8 @@ object IslandChests {
             lastBucket = null
         }
         val readable = searchContext()
-        val nextSync = IslandChestGates.sync(readable, cfg.islandChests.shareWithCoop && !HypixelNetwork.isAlpha, syncContext)
+        // Alpha chests stay in the Alpha dataset; an unconfirmed connection waits for its sidebar.
+        val nextSync = IslandChestGates.sync(readable, cfg.islandChests.shareWithCoop && PlayerDataset.confirmedProduction(), syncContext)
         if (nextSync != null && nextSync != lastSyncIdentity) {
             lastSyncIdentity = nextSync
             remoteState = "local"
@@ -265,7 +296,7 @@ object IslandChests {
             if (connectedAt != null) sync.refresh()
         }
         sync.tick(System.currentTimeMillis(), observation.activeBlocks)
-        if (store.hasChanges() && saveJob?.isActive != true) saveJob = SoulScope.io.launch { store.flush() }
+        if (store.hasChanges() && PlayerDataset.writable() && saveJob?.isActive != true) saveJob = SoulScope.io.launch { store.flush() }
     }
 
     private fun publish() {
@@ -293,8 +324,6 @@ object IslandChests {
 
     private fun remember(chest: StoredIslandChest?) {
         val context = captureContext() ?: return
-        // Pending observations are an upload queue: one recorded on Alpha would upload from production later.
-        if (HypixelNetwork.isAlpha) return
         if (chest == null) return
         val originalBaseline = observationBaseRevision ?: return
         val id = UUID.randomUUID().toString()

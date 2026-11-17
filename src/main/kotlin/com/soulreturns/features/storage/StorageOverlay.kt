@@ -11,6 +11,7 @@ import com.soulreturns.data.skyblock.SkyblockState
 import com.soulreturns.features.dev.PacketTap
 import com.soulreturns.features.islandchests.StoredChestItem
 import com.soulreturns.platform.concurrent.SoulScope
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.MojangUuid
 import com.soulreturns.util.SoulLogger
@@ -21,7 +22,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
 import net.fabricmc.fabric.api.client.message.v1.ClientSendMessageEvents
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.event.Event
-import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.screens.inventory.ContainerScreen
@@ -75,12 +75,15 @@ object StorageOverlay {
     fun register() {
         if (registered) return
         registered = true
-        store = StorageStore(FabricLoader.getInstance().configDir.resolve("soul/storage.json"))
         StorageApiPrefill.register { bucketSeen = null; publish() }
-        SoulScope.io.launch {
-            store.load()
-            Minecraft.getInstance().execute { loaded = true; updateContext(); publish() }
-        }
+        openStore()
+        PlayerDataset.attach(
+            object : PlayerDataset.Store {
+                override fun flush() = store.flush()
+
+                override fun open(dataset: String) = openStore()
+            },
+        )
         val commandPhase = Identifier.fromNamespaceAndPath("soul", "last_storage_page")
         // Run before other storage overlays can redirect the bare /storage command.
         ClientSendMessageEvents.MODIFY_COMMAND.addPhaseOrdering(commandPhase, Event.DEFAULT_PHASE)
@@ -432,6 +435,26 @@ object StorageOverlay {
         clearSession()
     }
 
+    /** Opens the dataset's `storage.json` ([PlayerDataset]); the previous store was flushed or dropped by the switch. */
+    private fun openStore() {
+        val next = StorageStore(PlayerDataset.file("storage.json"))
+        store = next
+        loaded = false
+        bucketSeen = null
+        // Not resetIdentity(): the join chat's profile id stays valid for the same server.
+        scope = null
+        clearSession()
+        SoulScope.io.launch {
+            next.load()
+            Minecraft.getInstance().execute {
+                if (store !== next) return@execute
+                loaded = true
+                updateContext()
+                publish()
+            }
+        }
+    }
+
     private fun clearSession() {
         observation.clear()
         trackedMenu = null
@@ -468,7 +491,9 @@ object StorageOverlay {
         }
         readUntrackedOverview()
         publish()
-        if (++ticks % 20 == 0 && loaded && !stopping && store.hasChanges() && saveJob?.isActive != true) saveJob = SoulScope.io.launch { store.flush() }
+        if (++ticks % 20 == 0 && loaded && !stopping && store.hasChanges() && PlayerDataset.writable() && saveJob?.isActive != true) {
+            saveJob = SoulScope.io.launch { store.flush() }
+        }
     }
 
     /** An overview opened before the profile identity resolved stays vanilla; its selectors still count once it does. */

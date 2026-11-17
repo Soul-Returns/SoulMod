@@ -3,6 +3,7 @@ package com.soulreturns.testkit;
 import java.util.List;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
@@ -20,6 +21,7 @@ public final class Sidebar {
     private Sidebar() {}
 
     public static void show(Player player, String title, List<String> lines) {
+        boolean alpha = JavaPlugin.getPlugin(SoulTestKit.class).state(player).alpha;
         Scoreboard board = Bukkit.getScoreboardManager().getNewScoreboard();
         Objective objective = board.registerNewObjective("SBScoreboard", Criteria.DUMMY, Txt.of(title));
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
@@ -29,6 +31,7 @@ public final class Sidebar {
             Team team = board.registerNewTeam("team_" + (count - i));
             team.addEntry(key);
             String text = Txt.legacy(lines.get(i));
+            if (alpha) text = text.replace("www.hypixel.net", "alpha.hypixel.net");
             int cut = splitPoint(text);
             team.prefix(Txt.of(text.substring(0, cut)));
             if (cut < text.length()) team.suffix(Txt.of(lastCodes(text.substring(0, cut)) + text.substring(cut)));

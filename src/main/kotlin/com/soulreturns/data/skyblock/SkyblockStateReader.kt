@@ -1,6 +1,7 @@
 package com.soulreturns.data.skyblock
 
 import com.soulreturns.api.HypixelModApi
+import com.soulreturns.api.HypixelNetwork
 import com.soulreturns.api.LocationApi
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.model.ChatMessage
@@ -15,7 +16,6 @@ import net.minecraft.client.gui.components.PlayerTabOverlay
 import net.minecraft.client.multiplayer.PlayerInfo
 import net.minecraft.network.chat.Component
 import net.minecraft.world.scores.DisplaySlot
-import net.minecraft.world.scores.Objective
 import net.minecraft.world.scores.PlayerTeam
 import net.minecraft.world.scores.Scoreboard
 
@@ -275,8 +275,8 @@ object SkyblockStateReader {
         // After the profile: a switch clears TabWidgets (ProfileChanged), then this fills it anew.
         if (SkyblockState.onSkyblock) TabWidgets.apply(tabLines)
 
-        // One sidebar read, both scoreboard-derived values: the title gives the profile flavour, the
-        // lines give the sublocation.
+        // One sidebar read, every scoreboard-derived value: the title gives the profile flavour, the
+        // lines give the sublocation, the footer names the network (HypixelNetwork).
         val scoreboard = connection.scoreboard()
         val objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR)
         if (objective == null) {
@@ -288,7 +288,14 @@ object SkyblockStateReader {
         SkyblockState.updateProfileType(
             ProfileType.fromScoreboardTitle(MessageDetector.stripColorCodes(objective.displayName.string).trim()),
         )
-        subLocation.offer(readSubLocation(scoreboard, objective))
+        // Hypixel renders the sidebar highest score first, and position is what identifies the
+        // location line and the footer, so this ordering is load-bearing rather than cosmetic.
+        val lines =
+            scoreboard.listPlayerScores(objective)
+                .sortedByDescending { it.value() }
+                .map { renderLine(scoreboard, it.owner(), it.ownerName()) }
+        HypixelNetwork.onSidebar(lines)
+        subLocation.offer(readSubLocation(lines.map(MessageDetector::stripColorCodes)))
     }
 
     /**
@@ -324,17 +331,7 @@ object SkyblockStateReader {
      * Diagnose with `/soul dev scoreboard`, which prints every line with non-ASCII escaped — the only
      * way to tell a missing glyph from one that merely looks right.
      */
-    private fun readSubLocation(
-        scoreboard: Scoreboard,
-        objective: Objective,
-    ): String? {
-        // Hypixel renders the sidebar highest score first, and position is now what identifies the
-        // location line, so this ordering is load-bearing rather than cosmetic.
-        val lines =
-            scoreboard.listPlayerScores(objective)
-                .sortedByDescending { it.value() }
-                .map { MessageDetector.stripColorCodes(renderLine(scoreboard, it.owner(), it.ownerName())) }
-
+    private fun readSubLocation(lines: List<String>): String? {
         for (line in lines) {
             val marker = line.indexOfFirst { it in LOCATION_MARKERS }
             if (marker >= 0) return extractName(line.substring(marker + 1))

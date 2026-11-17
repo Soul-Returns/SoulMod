@@ -13,7 +13,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
-import net.fabricmc.loader.api.FabricLoader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -22,7 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 /**
  * The mod's local store for numbers a feature accumulates over time — catches, kills, visits.
  *
- * One file, `config/soul/stats.json`:
+ * One file per dataset, `config/soul/stats.json` (Alpha: `config/soul/alpha/stats.json`, [PlayerDataset]):
  * ```json
  * { "schemaVersion": 2, "namespaces": { "fishing": { "Banana": { … }, "Mango": { … } } } }
  * ```
@@ -53,7 +52,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  * flag; the write happens at most once a second on [SoulScope], never on the render thread. The
  * shutdown flush is the one exception — see [flushOnShutdown].
  */
-object PersistentStats {
+object PersistentStats : PlayerDataset.Store {
     private val logger = SoulLogger("Soul/Stats")
 
     private const val SCHEMA_VERSION = 2
@@ -83,6 +82,18 @@ object PersistentStats {
     private val handles = CopyOnWriteArrayList<StatsHandle<*>>()
 
     @Volatile private var dirty = false
+
+    /** Numbers the encoded snapshots, so an older async write never lands over a newer one. */
+    private var encodedSeq = 0L
+
+    /** Guards [writtenSeq] and the file writes themselves. */
+    private val writeLock = Any()
+
+    private val writtenSeq = HashMap<Path, Long>()
+
+    init {
+        PlayerDataset.attach(this)
+    }
 
     @Volatile private var loaded = false
 
@@ -126,7 +137,7 @@ object PersistentStats {
             ClientTickEvents.EndTick {
                 if (++ticksSinceSave < SAVE_INTERVAL_TICKS) return@EndTick
                 ticksSinceSave = 0
-                if (dirty) saveAsync()
+                if (dirty && PlayerDataset.writable()) saveAsync()
             },
         )
         ClientLifecycleEvents.CLIENT_STOPPING.register(ClientLifecycleEvents.ClientStopping { flushOnShutdown() })
@@ -135,14 +146,33 @@ object PersistentStats {
     /** Bucket keys currently stored under [namespaceId] — for `/soul dev fishing` and friends. */
     fun keysIn(namespaceId: String): Set<String> = synchronized(lock) { raw[namespaceId]?.keys?.toSet() ?: emptySet() }
 
-    /** Absolute path of the stats file, for diagnostics. */
-    fun file(): Path = FabricLoader.getInstance().configDir.resolve("soul").resolve("stats.json")
+    /** Absolute path of the open dataset's stats file, for diagnostics. */
+    fun file(): Path = PlayerDataset.file("stats.json")
 
     private val backedUp = java.util.Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap<String, Boolean>())
 
-    /** Backs stats.json up at most once per [reason] per session, before a reset bucket is saved over it. */
+    /** Backs stats.json up at most once per [reason] per dataset and session, before a reset bucket is saved over it. */
     fun backupOnce(reason: String) {
-        if (backedUp.add(reason)) DataBackups.backup(file(), reason)
+        if (backedUp.add("${PlayerDataset.active}/$reason")) DataBackups.backup(file(), reason)
+    }
+
+    /** Writes unsaved changes to the open dataset's file now (dataset switch, join, disconnect). */
+    override fun flush() {
+        if (!dirty) return
+        dirty = false
+        val (path, seq, payload) = encode()
+        if (!write(path, seq, payload)) dirty = true
+    }
+
+    /** Drops every bucket, unsaved ones included, and reads [dataset]'s file. */
+    override fun open(dataset: String) {
+        synchronized(lock) {
+            raw.clear()
+            dirty = false
+            loaded = false
+        }
+        load()
+        handles.forEach { it.invalidateCache() }
     }
 
     // ------------------------------------------------------------------ internals used by StatsHandle
@@ -249,10 +279,10 @@ object PersistentStats {
     }
 
     private fun saveAsync() {
-        val snapshot = encode()
+        val (path, seq, payload) = encode()
         dirty = false
         SoulScope.io.launch {
-            if (!write(snapshot)) dirty = true // retry on the next tick
+            if (!write(path, seq, payload)) dirty = true // retry on the next tick
         }
     }
 
@@ -268,37 +298,45 @@ object PersistentStats {
     private fun flushOnShutdown() {
         if (!dirty) return
         dirty = false
-        write(encode())
+        val (path, seq, payload) = encode()
+        write(path, seq, payload)
     }
 
-    /** Serialize the current state. Called under no lock beyond its own — cheap, a few kB. */
-    private fun encode(): String {
-        val root = synchronized(lock) {
-            JsonObject(
-                mapOf(
-                    "schemaVersion" to JsonPrimitive(SCHEMA_VERSION),
-                    "namespaces" to JsonObject(raw.mapValues { (_, buckets) -> JsonObject(buckets.toMap()) }),
+    /** Serialize the current state with its target file. Called under no lock beyond its own — cheap, a few kB. */
+    private fun encode(): Triple<Path, Long, String> {
+        val (path, seq, root) = synchronized(lock) {
+            Triple(
+                file(),
+                ++encodedSeq,
+                JsonObject(
+                    mapOf(
+                        "schemaVersion" to JsonPrimitive(SCHEMA_VERSION),
+                        "namespaces" to JsonObject(raw.mapValues { (_, buckets) -> JsonObject(buckets.toMap()) }),
+                    ),
                 ),
             )
         }
-        return json.encodeToString(JsonObject.serializer(), root)
+        return Triple(path, seq, json.encodeToString(JsonObject.serializer(), root))
     }
 
     /** Temp file + move, so a crash mid-write cannot leave a truncated stats file behind. */
-    private fun write(payload: String): Boolean = try {
-        val path = file()
-        Files.createDirectories(path.parent)
-        val tmp = path.resolveSibling("stats.json.tmp")
-        Files.writeString(tmp, payload)
+    private fun write(path: Path, seq: Long, payload: String): Boolean = synchronized(writeLock) {
+        if ((writtenSeq[path] ?: 0L) > seq) return true
         try {
-            Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
-            Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING)
+            Files.createDirectories(path.parent)
+            val tmp = path.resolveSibling("stats.json.tmp")
+            Files.writeString(tmp, payload)
+            try {
+                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+                Files.move(tmp, path, StandardCopyOption.REPLACE_EXISTING)
+            }
+            writtenSeq[path] = seq
+            true
+        } catch (t: Throwable) {
+            logger.warn("Failed to persist $path", t)
+            false
         }
-        true
-    } catch (t: Throwable) {
-        logger.warn("Failed to persist stats.json", t)
-        false
     }
 }
 

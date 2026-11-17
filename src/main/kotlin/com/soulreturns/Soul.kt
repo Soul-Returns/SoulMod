@@ -114,6 +114,7 @@ import com.soulreturns.features.updater.UpdateNotices
 import com.soulreturns.features.updater.UpdateTitlePrompt
 import com.soulreturns.features.updater.UpdateToastHud
 import com.soulreturns.stats.PersistentStats
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.stats.TrackerSessions
 import com.soulreturns.util.MessageHandler
 import com.soulreturns.sound.SoundLibrary
@@ -172,7 +173,9 @@ object Soul : ClientModInitializer {
     }
 
     private fun registerFeatures() {
-        // First: its JOIN handler must latch the Alpha network before any other JOIN handler sends.
+        // Before HypixelNetwork: its JOIN flush writes the last connection's data before an Alpha address can switch datasets.
+        PlayerDataset.register()
+        // Then: its JOIN handler must latch the Alpha network before any other JOIN handler sends.
         HypixelNetwork.register()
         HypixelModApi.register()
         LocationApi.register()

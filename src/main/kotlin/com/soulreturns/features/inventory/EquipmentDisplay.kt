@@ -13,6 +13,7 @@ import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.data.skyblock.SkyblockSelfProfile
 import com.soulreturns.data.skyblock.SkyblockState
 import com.soulreturns.platform.concurrent.SoulScope
+import com.soulreturns.stats.PlayerDataset
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SkyblockItemUtils
 import kotlinx.coroutines.launch
@@ -82,6 +83,12 @@ object EquipmentDisplay {
             prefilledFrom = null
         }
         Events.subscribe<SelfProfileLoaded> { prefill(it.snapshot) }
+        // The other network's sets (API or menu) are not this one's; Alpha has no API prefill at all.
+        Events.subscribe<PlayerDataset.Resolved> { event ->
+            if (!event.switched) return@subscribe
+            sets.clear()
+            prefilledFrom = null
+        }
 
         ScreenEvents.AFTER_INIT.register(
             ScreenEvents.AfterInit { _, screen, _, _ ->
