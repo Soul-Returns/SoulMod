@@ -1,5 +1,6 @@
 package com.soulreturns.features.storage
 
+/** Ender pages the API knows but could not convert stay as cards without a preview (items null). */
 internal fun storageApiPreviews(
     bucket: StorageBucket,
     api: List<StoredStoragePage>,
@@ -8,11 +9,11 @@ internal fun storageApiPreviews(
     val observed = bucket.pages.associateBy { it.id }
     val selectors = bucket.selectors.associateBy { it.id }
     return api.filter { page ->
-        if (page.items == null || observed.containsKey(page.id)) false
+        if (observed.containsKey(page.id)) false
         else if (page.id.kind != "backpack") true
         else {
             val selector = selectors[page.id]
-            page.id !in invalidatedBackpacks && (selector == null ||
+            page.items != null && page.id !in invalidatedBackpacks && (selector == null ||
                 (selector.state == "installed" && selector.identity != null && selector.identity == page.identity))
         }
     }.associateBy { it.id }

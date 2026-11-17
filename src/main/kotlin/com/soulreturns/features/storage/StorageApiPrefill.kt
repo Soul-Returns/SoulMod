@@ -77,18 +77,15 @@ internal object StorageApiPrefill {
                     snapshot.member.raw,
                     decode = { blob ->
                         ensureActive()
-                        val items = LegacyItemDecoder.decodeComplete(blob)
-                        if (items.isNullOrEmpty()) null else {
-                            val encoded = ArrayList<String?>(items.size)
-                            var valid = true
-                            for (stack in items) {
-                                if (stack.isEmpty) encoded.add(null) else {
-                                    val tag = ItemStack.CODEC.encodeStart(ops, stack).result().orElse(null)
-                                    if (tag == null) { valid = false; break }
-                                    encoded.add(tag.toString())
-                                }
+                        val slots = LegacyItemDecoder.decodeSlots(blob)
+                        if (slots.isNullOrEmpty()) null else {
+                            val failed = HashSet<Int>()
+                            val encoded = slots.mapIndexed { index, stack ->
+                                if (stack == null) { failed += index; null }
+                                else if (stack.isEmpty) null
+                                else ItemStack.CODEC.encodeStart(ops, stack).result().orElse(null)?.toString() ?: run { failed += index; null }
                             }
-                            if (valid) encoded else null
+                            ApiItems(encoded, failed)
                         }
                     },
                     identity = { blob ->
@@ -128,10 +125,17 @@ internal data class StorageApiScope(val account: UUID, val profile: UUID) {
     }
 }
 
-/** Wire fields/indexing cross-checked against SkyCrypt's src/stats/items.js, not copied code. */
+/** One decoded API blob: encoded stacks per slot (null = air or [failed]); a failed slot is never air. */
+internal class ApiItems(val items: List<String?>, val failed: Set<Int> = emptySet())
+
+/**
+ * Wire fields/indexing cross-checked against SkyCrypt's src/stats/items.js, not copied code. All Ender Chest
+ * pages share one blob, so a slot that does not convert costs only its own page's preview: that page stays
+ * known (items null, "Not viewed yet") instead of every page vanishing. A backpack with one is skipped whole.
+ */
 internal fun storageApiPages(
     member: JsonObject,
-    decode: (String) -> List<String?>?,
+    decode: (String) -> ApiItems?,
     identity: (String) -> String? = { null },
 ): List<StoredStoragePage> {
     val inventory = member["inventory"] as? JsonObject ?: return emptyList()
@@ -139,12 +143,13 @@ internal fun storageApiPages(
         val data = (value as? JsonObject)?.get("data") as? JsonPrimitive ?: return null
         return data.takeIf { it.isString }?.content?.takeIf { it.isNotBlank() }
     }
-    fun contents(value: kotlinx.serialization.json.JsonElement?): List<String?>? = blob(value)?.let(decode)
+    fun contents(value: kotlinx.serialization.json.JsonElement?): ApiItems? = blob(value)?.let(decode)
     return buildList {
         val ender = contents(inventory["ender_chest_contents"])
-        if (ender != null && ender.size in 9..405 && ender.size % 9 == 0) {
-            for ((index, items) in ender.chunked(45).withIndex()) {
-                add(StoredStoragePage(StoragePageId("ender", index + 1), "Ender Chest ${index + 1}", items.size / 9, items = items))
+        if (ender != null && ender.items.size in 9..405 && ender.items.size % 9 == 0) {
+            for ((index, items) in ender.items.chunked(45).withIndex()) {
+                val complete = (index * 45 until index * 45 + items.size).none { it in ender.failed }
+                add(StoredStoragePage(StoragePageId("ender", index + 1), "Ender Chest ${index + 1}", items.size / 9, items = items.takeIf { complete }))
             }
         }
         val backpacks = inventory["backpack_contents"] as? JsonObject ?: return@buildList
@@ -152,8 +157,9 @@ internal fun storageApiPages(
         // Keys are zero-based slot numbers, not a dense list or a detected 0/1-based convention.
         for (slot in 0..17) {
             val key = slot.toString()
-            val items = contents(backpacks[key]) ?: continue
-            if (items.size !in 9..45 || items.size % 9 != 0) continue
+            val decoded = contents(backpacks[key]) ?: continue
+            val items = decoded.items
+            if (decoded.failed.isNotEmpty() || items.size !in 9..45 || items.size % 9 != 0) continue
             val uuid = blob(icons?.get(key))?.let(identity)
             add(StoredStoragePage(StoragePageId("backpack", slot + 1), "Backpack ${slot + 1}", items.size / 9, uuid, items))
         }

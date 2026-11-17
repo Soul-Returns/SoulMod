@@ -120,6 +120,26 @@ class StorageModelTest {
         assertEquals(enderItems, StorageBucket().observeOpen(ender, "Ender Chest 1", 5, enderItems).remembered(ender))
     }
 
+    // Live report (beta.4/5): a fresh install opened on a page instead of the Storage overview had no
+    // Ender Chest cards, because only the overview named the pages. A page title names all of them.
+    @Test
+    fun enderPageTitleNamesEveryPageUntilTheOverviewIsRead() {
+        val title = assertNotNull(StorageMenus.parse("Ender Chest (3/9)", 6))
+        assertEquals(9, title.enderPages)
+        assertEquals(4, StorageMenus.parse("Ender Chest (2/4)", 6)?.enderPages)
+        assertNull(StorageMenus.parse("Ender Chest (5/4)", 6))
+        assertNull(StorageMenus.parse("Greater Backpack (Slot #1)", 5)?.enderPages)
+
+        val fresh = StorageBucket().observeOpen(title.page!!, title.label, 5, List(45) { null }).knowEnderPages(9)
+        assertEquals((1..9).map { StoragePageId("ender", it) }, fresh.selectors.filter { it.state == "installed" }.map { it.id })
+        assertEquals(fresh, fresh.knowEnderPages(9))
+
+        val overview = StorageBucket(selectors = listOf(StorageSelector(ender, "installed", rows = 5), StorageSelector(StoragePageId("ender", 2), "unknown", rows = 5)))
+        assertEquals(overview, overview.knowEnderPages(9))
+        val corrected = fresh.reconcile(listOf(StorageSelector(ender, "installed", rows = 5)))
+        assertEquals(listOf(ender), corrected.selectors.map { it.id })
+    }
+
     @Test
     fun scopeRequiresExactAccountAndProfileUuids() {
         val account = "00000000-0000-4000-8000-000000000001"

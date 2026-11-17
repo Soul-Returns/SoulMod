@@ -65,18 +65,31 @@ internal data class StorageBucket(
             else page
         })
     }
+
+    /**
+     * A page title's `(n/N)` names every Ender Chest page, so they get cards ("Not viewed yet") before any is
+     * opened. Only while no Storage overview was read: its selectors are the authority ([reconcile]).
+     */
+    fun knowEnderPages(count: Int): StorageBucket {
+        if (count !in 1..9 || selectors.any { it.id.kind == "ender" }) return this
+        return copy(selectors = selectors + (1..count).map { StorageSelector(StoragePageId("ender", it), "installed", rows = 5) })
+    }
 }
 
-internal data class StorageMenu(val page: StoragePageId?, val rows: Int, val label: String) {
+/** [enderPages]: the `N` of an Ender Chest page title `(n/N)`, the number of pages it names. */
+internal data class StorageMenu(val page: StoragePageId?, val rows: Int, val label: String, val enderPages: Int? = null) {
     val size: Int get() = rows * 9
 }
 
 internal object StorageMenus {
-    private val ender = Regex("Ender Chest \\(([1-9])/9\\)", RegexOption.IGNORE_CASE)
+    private val ender = Regex("Ender Chest \\(([1-9])/([1-9])\\)", RegexOption.IGNORE_CASE)
     private val backpack = Regex("([A-Za-z]+) Backpack \\(Slot #([1-9]|1[0-8])\\)", RegexOption.IGNORE_CASE)
     fun parse(title: String, rows: Int): StorageMenu? {
         if (title.equals("Storage", ignoreCase = true) && rows == 6) return StorageMenu(null, rows, title)
-        ender.matchEntire(title)?.let { if (rows == 6) return StorageMenu(StoragePageId("ender", it.groupValues[1].toInt()), rows, "Ender Chest ${it.groupValues[1]}") }
+        ender.matchEntire(title)?.let {
+            val (page, pages) = it.destructured
+            if (rows == 6 && page.toInt() <= pages.toInt()) return StorageMenu(StoragePageId("ender", page.toInt()), rows, "Ender Chest $page", pages.toInt())
+        }
         backpack.matchEntire(title)?.let {
             if (rows in 2..6) return StorageMenu(StoragePageId("backpack", it.groupValues[2].toInt()), rows, "${it.groupValues[1]} Backpack ${it.groupValues[2]}")
         }

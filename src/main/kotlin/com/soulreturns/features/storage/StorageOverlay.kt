@@ -311,7 +311,10 @@ object StorageOverlay {
         if (id == null) store.update(current) { it.reconcile(readSelectors(items)) }
         else {
             val encoded = encodeItems(items.drop(9))
-            store.update(current) { it.observeOpen(id, description.label, description.rows - 1, encoded) }
+            store.update(current) { bucket ->
+                val observed = bucket.observeOpen(id, description.label, description.rows - 1, encoded)
+                description.enderPages?.let(observed::knowEnderPages) ?: observed
+            }
         }
     }
 
@@ -463,8 +466,21 @@ object StorageOverlay {
             if (mc.gui.screen() is StorageOverlayScreen) mark.shown = true
             else if (mark.shown || System.currentTimeMillis() - mark.at > SEARCH_MARK_TIMEOUT_MS) searchMark = null
         }
+        readUntrackedOverview()
         publish()
         if (++ticks % 20 == 0 && loaded && !stopping && store.hasChanges() && saveJob?.isActive != true) saveJob = SoulScope.io.launch { store.flush() }
+    }
+
+    /** An overview opened before the profile identity resolved stays vanilla; its selectors still count once it does. */
+    private fun readUntrackedOverview() {
+        val mc = Minecraft.getInstance()
+        val screen = mc.gui.screen() as? ContainerScreen ?: return
+        val menu = screen.menu
+        if (trackedMenu != null || screen is StorageOverlayScreen || screen is ManagementScreen || !validContext() ||
+            mc.player?.containerMenu !== menu) return
+        val description = StorageMenus.parse(clean(screen.title.string), menu.rowCount)?.takeIf { it.page == null } ?: return
+        val items = List(description.size) { menu.getSlot(it).item }
+        if (supportedContents(description, items)) store.update(scope!!) { it.reconcile(readSelectors(items)) }
     }
 
     private fun swap(screen: ContainerScreen, menu: ChestMenu) {
