@@ -7,7 +7,7 @@
 # It rewrites the version in the files that carry it, commits that, and tags the commit
 # `v0.2.0`. Pushing is left to you. Releasing to players needs no GitHub: `make publish V=0.2.0`
 # builds the tag locally (see "auto updater releases" below). A pushed tag still fires
-# .github/workflows/release.yml, which opens a DRAFT GitHub release; that is optional.
+# .github/workflows/release.yml, which publishes the GitHub release with the same notes file.
 #
 # Every release needs its player-facing notes first (skill `release-notes`): the committed file
 # release-notes/<V>.md and the What's-new entry Releases.notes["<V>"] in MenuState.kt. `bump`
@@ -36,8 +36,8 @@ help:
 	@echo "  make publish V=<x.y.z> [ROLLOUT=100]   check the notes, sign, then upload to the backend"
 	@echo
 	@echo "  Options for sign/publish (all optional; append them, e.g. make publish V=0.2.1 DRY_RUN=1):"
-	@echo "    GITHUB=1       use the CI draft's jar (digest-checked) instead of a local build, and publish the"
-	@echo "                   GitHub draft after the upload (with the same notes file)"
+	@echo "    GITHUB=1       use the CI release's jar (digest-checked) instead of a local build; needs the"
+	@echo "                   tag pushed and its workflow finished first"
 	@echo "    DRY_RUN=1      build + sign, stop before the upload (publish only)"
 	@echo "    JAR=<path>     sign this jar instead of building (its fabric.mod.json must say <x.y.z>)"
 	@echo "    CHANGELOG=<f>  use this notes file instead of release-notes/<x.y.z>.md at the tag"
@@ -98,8 +98,8 @@ endif
 #
 # The jar is built from tag `v<V>` in a temporary `git worktree` (tools/release/build-jar.sh; JDK 25,
 # `./gradlew build -Pmod_version=<V>`), never the working tree; a missing tag is an error. GitHub is
-# optional: `GITHUB=1` takes the CI draft's jar instead (asset digest checked) and publishes the
-# draft after the upload. `DRY_RUN=1` stops publish before the upload. `JAR=path` signs a given jar;
+# optional: `GITHUB=1` takes the CI release's jar instead (asset digest checked; tag pushed and
+# workflow finished first). `DRY_RUN=1` stops publish before the upload. `JAR=path` signs a given jar;
 # the notes are release-notes/<V>.md as committed at the tag (`make notes`; `CHANGELOG=file` overrides);
 # `BACKEND=` and `ADMIN_PASSWORD=` point publish at a
 # local backend. Contract: docs/research/auto-updater-2026-11-10.md §API.

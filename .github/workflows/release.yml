@@ -1,10 +1,12 @@
-# Build the mod and publish it as a DRAFT GitHub release on a version tag.
-# Optional: `make publish V=x.y.z` builds the tag locally and needs none of this (GITHUB=1 opts in
-# to using this draft). The workflow stays for anyone who pushes tags.
+# Build the mod and publish it as a GitHub release on a version tag, with the committed
+# player-facing notes (release-notes/<version>.md) as the release body.
 #
-# Trigger: pushing a tag like `v0.1.0` (pre-release suffixes such as `v0.2.0-rc1` work too).
-# The release is left as a draft on purpose — the changelog is generated automatically, but
-# publishing it stays a human decision.
+# Trigger: pushing a tag like `v0.1.0` (prerelease suffixes such as `v0.2.0-beta.3` work too).
+# Players get updates from the backend (`make publish`), which builds the tag locally and needs
+# none of this; the GitHub release is the public download and changelog.
+#
+# Safe to re-run: an existing release for the tag is updated in place, never duplicated, and a
+# release only becomes public after its jar is attached.
 name: Release
 
 on:
@@ -12,7 +14,7 @@ on:
     tags:
       - "v*"
 
-# Needed by `gh release create` to write the draft release.
+# Needed by `gh release` to write the release.
 permissions:
   contents: write
 
@@ -20,32 +22,50 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+defaults:
+  run:
+    # Explicit bash gets `-eo pipefail`; the implicit default has no pipefail.
+    shell: bash
+
 jobs:
   release:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - uses: actions/checkout@v5
-        with:
-          # Full history: `--generate-notes` diffs against the previous tag, and a shallow
-          # clone has neither the tags nor the commits in between.
-          fetch-depth: 0
 
-      - name: Resolve version from the tag
+      - name: Resolve version and notes from the tag
         id: version
         run: |
-          tag="${GITHUB_REF_NAME}"
+          tag="$GITHUB_REF_NAME"
           version="${tag#v}"
-          echo "tag=$tag"         >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # Same shape `make bump` accepts. Everything below trusts these two values.
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag '$tag' is not v<major>.<minor>.<patch>[-suffix]"
+            exit 1
+          fi
+
+          # Fail before the build, not after it.
+          notes="release-notes/$version.md"
+          if [ ! -s "$notes" ]; then
+            echo "::error file=$notes::missing or empty; the release body comes from this file"
+            exit 1
+          fi
 
           # The jar is built at the TAG's version (see -Pmod_version below), so the artifact and
           # the fabric.mod.json inside it always match the tag. gradle.properties should still be
-          # bumped in the repo — warn rather than fail, so a release never blocks on bookkeeping.
+          # bumped in the repo: warn rather than fail, so a release never blocks on bookkeeping.
           declared="$(sed -n 's/^mod_version=//p' gradle.properties)"
           if [ "$declared" != "$version" ]; then
-            echo "::warning file=gradle.properties::mod_version is '$declared' but the tag is '$tag' — building as '$version'. Bump gradle.properties to match."
+            echo "::warning file=gradle.properties::mod_version is '$declared' but the tag is '$tag'; building as '$version'. Bump gradle.properties to match."
           fi
+
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "notes=$notes"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@v5
         with:
@@ -60,31 +80,53 @@ jobs:
         uses: gradle/actions/wrapper-validation@v5
 
       - name: Build
-        run: ./gradlew build -Pmod_version=${{ steps.version.outputs.version }} --no-daemon --stacktrace
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./gradlew build "-Pmod_version=$VERSION" --no-daemon --stacktrace
 
       - name: Pick the mod jar
         id: jar
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           # `withSourcesJar()` also puts a -sources.jar in build/libs; the release ships only the
           # loadable mod jar.
-          jar="build/libs/soul-${{ steps.version.outputs.version }}.jar"
-          test -f "$jar" || { echo "::error::expected $jar, got:"; ls -la build/libs; exit 1; }
+          jar="build/libs/soul-$VERSION.jar"
+          test -s "$jar" || { echo "::error::expected $jar, got:"; ls -la build/libs; exit 1; }
           echo "path=$jar" >> "$GITHUB_OUTPUT"
           # For comparing with what `make sign` downloads (it checks the asset digest too).
           echo "\`$(basename "$jar")\` sha256 \`$(sha256sum "$jar" | cut -d' ' -f1)\`" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Create the draft release
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          NOTES: ${{ steps.version.outputs.notes }}
+          JAR: ${{ steps.jar.outputs.path }}
         run: |
           # `x.y.z-suffix` tags are the updater's Beta channel; mark them as prereleases.
-          prerelease=()
-          case "${{ steps.version.outputs.version }}" in
-            *-*) prerelease=(--prerelease) ;;
+          prerelease=false
+          case "$VERSION" in
+            *-*) prerelease=true ;;
           esac
-          gh release create "${{ steps.version.outputs.tag }}" \
-            --draft \
-            "${prerelease[@]}" \
-            --title "${{ steps.version.outputs.tag }}" \
-            --generate-notes \
-            "${{ steps.jar.outputs.path }}"
+
+          # Draft first, jar second, public last: a visible release always has its jar. A re-run
+          # (or a release someone created by hand) is updated instead of duplicated.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES" "--prerelease=$prerelease"
+          else
+            gh release create "$TAG" --verify-tag --draft --title "$TAG" --notes-file "$NOTES" "--prerelease=$prerelease"
+          fi
+          gh release upload "$TAG" "$JAR" --clobber
+          gh release edit "$TAG" --draft=false
+
+          # Prove what the public now sees.
+          state="$(gh release view "$TAG" --json isDraft,isPrerelease,assets \
+            -q '"\(.isDraft) \(.isPrerelease) \([.assets[].name] | join(","))"')"
+          want="false $prerelease soul-$VERSION.jar"
+          if [ "$state" != "$want" ]; then
+            echo "::error::release $TAG is '$state', expected '$want'"
+            exit 1
+          fi
+          echo "Published $(gh release view "$TAG" --json url -q .url)" >> "$GITHUB_STEP_SUMMARY"
