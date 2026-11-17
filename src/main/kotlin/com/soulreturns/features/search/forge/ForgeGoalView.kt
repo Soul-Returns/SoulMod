@@ -457,39 +457,79 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
         }
         y += ForgeLayout.COLS
         for (a in rows) {
+            val forms = m.compacted[a.id].orEmpty()
+            val open = forms.isNotEmpty() && s.gatherOpen[a.id] ?: ForgeCompacted.defaultOpen(forms, d.owned::have)
             val r = Rect(x, y, right, y + ForgeLayout.GATHER_ROW)
             y += ForgeLayout.GATHER_PITCH
-            if (r.bottom <= vis[1] || r.y >= vis[3]) continue
-            val selected = s.sel == a.id
-            val hover = c.hovered(r, vis)
-            if (selected) {
-                c.rrect(g, r.x, r.y, r.right, r.bottom, ForgeColors.SEL_EDGE, SoulRenderPipelines.ROUND_SMALL)
-                c.rrect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, ForgeColors.SEL_BG, SoulRenderPipelines.ROUND_SMALL)
-            } else if (hover) c.rrect(g, r.x, r.y, r.right, r.bottom, ForgeColors.ROW_HOVER2, SoulRenderPipelines.ROUND_SMALL)
-            c.region(r, vis) { s.select(a.id) }
-            val cells = ForgeLayout.gatherCells(r)
-            ui.itemIcon(g, a.id, cells.icon.x, cells.icon.y, 20)
-            val covered = a.missing == 0L
-            val nameColor = if (covered) ForgeColors.withAlpha(ui.color(a.id), 0xB3) else ui.color(a.id)
-            val nameW = cells.nameRight - cells.nameX
-            c.text(g, c.fit(ui.name(a.id), nameW, ui.em(12)), cells.nameX, r.y + 8, r.y + 23, nameColor, ui.em(12), false)
-            ui.sourceBar(g, cells.nameX, r.y + 28, nameW, a.id, a.use, a.need)
-            val need = ui.amt(a.need)
-            c.text(g, need, cells.columns.need.right - c.width(need, ui.em(12)), r.y, r.bottom, ForgeColors.TEXT, ui.em(12), false)
-            val have = if (a.use > 0) ui.amt(a.use) else "0"
-            c.text(g, have, cells.columns.have.right - c.width(have, ui.em(12)), r.y, r.bottom, if (a.use > 0) ForgeColors.TEXT else ForgeColors.DIM, ui.em(12), false)
-            val haveRect = Rect(cells.columns.have.x, r.y, cells.columns.have.right, r.bottom)
-            if (c.hovered(haveRect, vis)) c.tip(haveRect, ui.breakdown(a.id, a.use, a.need))
-            if (a.missing > 0) {
-                val t = ui.amt(a.missing)
-                c.text(g, t, cells.columns.miss.right - c.width(t, ui.em(12)), r.y, r.bottom, ForgeColors.MISS, ui.em(12), false)
-            } else {
-                val w = c.width("Have it", ui.em(11))
-                c.icon(g, "check", cells.columns.miss.right - w - 13, r.y + 15, 10, ForgeColors.OK)
-                c.text(g, "Have it", cells.columns.miss.right - w, r.y, r.bottom, ForgeColors.OK, ui.em(11), false)
+            if (r.bottom > vis[1] && r.y < vis[3]) gatherRow(g, r, vis, a, false, forms, open)
+            if (!open) continue
+            val lineTop = y - 1
+            for (f in forms) {
+                val fr = Rect(x, y, right, y + ForgeLayout.FORM_ROW)
+                y += ForgeLayout.FORM_PITCH
+                if (fr.bottom > vis[1] && fr.y < vis[3]) gatherRow(g, fr, vis, f, true, emptyList(), false)
             }
+            g.fill(x + ForgeLayout.FORM_INDENT - 3, lineTop, x + ForgeLayout.FORM_INDENT - 2, y - ForgeLayout.FORM_PITCH + ForgeLayout.FORM_ROW - 8, 0xFF2E2E2E.toInt())
         }
         return y - top
+    }
+
+    /**
+     * One Still to gather row. A base material with compacted [forms] toggles them on a click of the row; the
+     * icon keeps the row's old action (details). Form rows ([form]) are the same row smaller and dimmer, indented.
+     */
+    private fun gatherRow(g: GuiGraphicsExtractor, r: Rect, vis: IntArray, a: ForgeStep, form: Boolean, forms: List<ForgeStep>, open: Boolean) {
+        val selected = s.sel == a.id
+        val hover = c.hovered(r, vis)
+        if (selected) {
+            c.rrect(g, r.x, r.y, r.right, r.bottom, ForgeColors.SEL_EDGE, SoulRenderPipelines.ROUND_SMALL)
+            c.rrect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, ForgeColors.SEL_BG, SoulRenderPipelines.ROUND_SMALL)
+        } else if (hover) c.rrect(g, r.x, r.y, r.right, r.bottom, ForgeColors.ROW_HOVER2, SoulRenderPipelines.ROUND_SMALL)
+        val foldable = forms.isNotEmpty()
+        if (foldable) c.region(r, vis) { s.gatherOpen[a.id] = !open } else c.region(r, vis) { s.select(a.id) }
+        val cells = ForgeLayout.gatherCells(r, if (form) ForgeLayout.FORM_INDENT else 0, form)
+        if (foldable) c.region(cells.icon, vis) { s.select(a.id) }
+        ui.itemIcon(g, a.id, cells.icon.x, cells.icon.y, 20)
+        if (foldable && c.hovered(cells.icon, vis)) c.tip(cells.icon, listOf("§fShow details"))
+        val covered = a.missing == 0L
+        val size = if (form) 11 else 12
+        val base = ui.color(a.id)
+        val nameColor = if (covered || form) ForgeColors.withAlpha(base, if (form && !covered) 0xCC else 0xB3) else base
+        val nameW = cells.nameRight - cells.nameX
+        val nameTop = if (form) r.y + 4 else r.y + 8
+        val shown = c.fit(ui.name(a.id), nameW, ui.em(size))
+        c.text(g, shown, cells.nameX, nameTop, nameTop + 15, nameColor, ui.em(size), false)
+        if (foldable) {
+            val cx = cells.nameX + c.width(shown, ui.em(size)) + 12f
+            val cy = nameTop + 7.5f
+            if (cx + 6 < cells.nameRight) {
+                if (open) c.polygon(g, floatArrayOf(cx - 4f, cy - 2.5f, cx + 4f, cy - 2.5f, cx, cy + 2.5f), 0xFF888888.toInt())
+                else c.polygon(g, floatArrayOf(cx - 2f, cy - 4f, cx + 3f, cy, cx - 2f, cy + 4f), 0xFF888888.toInt())
+                val room = cells.nameRight - (cx.toInt() + 9)
+                val n = forms.size
+                val note = listOf(if (n == 1) "1 compacted form" else "$n compacted forms", if (n == 1) "1 form" else "$n forms")
+                    .firstOrNull { c.width(it, ui.em(9)) <= room }.orEmpty()
+                c.text(g, note, cx.toInt() + 9, nameTop, nameTop + 15, ForgeColors.DIM, ui.em(9), false)
+            }
+        }
+        ui.sourceBar(g, cells.nameX, if (form) r.y + 23 else r.y + 28, nameW, a.id, a.use, a.need)
+        val numSize = if (form) 11 else 12
+        val dimOr = { on: Boolean, color: Int -> if (form && on) ForgeColors.SUB else color }
+        val need = ui.amt(a.need)
+        c.text(g, need, cells.columns.need.right - c.width(need, ui.em(numSize)), r.y, r.bottom, dimOr(true, ForgeColors.TEXT), ui.em(numSize), false)
+        val have = if (a.use > 0) ui.amt(a.use) else "0"
+        c.text(g, have, cells.columns.have.right - c.width(have, ui.em(numSize)), r.y, r.bottom, if (a.use > 0) dimOr(true, ForgeColors.TEXT) else ForgeColors.DIM, ui.em(numSize), false)
+        val haveRect = Rect(cells.columns.have.x, r.y, cells.columns.have.right, r.bottom)
+        if (c.hovered(haveRect, vis)) c.tip(haveRect, ui.breakdown(a.id, a.use, a.need))
+        val iconY = r.y + r.height / 2 - 5
+        if (a.missing > 0) {
+            val t = ui.amt(a.missing)
+            c.text(g, t, cells.columns.miss.right - c.width(t, ui.em(numSize)), r.y, r.bottom, ForgeColors.MISS, ui.em(numSize), false)
+        } else {
+            val w = c.width("Have it", ui.em(11))
+            c.icon(g, "check", cells.columns.miss.right - w - 13, iconY, 10, ForgeColors.OK)
+            c.text(g, "Have it", cells.columns.miss.right - w, r.y, r.bottom, ForgeColors.OK, ui.em(11), false)
+        }
     }
 
     // ---------------------------------------------------------------- material details

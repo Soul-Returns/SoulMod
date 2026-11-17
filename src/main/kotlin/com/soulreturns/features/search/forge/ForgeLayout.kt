@@ -22,6 +22,9 @@ internal object ForgeLayout {
     const val SLOT_GAP = 6
     const val GATHER_ROW = 40
     const val GATHER_PITCH = 41
+    const val FORM_ROW = 30
+    const val FORM_PITCH = 31
+    const val FORM_INDENT = 16
     const val RAIL = 164
     const val PREVIEW = 340
 
@@ -145,14 +148,15 @@ internal object ForgeLayout {
     /** `.g-row` cells: 1 px border, 4 px left padding, icon 20, 7 gap; 8 px right padding. */
     class GatherCells(val icon: Rect, val nameX: Int, val nameRight: Int, val columns: Columns)
 
-    fun gatherCells(row: Rect): GatherCells {
+    fun gatherCells(row: Rect, indent: Int = 0, small: Boolean = false): GatherCells {
         // `column-gap:7px` here (the tree's is 5).
         val missRight = row.right - 9
         val missLeft = missRight - MISS_COL
         val haveRight = missLeft - 7
         val needRight = haveRight - NUM_COL - 7
         val columns = Columns(Rect(needRight - NUM_COL, row.y, needRight, row.bottom), Rect(haveRight - NUM_COL, row.y, haveRight, row.bottom), Rect(missLeft, row.y, missRight, row.bottom))
-        return GatherCells(Rect(row.x + 5, row.y + 10, row.x + 25, row.y + 30), row.x + 32, columns.need.x - 7, columns)
+        val iconY = if (small) row.y + 5 else row.y + 10
+        return GatherCells(Rect(row.x + 5 + indent, iconY, row.x + 25 + indent, iconY + 20), row.x + 32 + indent, columns.need.x - 7, columns)
     }
 
     // ---------------------------------------------------------------- picker

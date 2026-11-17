@@ -110,6 +110,8 @@ class ForgeModel(
     val best: TimeLeft,
     val plan: ForgePlan,
     val gather: List<ForgeStep>,
+    /** Base material id → its compacted forms the tree uses ([ForgeCompacted]). */
+    val compacted: Map<String, List<ForgeStep>>,
 ) {
     companion object {
         private var key: List<Any?> = emptyList()
@@ -126,7 +128,7 @@ class ForgeModel(
             val total = ForgeEngine.timeLeft(scratch, ForgeEngine.aggregate(scratch), ForgeEngine.SLOTS, qf).processes
             val model = ForgeModel(goal, root, agg, agg.associateBy { it.id }, total,
                 ForgeEngine.timeLeft(root, agg, ForgeEngine.SLOTS, qf), ForgeEngine.timeLeft(root, agg, ForgeEngine.SLOTS, ForgeEngine.QF_MAX),
-                ForgeEngine.plan(root, agg, free, qf), ForgeEngine.gather(agg))
+                ForgeEngine.plan(root, agg, free, qf), ForgeEngine.gather(agg), ForgeCompacted.formsByBase(agg, book))
             key = k
             cached = model
             return model

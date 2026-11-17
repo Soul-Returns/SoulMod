@@ -77,6 +77,9 @@ internal object ForgeSession {
     var sel: String? = null
     var tab = "now"
     val open = HashMap<String, Boolean>()
+
+    /** Manual fold state of a base material's compacted forms in Still to gather (absent = the default). */
+    val gatherOpen = HashMap<String, Boolean>()
     var allOpen = false
     val treeScroll = SoulScreenBase.ScrollState()
     val sideScroll = SoulScreenBase.ScrollState()
@@ -99,6 +102,7 @@ internal object ForgeSession {
         sel = null
         tab = "now"
         open.clear()
+        gatherOpen.clear()
         allOpen = false
         for (s in listOf(treeScroll, sideScroll, detailScroll, recipeScroll, previewScroll, railScroll, bodyScroll)) s.pos = 0f
     }
