@@ -2,6 +2,7 @@ package com.soulreturns.features.mining.mineshaft
 
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.features.profileviewer.gui.ProfileCanvas
+import com.soulreturns.features.profileviewer.gui.ProfileContext
 import kotlinx.serialization.json.JsonObject
 import java.util.Locale
 
@@ -18,6 +19,10 @@ import java.util.Locale
  * namespace ahead of a mod release. The contract is additive-only, so this should not happen; the
  * fallback exists because "should not happen" is not a rendering strategy.
  *
+ * **Per profile.** It shows the profile selected in the viewer ([ProfileContext.profile]) and puts
+ * the all-profiles total on a secondary row of the first card. A backend without the per-profile
+ * split gets the total alone, as before.
+ *
  * All rows are pure drawing: [ProfileCanvas.section] lays its body out twice (once to measure), so
  * anything with a side effect here would happen twice per frame.
  */
@@ -25,32 +30,64 @@ object MineshaftStatsSection {
     /** @return false if [payload] is not a mineshaft stats body, so the caller can render it generically. */
     fun draw(
         c: ProfileCanvas,
+        ctx: ProfileContext,
         payload: JsonObject,
     ): Boolean {
-        val stats = MineshaftStats.from(payload) ?: return false
-        if (stats.totalVisits == 0) return false
+        val total = MineshaftStats.from(payload) ?: return false
+        if (total.totalVisits == 0) return false
 
-        overview(c, stats)
+        val own = total.forProfile(ctx.profile.profileId)
+        val stats = own ?: total
+        overview(c, stats, if (own == null) null else ctx.profile.cuteName, total.takeIf { own != null })
+        if (stats.totalVisits == 0) return true
         sources(c, stats)
         corpses(c, stats)
         byType(c, stats)
         return true
     }
 
+    /** [profileName] and [total] are null when [stats] already is the total. */
     private fun overview(
         c: ProfileCanvas,
         stats: MineshaftStats,
+        profileName: String?,
+        total: MineshaftStats?,
     ) {
-        c.section("Mineshafts", "Glacite Mineshaft visits Soul recorded") {
-            statRow("Visits", groupThousands(stats.totalVisits.toLong()))
-            statRow("Time inside", formatDuration(stats.totalDurationSec))
-            statRow("Average visit", formatDuration(stats.averageDurationSec.toLong()))
+        val title = if (profileName == null) "Mineshafts" else "Mineshafts · $profileName"
+        val subtitle = if (profileName == null) {
+            "Glacite Mineshaft visits Soul recorded"
+        } else {
+            "Glacite Mineshaft visits Soul recorded on this profile"
+        }
+        c.section(title, subtitle) {
+            if (stats.totalVisits == 0) {
+                note("No visits recorded on this profile yet.")
+            } else {
+                statRow("Visits", groupThousands(stats.totalVisits.toLong()))
+                statRow("Time inside", formatDuration(stats.totalDurationSec))
+                statRow("Average visit", formatDuration(stats.averageDurationSec.toLong()))
+                divider()
+                statRow(
+                    "Littlefoot found",
+                    "${groupThousands(stats.littlefootFound.toLong())}  (${percent(stats.littlefootFindRate)})",
+                    valueColor = if (stats.littlefootFound > 0) Theme.ACCENT else Theme.TEXT,
+                )
+            }
+            if (total == null) return@section
             divider()
             statRow(
-                "Littlefoot found",
-                "${groupThousands(stats.littlefootFound.toLong())}  (${percent(stats.littlefootFindRate)})",
-                valueColor = if (stats.littlefootFound > 0) Theme.ACCENT else Theme.TEXT,
+                "All profiles",
+                "${groupThousands(total.totalVisits.toLong())} visits  ·  Littlefoot " +
+                    "${groupThousands(total.littlefootFound.toLong())} (${percent(total.littlefootFindRate)})",
+                valueColor = Theme.TEXT_FAINT,
             )
+            if (total.unknownProfileVisits > 0) {
+                statRow(
+                    "Without a profile",
+                    "${groupThousands(total.unknownProfileVisits.toLong())} visits",
+                    valueColor = Theme.TEXT_FAINT,
+                )
+            }
         }
     }
 

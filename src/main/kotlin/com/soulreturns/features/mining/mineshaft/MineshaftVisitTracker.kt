@@ -104,6 +104,7 @@ object MineshaftVisitTracker {
      */
     fun tick(littlefoot: Entity?) {
         if (MineshaftState.enteredAt == null) return
+        MineshaftState.captureProfile()
 
         if (MineshaftState.mineshaftType == null) {
             MineshaftScoreboard.readIdentifier()?.let { (type, instance) ->
@@ -131,6 +132,8 @@ object MineshaftVisitTracker {
         val littlefootFound = MineshaftState.littlefootFound
         val source = MineshaftState.source
         val warpedBy = MineshaftState.warpedBy
+        val profileId = MineshaftState.profileId
+        val profileName = MineshaftState.profileName
         val corpses = MineshaftCorpses.byType.toMap()
 
         MineshaftState.endVisit()
@@ -163,6 +166,9 @@ object MineshaftVisitTracker {
             source = source,
             warped = source == VisitSource.WARPED,
             warpedBy = warpedBy.takeIf { source == VisitSource.WARPED },
+            profileId = profileId,
+            // The backend caps the display name at 32 characters and rejects longer; the id is what counts.
+            profileName = profileName?.takeIf { profileId != null && it.length <= 32 },
         )
 
         // Spell the corpses out rather than counting the map: "corpses=2" reads as two corpses when it
@@ -172,7 +178,8 @@ object MineshaftVisitTracker {
             .joinToString(", ") { (type, c) -> "$type ${c.looted}/${c.found}" }
             .ifEmpty { "none" }
         logger.info(
-            "Mineshaft visit $instance — source=$source warpedBy=$warpedBy littlefoot=$littlefootFound " +
+            "Mineshaft visit $instance — source=$source warpedBy=$warpedBy profile=${profileName ?: "-"}/${profileId ?: "-"} " +
+                "littlefoot=$littlefootFound " +
                 "corpses=[$corpseSummary] (${enteredSec.until(leftSec, ChronoUnit.SECONDS)}s)",
         )
         MineshaftOutbox.submit(payload)

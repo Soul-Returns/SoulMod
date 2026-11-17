@@ -41,6 +41,8 @@ object MineshaftTick {
                 "source" to s.source,
                 "warped_by" to s.warpedBy,
                 "summoned_by" to s.summonedBy,
+                "profile_id" to s.profileId,
+                "profile_name" to s.profileName,
                 "littlefoot_found" to s.littlefootFound,
                 "littlefoot_pinged" to s.littlefootPinged,
                 "sighting" to if (s.sightingAtMs > 0) listOf(s.sightingX, s.sightingY, s.sightingZ) else null,

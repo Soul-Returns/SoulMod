@@ -1,5 +1,6 @@
 package com.soulreturns.features.mining.mineshaft
 
+import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.util.DebugLogger
 import java.time.Instant
 import java.util.UUID
@@ -95,6 +96,19 @@ object MineshaftState {
     /** The bare username of the leader who warped us in, or null when this is not a warped visit. */
     @Volatile
     var warpedBy: String? = null
+        private set
+
+    /**
+     * The SkyBlock profile this visit is on: [SkyblockProfileState.profileId] (dashed lowercase) and
+     * the profile name read with it, or null until the id is known. Only ever taken from
+     * [SkyblockProfileState] during the visit ([captureProfile]); never guessed.
+     */
+    @Volatile
+    var profileId: String? = null
+        private set
+
+    @Volatile
+    var profileName: String? = null
         private set
 
     /** True once `/pc !ptme Found Littlefoot` has gone out for this visit. */
@@ -204,7 +218,27 @@ object MineshaftState {
         warpedBy = if (source == VisitSource.WARPED) summonedBy else null
         signalsConsumed = true
 
-        DebugLogger.logFeatureEvent("Mineshaft: visit $visitId started — source=$source warpedBy=$warpedBy")
+        profileId = null
+        profileName = null
+        captureProfile()
+
+        DebugLogger.logFeatureEvent("Mineshaft: visit $visitId started — source=$source warpedBy=$warpedBy profile=$profileId")
+    }
+
+    /**
+     * Take the active profile for this visit, once, as soon as its id is known. Called at entry and
+     * every mineshaft tick: entering keeps the id from before the transfer (it survives server changes),
+     * and right after a `/profile` switch the id line arrives a few seconds late.
+     */
+    fun captureProfile() {
+        if (enteredAt == null || profileId != null) return
+        val id = SkyblockProfileState.profileId ?: return
+        val name = SkyblockProfileState.current
+        // The id is cleared whenever the name moves, so an unchanged id after reading the name means
+        // the two belong together.
+        if (SkyblockProfileState.profileId != id) return
+        profileId = id
+        profileName = name
     }
 
     /** Leave a mineshaft. Callers must have snapshotted anything they need **before** calling this. */
@@ -218,6 +252,8 @@ object MineshaftState {
         warpSeenAtMs = 0L
         source = VisitSource.UNKNOWN
         warpedBy = null
+        profileId = null
+        profileName = null
     }
 
     /** True when we are a guest in someone else's mineshaft — every `/pc` alert must skip. */

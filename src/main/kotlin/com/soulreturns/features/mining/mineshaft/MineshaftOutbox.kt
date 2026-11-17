@@ -1,5 +1,6 @@
 package com.soulreturns.features.mining.mineshaft
 
+import com.soulreturns.config.DataBackups
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.platform.http.BackendClient
 import com.soulreturns.platform.http.BackendResult
@@ -26,10 +27,15 @@ data class CorpseCount(val found: Int, val looted: Int)
  * (The backend keeps the first write on a duplicate `visitId` rather than merging, which only works
  * as a contract because the two bodies are identical.)
  *
- * No property declares a default except [warpedBy], because `kotlinx.serialization` omits a property
- * equal to its declared default and the contract requires every other key to be present. [warpedBy] is
- * the one field the backend accepts only when [warped] is true, so omitting it when absent is exactly
- * right.
+ * No property declares a default except [warpedBy], [profileId] and [profileName], because
+ * `kotlinx.serialization` omits a property equal to its declared default and the contract requires
+ * every other key to be present. [warpedBy] is the one field the backend accepts only when [warped] is
+ * true, so omitting it when absent is exactly right.
+ *
+ * [profileId] (the SkyBlock profile id, dashed lowercase) and its [profileName] are optional on the
+ * wire: absent means "the profile is not known", never "the current one". They are captured during
+ * the visit ([MineshaftState.captureProfile]); a visit without them counts only toward the backend's
+ * all-profiles total.
  *
  * [source] carries the three-state classification (`"discovered" | "warped" | "unknown"`, see
  * [VisitSource]) and [warped] is derived from it (`source == "warped"`) for back-compat. The backend
@@ -49,10 +55,19 @@ data class MineshaftVisitPayload(
     val source: String,
     val warped: Boolean,
     val warpedBy: String? = null,
+    val profileId: String? = null,
+    val profileName: String? = null,
 )
 
+/**
+ * The outbox file. `schemaVersion` 1 (no key; before profiles) and 2 (visits may carry
+ * `profileId` / `profileName`); [MineshaftOutbox.decodeFile] migrates on load.
+ */
 @Serializable
-private data class OutboxFile(val visits: List<MineshaftVisitPayload> = emptyList())
+internal data class OutboxFile(
+    val schemaVersion: Int = 1,
+    val visits: List<MineshaftVisitPayload> = emptyList(),
+)
 
 /**
  * An on-disk queue of mineshaft visits that have not reached the backend yet.
@@ -97,6 +112,9 @@ object MineshaftOutbox {
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
 
+    /** Current outbox file format; see [OutboxFile]. */
+    internal const val SCHEMA_VERSION = 2
+
     private val stateLock = Any()
     private val drainLock = Mutex()
 
@@ -123,15 +141,36 @@ object MineshaftOutbox {
             loaded = true
             val path = file()
             if (!Files.exists(path)) return
-            queue = try {
-                json.decodeFromString(OutboxFile.serializer(), Files.readString(path)).visits
+            val decoded = try {
+                decodeFile(Files.readString(path))
             } catch (t: Throwable) {
-                // A corrupt outbox is not worth failing startup over, and not worth keeping either.
+                // A corrupt outbox is not worth failing startup over; keep a copy before the next
+                // submit overwrites it.
+                DataBackups.backup(path, "unreadable")
                 logger.warn("Could not read the mineshaft outbox (${t.message}); starting empty")
-                emptyList()
+                null
+            }
+            queue = decoded?.visits ?: emptyList()
+            if (decoded != null && decoded.schemaVersion < SCHEMA_VERSION) {
+                DataBackups.backup(path, "migrate-v$SCHEMA_VERSION")
+                persist()
             }
             if (queue.isNotEmpty()) logger.info("Mineshaft outbox: ${queue.size} visit(s) waiting")
         }
+    }
+
+    /**
+     * Parse an outbox file and migrate its visits to [SCHEMA_VERSION]. The returned
+     * `schemaVersion` is the one read, so the caller knows whether to rewrite the file.
+     *
+     * v1 → v2: queued visits are kept as they are and stay **without** a profile. They were recorded
+     * before profiles were captured, and the profile active now is not evidence of the one they
+     * happened on.
+     */
+    internal fun decodeFile(text: String): OutboxFile {
+        val file = json.decodeFromString(OutboxFile.serializer(), text)
+        if (file.schemaVersion >= 2) return file
+        return file.copy(visits = file.visits.map { it.copy(profileId = null, profileName = null) })
     }
 
     /**
@@ -237,7 +276,7 @@ object MineshaftOutbox {
                 Files.deleteIfExists(path)
                 return
             }
-            Files.writeString(path, json.encodeToString(OutboxFile.serializer(), OutboxFile(queue)))
+            Files.writeString(path, json.encodeToString(OutboxFile.serializer(), OutboxFile(SCHEMA_VERSION, queue)))
         } catch (t: Throwable) {
             logger.warn("Could not write the mineshaft outbox: ${t.message}")
         }

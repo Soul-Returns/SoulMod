@@ -2,6 +2,7 @@ package com.soulreturns.features.mining.mineshaft
 
 import com.soulreturns.platform.http.BackendClient
 import com.soulreturns.platform.http.BackendResult
+import com.soulreturns.util.MojangUuid
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.MapSerializer
@@ -34,6 +35,12 @@ import kotlinx.serialization.json.JsonTransformingSerializer
  * which is to say the two most ordinary states in the feature. The backend guarantees `{}` now and has
  * a test on the raw bytes; this stays because the failure is silent (a section quietly degrades to the
  * generic renderer) and the guarantee lives in another repo.
+ *
+ * ### Per profile
+ * The top level is the **all-profiles total**. [profiles] holds each SkyBlock profile's own block of
+ * the same shape (plus [profileName]), keyed by profile id in the backend's undashed form, and
+ * [unknownProfileVisits] counts visits stored without a profile, which are only in the total. [profiles]
+ * is null when the backend predates the split; read a profile through [forProfile].
  */
 @Serializable
 data class MineshaftStats(
@@ -46,7 +53,25 @@ data class MineshaftStats(
     @Serializable(with = BucketMap::class) val byInstance: Map<String, BucketStats> = emptyMap(),
     @Serializable(with = CorpseMap::class) val byCorpse: Map<String, CorpseStats> = emptyMap(),
     @Serializable(with = SourceMap::class) val bySource: Map<String, SourceStats> = emptyMap(),
+    @Serializable(with = ProfileMap::class) val profiles: Map<String, JsonObject>? = null,
+    val unknownProfileVisits: Int = 0,
+    /** Set on a [profiles] entry only: the profile's cute name, for display. */
+    val profileName: String? = null,
 ) {
+    /** Whether the backend splits this body per profile at all. */
+    fun splitsProfiles(): Boolean = profiles != null
+
+    /**
+     * [profileId]'s own numbers (any uuid form): zeroed when the profile has none recorded, null when
+     * the id is unknown or the body is not split per profile.
+     */
+    fun forProfile(profileId: String?): MineshaftStats? {
+        val wanted = MojangUuid.parse(profileId) ?: return null
+        val all = profiles ?: return null
+        val raw = all.entries.firstOrNull { MojangUuid.parse(it.key) == wanted }?.value ?: return MineshaftStats()
+        return from(raw)
+    }
+
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
 
@@ -86,6 +111,8 @@ private object BucketMap : EmptyArrayAsMap<BucketStats>(BucketStats.serializer()
 private object CorpseMap : EmptyArrayAsMap<CorpseStats>(CorpseStats.serializer())
 
 private object SourceMap : EmptyArrayAsMap<SourceStats>(SourceStats.serializer())
+
+private object ProfileMap : EmptyArrayAsMap<JsonObject>(JsonObject.serializer())
 
 /**
  * One corpse type's numbers within a bucket.
@@ -130,7 +157,12 @@ object MineshaftStatsClient {
     /**
      * The result rather than a nullable: `/soul mineshaft` is a command the player typed, so "the
      * backend said 429" and "you have never logged a visit" have to read differently on screen.
+     *
+     * [profileId] (any uuid form, null when unknown) narrows [MineshaftStats.profiles] to that
+     * profile; the all-profiles total arrives either way.
      */
-    suspend fun stats(): BackendResult<MineshaftStats> =
-        BackendClient.get("/mineshaft/stats", MineshaftStats.serializer(), intent = INTENT)
+    suspend fun stats(profileId: String?): BackendResult<MineshaftStats> {
+        val query = MojangUuid.undashedOrNull(profileId)?.let { "?profile=$it" } ?: ""
+        return BackendClient.get("/mineshaft/stats$query", MineshaftStats.serializer(), intent = INTENT)
+    }
 }

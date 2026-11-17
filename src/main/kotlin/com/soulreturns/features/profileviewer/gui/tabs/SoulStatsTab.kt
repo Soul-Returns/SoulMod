@@ -54,9 +54,10 @@ object SoulStatsTab : ProfileTab {
      *
      * A renderer returns false when it cannot make sense of the payload, and the generic scalar
      * renderer takes over — so a backend that restructures a namespace ahead of a mod release
-     * degrades instead of showing nothing.
+     * degrades instead of showing nothing. Renderers get the [ProfileContext] so per-profile data can
+     * follow the profile selected in the viewer.
      */
-    private val RENDERERS: Map<String, (ProfileCanvas, JsonObject) -> Boolean> = mapOf(
+    private val RENDERERS: Map<String, (ProfileCanvas, ProfileContext, JsonObject) -> Boolean> = mapOf(
         "mineshaft" to MineshaftStatsSection::draw,
     )
 
@@ -66,7 +67,7 @@ object SoulStatsTab : ProfileTab {
         val envelope = ctx.soulStats ?: return
 
         for ((key, payload) in envelope.namespaces) {
-            if (RENDERERS[key]?.invoke(c, payload) == true) continue
+            if (RENDERERS[key]?.invoke(c, ctx, payload) == true) continue
             c.section(KNOWN_TITLES[key] ?: prettify(key)) {
                 val rows = scalarRows(payload)
                 if (rows.isEmpty()) {
