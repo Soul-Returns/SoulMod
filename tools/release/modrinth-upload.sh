@@ -38,6 +38,8 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 status="$(modrinth -o "$tmp/versions.json" -w '%{http_code}' "$api/project/$project/version")"
+# A project that is not public yet answers 404 to a token without read access.
+[ "$status" != 404 ] || die "project $project is not visible to this token; it needs the scopes 'Read projects', 'Read versions' and 'Create versions'"
 [ "$status" = 200 ] || die "listing versions of project $project answered HTTP $status: $(head -c 300 "$tmp/versions.json")"
 if jq -e --arg v "$version" 'any(.[]; .version_number == $v)' "$tmp/versions.json" >/dev/null; then
     echo "Modrinth already has $version; nothing to upload"
