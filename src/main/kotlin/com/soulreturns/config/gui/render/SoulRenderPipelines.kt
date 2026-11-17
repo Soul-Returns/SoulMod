@@ -43,6 +43,17 @@ object SoulRenderPipelines {
      */
     val ROUND_GLOW: RenderPipeline = round("round_glow", radius = 12f, shadow = true, spread = 2f)
 
+    /** Rounded outlines (the SDF's edge band, inside the quad): stroke width / corner radius in the name. */
+    val STROKE_1_R4: RenderPipeline = round("stroke_1_r4", radius = 4f, stroke = 1f)
+    val STROKE_2_R4: RenderPipeline = round("stroke_2_r4", radius = 4f, stroke = 2f)
+    val STROKE_2_R7: RenderPipeline = round("stroke_2_r7", radius = 7f, stroke = 2f)
+    val STROKE_2_R10: RenderPipeline = round("stroke_2_r10", radius = 10f, stroke = 2f)
+    val STROKE_3_R8: RenderPipeline = round("stroke_3_r8", radius = 8f, stroke = 3f)
+    val STROKE_1_PILL: RenderPipeline = round("stroke_1_pill", pill = true, stroke = 1f)
+
+    /** [STROKE_2_R7] dashed (7 px period). */
+    val DASH_2_R7: RenderPipeline = round("dash_2_r7", radius = 7f, stroke = 2f, dash = 7f)
+
     /**
      * MSDF text pipeline — samples the Inter MSDF atlas (Sampler0) for crisp glyphs at any scale.
      * Based on GUI_TEXTURED_SNIPPET (POSITION_TEX_COLOR + standard UBOs + SAMPLER0 + translucent),
@@ -75,6 +86,8 @@ object SoulRenderPipelines {
         corners: Int = 15,
         shadow: Boolean = false,
         spread: Float = 0f,
+        stroke: Float = 0f,
+        dash: Float = 0f,
     ): RenderPipeline {
         var b =
             RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
@@ -89,6 +102,8 @@ object SoulRenderPipelines {
                 b.withShaderDefine("RADIUS", radius).withShaderDefine("CORNERS", corners)
             }
         if (shadow) b = b.withShaderDefine("SHADOW").withShaderDefine("SPREAD", spread)
+        if (stroke > 0f) b = b.withShaderDefine("STROKE", stroke)
+        if (dash > 0f) b = b.withShaderDefine("DASH", dash)
         return RenderPipelines.register(b.build())
     }
 }

@@ -46,8 +46,15 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
         const val ULTRA_GAP = 5
         const val SP_CELL = 56
         const val SP_GAP = 6
+
+        /** Superpairs card: icon below the corner badges, label under it. */
+        const val SP_ICON = 26
+        const val SP_ICON_Y = 16
+        const val SP_LABEL_Y = 48
         const val CHIP = 18
         const val CHIP_GAP = 4
+        /** Row pitch of the Superpairs Known strip once its chips wrap. */
+        const val KNOWN_ROW = 22
         const val FLASH_MS = 180L
         const val REASON_MS = 1800L
         const val SENT_MS = 1000L
@@ -251,7 +258,10 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
         return when (menu.kind) {
             Kind.CHRONO -> game(2 * CHRONO_TILE + CHRONO_GAP)
             Kind.ULTRA -> game(4 * ULTRA_CELL + 3 * ULTRA_GAP)
-            Kind.SUPERPAIRS -> game(4 * SP_CELL + 3 * SP_GAP)
+            Kind.SUPERPAIRS -> game(4 * SP_CELL + 3 * SP_GAP).let { (pw, ph) ->
+                val extra = (menu.model as? SuperpairsModel)?.let { (known(it, knownPairs(it), CONTENT_W).rows - 1) * KNOWN_ROW } ?: 0
+                pw to ph + extra
+            }
             Kind.TABLE -> {
                 val renew = menu.table()?.renew != null
                 (572f + 2 * PAD) to (PAD + HEADER_H + GAP + 176 + GAP + (if (renew) 46 + GAP else 0) + 30 + PAD).toFloat()
@@ -276,28 +286,22 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
 
     private fun fill(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) = g!!.fill(x0, y0, x1, y1, color)
 
-    /** An inset edge [w] px wide, its straight sides stopping short of rounded corners. */
+    /**
+     * A rounded outline [w] px wide inside the box, one SDF stroke following the corner radius: [corner] 2-3 = a
+     * cell's own corners (4), 5 = a ring 3-4 px outside a cell (7-8), 6 = 6 px outside (10).
+     */
     private fun ring(x0: Int, y0: Int, x1: Int, y1: Int, w: Int, color: Int, corner: Int = 3) {
-        fill(x0 + corner, y0, x1 - corner, y0 + w, color)
-        fill(x0 + corner, y1 - w, x1 - corner, y1, color)
-        fill(x0, y0 + corner, x0 + w, y1 - corner, color)
-        fill(x1 - w, y0 + corner, x1, y1 - corner, color)
+        val pipe =
+            if (w >= 3) SoulRenderPipelines.STROKE_3_R8
+            else if (w == 1) SoulRenderPipelines.STROKE_1_R4
+            else if (corner >= 6) SoulRenderPipelines.STROKE_2_R10
+            else if (corner >= 5) SoulRenderPipelines.STROKE_2_R7
+            else SoulRenderPipelines.STROKE_2_R4
+        rr(x0, y0, x1, y1, color, pipe)
     }
 
-    private fun dashed(x0: Int, y0: Int, x1: Int, y1: Int, w: Int, color: Int) {
-        var x = x0 + 3
-        while (x < x1 - 3) {
-            fill(x, y0, min(x + 4, x1 - 3), y0 + w, color)
-            fill(x, y1 - w, min(x + 4, x1 - 3), y1, color)
-            x += 7
-        }
-        var y = y0 + 3
-        while (y < y1 - 3) {
-            fill(x0, y, x0 + w, min(y + 4, y1 - 3), color)
-            fill(x1 - w, y, x1, min(y + 4, y1 - 3), color)
-            y += 7
-        }
-    }
+    /** The "after that" outline: a dashed rounded ring 3 px outside a cell. */
+    private fun dashed(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) = rr(x0, y0, x1, y1, color, SoulRenderPipelines.DASH_2_R7)
 
     private fun later(block: () -> Unit) {
         over += block
@@ -512,7 +516,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             val isNext = up.any { it.second == 0 }
             val isNext2 = !isNext && up.any { it.second == 1 }
             if (isNext) later { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, 5); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), 6) }
-            if (isNext2) later { dashed(x - 3, y - 3, x1 + 3, y1 + 3, 2, alpha(TURN, 0.5f)) }
+            if (isNext2) later { dashed(x - 3, y - 3, x1 + 3, y1 + 3, alpha(TURN, 0.5f)) }
             hit(key, x, y, x1, y1, gamePress(c.top, Experiments.CHRONO_CLICK))
         }
         // pattern strip
@@ -656,7 +660,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
                     if (state == "done") drawIcon(g!!, "check", x1 - 13, y + 2, 10, OK_GREEN)
                     if (state == "sent") ring(x + 2, y + 2, x1 - 2, y1 - 2, 1, 0xB3FFFFFF.toInt(), 3)
                     if (state == "next") { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, 5); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), 6) }
-                    if (state == "next2") dashed(x - 3, y - 3, x1 + 3, y1 + 3, 2, alpha(TURN, 0.5f))
+                    if (state == "next2") dashed(x - 3, y - 3, x1 + 3, y1 + 3, alpha(TURN, 0.5f))
                 }
             }
             flashBox(slot, x, y, x1, y1, now)
@@ -692,7 +696,9 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
         val yP = yH + HEADER_H + GAP
         val yB = yP + PHASE_H + GAP
         val yS = yB + bh + GAP
-        val yF = yS + STRIP_H + 8
+        val pairs = knownPairs(s)
+        val kn = known(s, pairs, w)
+        val yF = yS + STRIP_H + (kn.rows - 1) * KNOWN_ROW + 8
         header(yH, w, "Superpairs", s.tier, 'c') {
             later {
                 var x = PAD + w
@@ -709,7 +715,6 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             }
         }
         val partner = s.partner()
-        val pairs = s.pairs()
         val openIt = s.open?.let { s.mem[it]?.item }
         val phase = when {
             s.final -> Phase(WAIT, "Board revealed", "Every card face-up · click any card for your rewards")
@@ -749,24 +754,25 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
                 val power = slot in s.powers || SuperpairsModel.isPower(face)
                 val kind = if (isOpen) "open" else if (inMm) "mm" else if (power) "power" else if (matched) "matched" else "face"
                 rr(x, y, x1, y1, if (kind == "matched") 0xFF161616.toInt() else 0xFF262626.toInt())
-                item(Experiments.stacks.getOrNull(slot), x + (SP_CELL - 28) / 2, y + 6, 28)
+                item(Experiments.stacks.getOrNull(slot), x + (SP_CELL - SP_ICON) / 2, y + SP_ICON_Y, SP_ICON)
                 later {
-                    if (kind == "matched") rr(x + 13, y + 5, x + 43, y + 35, alpha(0xFF161616.toInt(), 0.55f))
-                    textC(short(face), x + SP_CELL / 2, y + 44, F_TINY, alpha(0xFFFFFFFF.toInt(), if (kind == "matched") 0.36f else 0.8f))
+                    if (kind == "matched") rr(x + (SP_CELL - SP_ICON) / 2, y + SP_ICON_Y, x + (SP_CELL + SP_ICON) / 2, y + SP_ICON_Y + SP_ICON, alpha(0xFF161616.toInt(), 0.55f))
+                    textC(short(face), x + SP_CELL / 2, y + SP_LABEL_Y, F_TINY, alpha(0xFFFFFFFF.toInt(), if (kind == "matched") 0.45f else 0.85f))
                     when (kind) {
                         "open" -> ring(x, y, x1, y1, 2, 0xFFFFFFFF.toInt())
                         "mm" -> ring(x, y, x1, y1, 2, alpha(WAIT, 0.9f))
                         "power" -> ring(x, y, x1, y1, 2, alpha(AMBER, 0.8f))
                     }
                 }
+                // Corner badges: top-right = what the card is doing (open / matched / powerup), top-left = RARE; never over icon or label.
                 if (kind == "open") badge(x1 - 2, y + 2, "open", 0xFFFFFFFF.toInt(), 0xFF111111.toInt(), right = true)
                 if (kind == "matched") later {
-                    rr(x1 - 16, y1 - 16, x1 - 2, y1 - 2, alpha(TURN, 0.2f), SoulRenderPipelines.ROUND_PILL)
-                    drawIcon(g!!, "check", x1 - 14, y1 - 14, 10, OK_GREEN)
+                    rr(x1 - 15, y + 2, x1 - 2, y + 15, alpha(TURN, 0.25f), SoulRenderPipelines.ROUND_PILL)
+                    drawIcon(g!!, "check", x1 - 13, y + 4, 9, OK_GREEN)
                 }
                 if (kind == "power") later {
-                    rr(x1 - 16, y + 2, x1 - 2, y + 16, AMBER, SoulRenderPipelines.ROUND_PILL)
-                    drawIcon(g!!, "burst", x1 - 14, y + 4, 10, 0xFF111111.toInt())
+                    rr(x1 - 15, y + 2, x1 - 2, y + 15, AMBER, SoulRenderPipelines.ROUND_PILL)
+                    drawIcon(g!!, "burst", x1 - 13, y + 4, 9, 0xFF111111.toInt())
                 }
             } else {
                 val pj = pairOf[slot]
@@ -775,48 +781,50 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
                 rr(x, y, x1, y1, if (hover == key) GLASS_HI else GLASS)
                 later { ring(x, y, x1, y1, 1, GLASS_EDGE) }
                 if (mem != null) {
-                    item(Experiments.seen[slot], x + (SP_CELL - 28) / 2, y + 6, 28)
-                    val a = if (kind == "seen") 0.4f else 0.62f
+                    item(Experiments.seen[slot], x + (SP_CELL - SP_ICON) / 2, y + SP_ICON_Y, SP_ICON)
+                    val a = if (kind == "seen") 0.5f else 0.7f
                     later {
-                        rr(x + 13, y + 5, x + 43, y + 35, alpha(if (hover == key) GLASS_HI else GLASS, 1f - a))
-                        if (kind != "seen") textC(short(mem.item), x + SP_CELL / 2, y + 44, F_TINY, alpha(0xFFFFFFFF.toInt(), 0.8f * a))
+                        rr(x + (SP_CELL - SP_ICON) / 2, y + SP_ICON_Y, x + (SP_CELL + SP_ICON) / 2, y + SP_ICON_Y + SP_ICON, alpha(if (hover == key) GLASS_HI else GLASS, 1f - a))
+                        textC(short(mem.item), x + SP_CELL / 2, y + SP_LABEL_Y, F_TINY, alpha(0xFFFFFFFF.toInt(), 0.95f * a))
                     }
                 }
-                if (kind == "seen" && !rare) badge(x + 2, y1 - 16, "seen", 0x80000000.toInt(), 0xFF99AABB.toInt())
+                // Seen once: the dimmed face says it; a small dot in the free top-left corner marks it.
+                if (kind == "seen" && !rare) later { rr(x + 5, y + 5, x + 11, y + 11, 0xCC99AABB.toInt(), SoulRenderPipelines.ROUND_PILL) }
                 if (kind == "pair") {
                     val pc = PAIR_COLORS[pj!! % PAIR_COLORS.size]
                     later { ring(x, y, x1, y1, 2, alpha(pc, 0.85f)) }
                     badge(x1 - 2, y + 2, ('A' + pj).toString(), pc, 0xFF111111.toInt(), right = true)
                 }
                 if (slot in sentAt) later { ring(x + 3, y + 3, x1 - 3, y1 - 3, 1, 0xB3FFFFFF.toInt(), 3) }
-                if (isPartner) later { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, 5); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), 6) }
+                if (isPartner) {
+                    later { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, 5); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), 6) }
+                    pj?.let { badge(x1 - 2, y + 2, ('A' + it).toString(), PAIR_COLORS[it % PAIR_COLORS.size], 0xFF111111.toInt(), right = true) }
+                }
             }
             if (rare) {
                 later { ring(x - 3, y - 3, x1 + 3, y1 + 3, 2, alpha(RARE, 0.6f + 0.4f * pulse), 5) }
-                badge(x + 2, y1 - 16, "RARE", RARE, 0xFF111111.toInt())
+                badge(x + 2, y + 2, "RARE", RARE, 0xFF111111.toInt())
             }
             flashBox(slot, x, y, x1, y1, now)
             hit(key, x, y, x1, y1, gamePress(slot, Experiments.SUPERPAIRS_CLICK))
         }
-        // known pairs + counts
+        // known pairs (letter + label chips, wrapping) + counts
         later { text("Known", PAD, yS, yS + STRIP_H, F_SMALL, DIM) }
-        var xx = PAD + 44
-        pairs.take(6).forEachIndexed { j, pr ->
-            val label = short(s.mem[pr[0]]!!.item)
+        kn.labels.forEachIndexed { j, label ->
+            val cx = PAD + kn.pos[j].first
+            val cy = yS + kn.pos[j].second * KNOWN_ROW
+            val cw = kn.widths[j]
             val pc = PAIR_COLORS[j % PAIR_COLORS.size]
-            val wd = 30 + min(70, (label.length * 5.2f).toInt())
-            rr(xx, yS + 3, xx + wd, yS + STRIP_H - 3, alpha(pc, 0.14f))
-            later { ring(xx, yS + 3, xx + wd, yS + STRIP_H - 3, 1, alpha(pc, 0.5f), 2) }
+            rr(cx, cy + 3, cx + cw, cy + STRIP_H - 3, alpha(pc, 0.14f))
             later {
-                rr(xx + 3, yS + 6, xx + 15, yS + 18, pc, SoulRenderPipelines.ROUND_PILL)
-                textC(('A' + j).toString(), xx + 9, yS + 12, F_TINY, 0xFF111111.toInt())
-                text(label, xx + 19, yS, yS + STRIP_H, F_TINY, 0xFFDDDDDD.toInt())
+                ring(cx, cy + 3, cx + cw, cy + STRIP_H - 3, 1, alpha(pc, 0.5f), 2)
+                rr(cx + 3, cy + 6, cx + 15, cy + 18, pc, SoulRenderPipelines.ROUND_PILL)
+                textC(('A' + j).toString(), cx + 9, cy + 12, F_TINY, 0xFF111111.toInt())
+                text(label, cx + 19, cy, cy + STRIP_H, F_TINY, 0xFFDDDDDD.toInt())
             }
-            xx += wd + 4
         }
         if (pairs.isEmpty()) later { text("none yet", PAD + 44, yS, yS + STRIP_H, F_SMALL, FAINT) }
-        val seenOnce = s.grid.count { s.hidden(it) && s.mem.containsKey(it) && it !in pairOf }
-        later { textR("$seenOnce seen once · ${s.matched.size / 2} matched · ${s.powers.size} powerup${if (s.powers.size == 1) "" else "s"}", PAD + w, yS, yS + STRIP_H, F_SMALL, DIM) }
+        later { textR(kn.stats, PAD + w, yS, yS + STRIP_H, F_SMALL, DIM) }
         val hint = if (cfg.experiments.rareWarning && !RngMeterStore.known()) "Open /rng → Experimentation Table once to enable rare-card warnings" else "Esc closes · Hypixel then opens Superpairs Rewards"
         escFooter(yF, w, hint)
         rareBanner(s, now, w)
@@ -983,6 +991,39 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
         }
         v.back?.let { button(PAD, yN, 110, 26, "‹ Go Back", "menu:$it", "plain", action = menuButton(it, "menu:$it")) }
         v.close?.let { button(PAD + w - 90, yN, 90, 26, "Close", "menu:$it", "plain", action = menuButton(it, "menu:$it")) }
+    }
+
+    /** Known pairs among hidden cards, then the open card with its known partner (lettered like the others). */
+    private fun knownPairs(s: SuperpairsModel): List<List<Int>> {
+        val o = s.open
+        val p = s.partner()
+        return if (o != null && p != null) s.pairs() + listOf(listOf(o, p)) else s.pairs()
+    }
+
+    private class Known(val labels: List<String>, val pos: List<Pair<Int, Int>>, val widths: List<Int>, val rows: Int, val stats: String)
+
+    /** Chips (letter + label) after "Known": the first row stops short of the stats, further rows use the full width. */
+    private fun known(s: SuperpairsModel, pairs: List<List<Int>>, w: Int): Known {
+        val inPair = pairs.flatten().toSet()
+        val seenOnce = s.grid.count { s.hidden(it) && s.mem.containsKey(it) && it !in inPair }
+        val stats = "$seenOnce seen once · ${s.matched.size / 2} matched · ${s.powers.size} powerup${if (s.powers.size == 1) "" else "s"}"
+        val firstEnd = w - width(stats, F_SMALL) - 10
+        val labels = pairs.map { ellipsize(s.mem[it[0]]?.item?.let(::short) ?: "?", 90, F_TINY) }
+        val pos = ArrayList<Pair<Int, Int>>()
+        val widths = ArrayList<Int>()
+        var x = 44
+        var row = 0
+        for (l in labels) {
+            val cw = 24 + width(l, F_TINY)
+            if (x > 44 && x + cw > (if (row == 0) firstEnd else w)) {
+                row++
+                x = 44
+            }
+            pos += x to row
+            widths += cw
+            x += cw + 4
+        }
+        return Known(labels, pos, widths, row + 1, stats)
     }
 
     private fun ellipsize(s: String, maxW: Int, size: Float): String {

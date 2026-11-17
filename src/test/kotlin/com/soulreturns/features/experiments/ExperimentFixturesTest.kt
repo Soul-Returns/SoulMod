@@ -312,4 +312,33 @@ class ExperimentFixturesTest {
         assertEquals("Titanic Experience Bottle", rw.rewards.last())
         for (m in seen.values) assertEquals(ExpFlow.State.ACTIVE, m.state, m.title)
     }
+
+    /** Container 36, tick 8495: Instant Find armed, a click on 30 reveals 112k at 30 and its pair at 32 (same tick in the recording). */
+    private fun instantFind(events: List<ExpReplay.Event>): Set<Int> {
+        val flow = ExpFlow()
+        var matched: Set<Int> = emptySet()
+        ExpReplay.feed(flow, events) { e ->
+            val sp = flow.menu?.model as? SuperpairsModel ?: return@feed
+            if (e.tick in 8498L..8510L) {
+                sp.settle(e.t + 60)
+                matched = HashSet(sp.matched)
+                assertTrue(sp.open == null || sp.open !in listOf(30, 32), "the found pair is never an open card (${sp.open})")
+            }
+        }
+        return matched
+    }
+
+    @Test
+    fun instantFindMatchesBothCards() {
+        assertTrue(instantFind(ExpReplay.events("exp-36")).containsAll(listOf(30, 32)))
+    }
+
+    /** Live: the partner can land a tick after the clicked card (another batch, the levelup already used). */
+    @Test
+    fun instantFindPairSplitOverTwoTicks() {
+        val split = ExpReplay.events("exp-36").map { e ->
+            if (e.k == "slot" && e.tick == 8498L && e.o["slot"]!!.jsonPrimitive.int == 32) ExpReplay.Event(e.t + 50, e.tick + 1, e.k, e.o) else e
+        }.sortedWith(compareBy({ it.tick }, { it.t }))
+        assertTrue(instantFind(split).containsAll(listOf(30, 32)))
+    }
 }

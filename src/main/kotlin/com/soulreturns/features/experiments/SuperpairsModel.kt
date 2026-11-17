@@ -114,6 +114,14 @@ class SuperpairsModel private constructor(val grid: List<Int>, val tier: String,
                     powers += s
                     continue
                 }
+                // The partner of a card already matched alone completes the pair, whatever its timing: Instant Find's
+                // pair can reach the client in a later batch than the clicked card, after the levelup was used up.
+                val key = mem[s]?.key
+                if (key != null && matched.count { it != s && mem[it]?.key == key } % 2 == 1) {
+                    matched += s
+                    if (open == s) open = null
+                    continue
+                }
                 if (levelup) {
                     matched += s
                     val o = open

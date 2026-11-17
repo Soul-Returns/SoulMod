@@ -67,6 +67,16 @@ void main() {
     // ~1px AA in composable units, recovered from the screen-space derivative of the distance field.
     float aa = max(fwidth(d), 1e-4);
     alpha = 1.0 - smoothstep(0.0, aa, d);
+  #ifdef STROKE
+    // Outline only: STROKE wide, inside the quad's edge, following the same rounded corners.
+    alpha = 1.0 - smoothstep(0.0, aa, abs(d + STROKE * 0.5) - STROKE * 0.5);
+    #ifdef DASH
+    // Dashes of DASH * 0.55 along the nearer edge's axis.
+    vec2 e = abs(p) - halfSize;
+    float t = (e.x > e.y) ? p.y : p.x;
+    if (fract(t / DASH) > 0.55) alpha = 0.0;
+    #endif
+  #endif
 #endif
 
     if (alpha <= 0.0) {
