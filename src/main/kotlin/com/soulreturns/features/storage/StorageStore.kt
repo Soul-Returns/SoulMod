@@ -3,8 +3,12 @@ package com.soulreturns.features.storage
 import com.soulreturns.config.DataBackups
 import com.soulreturns.util.SoulLogger
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -17,7 +21,7 @@ internal class StorageStore(
 ) {
     private val logger = SoulLogger("Soul/Storage")
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
-    private var root = JsonObject(mapOf("schemaVersion" to JsonPrimitive(1), "buckets" to JsonObject(emptyMap())))
+    private var root = JsonObject(mapOf("schemaVersion" to JsonPrimitive(SCHEMA_VERSION), "buckets" to JsonObject(emptyMap())))
     private val decoded = HashMap<String, StorageBucket>()
     private val unreadable = HashSet<String>()
     private val dirty = HashSet<String>()
@@ -32,12 +36,17 @@ internal class StorageStore(
         try {
             val parsed = json.parseToJsonElement(Files.readString(file)) as? JsonObject
             val schema = (parsed?.get("schemaVersion") as? JsonPrimitive)?.intOrNull
-            if (parsed == null || schema != 1 || parsed["buckets"] !is JsonObject) {
+            if (parsed == null || schema == null || schema !in 1..SCHEMA_VERSION || parsed["buckets"] !is JsonObject) {
                 writable = false
-                backup(file, if ((schema ?: 0) > 1) "newer-v$schema" else "unreadable")
+                backup(file, if ((schema ?: 0) > SCHEMA_VERSION) "newer-v$schema" else "unreadable")
                 return
             }
-            root = parsed
+            val migrated = StorageMigrations.migrate(schema, parsed)
+            if (migrated["buckets"] != parsed["buckets"]) {
+                backup(file, "migrate-v$schema")
+                version++
+            }
+            root = migrated
         } catch (e: Exception) {
             writable = false
             backup(file, "unreadable")
@@ -109,4 +118,47 @@ internal class StorageStore(
     }
 
     private fun validId(id: StoragePageId): Boolean = (id.kind == "ender" && id.index in 1..9) || (id.kind == "backpack" && id.index in 1..18)
+}
+
+private const val SCHEMA_VERSION = 2
+
+/** Load-time steps of `storage.json` below [SCHEMA_VERSION]; raw JSON in and out, so malformed or unknown data stays verbatim. */
+internal object StorageMigrations {
+    fun migrate(fromVersion: Int, root: JsonObject): JsonObject {
+        if (fromVersion >= SCHEMA_VERSION) return root
+        val buckets = (root["buckets"] as JsonObject).mapValues { (_, bucket) -> labelBackpackPages(bucket) }
+        return JsonObject(root + mapOf("schemaVersion" to JsonPrimitive(SCHEMA_VERSION), "buckets" to JsonObject(buckets)))
+    }
+
+    /**
+     * v1 -> v2: v1 saved a backpack page opened without a Storage overview visit in the same world with no UUID,
+     * so it never showed again and the next overview cleared it. Such a page took its contents after the last
+     * overview (which would have cleared it), so it gets that overview's UUID for the slot, as
+     * [StorageBucket.observeOpen] records it now.
+     */
+    fun labelBackpackPages(bucket: JsonElement): JsonElement {
+        val obj = bucket as? JsonObject ?: return bucket
+        val pages = obj["pages"] as? JsonArray ?: return bucket
+        val installed = (obj["selectors"] as? JsonArray).orEmpty().mapNotNull { raw ->
+            val selector = raw as? JsonObject ?: return@mapNotNull null
+            val index = backpackIndex(selector["id"]) ?: return@mapNotNull null
+            val identity = (selector["identity"] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+            if ((selector["state"] as? JsonPrimitive)?.contentOrNull != "installed" || identity == null) null else index to identity
+        }.toMap()
+        var changed = false
+        val labelled = pages.map { raw ->
+            val page = raw as? JsonObject ?: return@map raw
+            val identity = backpackIndex(page["id"])?.let(installed::get) ?: return@map raw
+            if ((page["identity"] ?: JsonNull) != JsonNull || (page["items"] ?: JsonNull) == JsonNull) return@map raw
+            changed = true
+            JsonObject(page + ("identity" to JsonPrimitive(identity)))
+        }
+        return if (changed) JsonObject(obj + ("pages" to JsonArray(labelled))) else bucket
+    }
+
+    private fun backpackIndex(id: JsonElement?): Int? {
+        val obj = id as? JsonObject ?: return null
+        if ((obj["kind"] as? JsonPrimitive)?.contentOrNull != "backpack") return null
+        return (obj["index"] as? JsonPrimitive)?.intOrNull
+    }
 }

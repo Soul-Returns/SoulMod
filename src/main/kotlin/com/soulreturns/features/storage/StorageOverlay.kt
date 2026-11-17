@@ -57,7 +57,6 @@ object StorageOverlay {
     private var scope: String? = null
     private var scopeProfile: String? = null
     private var trackedMenu: ChestMenu? = null
-    private var trustedSelectors: Set<StoragePageId> = emptySet()
     private val invalidatedApiBackpacks = mutableSetOf<StoragePageId>()
     private var watchingInputs = false
     private val inputSink = PacketTap.Sink { inbound, packet ->
@@ -231,11 +230,8 @@ object StorageOverlay {
             publish()
             return
         }
-        if (description.page?.kind == "backpack" && description.page !in trustedSelectors && observation.contents == null) {
-            store.update(scope!!) { it.observe(StoredStoragePage(description.page, description.label, description.rows - 1)) }
-        }
         observation.full(packet.containerId(), packet.items().map { it.copy() })
-        observeContents(fullOverview = true)
+        observeContents()
         if (description.page == pending) pending = null
         val screen = mc.gui.screen() as? ContainerScreen
         if (screen != null && screen.menu === menu && screen !is StorageOverlayScreen && screen !is ManagementScreen && menu.carried.isEmpty) {
@@ -257,7 +253,7 @@ object StorageOverlay {
         val description = observation.description ?: return
         if (observation.contents == null || packet.slot !in 0 until description.size) return
         if (!validContext() || mc.player?.containerMenu !== trackedMenu || !observation.slot(packet.containerId, packet.slot, packet.item.copy())) return
-        if (observation.description?.page == null || packet.slot >= 9) observeContents(changedSlot = packet.slot)
+        if (observation.description?.page == null || packet.slot >= 9) observeContents()
         publish()
     }
 
@@ -307,24 +303,15 @@ object StorageOverlay {
         }
     }
 
-    private fun observeContents(fullOverview: Boolean = false, changedSlot: Int? = null) {
+    private fun observeContents() {
         val current = scope ?: return
         val description = observation.description ?: return
         val items = observation.contents ?: return
         val id = description.page
-        if (id == null) {
-            val selectors = readSelectors(items)
-            val verified = selectors.filter { it.id.kind == "backpack" && it.state == "installed" && it.identity != null }.map { it.id }.toSet()
-            trustedSelectors = if (fullOverview) verified else {
-                val id = changedSlot?.takeIf { it in 27..44 }?.let { StoragePageId("backpack", it - 26) }
-                if (id == null) trustedSelectors else (trustedSelectors - id) + verified.filter { it == id }
-            }
-            store.update(current) { it.reconcile(selectors) }
-        } else {
-            val bucket = store.read(current)
-            val identity = if (id.kind == "backpack" && id in trustedSelectors) bucket.selectors.firstOrNull { it.id == id && it.state == "installed" }?.identity else null
+        if (id == null) store.update(current) { it.reconcile(readSelectors(items)) }
+        else {
             val encoded = encodeItems(items.drop(9))
-            store.update(current) { it.observe(StoredStoragePage(id, description.label, description.rows - 1, identity, encoded)) }
+            store.update(current) { it.observeOpen(id, description.label, description.rows - 1, encoded) }
         }
     }
 
@@ -396,8 +383,7 @@ object StorageOverlay {
             val selector = bucket.selectors.firstOrNull { it.id == id }
             val prefill = api[id]
             val liveItems = if (active == id) observation.contents?.drop(9) else null
-            // An unverified backpack identity cannot inherit a persisted slot's old contents.
-            val remembered = if (liveItems != null || (id.kind == "backpack" && (page?.identity == null || id !in trustedSelectors))) null else decodeItems(page?.items)
+            val remembered = if (liveItems != null) null else decodeItems(bucket.remembered(id))
             val preview = if (liveItems == null && remembered == null) decodeItems(prefill?.items) else null
             val contents = liveItems ?: remembered ?: preview
             StoragePageView(id, page?.label ?: prefill?.label ?: if (id.kind == "ender") "Ender Chest ${id.index}" else "Backpack ${id.index}",
@@ -449,7 +435,6 @@ object StorageOverlay {
         pending = null
         transitionScreen = null
         managing = false
-        trustedSelectors = emptySet()
         invalidatedApiBackpacks.clear()
         stopWatchingInputs()
         bucketSeen = null
@@ -518,7 +503,6 @@ object StorageOverlay {
         if (affected == null) for (index in 1..18) invalidatedApiBackpacks.add(StoragePageId("backpack", index))
         else invalidatedApiBackpacks.addAll(affected)
         store.update(scope!!) { it.invalidateBackpacks(affected) }
-        trustedSelectors = if (affected == null) emptySet() else trustedSelectors - affected
         bucketSeen = null
         publish()
     }

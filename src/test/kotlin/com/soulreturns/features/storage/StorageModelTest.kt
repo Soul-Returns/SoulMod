@@ -99,6 +99,27 @@ class StorageModelTest {
         assertNotNull(bucket.pages.first().items)
     }
 
+    // Live report (0.3.1-beta.7): a backpack opened straight from a page command (Open last storage
+    // page, /backpack n, a card click from an Ender Chest page) went back to "Not viewed yet" once
+    // left, because only a Storage overview visit in the current world made its contents showable.
+    @Test
+    fun backpackOpenedWithoutTheOverviewKeepsItsContentsAfterLeaving() {
+        val items = page(second).items
+        val known = StorageBucket(selectors = listOf(StorageSelector(second, "installed", "bag-a")))
+            .observeOpen(second, "Greater Backpack 2", 4, items)
+        assertEquals(items, known.remembered(second))
+        assertEquals(items, known.reconcile(listOf(StorageSelector(second, "installed", "bag-a"))).remembered(second))
+        assertNull(known.reconcile(listOf(StorageSelector(second, "installed", "bag-b"))).remembered(second))
+        assertNull(known.invalidateBackpacks(setOf(second)).remembered(second))
+
+        val unseenSlot = StorageBucket().observeOpen(second, "Greater Backpack 2", 4, items)
+        assertEquals(items, unseenSlot.remembered(second))
+        assertNull(unseenSlot.reconcile(listOf(StorageSelector(second, "installed", "bag-a"))).remembered(second))
+
+        val enderItems = List(45) { if (it == 3) "ender-payload" else null }
+        assertEquals(enderItems, StorageBucket().observeOpen(ender, "Ender Chest 1", 5, enderItems).remembered(ender))
+    }
+
     @Test
     fun scopeRequiresExactAccountAndProfileUuids() {
         val account = "00000000-0000-4000-8000-000000000001"

@@ -68,7 +68,7 @@ class StorageStoreTest {
 
     @Test
     fun corruptOrNewerRootCannotBeOverwrittenByFreshObservations() = temporary { file ->
-        for (original in listOf("not json", """{"schemaVersion":2,"buckets":{}}""")) {
+        for (original in listOf("not json", """{"schemaVersion":3,"buckets":{}}""", """{"schemaVersion":0,"buckets":{}}""")) {
             Files.writeString(file, original)
             val reasons = mutableListOf<String>()
             val store = StorageStore(file) { _, reason -> reasons += reason }.also { it.load() }
@@ -78,6 +78,36 @@ class StorageStoreTest {
             assertTrue(reasons.isNotEmpty())
             assertEquals(page, store.read(key).pages.single())
         }
+    }
+
+    @Test
+    fun v1BackpackPagesSavedWithoutUuidTakeTheirSlotsLastSeenBackpack() = temporary { file ->
+        fun backpack(index: Int, identity: String?, items: Boolean) =
+            """{"id":{"kind":"backpack","index":$index},"label":"Greater Backpack $index","rows":4,"identity":${identity?.let { "\"$it\"" } ?: "null"},"items":${if (items) "[\"payload\"" + ",null".repeat(35) + "]" else "null"}}"""
+        fun selector(index: Int, state: String, identity: String?) =
+            """{"id":{"kind":"backpack","index":$index},"state":"$state","identity":${identity?.let { "\"$it\"" } ?: "null"},"rows":4}"""
+        val pages = listOf(backpack(2, null, true), backpack(3, null, false), backpack(4, "bag-d", true), backpack(5, null, true), backpack(6, null, true))
+        val selectors = listOf(selector(2, "installed", "bag-b"), selector(3, "installed", "bag-c"), selector(4, "installed", "bag-d"), selector(6, "installed", null))
+        val otherProfile = storageScope(account, other)!!
+        Files.writeString(file, """{"schemaVersion":1,"futureField":true,"buckets":{"$key":{"pages":[${pages.joinToString(",")}],"selectors":[${selectors.joinToString(",")}]},"$otherProfile":{"pages":"bad"}}}""")
+        val reasons = mutableListOf<String>()
+        val store = StorageStore(file) { _, reason -> reasons += reason }.also { it.load() }
+        assertEquals(listOf("migrate-v1"), reasons)
+        val bucket = store.read(key)
+        assertEquals(listOf("bag-b", null, "bag-d", null, null), bucket.pages.map { it.identity })
+        assertEquals("payload", bucket.remembered(StoragePageId("backpack", 2))!!.first())
+        assertEquals(bucket.pages.first(), bucket.reconcile(bucket.selectors).pages.first())
+        assertTrue(store.hasChanges())
+        store.flush()
+        val saved = Json.parseToJsonElement(Files.readString(file)) as JsonObject
+        assertEquals("2", saved["schemaVersion"].toString())
+        assertEquals("true", saved["futureField"].toString())
+        assertEquals("""{"pages":"bad"}""", (saved["buckets"] as JsonObject)[otherProfile].toString())
+        val again = mutableListOf<String>()
+        val reloaded = StorageStore(file) { _, reason -> again += reason }.also { it.load() }
+        assertEquals(bucket, reloaded.read(key))
+        assertTrue(again.isEmpty())
+        assertFalse(reloaded.hasChanges())
     }
 
     @Test

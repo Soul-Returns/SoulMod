@@ -31,6 +31,18 @@ internal data class StorageBucket(
     fun observe(page: StoredStoragePage): StorageBucket =
         copy(pages = pages.filterNot { it.id == page.id } + page, lastPage = page.id)
 
+    /**
+     * A server-open page: its contents are the slot's current ones. A backpack keeps the UUID last seen in its
+     * slot (the page itself is not read for one); an overview naming another backpack then clears it ([reconcile]).
+     */
+    fun observeOpen(id: StoragePageId, label: String, rows: Int, items: List<String?>?): StorageBucket {
+        val identity = if (id.kind == "backpack") selectors.firstOrNull { it.id == id && it.state == "installed" }?.identity else null
+        return observe(StoredStoragePage(id, label, rows, identity, items))
+    }
+
+    /** Last-observed contents; removal, replacement and invalidation already cleared them here. */
+    fun remembered(id: StoragePageId): List<String?>? = pages.firstOrNull { it.id == id }?.items
+
     fun openingCommand(command: String): String {
         if (!command.trim().equals("storage", ignoreCase = true)) return command
         val id = lastPage ?: return command
