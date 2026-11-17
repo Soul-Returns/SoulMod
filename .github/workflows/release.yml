@@ -95,16 +95,12 @@ jobs:
           java-version: "25"
           distribution: temurin
 
+      # Read-only on tag runs; .github/workflows/build.yml saves these caches on main.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
       - name: Validate the Gradle wrapper
         uses: gradle/actions/wrapper-validation@v5
-
-      - name: Build
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: ./gradlew build "-Pmod_version=$VERSION" --no-daemon --stacktrace
 
       - name: Fetch and verify the signed release
         id: signed
@@ -114,6 +110,18 @@ jobs:
           bash .release-tools/tools/release/fetch-signed.sh "$VERSION" signed
           echo "dir=signed" >> "$GITHUB_OUTPUT"
           echo "\`soul-$VERSION.jar\` sha256 \`$(sha256sum "signed/soul-$VERSION.jar" | cut -d' ' -f1)\` (signed, as served by the updater)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Restore Loom's project cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .gradle/loom-cache
+          key: loom-project-${{ hashFiles('gradle.properties', 'build.gradle.kts', 'settings.gradle.kts', 'src/main/resources/soul.accesswidener') }}
+          restore-keys: loom-project-
+
+      - name: Build
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: ./gradlew build "-Pmod_version=$VERSION" --no-daemon --stacktrace
 
       - name: Compare the signed jar with this build
         env:

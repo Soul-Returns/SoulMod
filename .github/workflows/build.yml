@@ -1,0 +1,49 @@
+# Build and test every push to main.
+#
+# Besides being the check, this is what keeps the release job fast: GitHub only lets a tag run
+# read caches saved on the default branch, and the release job (a tag run) never saves one itself.
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          # 26.2 requires Java 25 (jvmToolchain(25) in build.gradle.kts).
+          java-version: "25"
+          distribution: temurin
+
+      # Saves the Gradle home (dependencies, wrapper distribution, Loom's shared cache).
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v5
+
+      # Loom's per-project Minecraft jars live outside the Gradle home. Same key in release.yml.
+      - name: Cache Loom's project cache
+        uses: actions/cache@v4
+        with:
+          path: .gradle/loom-cache
+          key: loom-project-${{ hashFiles('gradle.properties', 'build.gradle.kts', 'settings.gradle.kts', 'src/main/resources/soul.accesswidener') }}
+          restore-keys: loom-project-
+
+      - name: Build
+        run: ./gradlew build --no-daemon --stacktrace
