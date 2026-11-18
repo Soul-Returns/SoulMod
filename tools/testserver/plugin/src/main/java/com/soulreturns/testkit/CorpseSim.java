@@ -83,7 +83,7 @@ public final class CorpseSim {
     }
 
     public List<String> completions(int pos) {
-        return pos == 1 ? List.of("start", "tp", "wall", "cage", "place", "loot", "talisman", "status", "stop") : List.of();
+        return pos == 1 ? List.of("start", "tp", "wall", "bury", "cage", "place", "loot", "talisman", "status", "stop") : List.of();
     }
 
     public List<String> command(Player player, String[] rest) {
@@ -94,13 +94,17 @@ public final class CorpseSim {
                 yield start(player, rest[1].toUpperCase(Locale.ROOT), java.util.Arrays.copyOfRange(rest, 2, rest.length));
             }
             case "tp" -> {
-                if (rest.length < 2) throw new IllegalArgumentException("corpse tp <spot> [distance] [side]");
+                if (rest.length < 2) throw new IllegalArgumentException("corpse tp <spot> [distance] [side] [up]");
                 yield List.of(tp(player, Integer.parseInt(rest[1]), rest.length > 2 ? Double.parseDouble(rest[2]) : 12.0,
-                    rest.length > 3 ? Double.parseDouble(rest[3]) : 0.0));
+                    rest.length > 3 ? Double.parseDouble(rest[3]) : 0.0, rest.length > 4 ? Double.parseDouble(rest[4]) : 1.0));
             }
             case "wall" -> {
                 if (rest.length < 2) throw new IllegalArgumentException("corpse wall <spot> [on|off]");
                 yield List.of(wall(player, Integer.parseInt(rest[1]), rest.length < 3 || rest[2].equalsIgnoreCase("on")));
+            }
+            case "bury" -> {
+                if (rest.length < 2) throw new IllegalArgumentException("corpse bury <spot> [on|off]");
+                yield List.of(bury(player, Integer.parseInt(rest[1]), rest.length < 3 || rest[2].equalsIgnoreCase("on")));
             }
             case "cage" -> {
                 if (rest.length < 2) throw new IllegalArgumentException("corpse cage <spot> [on|off]");
@@ -192,7 +196,7 @@ public final class CorpseSim {
         player.setAllowFlight(true);
         player.setFlying(true);
         sessions.put(player.getUniqueId(), s);
-        if (!s.corpses.isEmpty()) tp(player, s.corpses.get(0).index, 14.0, 0.0);
+        if (!s.corpses.isEmpty()) tp(player, s.corpses.get(0).index, 14.0, 0.0, 1.0);
         s.task = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> tick(player, s), 1L, 1L);
         List<String> out = new ArrayList<>();
         out.add("mineshaft " + layout + (s.spots == null ? " (no spot data)" : ", " + s.corpses.size() + " corpse(s)"));
@@ -207,12 +211,12 @@ public final class CorpseSim {
         return Items.build(HELMET_ID.get(type), def, 1);
     }
 
-    /** Puts the player {@code distance} blocks east of a spot ({@code side} blocks south), one block up, facing the stand. */
-    private String tp(Player player, int index, double distance, double side) {
+    /** Puts the player {@code distance} blocks east of a spot ({@code side} south, {@code up} above it, default 1), facing the spot. */
+    private String tp(Player player, int index, double distance, double side, double up) {
         Session s = session(player);
         if (s.spots == null || index < 0 || index >= s.spots.size()) throw new IllegalArgumentException("no spot " + index);
         int[] b = s.spots.get(index);
-        Location at = new Location(player.getWorld(), b[0] + 0.5 + distance, b[1] + 1, b[2] + 0.5 + side);
+        Location at = new Location(player.getWorld(), b[0] + 0.5 + distance, b[1] + up, b[2] + 0.5 + side);
         Location eye = at.clone().add(0, player.getEyeHeight(), 0);
         at.setDirection(new Location(player.getWorld(), b[0] + 0.5, b[1] + 1.5, b[2] + 0.5).toVector().subtract(eye.toVector()));
         player.setFlying(true);
@@ -239,6 +243,27 @@ public final class CorpseSim {
             }
         }
         return "wall at x " + (b[0] + WALL_OFFSET) + " east of spot " + index;
+    }
+
+    /** A closed stone shell around a spot (5 x 5, two below to three above): no line of sight from any side. */
+    private String bury(Player player, int index, boolean on) {
+        Session s = session(player);
+        for (Location l : s.wall) l.getBlock().setType(Material.AIR);
+        s.wall.clear();
+        if (!on) return "shell removed";
+        if (s.spots == null || index < 0 || index >= s.spots.size()) throw new IllegalArgumentException("no spot " + index);
+        int[] b = s.spots.get(index);
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                for (int dy = -2; dy <= 3; dy++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) < 2 && dy > -2 && dy < 3) continue;
+                    Location l = new Location(player.getWorld(), b[0] + dx, b[1] + dy, b[2] + dz);
+                    l.getBlock().setType(Material.STONE);
+                    s.wall.add(l);
+                }
+            }
+        }
+        return "spot " + index + " buried in stone";
     }
 
     /**

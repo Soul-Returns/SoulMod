@@ -65,6 +65,9 @@ object CorpseLocator {
     /** Corpse type per spot, from the fixed layout or a stand seen with line of sight; sticky for the stay. */
     private val types = HashMap<CorpseSpot, String>()
 
+    /** Spots whose stand was seen (type and position from it); sticky for the stay. */
+    private val seen = HashSet<CorpseSpot>()
+
     /** SkyBlock ids in the player's inventory, as of the last scan. */
     private var inventory: Set<String> = emptySet()
 
@@ -146,22 +149,29 @@ object CorpseLocator {
     }
 
     /**
-     * Types a located spot from its stand (the helmeted stand nearest the spot block, within
-     * [CorpseLook.STAND_MARGIN]), only once the player can see that stand. The entity never places,
-     * confirms or counts anything; the spot was located from the ding.
+     * Types and pins a located spot from its stand: a helmeted stand within [CorpseLocatorSolver.STAND_MARGIN]
+     * of the spot's box, nearest the solver's estimate, only once the player can see it. Before that
+     * the entity is never read; the spot was located from the dings.
      */
     private fun identify(s: CorpseLocatorSolver) {
-        val m = CorpseLook.STAND_MARGIN
+        val m = CorpseLocatorSolver.SPREAD + CorpseLocatorSolver.STAND_MARGIN
         for (spot in s.shown()) {
-            if (spot in types) continue
-            val near = AABB(spot.x - m, spot.y - m, spot.z - m, spot.x + 1 + m, spot.y + 1 + m, spot.z + 1 + m)
+            if (spot in seen) continue
+            val near = AABB(spot.x - m, spot.y - m, spot.z - m, spot.x + m, spot.y + m, spot.z + m)
+            val c = s.center(spot)
             val stand =
                 MobSpotter.findVisibleIn(near) {
-                    if (it is ArmorStand && !it.getItemBySlot(EquipmentSlot.HEAD).isEmpty) CorpseLook.standOffset(spot, it.x, it.y, it.z) else null
+                    if (it is ArmorStand && !it.getItemBySlot(EquipmentSlot.HEAD).isEmpty && CorpseLocatorSolver.standOffset(spot, it.x, it.y, it.z) != null) {
+                        it.distanceToSqr(c[0], c[1], c[2])
+                    } else {
+                        null
+                    }
                 } ?: continue
             val type = CorpseLook.typeOf(SkyblockItemUtils.getSkyblockId((stand as ArmorStand).getItemBySlot(EquipmentSlot.HEAD)))
             types[spot] = type
-            DebugLogger.logFeatureEvent("Corpse locator: saw $type corpse at $spot")
+            seen += spot
+            s.pin(spot, stand.x, stand.y, stand.z)
+            DebugLogger.logFeatureEvent("Corpse locator: saw $type corpse at ${"%.2f %.2f %.2f".format(Locale.ROOT, stand.x, stand.y, stand.z)} for $spot")
         }
     }
 
@@ -212,6 +222,7 @@ object CorpseLocator {
         layout = null
         solver = null
         types.clear()
+        seen.clear()
         inventory = emptySet()
         pending.clear()
         history.clear()
@@ -224,7 +235,8 @@ object CorpseLocator {
 
     private fun render() {
         if (!active()) return
-        val shown = solver?.shown() ?: return
+        val sv = solver ?: return
+        val shown = sv.shown()
         if (shown.isEmpty() || tabAllLooted()) return
         val mc = Minecraft.getInstance()
         val p = mc.player ?: return
@@ -233,10 +245,16 @@ object CorpseLocator {
             for (s in shown) {
                 val look = CorpseLook.decide(types[s], inventory, m)
                 val color = look.color.effective().let { c -> if (look.dimmed) TargetWaypoint.alpha(c, DIM_ALPHA) else c }
-                // The stand's block and the one above: the corpse body stands about two blocks tall.
-                val box = AABB(s.x.toDouble(), s.y.toDouble(), s.z.toDouble(), s.x + 1.0, s.y + 2.0, s.z + 1.0)
+                // The corpse body stands about two blocks tall: around the seen/estimated stand, else the listed block.
+                val at = sv.position(s)
+                val box =
+                    if (at != null) {
+                        AABB(at[0] - 0.5, at[1], at[2] - 0.5, at[0] + 0.5, at[1] + 2.0, at[2] + 0.5)
+                    } else {
+                        AABB(s.x.toDouble(), s.y.toDouble(), s.z.toDouble(), s.x + 1.0, s.y + 2.0, s.z + 1.0)
+                    }
                 val c = box.center
-                val dist = Math.sqrt(p.distanceToSqr(c.x, s.y + 0.5, c.z))
+                val dist = Math.sqrt(p.distanceToSqr(c.x, box.minY + 0.5, c.z))
                 TargetWaypoint.draw(box, color, LINE_WIDTH, look.label + " " + String.format(Locale.ROOT, "%.1fm", dist), look.line)
             }
         }
@@ -257,6 +275,14 @@ object CorpseLocator {
             "emptied" to s?.emptied?.map(::xyz),
             "shown" to s?.shown()?.map(::xyz),
             "types" to types.entries.associate { (k, v) -> "${k.x},${k.y},${k.z}" to v },
+            "seen" to seen.map(::xyz),
+            "positions" to s?.shown()?.associate { sp ->
+                "${sp.x},${sp.y},${sp.z}" to linkedMapOf(
+                    "drawn" to s.position(sp)?.map { Math.round(it * 100) / 100.0 },
+                    "center" to s.center(sp).map { Math.round(it * 100) / 100.0 },
+                    "spread" to s.spread(sp)?.let { Math.round(it * 100) / 100.0 },
+                )
+            },
             "keys" to inventory.filter { it.endsWith("_KEY") },
             "dings" to dings,
             "dings_muted" to muted,

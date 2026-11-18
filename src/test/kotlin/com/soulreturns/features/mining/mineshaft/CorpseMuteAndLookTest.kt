@@ -141,16 +141,14 @@ class CorpseMuteAndLookTest {
     }
 
     @Test
-    fun aStandOnOrAHairBesideTheBlockBoundaryStillBelongsToItsSpot() {
+    fun aSeenStandBelongsToItsSpotWithinTheBoxPlusMargin() {
         val spot = CorpseSpot(-154, 12, -174)
-        assertEquals(0.0, CorpseLook.standOffset(spot, -153.5, 12.3, -173.5), "inside")
-        assertEquals(0.0, CorpseLook.standOffset(spot, -154.0, 12.3, -174.0), "on the corner")
-        // The owner's JADE_1 stand (-154.0, 12.3, -174.0 rounded): floor of -154.01 is -155.
-        assertEquals(0.01 * sqrt(2.0), CorpseLook.standOffset(spot, -154.01, 12.3, -174.01)!!, 1e-9)
-        assertEquals(0.4, CorpseLook.standOffset(spot, -153.0 + 0.4, 12.5, -173.5)!!, 1e-9)
-        assertEquals(0.5, CorpseLook.standOffset(spot, -153.5, 13.5, -173.5)!!, 1e-9, "standing half a block up")
-        assertNull(CorpseLook.standOffset(spot, -152.4, 12.5, -173.5), "0.6 beside: another spot's stand")
-        assertNull(CorpseLook.standOffset(spot, -154.4, 12.5, -174.4), "0.57 off diagonally")
+        assertEquals(0.0, CorpseLocatorSolver.standOffset(spot, -154.0, 12.3, -174.0), "the owner's JADE_1 stand")
+        assertEquals(0.0, CorpseLocatorSolver.standOffset(CorpseSpot(-117, 4, -168), -117.5, 3.7, -168.5), "the owner's CITR_2 stand (rounded convention)")
+        assertEquals(0.0, CorpseLocatorSolver.standOffset(spot, -154.99, 11.01, -173.01), "anywhere in the box")
+        assertEquals(0.4, CorpseLocatorSolver.standOffset(spot, -152.6, 12.5, -173.5)!!, 1e-9, "a hair past the box")
+        assertNull(CorpseLocatorSolver.standOffset(spot, -152.4, 12.5, -173.5), "0.6 past the box")
+        assertNull(CorpseLocatorSolver.standOffset(spot, -155.4, 12.5, -175.4), "0.57 past diagonally")
     }
 
     @Test

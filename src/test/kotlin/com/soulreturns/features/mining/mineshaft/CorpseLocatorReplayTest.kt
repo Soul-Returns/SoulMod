@@ -1,6 +1,5 @@
 package com.soulreturns.features.mining.mineshaft
 
-import kotlin.math.floor
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,13 +7,16 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * Replay of every mineshaft stay in recording 2026-11-18_02-55-36_mineshaft-corpses
- * (`mineshaft/corpses-2026-11-18.txt`). The corpse stand positions in the fixture are the ground
- * truth for this test only; the solver sees the dings, the loot lines and the player position.
+ * Replay of the mineshaft stays in recordings 2026-11-18_02-55-36_mineshaft-corpses (AMBE_1,
+ * `corpses-2026-11-18.txt`) and 2026-11-18_04-41-37_mineshaft-corpses-2 (CITR_2, CITR_C, JASP_1,
+ * `corpses-2026-11-18b.txt`). The corpse stand positions in the fixtures are the ground truth for
+ * this test only (`corpse~` = located from its dings, approximate); the solver sees the dings, the
+ * loot lines and the player position.
  */
 class CorpseLocatorReplayTest {
-    private class Corpse(val type: String, val x: Double, val y: Double, val z: Double) {
-        val spot = CorpseSpot(floor(x).toInt(), floor(y).toInt(), floor(z).toInt())
+    private class Corpse(val type: String, val x: Double, val y: Double, val z: Double, val approx: Boolean) {
+        /** The listed spot whose box holds the stand (the data mixes floor/round/ceil). */
+        lateinit var spot: CorpseSpot
         var lootedAt = Int.MAX_VALUE
 
         fun dist(px: Double, py: Double, pz: Double): Double = sqrt((px - x) * (px - x) + (py - y) * (py - y) + (pz - z) * (pz - z))
@@ -33,14 +35,14 @@ class CorpseLocatorReplayTest {
 
     private val stays: List<Stay> =
         ArrayList<Stay>().also { out ->
-            javaClass.getResource("/mineshaft/corpses-2026-11-18.txt")!!.readText().lines()
+            listOf("/mineshaft/corpses-2026-11-18.txt", "/mineshaft/corpses-2026-11-18b.txt").flatMap { javaClass.getResource(it)!!.readText().lines() }
                 .filter { it.isNotBlank() && !it.startsWith("#") }
                 .forEach { line ->
                     val f = line.split(' ')
                     val stay = out.lastOrNull()
                     when (f[0]) {
                         "stay" -> out += Stay(f[1])
-                        "corpse" -> stay!!.corpses += Corpse(f[1], f[2].toDouble(), f[3].toDouble(), f[4].toDouble())
+                        "corpse", "corpse~" -> stay!!.corpses += Corpse(f[1], f[2].toDouble(), f[3].toDouble(), f[4].toDouble(), f[0] == "corpse~")
                         "ding" -> stay!!.events += Ding(f[1].toInt(), f[2].toInt(), f[3].toInt(), f[4].toInt(), f[5].toFloat())
                         "loot" -> stay!!.events += Loot(f[1].toInt(), f[2], f[3].toDouble(), f[4].toDouble(), f[5].toDouble())
                         "pos" -> stay!!.events += Pos(f[1].toInt(), f[2].toDouble(), f[3].toDouble(), f[4].toDouble())
@@ -54,8 +56,10 @@ class CorpseLocatorReplayTest {
 
     private val data = CorpseSpotData.parse(javaClass.getResource("/assets/soul/mineshaft/corpse_spots.json")!!.readText())
 
-    /** Ground truth for loots: the corpse of that type nearest the player when the line came. */
+    /** Ground truth: each corpse's spot (the box holding its stand) and, for loots, the corpse of that type nearest the player. */
     private fun labelLoots(stay: Stay) {
+        val spots = assertNotNull(data.spots(stay.layout), "layout ${stay.layout} in the data")
+        for (c in stay.corpses) c.spot = spots.single { CorpseLocatorSolver.pointDistance(c.x, c.y, c.z, it) == 0.0 }
         for (e in stay.events.filterIsInstance<Loot>()) {
             val c = stay.corpses.filter { it.lootedAt == Int.MAX_VALUE && it.type.equals(e.type, ignoreCase = true) }.minBy { it.dist(e.x, e.y, e.z) }
             c.lootedAt = e.tick
@@ -66,14 +70,15 @@ class CorpseLocatorReplayTest {
     fun everyStayConfirmsOnlyTrueCorpsesAndEachOneInRange() {
         assertTrue(stays.isNotEmpty())
         val report = ArrayList<String>()
+        val errors = ArrayList<String>()
         for (stay in stays) {
             labelLoots(stay)
-            val spots = assertNotNull(data.spots(stay.layout), "layout ${stay.layout} in the data")
-            for (c in stay.corpses) assertTrue(c.spot in spots, "${stay.layout}: corpse at ${c.spot} is a listed spot")
+            val spots = data.spots(stay.layout)!!
             val solver = CorpseLocatorSolver(spots, stay.layout in data.fixed)
             val inRange = HashSet<Corpse>()
             val firstNearest = HashMap<Corpse, Int>()
             val confirmedAfter = HashMap<Corpse, Int>()
+            val attributed = HashMap<Corpse, Int>()
             var dings = 0
             var player = doubleArrayOf(0.0, 0.0, 0.0)
             for (e in stay.events) {
@@ -92,6 +97,16 @@ class CorpseLocatorReplayTest {
                             val c = unlooted.firstOrNull { it.spot == s }
                             assertNotNull(c, "tick ${e.tick}: confirmed $s is no unlooted corpse")
                             confirmedAfter.putIfAbsent(c, dings)
+                            if (c.approx) continue
+                            assertTrue(solver.possibleDistance(s, c.x, c.y, c.z) <= CorpseLocatorSolver.SLACK + 1e-9, "tick ${e.tick}: true stand left $s's region")
+                            if (c === nearest) {
+                                val k = (attributed[c] ?: 0) + 1
+                                attributed[c] = k
+                                val at = solver.center(s)
+                                if (k in listOf(1, 2, 3, 5, 10, 20, 40)) {
+                                    errors += "${stay.layout} ${c.type}@$k:${"%.2f".format(c.dist(at[0], at[1], at[2]))}${if (solver.position(s) != null) "*" else ""}"
+                                }
+                            }
                         }
                         assertTrue(solver.emptied.isEmpty(), "tick ${e.tick}: retracted ${solver.emptied}")
                     }
@@ -110,6 +125,7 @@ class CorpseLocatorReplayTest {
             }
         }
         println("dings until confirmed (from the first ding it was the nearest): $report")
+        println("estimate error (corpse@dings it was the nearest since confirmed: centroid error, * = drawn there): $errors")
     }
 
     @Test

@@ -151,9 +151,10 @@ class CorpseLocatorSolverTest {
     }
 
     /**
-     * Every bundled layout: 1-4 corpses on random spots (stand anywhere in the block), a player
-     * wandering within 20 blocks, the server's ding (nearest unlooted, silent beyond 20) and loots
-     * from next to a corpse. No prefix may show a spot without an unlooted corpse.
+     * Every bundled layout: 1-4 corpses on random spots (stand anywhere in the spot's box: the data
+     * mixes floor, round and ceil), a player wandering within 22 blocks, the server's ding (nearest
+     * unlooted, silent beyond 20) and loots from next to a corpse. No prefix may show a spot without
+     * an unlooted corpse, retract a real one, or lose the true stand from a spot's region.
      */
     @Test
     fun simulationNeverConfirmsAWrongSpot() {
@@ -163,6 +164,11 @@ class CorpseLocatorSolverTest {
         // Per corpse: dings from the first one it was the nearest for, until it was confirmed.
         val needed = sortedMapOf<Int, Int>()
         var trials = 0
+        var drawn = 0
+        var shownFrames = 0
+        var worst = 0.0
+        var errSum = 0.0
+        var worstY = 0.0
         for ((id, _) in data.layouts) {
             val spots = data.spots(id)!!
             val fixed = id in data.fixed
@@ -170,7 +176,8 @@ class CorpseLocatorSolverTest {
                 trials++
                 val count = if (fixed) spots.size else rnd.nextInt(1, minOf(4, spots.size) + 1)
                 val chosen = spots.shuffled(rnd).take(count)
-                val stands = chosen.associateWith { stand(it, rnd.nextDouble(), rnd.nextDouble() * 0.95, rnd.nextDouble()) }
+                val box = CorpseLocatorSolver.SPREAD
+                val stands = chosen.associateWith { stand(it, rnd.nextDouble(-box, box), rnd.nextDouble(-box, box), rnd.nextDouble(-box, box)) }
                 val looted = HashSet<CorpseSpot>()
                 val s = CorpseLocatorSolver(spots, fixed)
                 val since = HashMap<CorpseSpot, Int>()
@@ -197,7 +204,19 @@ class CorpseLocatorSolverTest {
                     dings++
                     if (fit.fitting.size == 1) single++
                     assertTrue(nearest in fit.fitting, "$id: the true spot fits")
-                    for (shown in s.shown()) assertTrue(shown in unlooted, "$id: shown $shown holds no unlooted corpse (corpses $chosen, looted $looted)")
+                    for (shown in s.shown()) {
+                        assertTrue(shown in unlooted, "$id: shown $shown holds no unlooted corpse (corpses $chosen, looted $looted)")
+                        val truth = stands.getValue(shown)
+                        assertTrue(s.possibleDistance(shown, truth[0], truth[1], truth[2]) <= CorpseLocatorSolver.SLACK + 1e-9, "$id: the true stand left $shown's region")
+                        shownFrames++
+                        s.position(shown)?.let { at ->
+                            drawn++
+                            val e = sqrt((at[0] - truth[0]) * (at[0] - truth[0]) + (at[2] - truth[2]) * (at[2] - truth[2]))
+                            errSum += e
+                            worst = maxOf(worst, e)
+                            worstY = maxOf(worstY, kotlin.math.abs(at[1] - truth[1]))
+                        }
+                    }
                     assertTrue(s.emptied.isEmpty(), "$id: retracted a real corpse ${s.emptied}")
                     if (!fixed && nearest !in since) since[nearest] = 0
                     if (nearest in since && since.getValue(nearest) >= 0) {
@@ -210,16 +229,87 @@ class CorpseLocatorSolverTest {
                 }
             }
         }
-        println("simulation: $trials trials over ${data.layouts.size} layouts, $dings dings, ${"%.1f".format(100.0 * single / dings)}% fit one spot; dings until confirmed -> corpses: $needed")
-        assertTrue(single > dings * 0.9, "most dings decide alone")
+        println(
+            "simulation: $trials trials over ${data.layouts.size} layouts, $dings dings, ${"%.1f".format(100.0 * single / dings)}% fit one spot; " +
+                "dings until confirmed -> corpses: $needed; drawn at the estimate ${"%.1f".format(100.0 * drawn / shownFrames)}% of shown frames, " +
+                "horizontal error mean ${"%.2f".format(errSum / drawn)} max ${"%.2f".format(worst)}, height error max ${"%.2f".format(worstY)}",
+        )
+        assertTrue(single > dings * 0.85, "most dings decide alone")
+        assertTrue(worst <= CorpseLocatorSolver.TIGHT + CorpseLocatorSolver.SLACK, "a tight estimate is within its spread of the stand")
     }
 
     @Test
-    fun replayFixtureFloorsToListedSpots() {
-        // Spot convention: a corpse's spot is its stand position floored (verified 3/3 on AMBE_1).
-        val spots = data.spots("AMBE_1")!!
-        for (p in listOf(doubleArrayOf(-191.5, 25.90625, -160.5), doubleArrayOf(-171.8125, 16.4375, -185.375), doubleArrayOf(-122.34375, 23.46875, -159.21875))) {
-            assertTrue(CorpseSpot(floor(p[0]).toInt(), floor(p[1]).toInt(), floor(p[2]).toInt()) in spots)
+    fun everyRealStandLiesInItsSpotsBox() {
+        // Floored (AMBE_1 x3, JADE_1) and rounded/ceiled (CITR_2) positions: the dataset mixes conventions.
+        val real =
+            listOf(
+                "AMBE_1" to doubleArrayOf(-191.5, 25.90625, -160.5),
+                "AMBE_1" to doubleArrayOf(-171.8125, 16.4375, -185.375),
+                "AMBE_1" to doubleArrayOf(-122.34375, 23.46875, -159.21875),
+                "JADE_1" to doubleArrayOf(-154.0, 12.3, -174.0),
+                "CITR_2" to doubleArrayOf(-117.5, 3.7, -168.5),
+            )
+        for ((layout, p) in real) {
+            val spots = data.spots(layout)!!
+            assertEquals(1, spots.count { CorpseLocatorSolver.pointDistance(p[0], p[1], p[2], it) == 0.0 }, "$layout ${p.toList()} in exactly one box")
         }
+        val citr = doubleArrayOf(-117.5, 3.7, -168.5)
+        assertTrue(CorpseSpot(floor(citr[0]).toInt(), floor(citr[1]).toInt(), floor(citr[2]).toInt()) !in data.spots("CITR_2")!!, "CITR_2 is not floored")
+    }
+
+    /**
+     * The owner's CITR_2 Tungsten: stand (-117.5, 3.7, -168.5), listed as (-117, 4, -168). Walking
+     * around it: confirmed, never retracted, the estimate closes in on the stand, and once seen the
+     * waypoint is the stand and its dings are explained (muted).
+     */
+    @Test
+    fun theRoundedCitr2SpotIsConfirmedRefinedAndNeverRetracted() {
+        val spots = data.spots("CITR_2")!!
+        val spot = CorpseSpot(-117, 4, -168)
+        val truth = doubleArrayOf(-117.5, 3.7, -168.5)
+        val s = CorpseLocatorSolver(spots)
+        val errors = ArrayList<String>()
+        var n = 0
+        for (lap in 0 until 3) {
+            for (step in 0 until 12) {
+                val a = Math.toRadians(step * 30.0 + lap * 10)
+                val r = 14.0 - lap * 4
+                val player = doubleArrayOf(truth[0] + r * kotlin.math.cos(a), truth[1] + 0.3 + (step % 3 - 1), truth[2] + r * kotlin.math.sin(a))
+                val fit = assertNotNull(ding(s, player, truth))
+                n++
+                assertTrue(spot in fit.fitting, "ding $n fits the spot")
+                assertTrue(s.emptied.isEmpty(), "ding $n retracted ${s.emptied}")
+                assertTrue(s.possibleDistance(spot, truth[0], truth[1], truth[2]) <= CorpseLocatorSolver.SLACK + 1e-9, "ding $n kept the stand possible")
+                if (n in listOf(1, 2, 3, 5, 10, 20, 36)) errors += "$n:${"%.2f".format(dist(s.center(spot), truth))}"
+            }
+        }
+        println("CITR_2 estimate error after N dings: $errors; spread ${"%.2f".format(s.spread(spot))}")
+        assertEquals(listOf(spot), s.shown())
+        val at = assertNotNull(s.position(spot), "tight after $n dings")
+        assertTrue(dist(at, truth) < 0.5, "estimate ${at.toList()} near the stand")
+        assertNotNull(CorpseLocatorSolver.standOffset(spot, truth[0], truth[1], truth[2]), "the seen stand belongs to the spot")
+        s.pin(spot, truth[0], truth[1], truth[2])
+        assertEquals(truth.toList(), s.position(spot)!!.toList())
+        val after = assertNotNull(ding(s, doubleArrayOf(-110.0, 4.0, -160.0), truth))
+        assertTrue(after.explained, "a ding from the seen corpse is explained")
+        assertTrue(s.emptied.isEmpty())
+    }
+
+    @Test
+    fun theOldBlockOnlyRuleWouldHaveRetractedCitr2() {
+        // Beyond the listed block (-117, 4, -168) as seen from the stand: every point of that block is
+        // nearer than the ding says, so the old block-only rule "proved" it empty (the owner lost it so).
+        val spots = data.spots("CITR_2")!!
+        val truth = doubleArrayOf(-117.5, 3.7, -168.5)
+        val player = doubleArrayOf(-113.0, 6.0, -164.0)
+        val (lo, _) = CorpseLocatorSolver.interval(CorpseLocatorSolver.byteFor(dist(player, truth))!!)!!
+        val oldBlockFarthest = sqrt(4.0 * 4.0 + 2.0 * 2.0 + 4.0 * 4.0)
+        assertTrue(oldBlockFarthest < lo - CorpseLocatorSolver.EPS, "old rule: $oldBlockFarthest < $lo")
+        val s = CorpseLocatorSolver(spots)
+        ding(s, doubleArrayOf(-110.0, 4.0, -168.0), truth)
+        assertEquals(listOf(CorpseSpot(-117, 4, -168)), s.shown())
+        ding(s, player, truth)
+        assertTrue(s.emptied.isEmpty())
+        assertEquals(listOf(CorpseSpot(-117, 4, -168)), s.shown())
     }
 }

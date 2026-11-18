@@ -15,22 +15,6 @@ object CorpseLook {
     /** A seen corpse whose helmet is no known corpse helmet. */
     const val OTHER = "other"
 
-    /**
-     * How far outside its spot block a corpse stand may stand. The data's spot is the floored stand
-     * position, but stands sit on block boundaries (`-154.0`) where a hair either way changes the floor.
-     */
-    const val STAND_MARGIN = 0.5
-
-    /** Distance from a stand at ([x], [y], [z]) to [spot]'s block (0 inside); null beyond [STAND_MARGIN]. */
-    fun standOffset(spot: CorpseSpot, x: Double, y: Double, z: Double): Double? {
-        fun axis(v: Double, lo: Int) = maxOf(lo - v, 0.0, v - (lo + 1))
-        val dx = axis(x, spot.x)
-        val dy = axis(y, spot.y)
-        val dz = axis(z, spot.z)
-        val d = Math.sqrt(dx * dx + dy * dy + dz * dz)
-        return if (d <= STAND_MARGIN) d else null
-    }
-
     /** SkyBlock helmet id -> corpse type as the tab rows name it. Anything else is [OTHER], never dropped. */
     private val HELMETS =
         mapOf(
