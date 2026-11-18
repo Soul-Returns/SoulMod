@@ -60,6 +60,9 @@ public final class HxCommand implements TabExecutor {
         {"md keepers <on|off>", "Metal Detector: name or un-name the keeper stands (Hypixel names them only while you are near)"},
         {"md loot <lapis|golden|diamond|emerald|gem|gem2|powder>", "Metal Detector: one loot chat line (tool, gemstone, gemstone x2, Gemstone Powder)"},
         {"md give|take <lapis|golden|diamond|emerald|all>", "Metal Detector: add or remove nucleus tool items (all-tools warning)"},
+        {"corpse start <layout> [spot[:type]…]", "Glacite Mineshaft: sidebar <layout> (AMBE_1, FAIR_1, …), tab Frozen Corpses rows, corpse stands on the layout's spots (0-based; type lapis|umber|tungsten|vanguard; default spots 0 and 1, FAIR_1 its Vanguard), flight, Organ Donor ding (real formula and cadence)"},
+        {"corpse tp <spot> [distance]", "Glacite Mineshaft: fly to <distance> blocks (default 12) east of a spot, facing it"},
+        {"corpse loot [spot]|talisman <on|off>|status|stop", "Glacite Mineshaft: '<TYPE> CORPSE LOOT!' for the nearest unlooted corpse (or that spot), its tab row flips 0.8 s later / dings on or off (no Organ Donor; kept across starts) / list corpses / end"},
         {"coating on|decoy|off", "Divan's Powder Coating dust around you as captured (4 white + 4 gold dust packets every 4 ticks, sent to everyone in the world); decoy = the same burst also 4 blocks ahead, away from any player"},
         {"nucleus enter", "Crystal Nucleus: Crystal Hollows location, sidebar sublocation, tab list; fresh run"},
         {"nucleus run [speed] [normal|rare|claw]", "Crystal Nucleus: a whole run with the captured lines (legs x speed, default 0.15), placing, loot bundle"},
@@ -415,6 +418,13 @@ public final class HxCommand implements TabExecutor {
                     throw new Problem(e.getMessage());
                 }
             }
+            case "corpse" -> {
+                try {
+                    for (String line : plugin.corpses().command(target, rest)) sender.sendMessage("§a" + who + line);
+                } catch (IllegalArgumentException e) {
+                    throw new Problem(e.getMessage());
+                }
+            }
             case "ss" -> {
                 try {
                     for (String line : plugin.simonSays().command(target, rest, sender)) sender.sendMessage("§a" + who + line);
@@ -686,6 +696,7 @@ public final class HxCommand implements TabExecutor {
                 case "textmode" -> List.of("inline", "components");
                 case "mob" -> List.of("damage", "list", "clear");
                 case "md" -> List.of("start", "found", "stop", "keepers", "loot", "give", "take");
+                case "corpse" -> plugin.corpses().completions(1);
                 case "nucleus" -> List.of("enter", "run", "area", "kit", "found", "place", "loot", "bal", "spam", "tab", "state", "stop");
                 case "coating" -> List.of("on", "decoy", "off");
                 case "terminal" -> plugin.terminals().completions(1, new String[0]);

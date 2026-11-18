@@ -81,7 +81,7 @@ patterns (`ComboChat`) follow the module. The bonus amounts are no longer a tabl
 chat lines. The numbers are Hypixel game mechanics. The repository has no license file, so no permission is on record;
 the table is kept here with credit to the authors above by the maintainer's decision (2026-11-13).
 
-### SkyCrypt, NotEnoughUpdates REPO, SkyHelper-Networth — MIT
+### SkyCrypt, NotEnoughUpdates REPO, SkyHelper-Networth, meowdding-repo — MIT
 - SkyCrypt, https://github.com/SkyCryptWebsite/SkyCrypt, Copyright (c) 2019-present Lea Seibert and
   other contributors: the slayer XP table (`XpTables`) and the cross-checks of the skill and
   Catacombs curves. Its storage API indexing was consulted for account/profile-scoped previews;
@@ -93,6 +93,10 @@ the table is kept here with credit to the authors above by the maintainer's deci
 - SkyHelper-Networth, https://github.com/Altpapier/SkyHelper-Networth, Copyright (c) 2022 Altpapier:
   the same pet table as published there, and the Catacombs class XP deltas. Its inventory API
   field layout was consulted for storage previews; no parser code was copied.
+- meowdding-repo, https://github.com/meowdding/meowdding-repo, Copyright (c) 2026 meowdding: the
+  Frozen Corpse spawn spots per Glacite Mineshaft layout (`repo/mining/mineshaft_corpses/`
+  `mineshaft_corpses.json` and `crystal_positions.json` at commit c3042ec), rewritten keyed by the
+  sidebar layout id as `assets/soul/mineshaft/corpse_spots.json` for the corpse locator.
 - msdf-atlas-gen, https://github.com/Chlumsky/msdf-atlas-gen, Copyright (c) 2020 - 2026 Viktor
   Chlumsky: generated the font atlases; the text shader (`msdf_text.fsh`) uses its median-of-three
   reconstruction.

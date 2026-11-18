@@ -576,6 +576,16 @@ object ConfigRegistry {
                     synonyms = listOf("corpse", "glacite", "lapis", "umber", "tungsten", "vanguard", "mineshaft"),
                 )
             },
+            card("corpselocator") {
+                FeatureCard(
+                    "corpselocator", "Corpse locator", "Points you to Frozen Corpses from the Organ Donor ding", "mining", "mineshafts", "target",
+                    "Needs the Organ Donor Talisman, Ring or Artifact in your Accessory Bag.",
+                    master = toggle("Corpse locator", null, { cfg.mining.mineshaft.corpseLocator }, { v -> mineshaft { copy(corpseLocator = v) } }, d.mining.mineshaft.corpseLocator),
+                    simple = listOf(color("Waypoint color", null, { cfg.mining.mineshaft.corpseLocatorColor }, { v -> mineshaft { copy(corpseLocatorColor = v) } }, d.mining.mineshaft.corpseLocatorColor)),
+                    where = MINESHAFTS,
+                    synonyms = listOf("corpse", "organ donor", "talisman", "waypoint", "frozen corpse", "vanguard", "glacite", "mineshaft"),
+                )
+            },
             card("littlefoot") {
                 FeatureCard(
                     "littlefoot", "Littlefoot alert", "Tells your party when you spot Littlefoot", "mining", "mineshafts", "paw",

@@ -11,6 +11,7 @@ import com.soulreturns.features.qol.ImplosionHider;
 import com.soulreturns.features.mining.HollowsWeather;
 import com.soulreturns.features.mining.PowderCoatingParticles;
 import com.soulreturns.features.mining.metaldetector.MetalDetector;
+import com.soulreturns.features.mining.mineshaft.CorpseLocator;
 import com.soulreturns.features.islandchests.IslandChests;
 import com.soulreturns.features.storage.StorageOverlay;
 import com.soulreturns.platform.ServerTime;
@@ -62,6 +63,7 @@ public abstract class ClientPacketListenerMixin {
     @Inject(method = "handleSoundEvent", at = @At("HEAD"))
     private void soul$observeSound(ClientboundSoundPacket packet, CallbackInfo ci) {
         MetalDetector.onSound(packet);
+        CorpseLocator.onSound(packet);
         HollowsWeather.onSound(packet);
         F7Boss.onSound(packet);
         GoldorPhase.onSound(packet);

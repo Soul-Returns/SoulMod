@@ -101,6 +101,10 @@ object UsedSoftware {
             Kind.BUNDLED_DATA, aliases = listOf("SkyHelper"),
         ),
         Entry(
+            "meowdding-repo", "Frozen Corpse spawn spots per Glacite Mineshaft layout (corpse locator)", "https://github.com/meowdding/meowdding-repo", "MIT",
+            Kind.BUNDLED_DATA, covers = listOf("res:assets/soul/mineshaft"),
+        ),
+        Entry(
             "Hypixel API", "Bazaar, items, profiles and skill XP curves, read through the Soul backend", "https://api.hypixel.net", null,
             Kind.SERVICE,
         ),

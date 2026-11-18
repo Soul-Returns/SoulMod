@@ -47,4 +47,6 @@ tasks.processResources {
             "No unpacked Paper server in $paperServerDir; run tools/testserver/s build"
         }
     }
+    // CorpseSim places corpses on the mod's own spot list.
+    from("../../../src/main/resources/assets/soul/mineshaft/corpse_spots.json")
 }

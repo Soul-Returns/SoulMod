@@ -29,6 +29,7 @@ object MineshaftTick {
     fun register() {
         MineshaftVisitTracker.register()
         LittlefootAlert.register()
+        CorpseLocator.register()
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { tick() })
         DevState.register("mineshaft") {
             val s = MineshaftState
@@ -70,7 +71,7 @@ object MineshaftTick {
      */
     private fun anyConsumer(): Boolean {
         val m = cfg.mining.mineshaft
-        return m.logVisits || m.corpsesHud || m.littlefootPtme || m.lapisPtme || m.vanguardPtme
+        return m.logVisits || m.corpsesHud || m.littlefootPtme || m.lapisPtme || m.vanguardPtme || m.corpseLocator
     }
 
     private fun tick() {
@@ -81,6 +82,7 @@ object MineshaftTick {
         MineshaftCorpses.scan()
         val littlefoot = if (needsLittlefootScan()) MobSpotter.findVisible(LittlefootAlert.TARGET_NAME) else null
         MineshaftVisitTracker.tick(littlefoot)
+        CorpseLocator.tick()
         LittlefootAlert.tick(now, littlefoot)
         LapisCorpseAlert.tick(now)
         VanguardCorpseAlert.tick(now)

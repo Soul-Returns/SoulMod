@@ -1110,6 +1110,10 @@ data class MineshaftConfig(
     val corpsesHudTransform: HudTransform = HudTransform(hAnchor = HudAnchor.CENTER, vAnchor = HudAnchor.START, offsetY = 21.5f),
     /** Per-corpse-type colors for the overlay. */
     val corpsesHudColors: MineshaftCorpseColors = MineshaftCorpseColors(),
+    /** Waypoint on the Frozen Corpse the Organ Donor Talisman's ding points at (rule://mineshaft, Corpse locator). */
+    val corpseLocator: Boolean = false,
+    /** Corpse locator waypoint color; gold, apart from the Metal Detector's cyan. */
+    val corpseLocatorColor: ChromaColor = ChromaColor(0xFFFFAA00.toInt()),
     /** `/pc !ptme Found Littlefoot` on the first line-of-sight sighting each visit. */
     val littlefootPtme: Boolean = false,
     /** Also `/pc x: N, y: N, z: N` two seconds after the party warp, so waypoint mods pick it up. */

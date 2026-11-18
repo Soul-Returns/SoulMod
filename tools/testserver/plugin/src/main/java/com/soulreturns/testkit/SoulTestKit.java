@@ -51,6 +51,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
     private final StorageSim storage = new StorageSim(this);
     private final ForgeSim forge = new ForgeSim(this);
     private final DevBridgeSim devBridge = new DevBridgeSim(this);
+    private final CorpseSim corpses = new CorpseSim(this);
     private final WorldLoader worlds = new WorldLoader(this);
     private final MarkMarkers marks = new MarkMarkers(this);
 
@@ -105,6 +106,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         terminals.disable();
         exp.disable();
         forge.disable();
+        corpses.disable();
         mobs.clear();
         worlds.disable();
         marks.clear();
@@ -158,6 +160,10 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
 
     public MarkMarkers marks() {
         return marks;
+    }
+
+    public CorpseSim corpses() {
+        return corpses;
     }
 
     public DevBridgeSim devBridge() {
