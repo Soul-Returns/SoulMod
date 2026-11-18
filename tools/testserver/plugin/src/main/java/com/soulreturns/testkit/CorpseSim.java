@@ -15,6 +15,8 @@ import java.util.Map;
 import java.util.UUID;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.MultipleFacing;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.entity.ArmorStand;
@@ -67,6 +69,7 @@ public final class CorpseSim {
         long tick;
         long nextDing;
         final List<Location> wall = new ArrayList<>();
+        final List<Location> cage = new ArrayList<>();
     }
 
     private final SoulTestKit plugin;
@@ -80,7 +83,7 @@ public final class CorpseSim {
     }
 
     public List<String> completions(int pos) {
-        return pos == 1 ? List.of("start", "tp", "wall", "loot", "talisman", "status", "stop") : List.of();
+        return pos == 1 ? List.of("start", "tp", "wall", "cage", "place", "loot", "talisman", "status", "stop") : List.of();
     }
 
     public List<String> command(Player player, String[] rest) {
@@ -99,6 +102,14 @@ public final class CorpseSim {
                 if (rest.length < 2) throw new IllegalArgumentException("corpse wall <spot> [on|off]");
                 yield List.of(wall(player, Integer.parseInt(rest[1]), rest.length < 3 || rest[2].equalsIgnoreCase("on")));
             }
+            case "cage" -> {
+                if (rest.length < 2) throw new IllegalArgumentException("corpse cage <spot> [on|off]");
+                yield List.of(cage(player, Integer.parseInt(rest[1]), rest.length < 3 || rest[2].equalsIgnoreCase("on")));
+            }
+            case "place" -> {
+                if (rest.length < 5) throw new IllegalArgumentException("corpse place <spot> <fx> <fy> <fz>");
+                yield List.of(place(player, Integer.parseInt(rest[1]), Double.parseDouble(rest[2]), Double.parseDouble(rest[3]), Double.parseDouble(rest[4])));
+            }
             case "loot" -> List.of(loot(player, rest.length > 1 ? Integer.parseInt(rest[1]) : -1));
             case "status" -> status(player);
             case "talisman" -> {
@@ -112,7 +123,7 @@ public final class CorpseSim {
     }
 
     private static String usage() {
-        return "corpse <start <layout> [spot[:type]…]|tp <spot> [distance] [side]|wall <spot> [on|off]|loot [spot]|talisman <on|off>|status|stop>";
+        return "corpse <start <layout> [spot[:type]…]|tp <spot> [distance] [side]|wall <spot> [on|off]|cage <spot> [on|off]|place <spot> <fx> <fy> <fz>|loot [spot]|talisman <on|off>|status|stop>";
     }
 
     private List<int[]> spots(String layout) {
@@ -230,6 +241,51 @@ public final class CorpseSim {
         return "wall at x " + (b[0] + WALL_OFFSET) + " east of spot " + index;
     }
 
+    /**
+     * Connected iron bars around a spot (the 8 blocks around it, 3 high from the spot's y), like the
+     * caged corpses on Hypixel: seen through the gaps, while every bar's collision shape spans its face.
+     */
+    private String cage(Player player, int index, boolean on) {
+        Session s = session(player);
+        for (Location l : s.cage) l.getBlock().setType(Material.AIR);
+        s.cage.clear();
+        if (!on) return "cage removed";
+        if (s.spots == null || index < 0 || index >= s.spots.size()) throw new IllegalArgumentException("no spot " + index);
+        int[] b = s.spots.get(index);
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                if (dx == 0 && dz == 0) continue;
+                for (int dy = 0; dy <= 2; dy++) {
+                    Location l = new Location(player.getWorld(), b[0] + dx, b[1] + dy, b[2] + dz);
+                    MultipleFacing bars = (MultipleFacing) Material.IRON_BARS.createBlockData();
+                    // Connected to the ring neighbours, as Hypixel's cages are.
+                    if (inRing(dx, dz - 1)) bars.setFace(BlockFace.NORTH, true);
+                    if (inRing(dx, dz + 1)) bars.setFace(BlockFace.SOUTH, true);
+                    if (inRing(dx - 1, dz)) bars.setFace(BlockFace.WEST, true);
+                    if (inRing(dx + 1, dz)) bars.setFace(BlockFace.EAST, true);
+                    l.getBlock().setBlockData(bars, false);
+                    s.cage.add(l);
+                }
+            }
+        }
+        return "iron bar cage around spot " + index;
+    }
+
+    private static boolean inRing(int dx, int dz) {
+        return Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && !(dx == 0 && dz == 0);
+    }
+
+    /** Moves a spot's stand to block + (fx, fy, fz); negative fractions put it a hair outside the block (boundary cases). */
+    private String place(Player player, int index, double fx, double fy, double fz) {
+        Session s = session(player);
+        Corpse c = s.corpses.stream().filter(x -> x.index == index && !x.looted).findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("no unlooted corpse on spot " + index));
+        int[] b = s.spots.get(index);
+        c.stand.set(b[0] + fx, b[1] + fy, b[2] + fz);
+        if (c.entity != null) c.entity.teleport(c.stand);
+        return String.format(Locale.ROOT, "stand of spot %d at %.3f %.3f %.3f", index, c.stand.getX(), c.stand.getY(), c.stand.getZ());
+    }
+
     /** The loot line for the nearest unlooted corpse (or spot {@code index}); its tab row flips a moment later. */
     private String loot(Player player, int index) {
         Session s = session(player);
@@ -265,6 +321,7 @@ public final class CorpseSim {
         if (s.task != null) s.task.cancel();
         for (Corpse c : s.corpses) if (c.entity != null) c.entity.remove();
         for (Location l : s.wall) l.getBlock().setType(Material.AIR);
+        for (Location l : s.cage) l.getBlock().setType(Material.AIR);
         return true;
     }
 
@@ -273,6 +330,7 @@ public final class CorpseSim {
             if (s.task != null) s.task.cancel();
             for (Corpse c : s.corpses) if (c.entity != null) c.entity.remove();
             for (Location l : s.wall) l.getBlock().setType(Material.AIR);
+            for (Location l : s.cage) l.getBlock().setType(Material.AIR);
         }
         sessions.clear();
     }

@@ -146,17 +146,18 @@ object CorpseLocator {
     }
 
     /**
-     * Types a located spot from the stand standing in it, only once the player can see that stand.
-     * The entity never places, confirms or counts anything; the spot was located from the ding.
+     * Types a located spot from its stand (the helmeted stand nearest the spot block, within
+     * [CorpseLook.STAND_MARGIN]), only once the player can see that stand. The entity never places,
+     * confirms or counts anything; the spot was located from the ding.
      */
     private fun identify(s: CorpseLocatorSolver) {
+        val m = CorpseLook.STAND_MARGIN
         for (spot in s.shown()) {
             if (spot in types) continue
-            val cell = AABB(spot.x.toDouble(), spot.y.toDouble(), spot.z.toDouble(), spot.x + 1.0, spot.y + 2.0, spot.z + 1.0)
+            val near = AABB(spot.x - m, spot.y - m, spot.z - m, spot.x + 1 + m, spot.y + 1 + m, spot.z + 1 + m)
             val stand =
-                MobSpotter.findVisibleIn(cell) {
-                    it is ArmorStand && !it.getItemBySlot(EquipmentSlot.HEAD).isEmpty &&
-                        it.blockX == spot.x && it.blockZ == spot.z && it.blockY - spot.y in 0..1
+                MobSpotter.findVisibleIn(near) {
+                    if (it is ArmorStand && !it.getItemBySlot(EquipmentSlot.HEAD).isEmpty) CorpseLook.standOffset(spot, it.x, it.y, it.z) else null
                 } ?: continue
             val type = CorpseLook.typeOf(SkyblockItemUtils.getSkyblockId((stand as ArmorStand).getItemBySlot(EquipmentSlot.HEAD)))
             types[spot] = type

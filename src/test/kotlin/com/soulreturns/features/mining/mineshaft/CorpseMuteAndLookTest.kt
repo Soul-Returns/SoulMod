@@ -1,11 +1,13 @@
 package com.soulreturns.features.mining.mineshaft
 
 import com.soulreturns.config.MineshaftConfig
+import com.soulreturns.util.MobSpotter
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CorpseMuteAndLookTest {
@@ -136,5 +138,38 @@ class CorpseMuteAndLookTest {
             assertEquals(CorpseDraw("$type Corpse", color, line = true, dimmed = false), CorpseLook.decide(type, emptySet(), lineOn.copy(corpseLocatorDimKeyless = false)), type)
         }
         assertTrue(CorpseLook.decide("Umber", setOf("TUNGSTEN_KEY"), m).dimmed, "another type's key does not count")
+    }
+
+    @Test
+    fun aStandOnOrAHairBesideTheBlockBoundaryStillBelongsToItsSpot() {
+        val spot = CorpseSpot(-154, 12, -174)
+        assertEquals(0.0, CorpseLook.standOffset(spot, -153.5, 12.3, -173.5), "inside")
+        assertEquals(0.0, CorpseLook.standOffset(spot, -154.0, 12.3, -174.0), "on the corner")
+        // The owner's JADE_1 stand (-154.0, 12.3, -174.0 rounded): floor of -154.01 is -155.
+        assertEquals(0.01 * sqrt(2.0), CorpseLook.standOffset(spot, -154.01, 12.3, -174.01)!!, 1e-9)
+        assertEquals(0.4, CorpseLook.standOffset(spot, -153.0 + 0.4, 12.5, -173.5)!!, 1e-9)
+        assertEquals(0.5, CorpseLook.standOffset(spot, -153.5, 13.5, -173.5)!!, 1e-9, "standing half a block up")
+        assertNull(CorpseLook.standOffset(spot, -152.4, 12.5, -173.5), "0.6 beside: another spot's stand")
+        assertNull(CorpseLook.standOffset(spot, -154.4, 12.5, -174.4), "0.57 off diagonally")
+    }
+
+    @Test
+    fun bodyPointsCoverHeadChestFeetAndSidesInsideTheBox() {
+        // An armor stand at (-154.0, 12.3, -174.0): 0.5 wide, 1.975 tall.
+        val pts = MobSpotter.bodyPoints(-154.25, 12.3, -174.25, -153.75, 14.275, -173.75)
+        assertEquals(7, pts.size)
+        for (p in pts) {
+            assertTrue(p[0] > -154.25 && p[0] < -153.75 && p[2] > -174.25 && p[2] < -173.75 && p[1] > 12.3 && p[1] < 14.275, p.toList().toString())
+        }
+        val ys = pts.map { it[1] }.distinct().sorted()
+        assertEquals(3, ys.size, "feet, chest, head")
+        assertEquals(12.3 + 1.975 * 0.9, ys.last(), 1e-9)
+        assertEquals(12.3 + 1.975 * 0.1, ys.first(), 1e-9)
+        val chest = pts.filter { it[1] == ys[1] }
+        assertEquals(5, chest.size, "center and four sides")
+        assertEquals(-154.2, chest.minOf { it[0] }, 1e-9)
+        assertEquals(-153.8, chest.maxOf { it[0] }, 1e-9)
+        assertEquals(-174.2, chest.minOf { it[2] }, 1e-9)
+        assertEquals(-173.8, chest.maxOf { it[2] }, 1e-9)
     }
 }
