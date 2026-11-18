@@ -1112,8 +1112,8 @@ data class MineshaftConfig(
     val corpsesHudColors: MineshaftCorpseColors = MineshaftCorpseColors(),
     /** Waypoint on the Frozen Corpse the Organ Donor Talisman's ding points at (rule://mineshaft, Corpse locator). */
     val corpseLocator: Boolean = false,
-    /** Corpse locator waypoint color; gold, apart from the Metal Detector's cyan. */
-    val corpseLocatorColor: ChromaColor = ChromaColor(0xFFFFAA00.toInt()),
+    /** Corpse locator waypoint color until the type is known; green, apart from every corpse type's color. */
+    val corpseLocatorColor: ChromaColor = ChromaColor(0xFF55FF55.toInt()),
     /** Cancel the Organ Donor ding when it only points at corpses the locator already shows. */
     val corpseLocatorMute: Boolean = true,
     /** Dim a located Umber/Tungsten/Vanguard corpse (no line) while its key is not in the inventory. */
