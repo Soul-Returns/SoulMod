@@ -1118,6 +1118,8 @@ data class MineshaftConfig(
     val corpseLocatorMute: Boolean = true,
     /** Dim a located Umber/Tungsten/Vanguard corpse (no line) while its key is not in the inventory. */
     val corpseLocatorDimKeyless: Boolean = true,
+    /** Share located corpses with party members in the same mineshaft over the Soul backend (rule://mineshaft). */
+    val corpseLocatorShare: Boolean = true,
     /** Line from the crosshair to a located corpse, per type once it is known. */
     val corpseLineLapis: Boolean = true,
     val corpseLineUmber: Boolean = false,

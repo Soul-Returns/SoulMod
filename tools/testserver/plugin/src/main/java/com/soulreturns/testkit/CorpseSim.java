@@ -27,9 +27,11 @@ import org.bukkit.scheduler.BukkitTask;
 
 /**
  * Glacite Mineshaft Frozen Corpses and the Organ Donor Talisman's ding, as measured on Hypixel
- * (recording 2026-11-18_02-55-36_mineshaft-corpses, rule://mineshaft "Corpse locator"): a BLOCKS-source
+ * (recordings 2026-11-18_02-55-36_mineshaft-corpses and -2, rule://mineshaft "Corpse locator"): a BLOCKS-source
  * {@code block.note_block.harp} at the player's position with pitch {@code floor(63 * (2 - (d/20)^2)) / 63},
- * d = feet to the nearest unlooted corpse stand, every ~400 ms + 30 ms per block, silent beyond 20.
+ * d = feet to the talisman's target, every ~400 ms + 30 ms per block, silent beyond 20. The target is
+ * sticky: kept until it is looted or beyond 20, then the nearest unlooted corpse within 20 (AMET_1).
+ * A looted corpse's stand stays in the world, as on Hypixel.
  * Spots come from the mod's own {@code corpse_spots.json} (copied into this jar at build time).
  * Stands wear their SkyBlock helmet id (Lapis {@code LAPIS_ARMOR_HELMET}, Umber {@code ARMOR_OF_YOG_HELMET},
  * Tungsten {@code MINERAL_HELMET}, Vanguard {@code VANGUARD_HELMET}; {@code other} an id no corpse uses).
@@ -68,6 +70,7 @@ public final class CorpseSim {
         BukkitTask task;
         long tick;
         long nextDing;
+        Corpse target;
         final List<Location> wall = new ArrayList<>();
         final List<Location> cage = new ArrayList<>();
     }
@@ -83,7 +86,7 @@ public final class CorpseSim {
     }
 
     public List<String> completions(int pos) {
-        return pos == 1 ? List.of("start", "tp", "wall", "bury", "cage", "place", "loot", "talisman", "status", "stop") : List.of();
+        return pos == 1 ? List.of("start", "tp", "wall", "bury", "cage", "place", "spawn", "loot", "talisman", "status", "stop") : List.of();
     }
 
     public List<String> command(Player player, String[] rest) {
@@ -114,6 +117,10 @@ public final class CorpseSim {
                 if (rest.length < 5) throw new IllegalArgumentException("corpse place <spot> <fx> <fy> <fz>");
                 yield List.of(place(player, Integer.parseInt(rest[1]), Double.parseDouble(rest[2]), Double.parseDouble(rest[3]), Double.parseDouble(rest[4])));
             }
+            case "spawn" -> {
+                if (rest.length < 5) throw new IllegalArgumentException("corpse spawn <type> <dx> <dy> <dz>");
+                yield List.of(spawn(player, rest[1].toLowerCase(Locale.ROOT), Double.parseDouble(rest[2]), Double.parseDouble(rest[3]), Double.parseDouble(rest[4])));
+            }
             case "loot" -> List.of(loot(player, rest.length > 1 ? Integer.parseInt(rest[1]) : -1));
             case "status" -> status(player);
             case "talisman" -> {
@@ -127,7 +134,8 @@ public final class CorpseSim {
     }
 
     private static String usage() {
-        return "corpse <start <layout> [spot[:type]…]|tp <spot> [distance] [side]|wall <spot> [on|off]|cage <spot> [on|off]|place <spot> <fx> <fy> <fz>|loot [spot]|talisman <on|off>|status|stop>";
+        return "corpse <start <layout> [spot[:type]…]|tp <spot> [distance] [side] [up]|wall <spot> [on|off]|bury <spot> [on|off]|cage <spot> [on|off]"
+            + "|place <spot> <fx> <fy> <fz>|spawn <type> <dx> <dy> <dz>|loot [spot]|talisman <on|off>|status|stop>";
     }
 
     private List<int[]> spots(String layout) {
@@ -175,15 +183,7 @@ public final class CorpseSim {
                 if (!List.of(TYPES).contains(type)) throw new IllegalArgumentException("type " + type + " (" + String.join(", ", TYPES) + ")");
                 int[] b = s.spots.get(i);
                 // Inside the spot block, as the real stands are (e.g. -171.81, 16.44, -185.38 on -172, 16, -186).
-                Location at = new Location(player.getWorld(), b[0] + 0.19, b[1] + 0.44, b[2] + 0.63);
-                Corpse c = new Corpse(i, type, at);
-                c.entity = player.getWorld().spawn(at, ArmorStand.class, a -> {
-                    a.setGravity(false);
-                    a.setPersistent(false);
-                    a.setArms(true);
-                    a.setItem(EquipmentSlot.HEAD, helmet(type));
-                });
-                s.corpses.add(c);
+                s.corpses.add(corpse(player, i, type, new Location(player.getWorld(), b[0] + 0.19, b[1] + 0.44, b[2] + 0.63)));
             }
         }
         plugin.clearSidebar(player);
@@ -209,6 +209,30 @@ public final class CorpseSim {
         def.addProperty("material", HEAD.get(type).name());
         def.addProperty("name", "§f" + HELMET_ID.get(type));
         return Items.build(HELMET_ID.get(type), def, 1);
+    }
+
+    private Corpse corpse(Player player, int index, String type, Location at) {
+        Corpse c = new Corpse(index, type, at);
+        c.entity = player.getWorld().spawn(at, ArmorStand.class, a -> {
+            a.setGravity(false);
+            a.setPersistent(false);
+            a.setArms(true);
+            a.setItem(EquipmentSlot.HEAD, helmet(type));
+        });
+        return c;
+    }
+
+    /** A corpse at the player's position + (dx, dy, dz), on no listed spot (a dataset gap, or a layout without data); spot index -1. */
+    private String spawn(Player player, String type, double dx, double dy, double dz) {
+        Session s = session(player);
+        if (!List.of(TYPES).contains(type)) throw new IllegalArgumentException("type " + type + " (" + String.join(", ", TYPES) + ")");
+        if (s.corpses.size() >= 4) throw new IllegalArgumentException("at most 4 corpses in a mineshaft");
+        Location at = player.getLocation().clone().add(dx, dy, dz);
+        at.setYaw(0f);
+        at.setPitch(0f);
+        s.corpses.add(corpse(player, -1, type, at));
+        showTab(player, s);
+        return String.format(Locale.ROOT, "%s corpse at %.2f %.2f %.2f (no spot)", type, at.getX(), at.getY(), at.getZ());
     }
 
     /** Puts the player {@code distance} blocks east of a spot ({@code side} south, {@code up} above it, default 1), facing the spot. */
@@ -320,7 +344,7 @@ public final class CorpseSim {
             .min((a, b) -> Double.compare(a.stand.distanceSquared(p), b.stand.distanceSquared(p)))
             .orElseThrow(() -> new IllegalArgumentException("no unlooted corpse" + (index < 0 ? "" : " on spot " + index)));
         c.looted = true;
-        if (c.entity != null) c.entity.remove();
+        if (s.target == c) s.target = null;
         String upper = c.type.toUpperCase(Locale.ROOT);
         Nms.sendSystemChat(player, Txt.of("§r  §r" + COLOR.get(c.type) + "§l" + upper + " §r§b§lCORPSE LOOT! "), false);
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
@@ -375,8 +399,11 @@ public final class CorpseSim {
         if (!talisman) return;
         if (s.tick < s.nextDing) return;
         Location at = player.getLocation();
-        double d = s.corpses.stream().filter(c -> !c.looted && c.stand.getWorld() == at.getWorld())
-            .mapToDouble(c -> c.stand.distance(at)).min().orElse(Double.MAX_VALUE);
+        if (s.target == null || s.target.looted || s.target.stand.getWorld() != at.getWorld() || s.target.stand.distance(at) > 20) {
+            s.target = s.corpses.stream().filter(c -> !c.looted && c.stand.getWorld() == at.getWorld() && c.stand.distance(at) <= 20)
+                .min((a, b) -> Double.compare(a.stand.distance(at), b.stand.distance(at))).orElse(null);
+        }
+        double d = s.target == null ? Double.MAX_VALUE : s.target.stand.distance(at);
         if (d > 20) {
             s.nextDing = s.tick + 1;
             return;

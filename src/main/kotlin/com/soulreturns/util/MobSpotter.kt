@@ -17,7 +17,7 @@ import net.minecraft.world.phys.Vec3
 /**
  * Shared helpers for locating named SkyBlock mobs on the client. **All public methods enforce
  * line-of-sight** — [findVisible] with vanilla `LivingEntity.hasLineOfSight` (one eye-to-eye ray
- * blocked by collision shapes), [findVisibleIn] with [seesBody] (a clear ray to any of several body
+ * blocked by collision shapes), [findAllVisibleIn] with [seesBody] (a clear ray to any of several body
  * points; bars, panes, fences and glass do not block) — that is the Hypixel ToS guard against
  * wallhack-style behaviour. There is intentionally **no** "find without LOS" variant, and adding
  * one would make every caller non-compliant at once, so do not.
@@ -73,20 +73,22 @@ object MobSpotter {
     }
 
     /**
-     * The visible entity whose bounding box meets [box] with the lowest [rank] (null = not a match),
-     * or null. For things that are not named mobs (e.g. corpse armor stands, by their helmet).
-     * Line of sight selects among the matches, as in [findVisible], but means what a player means
-     * ([seesBody]): some point of the body in clear view, not one ray to the eyes.
+     * The visible entities whose bounding box meets [box] with a non-null [rank] (lowest first), at
+     * most [limit] sight tests (on the best-ranked matches, so the work stays bounded). For things that
+     * are not named mobs (e.g. corpse armor stands, by their helmet). Line of sight selects among the
+     * matches, as in [findVisible], but means what a player means ([seesBody]): some point of the body
+     * in clear view, not one ray to the eyes.
      */
-    fun findVisibleIn(box: AABB, rank: (Entity) -> Double?): Entity? {
+    fun findAllVisibleIn(box: AABB, limit: Int, rank: (Entity) -> Double?): List<Entity> {
         val mc = Minecraft.getInstance()
-        val self = mc.player ?: return null
-        val level = mc.level ?: return null
+        val self = mc.player ?: return emptyList()
+        val level = mc.level ?: return emptyList()
         val matches = ArrayList<Pair<Entity, Double>>()
         for (entity in level.getEntities(self, box)) rank(entity)?.let { matches += entity to it }
         matches.sortBy { it.second }
-        for ((entity, _) in matches) if (seesBody(level, self, entity)) return entity
-        return null
+        val out = ArrayList<Entity>()
+        for ((entity, _) in matches.take(limit)) if (seesBody(level, self, entity)) out += entity
+        return out
     }
 
     /** Vanilla's sight range for [LocalPlayer.hasLineOfSight]. */

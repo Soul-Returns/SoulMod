@@ -24,12 +24,12 @@ import java.util.Locale
 
 /**
  * Corpse locator (rule://mineshaft): decodes the Organ Donor Talisman's ding against the layout's
- * fixed corpse spots ([CorpseLocatorSolver]) and draws a waypoint on each confirmed spot.
+ * corpse spots ([CorpseLocatorSolver]), locates any corpse stand the player can see, names corpses by
+ * elimination against the tab ([CorpseElimination]) and shares located corpses with the party
+ * ([CorpseShare]); draws a waypoint on each located corpse.
  *
- * Locating uses only what the game tells the player: the harp, the `<TYPE> CORPSE LOOT!` line, the
- * tab's corpse rows and the sidebar layout id. Corpse armor stands are on the client through walls, so
- * an entity is read only to color an already located spot, and only once the player can see it
- * ([MobSpotter], ToS, rule://mineshaft).
+ * Corpse armor stands are on the client through walls, so an entity is read only once the player
+ * can see it ([MobSpotter], ToS, rule://mineshaft).
  */
 object CorpseLocator {
     private const val LINE_WIDTH = 3f
@@ -38,8 +38,15 @@ object CorpseLocator {
     private const val HISTORY_TICKS = 30
     private const val PENDING_MAX = 40
 
-    /** Cadence of the line-of-sight type check and the key scan. */
+    /** Cadence of the sight scan, the elimination and the key scan. */
     private const val SCAN_TICKS = 10
+
+    /** Sight scan: corpse stands within this many blocks of the player, at most [SCAN_LIMIT] sight tests per scan. */
+    private const val SCAN_RADIUS = 32.0
+    private const val SCAN_LIMIT = 8
+
+    /** Added to a non-corpse helmet's rank: beyond any squared distance in the scan box. */
+    private const val OTHER_RANK = 1.0e6
     private const val DIM_ALPHA = 0.3f
     private val LOOT = Regex("""^\s*(\w+) CORPSE LOOT!\s*$""")
 
@@ -58,15 +65,26 @@ object CorpseLocator {
     var layout: String? = null
         private set
 
-    /** Null while the layout is unknown or has no spot data. */
+    /** Null while the layout is unknown; a layout without spot data gets one with no spots (sight and party only). */
     var solver: CorpseLocatorSolver? = null
         private set
 
-    /** Corpse type per spot, from the fixed layout or a stand seen with line of sight; sticky for the stay. */
-    private val types = HashMap<CorpseSpot, String>()
+    private var hasData = false
 
-    /** Spots whose stand was seen (type and position from it); sticky for the stay. */
+    /** Types by source and who shared what; per stay. */
+    private val book = CorpseBook()
+
+    /** Corpses whose stand was seen (position and type from it); sticky for the stay. */
     private val seen = HashSet<CorpseSpot>()
+
+    /** Corpses the player located (a ding fit only it, or its stand was seen): what [ownCorpses] shares. */
+    private val own = LinkedHashSet<CorpseSpot>()
+
+    /** Stand entity ids already turned into a located (or looted) corpse this stay: no sight test again. */
+    private val resolvedStands = HashSet<Int>()
+
+    /** Types named by this stay's loot lines. */
+    private val lootTypes = ArrayList<String>()
 
     /** SkyBlock ids in the player's inventory, as of the last scan. */
     private var inventory: Set<String> = emptySet()
@@ -86,11 +104,14 @@ object CorpseLocator {
         ClientPlayConnectionEvents.JOIN.register { _, _, _ -> reset() }
         LevelRenderEvents.BEFORE_GIZMOS.register { render() }
         DevState.register("corpse_locator") { state() }
+        CorpseShare.register()
     }
 
     fun enabled(): Boolean = cfg.mining.mineshaft.corpseLocator
 
     private fun active(): Boolean = enabled() && SkyblockLocation.isInArea(MineshaftState.AREA)
+
+    fun typeOf(spot: CorpseSpot): String? = book.typeOf(spot)
 
     /**
      * Called from `ClientPacketListenerMixin` on both passes; work happens on the render-thread pass
@@ -117,6 +138,7 @@ object CorpseLocator {
             return false
         }
         val fit = s.ding(ix, iy, iz, n)
+        if (fit != null && fit.fitting.size == 1) own += fit.fitting[0]
         val mute = !tabAllLooted() && CorpseLocatorSolver.mutes(fit, active(), cfg.mining.mineshaft.corpseLocatorMute)
         if (mute) muted++
         return mute
@@ -127,8 +149,9 @@ object CorpseLocator {
         if (!active()) return
         val type = LOOT.matchEntire(MessageDetector.stripColorCodes(raw))?.groupValues?.get(1) ?: return
         val p = Minecraft.getInstance().player ?: return
-        val spot = s.loot(p.x, p.y, p.z)
-        DebugLogger.logFeatureEvent("Corpse locator: $type loot -> ${spot ?: "no spot within ${CorpseLocatorSolver.LOOT_RADIUS}"}")
+        lootTypes += type
+        val spot = s.loot(p.x, p.y, p.z, type)
+        DebugLogger.logFeatureEvent("Corpse locator: $type loot -> ${spot ?: "no corpse within ${CorpseLocatorSolver.LOOT_RADIUS}, kept for its stand"}")
     }
 
     /** From [MineshaftTick], inside the mineshaft area, after the visit tracker read the layout. */
@@ -140,55 +163,87 @@ object CorpseLocator {
         if (layout == null) MineshaftState.serverInstance?.let { start(it) }
         val s = solver ?: return
         crossCheckTab(s, p.x, p.y, p.z)
-        if (++ticks % SCAN_TICKS != 0) return
-        identify(s)
-        inventory = buildSet {
-            val inv = p.inventory
-            for (i in 0 until inv.containerSize) SkyblockItemUtils.getSkyblockId(inv.getItem(i))?.let { add(it) }
+        if (++ticks % SCAN_TICKS == 0) {
+            scan(s, p.x, p.y, p.z)
+            eliminate(s)
+            inventory = buildSet {
+                val inv = p.inventory
+                for (i in 0 until inv.containerSize) SkyblockItemUtils.getSkyblockId(inv.getItem(i))?.let { add(it) }
+            }
         }
+        CorpseShare.tick(own.map { Triple(it, typeOf(it), s.ownEstimate(it) != null) })
     }
 
     /**
-     * Types and pins a located spot from its stand: a helmeted stand within [CorpseLocatorSolver.STAND_MARGIN]
-     * of the spot's box, nearest the solver's estimate, only once the player can see it. Before that
-     * the entity is never read; the spot was located from the dings.
+     * Locates every corpse stand the player can see within [SCAN_RADIUS]: helmeted armor stands,
+     * best-ranked first, sight-tested ([MobSpotter.findAllVisibleIn]); the helmet is read only after
+     * that. A corpse helmet locates the corpse at once (its spot, or an extra outside every box); a
+     * helmet no corpse wears only types a corpse already located there and not yet seen (`other`),
+     * since mineshafts also hold decor stands (`WILL_O_WISP`, `GLACITE_HELMET` in the recordings).
      */
-    private fun identify(s: CorpseLocatorSolver) {
-        val m = CorpseLocatorSolver.SPREAD + CorpseLocatorSolver.STAND_MARGIN
-        for (spot in s.shown()) {
-            if (spot in seen) continue
-            val near = AABB(spot.x - m, spot.y - m, spot.z - m, spot.x + m, spot.y + m, spot.z + m)
-            val c = s.center(spot)
-            val stand =
-                MobSpotter.findVisibleIn(near) {
-                    if (it is ArmorStand && !it.getItemBySlot(EquipmentSlot.HEAD).isEmpty && CorpseLocatorSolver.standOffset(spot, it.x, it.y, it.z) != null) {
-                        it.distanceToSqr(c[0], c[1], c[2])
-                    } else {
-                        null
-                    }
-                } ?: continue
-            val type = CorpseLook.typeOf(SkyblockItemUtils.getSkyblockId((stand as ArmorStand).getItemBySlot(EquipmentSlot.HEAD)))
-            types[spot] = type
+    private fun scan(s: CorpseLocatorSolver, px: Double, py: Double, pz: Double) {
+        val r = SCAN_RADIUS
+        val box = AABB(px - r, py - r, pz - r, px + r, py + r, pz + r)
+        // Corpse helmets rank ahead of decor (Will-o'-wisp, Glacite helmets) so those never take the sight-test budget.
+        val visible =
+            MobSpotter.findAllVisibleIn(box, SCAN_LIMIT) {
+                if (it !is ArmorStand || it.id in resolvedStands) return@findAllVisibleIn null
+                val head = it.getItemBySlot(EquipmentSlot.HEAD)
+                if (head.isEmpty) return@findAllVisibleIn null
+                val d = it.distanceToSqr(px, py, pz)
+                if (CorpseLook.typeOf(SkyblockItemUtils.getSkyblockId(head)) == CorpseLook.OTHER) d + OTHER_RANK else d
+            }
+        val typed = visible.map { it to CorpseLook.typeOf(SkyblockItemUtils.getSkyblockId((it as ArmorStand).getItemBySlot(EquipmentSlot.HEAD))) }
+        for ((stand, type) in typed.sortedBy { it.second == CorpseLook.OTHER }) {
+            val known = s.match(stand.x, stand.y, stand.z)
+            if (type == CorpseLook.OTHER && (known == null || known !in s.confirmed || known in seen)) continue
+            val spot = s.locate(stand.x, stand.y, stand.z, type)
+            resolvedStands += stand.id
+            if (spot == null || (spot in seen && book.seenTypes[spot] != CorpseLook.OTHER)) continue
             seen += spot
-            s.pin(spot, stand.x, stand.y, stand.z)
-            DebugLogger.logFeatureEvent("Corpse locator: saw $type corpse at ${"%.2f %.2f %.2f".format(Locale.ROOT, stand.x, stand.y, stand.z)} for $spot")
+            own += spot
+            book.see(spot, type)?.let { DebugLogger.logFeatureEvent("Corpse locator: $spot seen as $type, was $it") }
+            DebugLogger.logFeatureEvent("Corpse locator: saw $type corpse at ${"%.2f %.2f %.2f".format(Locale.ROOT, stand.x, stand.y, stand.z)} -> $spot")
+        }
+    }
+
+    /** Names located corpses without a type when the tab leaves only one type for them. */
+    private fun eliminate(s: CorpseLocatorSolver) {
+        val shown = s.shown()
+        val unknown = shown.filter { typeOf(it) == null }
+        if (unknown.isEmpty()) return
+        val rows = MineshaftCorpses.byType.mapValues { (_, c) -> c.total to c.looted }
+        val type = CorpseElimination.typeOfRest(rows, lootTypes, shown.mapNotNull { typeOf(it) }, unknown.size) ?: return
+        for (spot in unknown) book.inferredTypes[spot] = type
+        DebugLogger.logFeatureEvent("Corpse locator: $unknown are $type by elimination")
+    }
+
+    /** A party member's located corpses ([CorpseBook.receive]). Client thread. */
+    fun receive(from: String, corpses: List<SharedCorpse>) {
+        val s = solver ?: return
+        book.receive(s, from, corpses)
+    }
+
+    /** What [CorpseShare] sends: the corpses the player located, looted ones included (looting is per player). */
+    fun ownCorpses(): List<SharedCorpse> {
+        val s = solver ?: return emptyList()
+        return own.filter { it !in s.spots || data.fixed[layout] == null }.map { spot ->
+            SharedCorpse(spot.takeIf { it in s.spots }, s.ownEstimate(spot) ?: s.center(spot), typeOf(spot))
         }
     }
 
     private fun start(id: String) {
         layout = id
         val spots = data.spots(id)
-        if (spots == null) {
-            pending.clear()
-            DebugLogger.logFeatureEvent("Corpse locator: no spot data for layout $id")
-            return
-        }
+        hasData = spots != null
+        if (spots == null) DebugLogger.logFeatureEvent("Corpse locator: no spot data for layout $id, sight and party only")
         val fixedType = data.fixed[id]
-        if (fixedType != null) for (spot in spots) types[spot] = fixedType
-        val s = CorpseLocatorSolver(spots, fixed = fixedType != null)
-        for (d in pending) s.ding(d[0], d[1], d[2], d[3])
+        val s = CorpseLocatorSolver(spots ?: emptyList(), fixed = fixedType != null)
+        if (fixedType != null) for (spot in s.spots) book.seenTypes[spot] = fixedType
+        for (d in pending) s.ding(d[0], d[1], d[2], d[3])?.let { if (it.fitting.size == 1) own += it.fitting[0] }
         pending.clear()
         solver = s
+        CorpseShare.onStay(id)
     }
 
     /**
@@ -221,8 +276,12 @@ object CorpseLocator {
     private fun reset() {
         layout = null
         solver = null
-        types.clear()
+        hasData = false
+        book.clear()
         seen.clear()
+        own.clear()
+        resolvedStands.clear()
+        lootTypes.clear()
         inventory = emptySet()
         pending.clear()
         history.clear()
@@ -231,6 +290,7 @@ object CorpseLocator {
         ticks = 0
         tabBaseline = -1
         tabHandled = -1
+        CorpseShare.reset()
     }
 
     private fun render() {
@@ -243,7 +303,7 @@ object CorpseLocator {
         val m = cfg.mining.mineshaft
         mc.levelRenderer.collectPerFrameRenderThreadGizmos().use {
             for (s in shown) {
-                val look = CorpseLook.decide(types[s], inventory, m)
+                val look = CorpseLook.decide(typeOf(s), inventory, m)
                 val color = look.color.effective().let { c -> if (look.dimmed) TargetWaypoint.alpha(c, DIM_ALPHA) else c }
                 // The corpse body stands about two blocks tall: around the seen/estimated stand, else the listed block.
                 val at = sv.position(s)
@@ -263,21 +323,27 @@ object CorpseLocator {
     private fun state(): Map<String, Any?> {
         val s = solver
         fun xyz(c: CorpseSpot) = listOf(c.x, c.y, c.z)
+        fun key(c: CorpseSpot) = "${c.x},${c.y},${c.z}"
         val ding = s?.lastDing
         return linkedMapOf(
             "enabled" to enabled(),
             "active" to active(),
             "layout" to layout,
-            "has_data" to (s != null),
+            "has_data" to hasData,
             "spots" to s?.spots?.map(::xyz),
+            "extras" to s?.extras?.map(::xyz),
             "confirmed" to s?.confirmed?.map(::xyz),
             "looted" to s?.looted?.map(::xyz),
-            "emptied" to s?.emptied?.map(::xyz),
             "shown" to s?.shown()?.map(::xyz),
-            "types" to types.entries.associate { (k, v) -> "${k.x},${k.y},${k.z}" to v },
+            "types" to s?.shown()?.associate { key(it) to typeOf(it) },
+            "seen_types" to book.seenTypes.entries.associate { (k, v) -> key(k) to v },
+            "shared_types" to book.sharedTypes.entries.associate { (k, v) -> key(k) to v },
+            "inferred_types" to book.inferredTypes.entries.associate { (k, v) -> key(k) to v },
             "seen" to seen.map(::xyz),
+            "own" to own.map(::xyz),
+            "shared_by" to book.sharedBy.entries.associate { (k, v) -> key(k) to v },
             "positions" to s?.shown()?.associate { sp ->
-                "${sp.x},${sp.y},${sp.z}" to linkedMapOf(
+                key(sp) to linkedMapOf(
                     "drawn" to s.position(sp)?.map { Math.round(it * 100) / 100.0 },
                     "center" to s.center(sp).map { Math.round(it * 100) / 100.0 },
                     "spread" to s.spread(sp)?.let { Math.round(it * 100) / 100.0 },
@@ -299,6 +365,7 @@ object CorpseLocator {
                 )
             },
             "tab_all_looted" to tabAllLooted(),
+            "share" to CorpseShare.state(),
         )
     }
 }

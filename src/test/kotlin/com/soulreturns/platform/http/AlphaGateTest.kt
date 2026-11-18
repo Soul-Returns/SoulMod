@@ -66,6 +66,14 @@ class AlphaGateTest {
     }
 
     @Test
+    fun alphaRefusesThePartyCorpseShare() {
+        HypixelNetwork.onAddress("alpha.hypixel.net")
+
+        assertEquals(BackendResult.Failure.ALPHA_BLOCKED, assertIs<BackendResult.Failure>(post("/mineshaft/sync")).status)
+        assertEquals(emptyList(), hits.toList())
+    }
+
+    @Test
     fun alphaRefusesAGameKeyedReadToo() {
         HypixelNetwork.onEnvironment("BETA")
 
@@ -106,6 +114,7 @@ class AlphaGateTest {
         assertFalse(AlphaGate.allows("POST", "/skyblock/profiles/0123456789abcdef0123456789abcdef/island-chests"))
         assertFalse(AlphaGate.allows("GET", "/player/0123456789abcdef0123456789abcdef/other"))
         assertFalse(AlphaGate.allows("POST", "/mineshaft/visit"))
+        assertFalse(AlphaGate.allows("POST", "/mineshaft/sync"))
         assertFalse(AlphaGate.allows("GET", "/realtime/token"))
         // Allowed as a read is not allowed as a write.
         assertFalse(AlphaGate.allows("POST", "/items"))

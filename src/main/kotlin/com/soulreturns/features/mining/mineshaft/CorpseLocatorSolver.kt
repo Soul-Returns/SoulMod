@@ -16,7 +16,7 @@ data class CorpseSpot(val x: Int, val y: Int, val z: Int)
 
 /**
  * What one ding said: the distance interval from its pitch byte and the candidates it fits.
- * [explained]: it fits only spots that were already confirmed before it (so it points at nothing new).
+ * [explained]: it fits only corpses that were already located before it (so it points at nothing new).
  */
 data class DingFit(val ix: Int, val iy: Int, val iz: Int, val pitchByte: Int, val lo: Double, val hi: Double, val fitting: List<CorpseSpot>, val explained: Boolean = false)
 
@@ -39,23 +39,34 @@ data class CorpseSpotData(val layouts: Map<String, List<List<Int>>> = emptyMap()
 /**
  * Pure solver for the Organ Donor Talisman ding (rule://mineshaft, Corpse locator). The ding is a
  * harp at the player's server-side position whose pitch byte `n = round(pitch * 63)` encodes the 3D
- * distance d from the player's feet to the nearest **unlooted** corpse stand:
- * `n = floor(63 * (2 - (d / 20)^2))`, silent beyond 20 blocks.
+ * distance d from the player's feet to the talisman's **current target**:
+ * `n = floor(63 * (2 - (d / 20)^2))`, silent beyond 20 blocks. The target is an unlooted corpse
+ * within 20 blocks, but **not always the nearest**: the talisman keeps it until it is beyond 20,
+ * then takes the nearest (AMET_1, recording `mineshaft-corpses-2`, rule://mineshaft). So a ding
+ * says one corpse is at that distance, never that none is nearer: nothing is ever ruled out by one.
  *
  * Fit test: the player is anywhere in the 1/8-block cell the packet position was truncated from
  * ([cellLo]/[cellHi]), the stand anywhere in what is known of it: its seen position ([pin]), else
- * the region the dings left of its box (confirmed spots), else the whole box. A spot is
- * **confirmed** when a ding fits exactly one candidate (spots not looted and not proven empty);
- * confirmed stays until looted or the stay ends. Each ding that fits only one spot also narrows that
- * spot's region ([Region]), which gives the drawn position once it is tight.
+ * the region the dings left of its box (confirmed spots), else the whole box. A candidate is
+ * **confirmed** when a ding fits it alone; confirmed stays until looted or the stay ends. Each ding
+ * that fits only one spot also narrows that spot's region ([Region]): the target is then that spot.
+ *
+ * Besides the listed [spots], corpses can be located without data ([extras]): a stand seen with line
+ * of sight outside every box (dataset gap, layout without data) or one a party member saw. Extras
+ * are keyed by their floored position (never a listed spot: a stand inside a box belongs to it) and
+ * are candidates like any spot, always confirmed and pinned.
  */
 class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
     private val confirmedSet = LinkedHashSet<CorpseSpot>()
     private val lootedSet = LinkedHashSet<CorpseSpot>()
-    private val emptiedSet = LinkedHashSet<CorpseSpot>()
+    private val extraList = ArrayList<CorpseSpot>()
     private val fixedSpots: Set<CorpseSpot> = if (fixed) spots.toSet() else emptySet()
     private val regions = HashMap<CorpseSpot, Region>()
     private val pins = HashMap<CorpseSpot, DoubleArray>()
+    private val hints = HashMap<CorpseSpot, DoubleArray>()
+
+    /** Loot lines that matched no candidate (player position, type): a stand of that type seen there later was that corpse. */
+    private val unplacedLoots = ArrayList<Pair<DoubleArray, String?>>()
 
     init {
         for (s in fixedSpots) confirm(s)
@@ -63,29 +74,16 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
 
     val confirmed: Set<CorpseSpot> get() = confirmedSet
     val looted: Set<CorpseSpot> get() = lootedSet
-
-    /** Confirmed spots a later ding proved hold no unlooted corpse (a missed loot line or a data error). */
-    val emptied: Set<CorpseSpot> get() = emptiedSet
+    val extras: List<CorpseSpot> get() = extraList
 
     var lastDing: DingFit? = null
         private set
 
-    fun candidates(): List<CorpseSpot> = spots.filter { it !in lootedSet && it !in emptiedSet }
+    fun candidates(): List<CorpseSpot> = (spots + extraList).filter { it !in lootedSet }
 
     /** Feeds one ding (packet ints = position * 8, pitch byte); null when the byte is not a talisman distance. */
     fun ding(ix: Int, iy: Int, iz: Int, pitchByte: Int): DingFit? {
         val (lo, hi) = interval(pitchByte) ?: return null
-        // Every unlooted corpse is at least `lo` away; a confirmed spot whose whole box (or seen stand)
-        // is closer cannot hold one.
-        for (c in confirmedSet.toList()) {
-            val far = pins[c]?.let { cellPointMax(ix, iy, iz, it[0], it[1], it[2]) } ?: maxDistance(ix, iy, iz, c)
-            if (c !in fixedSpots && far < lo - EPS) {
-                confirmedSet -= c
-                emptiedSet += c
-                regions -= c
-                pins -= c
-            }
-        }
         val fitting = candidates().filter { fitsNow(ix, iy, iz, it, lo, hi) }
         val explained = fitting.isNotEmpty() && fitting.all { it in confirmedSet }
         if (fitting.size == 1) {
@@ -98,7 +96,7 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
 
     private fun confirm(s: CorpseSpot) {
         confirmedSet += s
-        regions[s] = Region(s)
+        if (s in spots) regions[s] = Region(s)
     }
 
     private fun fitsNow(ix: Int, iy: Int, iz: Int, s: CorpseSpot, lo: Double, hi: Double): Boolean {
@@ -107,13 +105,68 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
         return fits(ix, iy, iz, s, lo, hi)
     }
 
+    /**
+     * The listed spot or extra a stand at (x, y, z) is: the spot whose box (plus [STAND_MARGIN]) holds
+     * it, nearest its box, else an extra within [SAME_CORPSE]; null when neither (a new corpse). Looted
+     * ones count: their stand stays in the world.
+     */
+    fun match(x: Double, y: Double, z: Double): CorpseSpot? =
+        spots.filter { standOffset(it, x, y, z) != null }.minByOrNull { pointDistance(x, y, z, it) + norm(x - it.x, y - it.y, z - it.z) * 1e-3 }
+            ?: extraList.filter { e -> pins[e]?.let { norm(x - it[0], y - it[1], z - it[2]) <= SAME_CORPSE } == true }
+                .minByOrNull { e -> pins.getValue(e).let { norm(x - it[0], y - it[1], z - it[2]) } }
+
+    /**
+     * A corpse stand at (x, y, z) is known for certain (seen with line of sight, or seen by a party
+     * member): it is located at once and its position pinned ([own] false: a pin the player already
+     * has wins). Null when it is one the player looted (the stand outlives the loot), including a
+     * corpse looted before it was located, recognized by an [unplacedLoots] entry of the same [type]
+     * within [LOOT_RADIUS]. Otherwise the spot or extra it now is.
+     */
+    fun locate(x: Double, y: Double, z: Double, type: String? = null, own: Boolean = true): CorpseSpot? {
+        val known = match(x, y, z)
+        if (known != null && known in lootedSet) return null
+        val key = known ?: CorpseSpot(floor(x).toInt(), floor(y).toInt(), floor(z).toInt())
+        val at = doubleArrayOf(x, y, z)
+        if (key !in confirmedSet) {
+            val loot = unplacedLoots.firstOrNull { (p, t) -> norm(x - p[0], y - p[1], z - p[2]) <= LOOT_RADIUS && (t == null || type == null || t.equals(type, true)) }
+            if (loot != null) {
+                unplacedLoots.remove(loot)
+                if (key !in spots && key !in extraList) extraList += key
+                pins[key] = at
+                lootedSet += key
+                return null
+            }
+        }
+        if (key !in spots && key !in extraList) extraList += key
+        if (key !in confirmedSet) confirm(key)
+        if (own || key !in pins) pins[key] = at
+        return key
+    }
+
+    /** A party member located listed [spot]: shown like one of the player's own, unless the player looted it. */
+    fun locateSpot(spot: CorpseSpot): Boolean {
+        if (spot !in spots || spot in lootedSet) return false
+        if (spot !in confirmedSet) confirm(spot)
+        return true
+    }
+
     /** The stand of confirmed [spot] was seen at ([x], [y], [z]): from now on that is its position. */
     fun pin(spot: CorpseSpot, x: Double, y: Double, z: Double) {
         if (spot in confirmedSet) pins[spot] = doubleArrayOf(x, y, z)
     }
 
-    /** Where to draw a shown spot's stand: its seen position, else the ding estimate once tight; null = the listed block. */
-    fun position(spot: CorpseSpot): DoubleArray? = pins[spot] ?: regions[spot]?.takeIf { it.spread() <= TIGHT }?.centroid()
+    fun isPinned(spot: CorpseSpot): Boolean = spot in pins
+
+    /** A party member's position for [spot]: drawn only while the player has neither seen nor narrowed it to [TIGHT]. */
+    fun hint(spot: CorpseSpot, x: Double, y: Double, z: Double) {
+        if (spot in confirmedSet) hints[spot] = doubleArrayOf(x, y, z)
+    }
+
+    /** Where to draw a shown corpse's stand: seen, else the ding estimate once tight, else a party member's; null = the listed block. */
+    fun position(spot: CorpseSpot): DoubleArray? = pins[spot] ?: ownEstimate(spot) ?: hints[spot]
+
+    /** The player's own position for [spot]: seen, or the dings' estimate once tight; null otherwise. */
+    fun ownEstimate(spot: CorpseSpot): DoubleArray? = pins[spot] ?: regions[spot]?.takeIf { it.spread() <= TIGHT }?.centroid()
 
     /** Best guess of the stand (seen, else the region's centroid, else the box center), for ranking candidates. */
     fun center(spot: CorpseSpot): DoubleArray =
@@ -127,21 +180,28 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
         pins[spot]?.let { norm(x - it[0], y - it[1], z - it[2]) } ?: regions[spot]?.nearest(x, y, z) ?: pointDistance(x, y, z, spot)
 
     /**
-     * `<TYPE> CORPSE LOOT!` with the player at (px, py, pz): the spot whose possible stand positions
-     * come within [LOOT_RADIUS] (confirmed ones first, then the nearest) becomes looted. Null when no
-     * candidate spot is that close.
+     * `<TYPE> CORPSE LOOT!` with the player at (px, py, pz): the candidate whose possible stand
+     * positions come within [LOOT_RADIUS] (confirmed ones first, then the one whose best guess,
+     * [center], is nearest: the boxes of two spots 6 apart both come within reach) becomes looted.
+     * Null when none is that close; the position is kept so the stand, seen later, stays hidden.
      */
-    fun loot(px: Double, py: Double, pz: Double): CorpseSpot? {
+    fun loot(px: Double, py: Double, pz: Double, type: String? = null): CorpseSpot? {
         val near = candidates().map { it to possibleDistance(it, px, py, pz) }.filter { it.second <= LOOT_RADIUS }
-        val spot = near.minWithOrNull(compareBy<Pair<CorpseSpot, Double>>({ it.first !in confirmedSet }, { it.second }))?.first ?: return null
+        val spot = near.minWithOrNull(compareBy<Pair<CorpseSpot, Double>>({ it.first !in confirmedSet }, { c -> center(c.first).let { norm(px - it[0], py - it[1], pz - it[2]) } }))?.first
+        if (spot == null) {
+            unplacedLoots += doubleArrayOf(px, py, pz) to type
+            return null
+        }
         lootedSet += spot
         confirmedSet -= spot
         regions -= spot
-        pins -= spot
+        hints -= spot
+        // An extra keeps its pin: its stand stays in the world and must not come back.
+        if (spot in spots) pins -= spot
         return spot
     }
 
-    /** Spots to draw: confirmed and not looted. */
+    /** Corpses to draw: confirmed and not looted. */
     fun shown(): List<CorpseSpot> = confirmedSet.filter { it !in lootedSet }
 
     /**
@@ -284,9 +344,12 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
         /** A ding farther than this from every recent client position is not ours (party member, lag spike). */
         const val OWN_RADIUS = 1.5
 
+        /** Two sightings of a corpse outside every box this close together are the same corpse. */
+        const val SAME_CORPSE = 1.5
+
         /**
-         * Whether to cancel this ding's playback: only one fully explained by already confirmed,
-         * unlooted spots. A ding that could be a new corpse (fits an unconfirmed candidate), the one
+         * Whether to cancel this ding's playback: only one fully explained by already located,
+         * unlooted corpses. A ding that could be a new corpse (fits an unconfirmed candidate), the one
          * that confirms, one that fits nothing and any ding while the locator is off stay audible.
          */
         fun mutes(fit: DingFit?, locatorOn: Boolean, muteOn: Boolean): Boolean = locatorOn && muteOn && fit != null && fit.explained

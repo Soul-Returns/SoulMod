@@ -76,11 +76,12 @@ class CorpseLocatorReplayTest {
             val spots = data.spots(stay.layout)!!
             val solver = CorpseLocatorSolver(spots, stay.layout in data.fixed)
             val inRange = HashSet<Corpse>()
-            val firstNearest = HashMap<Corpse, Int>()
+            val firstTarget = HashMap<Corpse, Int>()
             val confirmedAfter = HashMap<Corpse, Int>()
             val attributed = HashMap<Corpse, Int>()
             var dings = 0
             var player = doubleArrayOf(0.0, 0.0, 0.0)
+            var target: Corpse? = null
             for (e in stay.events) {
                 when (e) {
                     is Pos -> player = doubleArrayOf(e.x, e.y, e.z)
@@ -90,16 +91,17 @@ class CorpseLocatorReplayTest {
                         dings++
                         player = doubleArrayOf(e.ix / 8.0, e.iy / 8.0, e.iz / 8.0)
                         val unlooted = stay.corpses.filter { it.lootedAt > e.tick }
-                        val nearest = unlooted.minBy { it.dist(player[0], player[1], player[2]) }
-                        assertTrue(nearest.spot in fit.fitting, "tick ${e.tick}: true spot ${nearest.spot} fits (${fit.lo}..${fit.hi})")
-                        firstNearest.putIfAbsent(nearest, dings)
+                        target = sticky(target, unlooted, player)
+                        val t = assertNotNull(target, "tick ${e.tick}: a corpse within 20")
+                        assertTrue(t.spot in fit.fitting, "tick ${e.tick}: the talisman's target ${t.spot} fits (${fit.lo}..${fit.hi})")
+                        firstTarget.putIfAbsent(t, dings)
                         for (s in solver.shown()) {
                             val c = unlooted.firstOrNull { it.spot == s }
                             assertNotNull(c, "tick ${e.tick}: confirmed $s is no unlooted corpse")
                             confirmedAfter.putIfAbsent(c, dings)
                             if (c.approx) continue
                             assertTrue(solver.possibleDistance(s, c.x, c.y, c.z) <= CorpseLocatorSolver.SLACK + 1e-9, "tick ${e.tick}: true stand left $s's region")
-                            if (c === nearest) {
+                            if (c === t) {
                                 val k = (attributed[c] ?: 0) + 1
                                 attributed[c] = k
                                 val at = solver.center(s)
@@ -108,7 +110,7 @@ class CorpseLocatorReplayTest {
                                 }
                             }
                         }
-                        assertTrue(solver.emptied.isEmpty(), "tick ${e.tick}: retracted ${solver.emptied}")
+                        for (c in unlooted) assertTrue(c.spot in solver.shown() || c !in confirmedAfter, "tick ${e.tick}: located ${c.spot} disappeared")
                     }
                     is Loot -> {
                         val truth = stay.corpses.single { it.lootedAt == e.tick }
@@ -121,11 +123,49 @@ class CorpseLocatorReplayTest {
             }
             for (c in inRange) {
                 val at = assertNotNull(confirmedAfter[c], "${stay.layout}: ${c.type} at ${c.spot} came within 20 and was never confirmed")
-                report += "${stay.layout} ${c.type} ${c.spot}: ${at - firstNearest.getValue(c) + 1} ding(s)"
+                report += "${stay.layout} ${c.type} ${c.spot}: ${at - firstTarget.getValue(c) + 1} ding(s)"
             }
         }
-        println("dings until confirmed (from the first ding it was the nearest): $report")
-        println("estimate error (corpse@dings it was the nearest since confirmed: centroid error, * = drawn there): $errors")
+        println("dings until confirmed (from the first ding that measured it): $report")
+        println("estimate error (corpse@dings it was measured since confirmed: centroid error, * = drawn there): $errors")
+    }
+
+    /**
+     * The talisman's target as observed: it keeps its corpse until that one is beyond 20 blocks, then
+     * takes the nearest unlooted one (AMET_1 below contradicts "always the nearest").
+     */
+    private fun sticky(target: Corpse?, unlooted: List<Corpse>, p: DoubleArray): Corpse? {
+        val near = unlooted.filter { it.dist(p[0], p[1], p[2]) <= CorpseLocatorSolver.RANGE + 0.25 }
+        if (target != null && target in near) return target
+        return near.minByOrNull { it.dist(p[0], p[1], p[2]) }
+    }
+
+    /**
+     * AMET_1, 1123-1133 s of recording mineshaft-corpses-2: eleven dings measure the Umber (~17.1)
+     * while the Tungsten is ~15 away. The old rule took that as proof the confirmed Tungsten spot was
+     * empty and dropped it (the owner then heard its dings with nothing shown); now it stays.
+     */
+    @Test
+    fun theAmet1TungstenStaysShownWhileTheTalismanMeasuresTheUmber() {
+        val stay = stays.single { it.layout == "AMET_1" }
+        labelLoots(stay)
+        val tungsten = stay.corpses.single { it.type == "Tungsten" }
+        val umber = stay.corpses.single { it.type == "Umber" }
+        val solver = CorpseLocatorSolver(data.spots("AMET_1")!!)
+        var notNearest = 0
+        var located = false
+        for (e in stay.events.filterIsInstance<Ding>()) {
+            val fit = assertNotNull(solver.ding(e.ix, e.iy, e.iz, CorpseLocatorSolver.pitchByte(e.pitch)!!))
+            val p = doubleArrayOf(e.ix / 8.0, e.iy / 8.0, e.iz / 8.0)
+            if (tungsten.dist(p[0], p[1], p[2]) < umber.dist(p[0], p[1], p[2]) - 1 && tungsten.spot !in fit.fitting) {
+                notNearest++
+                assertEquals(listOf(umber.spot), fit.fitting, "tick ${e.tick}: the farther Umber is measured")
+            }
+            located = located || tungsten.spot in solver.shown()
+            if (located) assertTrue(tungsten.spot in solver.shown(), "tick ${e.tick}: the Tungsten stays shown")
+        }
+        assertEquals(11, notNearest)
+        assertEquals(setOf(tungsten.spot, umber.spot), solver.shown().toSet())
     }
 
     @Test

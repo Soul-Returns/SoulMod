@@ -578,8 +578,8 @@ object ConfigRegistry {
             },
             card("corpselocator") {
                 FeatureCard(
-                    "corpselocator", "Corpse locator", "Points you to Frozen Corpses from the Organ Donor ding", "mining", "mineshafts", "target",
-                    "Needs the Organ Donor Talisman, Ring or Artifact in your Accessory Bag.",
+                    "corpselocator", "Corpse locator", "Points you to Frozen Corpses from the Organ Donor ding and what you see", "mining", "mineshafts", "target",
+                    "Finds corpses from the Organ Donor Talisman, Ring or Artifact in your Accessory Bag, and any corpse you can see.",
                     master = toggle("Corpse locator", null, { cfg.mining.mineshaft.corpseLocator }, { v -> mineshaft { copy(corpseLocator = v) } }, d.mining.mineshaft.corpseLocator),
                     simple = listOf(
                         color("Waypoint color", "Until you have seen which corpse it is", { cfg.mining.mineshaft.corpseLocatorColor }, { v -> mineshaft { copy(corpseLocatorColor = v) } }, d.mining.mineshaft.corpseLocatorColor),
@@ -587,6 +587,8 @@ object ConfigRegistry {
                             { cfg.mining.mineshaft.corpseLocatorMute }, { v -> mineshaft { copy(corpseLocatorMute = v) } }, d.mining.mineshaft.corpseLocatorMute),
                         toggle("Dim corpses without a key", "Umber, Tungsten and Vanguard corpses fade and lose their line while their key is not in your inventory",
                             { cfg.mining.mineshaft.corpseLocatorDimKeyless }, { v -> mineshaft { copy(corpseLocatorDimKeyless = v) } }, d.mining.mineshaft.corpseLocatorDimKeyless),
+                        toggle("Share with party", "Party members in the same mineshaft see the corpses you found, if they use Soul with this on",
+                            { cfg.mining.mineshaft.corpseLocatorShare }, { v -> mineshaft { copy(corpseLocatorShare = v) } }, d.mining.mineshaft.corpseLocatorShare),
                     ),
                     advanced = listOf(
                         toggle("Line: Lapis", null, { cfg.mining.mineshaft.corpseLineLapis }, { v -> mineshaft { copy(corpseLineLapis = v) } }, d.mining.mineshaft.corpseLineLapis),
@@ -597,7 +599,7 @@ object ConfigRegistry {
                             { cfg.mining.mineshaft.corpseLineUnknown }, { v -> mineshaft { copy(corpseLineUnknown = v) } }, d.mining.mineshaft.corpseLineUnknown),
                     ),
                     where = MINESHAFTS,
-                    synonyms = listOf("corpse", "organ donor", "talisman", "waypoint", "frozen corpse", "vanguard", "glacite", "mineshaft", "mute", "ding", "key", "line"),
+                    synonyms = listOf("corpse", "organ donor", "talisman", "waypoint", "frozen corpse", "vanguard", "glacite", "mineshaft", "mute", "ding", "key", "line", "party", "share"),
                 )
             },
             card("littlefoot") {

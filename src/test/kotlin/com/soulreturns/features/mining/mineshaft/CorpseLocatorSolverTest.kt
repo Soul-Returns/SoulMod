@@ -108,16 +108,15 @@ class CorpseLocatorSolverTest {
     }
 
     @Test
-    fun aConfirmedSpotADingProvesEmptyIsRetracted() {
+    fun aDingMeasuringAnotherCorpseNeverDropsALocatedOne() {
         val a = CorpseSpot(-150, 10, -170)
         val b = CorpseSpot(-150, 10, -150)
         val s = CorpseLocatorSolver(listOf(a, b))
         ding(s, doubleArrayOf(-149.5, 10.0, -178.0), stand(a))
         assertEquals(listOf(a), s.shown())
-        // The Lapis at a was looted without a line we read: standing on it, the ding measures b.
+        // Standing on a, the talisman still measures b (it keeps its target): a stays.
         ding(s, doubleArrayOf(-149.5, 10.0, -168.0), stand(b))
-        assertEquals(setOf(a), s.emptied)
-        assertEquals(listOf(b), s.shown())
+        assertEquals(setOf(a, b), s.shown().toSet())
     }
 
     @Test
@@ -152,9 +151,10 @@ class CorpseLocatorSolverTest {
 
     /**
      * Every bundled layout: 1-4 corpses on random spots (stand anywhere in the spot's box: the data
-     * mixes floor, round and ceil), a player wandering within 22 blocks, the server's ding (nearest
-     * unlooted, silent beyond 20) and loots from next to a corpse. No prefix may show a spot without
-     * an unlooted corpse, retract a real one, or lose the true stand from a spot's region.
+     * mixes floor, round and ceil), a player wandering within 22 blocks, the server's ding (the
+     * talisman's sticky target: kept until beyond 20, then the nearest unlooted; silent beyond 20) and
+     * loots from next to a corpse. No prefix may show a spot without an unlooted corpse, drop a located
+     * one, or lose the true stand from a spot's region.
      */
     @Test
     fun simulationNeverConfirmsAWrongSpot() {
@@ -181,29 +181,37 @@ class CorpseLocatorSolverTest {
                 val looted = HashSet<CorpseSpot>()
                 val s = CorpseLocatorSolver(spots, fixed)
                 val since = HashMap<CorpseSpot, Int>()
+                var target: CorpseSpot? = null
                 repeat(40) {
                     val unlooted = chosen.filter { it !in looted }
                     if (unlooted.isEmpty()) return@repeat
-                    val target = stands.getValue(unlooted.random(rnd))
+                    val focus = stands.getValue(unlooted.random(rnd))
                     if (rnd.nextInt(12) == 0) {
-                        // Loot from reach (within ~2 blocks of the stand), after the walk-up's ding there.
-                        val spot = stands.entries.first { it.value === target }.key
-                        val p = doubleArrayOf(target[0] + rnd.nextDouble(-1.5, 1.5), target[1] - 0.5, target[2] + rnd.nextDouble(-1.5, 1.5))
-                        ding(s, p, stands.getValue(unlooted.minBy { dist(p, stands.getValue(it)) }))
+                        // Loot from reach (within ~2 blocks of the stand), after the walk-up's ding there. Opening it
+                        // means looking at it: the sight scan has located it (the ding alone may measure another).
+                        val spot = stands.entries.first { it.value === focus }.key
+                        val p = doubleArrayOf(focus[0] + rnd.nextDouble(-1.5, 1.5), focus[1] - 0.5, focus[2] + rnd.nextDouble(-1.5, 1.5))
+                        target = sticky(target, unlooted, stands, p)
+                        target?.let { ding(s, p, stands.getValue(it)) }
+                        assertEquals(spot, s.locate(focus[0], focus[1], focus[2]), "$id: the seen stand is its spot")
                         for (shown in s.shown()) assertTrue(shown in unlooted, "$id: shown $shown at the loot")
                         assertEquals(spot, s.loot(p[0], p[1], p[2]), "$id loot (corpses $chosen, confirmed ${s.confirmed})")
                         looted += spot
+                        if (target == spot) target = null
                         return@repeat
                     }
                     val r = rnd.nextDouble(0.0, 22.0)
                     val u = doubleArrayOf(rnd.nextDouble(-1.0, 1.0), rnd.nextDouble(-0.6, 0.6), rnd.nextDouble(-1.0, 1.0))
                     val len = sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]).coerceAtLeast(1e-6)
-                    val player = doubleArrayOf(target[0] + u[0] / len * r, target[1] + u[1] / len * r, target[2] + u[2] / len * r)
-                    val nearest = unlooted.minBy { dist(player, stands.getValue(it)) }
-                    val fit = ding(s, player, stands.getValue(nearest)) ?: return@repeat
+                    val player = doubleArrayOf(focus[0] + u[0] / len * r, focus[1] + u[1] / len * r, focus[2] + u[2] / len * r)
+                    val shownBefore = s.shown().toSet()
+                    target = sticky(target, unlooted, stands, player)
+                    val measured = target ?: return@repeat
+                    val fit = ding(s, player, stands.getValue(measured)) ?: return@repeat
                     dings++
                     if (fit.fitting.size == 1) single++
-                    assertTrue(nearest in fit.fitting, "$id: the true spot fits")
+                    assertTrue(measured in fit.fitting, "$id: the measured spot fits")
+                    assertTrue(s.shown().containsAll(shownBefore), "$id: a located corpse disappeared")
                     for (shown in s.shown()) {
                         assertTrue(shown in unlooted, "$id: shown $shown holds no unlooted corpse (corpses $chosen, looted $looted)")
                         val truth = stands.getValue(shown)
@@ -217,13 +225,12 @@ class CorpseLocatorSolverTest {
                             worstY = maxOf(worstY, kotlin.math.abs(at[1] - truth[1]))
                         }
                     }
-                    assertTrue(s.emptied.isEmpty(), "$id: retracted a real corpse ${s.emptied}")
-                    if (!fixed && nearest !in since) since[nearest] = 0
-                    if (nearest in since && since.getValue(nearest) >= 0) {
-                        since[nearest] = since.getValue(nearest) + 1
-                        if (nearest in s.confirmed) {
-                            needed.merge(since.getValue(nearest), 1, Int::plus)
-                            since[nearest] = -1
+                    if (!fixed && measured !in since) since[measured] = 0
+                    if (measured in since && since.getValue(measured) >= 0) {
+                        since[measured] = since.getValue(measured) + 1
+                        if (measured in s.confirmed) {
+                            needed.merge(since.getValue(measured), 1, Int::plus)
+                            since[measured] = -1
                         }
                     }
                 }
@@ -236,6 +243,13 @@ class CorpseLocatorSolverTest {
         )
         assertTrue(single > dings * 0.85, "most dings decide alone")
         assertTrue(worst <= CorpseLocatorSolver.TIGHT + CorpseLocatorSolver.SLACK, "a tight estimate is within its spread of the stand")
+    }
+
+    /** The talisman's target: kept while within 20, else the nearest unlooted corpse within 20 (null: silent). */
+    private fun sticky(target: CorpseSpot?, unlooted: List<CorpseSpot>, stands: Map<CorpseSpot, DoubleArray>, p: DoubleArray): CorpseSpot? {
+        val near = unlooted.filter { dist(p, stands.getValue(it)) <= CorpseLocatorSolver.RANGE }
+        if (target != null && target in near) return target
+        return near.minByOrNull { dist(p, stands.getValue(it)) }
     }
 
     @Test
@@ -278,7 +292,7 @@ class CorpseLocatorSolverTest {
                 val fit = assertNotNull(ding(s, player, truth))
                 n++
                 assertTrue(spot in fit.fitting, "ding $n fits the spot")
-                assertTrue(s.emptied.isEmpty(), "ding $n retracted ${s.emptied}")
+                assertTrue(s.shown().isEmpty() && n == 1 || s.shown() == listOf(spot), "ding $n: shown ${s.shown()}")
                 assertTrue(s.possibleDistance(spot, truth[0], truth[1], truth[2]) <= CorpseLocatorSolver.SLACK + 1e-9, "ding $n kept the stand possible")
                 if (n in listOf(1, 2, 3, 5, 10, 20, 36)) errors += "$n:${"%.2f".format(dist(s.center(spot), truth))}"
             }
@@ -292,7 +306,7 @@ class CorpseLocatorSolverTest {
         assertEquals(truth.toList(), s.position(spot)!!.toList())
         val after = assertNotNull(ding(s, doubleArrayOf(-110.0, 4.0, -160.0), truth))
         assertTrue(after.explained, "a ding from the seen corpse is explained")
-        assertTrue(s.emptied.isEmpty())
+        assertEquals(listOf(spot), s.shown())
     }
 
     @Test
@@ -309,7 +323,81 @@ class CorpseLocatorSolverTest {
         ding(s, doubleArrayOf(-110.0, 4.0, -168.0), truth)
         assertEquals(listOf(CorpseSpot(-117, 4, -168)), s.shown())
         ding(s, player, truth)
-        assertTrue(s.emptied.isEmpty())
         assertEquals(listOf(CorpseSpot(-117, 4, -168)), s.shown())
+    }
+
+    @Test
+    fun aSeenStandLocatesItsSpotWithoutADing() {
+        val spots = data.spots("AMBE_1")!!
+        val s = CorpseLocatorSolver(spots)
+        val spot = assertNotNull(s.locate(-171.8125, 16.4375, -185.375, "Lapis"))
+        assertEquals(CorpseSpot(-172, 16, -186), spot)
+        assertEquals(listOf(spot), s.shown())
+        assertEquals(listOf(-171.8125, 16.4375, -185.375), s.position(spot)!!.toList())
+        assertTrue(s.extras.isEmpty())
+        // Its dings are explained (muted) from the first one.
+        assertTrue(assertNotNull(ding(s, doubleArrayOf(-160.0, 16.0, -186.0), doubleArrayOf(-171.8125, 16.4375, -185.375))).explained)
+    }
+
+    @Test
+    fun aStandOutsideEveryBoxIsAnExtraCorpse() {
+        // RUBY_C has no data: sight alone locates, and the extra explains its dings and takes its loot.
+        val s = CorpseLocatorSolver(emptyList())
+        val stand = doubleArrayOf(-150.3, 12.0, -170.6)
+        val extra = assertNotNull(s.locate(stand[0], stand[1], stand[2], "Umber"))
+        assertEquals(CorpseSpot(-151, 12, -171), extra)
+        assertEquals(listOf(extra), s.extras)
+        assertEquals(listOf(extra), s.shown())
+        assertEquals(extra, s.locate(-150.0, 12.1, -170.2, "Umber"), "the same corpse seen again (it moved a little)")
+        assertEquals(1, s.extras.size)
+        val fit = assertNotNull(ding(s, doubleArrayOf(-140.0, 12.0, -170.0), doubleArrayOf(-150.0, 12.1, -170.2)))
+        assertEquals(listOf(extra), fit.fitting)
+        assertTrue(fit.explained)
+        assertEquals(extra, s.loot(-149.0, 12.0, -169.0, "UMBER"))
+        assertTrue(s.shown().isEmpty())
+        assertNull(s.locate(stand[0], stand[1], stand[2], "Umber"), "its stand outlives the loot")
+        assertTrue(s.shown().isEmpty())
+    }
+
+    @Test
+    fun aCorpseLootedBeforeItWasLocatedStaysHidden() {
+        val s = CorpseLocatorSolver(emptyList())
+        assertNull(s.loot(-150.0, 12.0, -170.0, "LAPIS"), "nothing located there yet")
+        assertNull(s.locate(-151.5, 12.0, -172.0, "Lapis"), "the looted Lapis' stand")
+        assertTrue(s.shown().isEmpty())
+        // Another type next to it is a different corpse.
+        assertNotNull(s.locate(-150.5, 12.0, -168.0, "Umber"))
+        assertEquals(1, s.shown().size)
+    }
+
+    @Test
+    fun aLootedSpotsStandNeverComesBack() {
+        val spots = data.spots("AMBE_1")!!
+        val s = CorpseLocatorSolver(spots)
+        assertEquals(CorpseSpot(-172, 16, -186), s.loot(-170.57, 14.41, -184.95, "LAPIS"))
+        assertNull(s.locate(-171.8125, 16.4375, -185.375, "Lapis"))
+        assertTrue(s.shown().isEmpty())
+    }
+
+    @Test
+    fun aPartySpotIsShownWithTheirPositionUntilTheDingsAreTight() {
+        val spots = data.spots("AMBE_1")!!
+        val spot = CorpseSpot(-172, 16, -186)
+        val s = CorpseLocatorSolver(spots)
+        assertTrue(s.locateSpot(spot))
+        assertEquals(listOf(spot), s.shown())
+        assertNull(s.position(spot), "the listed block until a position is known")
+        s.hint(spot, -171.8, 16.4, -185.4)
+        assertEquals(listOf(-171.8, 16.4, -185.4), s.position(spot)!!.toList())
+        s.pin(spot, -171.81, 16.44, -185.37)
+        assertEquals(listOf(-171.81, 16.44, -185.37), s.position(spot)!!.toList(), "the player's own sighting wins")
+        // A looted spot is not brought back by a party member.
+        s.loot(-171.0, 16.0, -185.0)
+        assertTrue(!s.locateSpot(spot) && s.shown().isEmpty())
+        // A party member's spot-less corpse does not move one the player saw.
+        val t = CorpseLocatorSolver(emptyList())
+        val mine = assertNotNull(t.locate(-150.3, 12.0, -170.6, "Umber"))
+        assertEquals(mine, t.locate(-150.0, 12.0, -170.0, "Umber", own = false))
+        assertEquals(listOf(-150.3, 12.0, -170.6), t.position(mine)!!.toList())
     }
 }
