@@ -16,6 +16,11 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.2-beta.2" to
+                listOf(
+                    ReleaseNote("Corpse locator: points you to Frozen Corpses from the Organ Donor ding", listOf("f:corpselocator")),
+                    ReleaseNote("Highlight active pet: the summoned pet stands out in the Pets menu", listOf("f:petmark")),
+                ),
             "0.3.2-beta.1" to
                 listOf(
                     ReleaseNote("Forge tab: compacted forms listed under their base materials", listOf("f:searcheverywhere")),
