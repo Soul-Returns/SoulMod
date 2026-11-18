@@ -8,10 +8,11 @@ import kotlin.test.assertTrue
 
 /**
  * Replay of the mineshaft stays in recordings 2026-11-18_02-55-36_mineshaft-corpses (AMBE_1,
- * `corpses-2026-11-18.txt`) and 2026-11-18_04-41-37_mineshaft-corpses-2 (CITR_2, CITR_C, JASP_1,
- * `corpses-2026-11-18b.txt`). The corpse stand positions in the fixtures are the ground truth for
- * this test only (`corpse~` = located from its dings, approximate); the solver sees the dings, the
- * loot lines and the player position.
+ * `corpses-2026-11-18.txt`), 2026-11-18_04-41-37_mineshaft-corpses-2 (CITR_2, CITR_C, JASP_1,
+ * AMET_1, `corpses-2026-11-18b.txt`) and 2026-11-18_17-42-36_mineshaft-corpses-4 (AMET_1, TOPA_1,
+ * RUBY_C, `corpses-2026-11-18c.txt`). The corpse stand positions in the fixtures are the ground
+ * truth for this test only (`corpse~` = located from its dings, approximate); the solver sees the
+ * dings, the loot lines and the player position.
  */
 class CorpseLocatorReplayTest {
     private class Corpse(val type: String, val x: Double, val y: Double, val z: Double, val approx: Boolean) {
@@ -35,7 +36,8 @@ class CorpseLocatorReplayTest {
 
     private val stays: List<Stay> =
         ArrayList<Stay>().also { out ->
-            listOf("/mineshaft/corpses-2026-11-18.txt", "/mineshaft/corpses-2026-11-18b.txt").flatMap { javaClass.getResource(it)!!.readText().lines() }
+            listOf("/mineshaft/corpses-2026-11-18.txt", "/mineshaft/corpses-2026-11-18b.txt", "/mineshaft/corpses-2026-11-18c.txt")
+                .flatMap { javaClass.getResource(it)!!.readText().lines() }
                 .filter { it.isNotBlank() && !it.startsWith("#") }
                 .forEach { line ->
                     val f = line.split(' ')
@@ -147,7 +149,7 @@ class CorpseLocatorReplayTest {
      */
     @Test
     fun theAmet1TungstenStaysShownWhileTheTalismanMeasuresTheUmber() {
-        val stay = stays.single { it.layout == "AMET_1" }
+        val stay = stays.first { it.layout == "AMET_1" && it.corpses.any { c -> c.type == "Tungsten" } }
         labelLoots(stay)
         val tungsten = stay.corpses.single { it.type == "Tungsten" }
         val umber = stay.corpses.single { it.type == "Umber" }
@@ -166,6 +168,34 @@ class CorpseLocatorReplayTest {
         }
         assertEquals(11, notNearest)
         assertEquals(setOf(tungsten.spot, umber.spot), solver.shown().toSet())
+    }
+
+    /**
+     * RUBY_C (recording mineshaft-corpses-4): the owner's "broken" shaft. The source data never named
+     * it, so 0.3.2-beta.2 had no spots and played all 31 dings. With the shared crystal list the
+     * Tungsten is located from the dings and its dings are muted while he stands next to it.
+     */
+    @Test
+    fun theRubyCStayLocatesFromTheDingsWithTheSharedCrystalList() {
+        val stay = stays.single { it.layout == "RUBY_C" }
+        labelLoots(stay)
+        val tungsten = stay.corpses.single { it.type == "Tungsten" }
+        val solver = CorpseLocatorSolver(assertNotNull(data.spots("RUBY_C")))
+        var dings = 0
+        var confirmedAt = -1
+        var muted = 0
+        for (e in stay.events) {
+            if (e is Loot) solver.loot(e.x, e.y, e.z)
+            if (e !is Ding) continue
+            val fit = assertNotNull(solver.ding(e.ix, e.iy, e.iz, CorpseLocatorSolver.pitchByte(e.pitch)!!))
+            dings++
+            if (confirmedAt < 0 && tungsten.spot in solver.shown()) confirmedAt = dings
+            if (CorpseLocatorSolver.mutes(fit, locatorOn = true, muteOn = true)) muted++
+        }
+        assertTrue(confirmedAt > 0, "the Tungsten is located")
+        assertEquals(listOf(tungsten.spot), solver.shown())
+        println("RUBY_C: $dings dings, Tungsten located at ding $confirmedAt, $muted muted")
+        assertTrue(muted >= dings - confirmedAt - 5, "its dings are muted once located")
     }
 
     @Test

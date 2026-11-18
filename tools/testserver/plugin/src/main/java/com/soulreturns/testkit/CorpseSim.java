@@ -148,6 +148,8 @@ public final class CorpseSim {
             }
         }
         JsonElement list = layouts.getAsJsonObject("layouts").get(layout);
+        // Every crystal shaft (`_C`) uses the one shared list, also ids the file does not name (RUBY_C).
+        if (list == null && layout.endsWith("_C")) list = layouts.get("crystal");
         if (list == null) return null;
         List<int[]> out = new ArrayList<>();
         for (JsonElement e : list.getAsJsonArray()) {
@@ -160,7 +162,7 @@ public final class CorpseSim {
     /**
      * Mineshaft location, sidebar {@code <date> <server> <layout>}, tab corpse rows, corpses on the
      * chosen spots (0-based; default the first two, FAIR_1 its Vanguard), the player flying 14 blocks
-     * from the first corpse. A layout without data (RUBY_C, LITT_L) gets the sidebar and no corpses.
+     * from the first corpse. A layout without data (LITT_L, any new non-crystal id) gets the sidebar and no corpses.
      */
     private List<String> start(Player player, String layout, String[] picks) {
         stop(player);

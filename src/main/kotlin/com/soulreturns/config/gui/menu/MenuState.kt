@@ -16,6 +16,10 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.2-beta.3" to
+                listOf(
+                    ReleaseNote("Corpse locator: shares located corpses with your party and marks any corpse you can see", listOf("f:corpselocator")),
+                ),
             "0.3.2-beta.2" to
                 listOf(
                     ReleaseNote("Corpse locator: points you to Frozen Corpses from the Organ Donor ding", listOf("f:corpselocator")),

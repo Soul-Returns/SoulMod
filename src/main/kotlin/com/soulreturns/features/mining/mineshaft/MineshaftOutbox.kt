@@ -20,6 +20,15 @@ import java.time.Instant
 @Serializable
 data class CorpseCount(val found: Int, val looted: Int)
 
+/** A corpse stand the player saw (line of sight) during the visit: exact position, type when known. */
+@Serializable
+data class SeenCorpseSpot(val pos: List<Double>, val type: String? = null)
+
+private val VISIT_LAYOUT = Regex("^[A-Za-z0-9_]{1,24}$")
+
+/** The visit's `layout` field: the sidebar id when the backend accepts its shape, else null (and no `corpseSpots`). */
+internal fun visitLayout(instance: String?): String? = instance?.takeIf { VISIT_LAYOUT.matches(it) }
+
 /**
  * The body of `POST /mineshaft/visit`, and simultaneously the record the [MineshaftOutbox] stores on
  * disk. Deliberately one type: a queued visit is not a summary of a request to be rebuilt later, it
@@ -27,7 +36,7 @@ data class CorpseCount(val found: Int, val looted: Int)
  * (The backend keeps the first write on a duplicate `visitId` rather than merging, which only works
  * as a contract because the two bodies are identical.)
  *
- * No property declares a default except [warpedBy], [profileId] and [profileName], because
+ * No property declares a default except the optional ones ([warpedBy], [profileId], [profileName], [layout], [corpseSpots]), because
  * `kotlinx.serialization` omits a property equal to its declared default and the contract requires
  * every other key to be present. [warpedBy] is the one field the backend accepts only when [warped] is
  * true, so omitting it when absent is exactly right.
@@ -42,6 +51,11 @@ data class CorpseCount(val found: Int, val looted: Int)
  * does not reject a disagreement between the two — it treats `source` as authoritative and stores
  * `warped` verbatim — so keeping them consistent is **our** invariant and nothing will report a
  * violation. It is derived in exactly one place, in [MineshaftVisitTracker], for that reason.
+ *
+ * [layout] (the sidebar layout id) and [corpseSpots] (stands seen with line of sight, at most 12,
+ * [CorpseSightings.forUpload]) are optional and travel together: absent on old queued entries and
+ * when unknown. The backend answers a malformed one with a 400 for the whole visit, so both are
+ * validated before the payload is built; a backend that predates them ignores them.
  */
 @Serializable
 data class MineshaftVisitPayload(
@@ -57,6 +71,8 @@ data class MineshaftVisitPayload(
     val warpedBy: String? = null,
     val profileId: String? = null,
     val profileName: String? = null,
+    val layout: String? = null,
+    val corpseSpots: List<SeenCorpseSpot>? = null,
 )
 
 /**

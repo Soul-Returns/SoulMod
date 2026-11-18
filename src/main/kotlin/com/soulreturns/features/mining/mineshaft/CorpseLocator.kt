@@ -9,7 +9,6 @@ import com.soulreturns.features.dev.DevState
 import com.soulreturns.features.mining.TargetWaypoint
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageDetector
-import com.soulreturns.util.MobSpotter
 import com.soulreturns.util.SkyblockItemUtils
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
@@ -17,19 +16,17 @@ import net.minecraft.client.Minecraft
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
-import net.minecraft.world.entity.EquipmentSlot
-import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.phys.AABB
 import java.util.Locale
 
 /**
  * Corpse locator (rule://mineshaft): decodes the Organ Donor Talisman's ding against the layout's
- * corpse spots ([CorpseLocatorSolver]), locates any corpse stand the player can see, names corpses by
- * elimination against the tab ([CorpseElimination]) and shares located corpses with the party
- * ([CorpseShare]); draws a waypoint on each located corpse.
+ * corpse spots ([CorpseLocatorSolver]), places every corpse stand the player saw ([CorpseSightings]),
+ * names corpses by elimination against the tab ([CorpseElimination]) and shares located corpses with
+ * the party ([CorpseShare]); draws a waypoint on each located corpse.
  *
  * Corpse armor stands are on the client through walls, so an entity is read only once the player
- * can see it ([MobSpotter], ToS, rule://mineshaft).
+ * can see it (the scan in [CorpseSightings], ToS, rule://mineshaft).
  */
 object CorpseLocator {
     private const val LINE_WIDTH = 3f
@@ -38,20 +35,14 @@ object CorpseLocator {
     private const val HISTORY_TICKS = 30
     private const val PENDING_MAX = 40
 
-    /** Cadence of the sight scan, the elimination and the key scan. */
+    /** Cadence of the elimination and the key scan. */
     private const val SCAN_TICKS = 10
 
-    /** Sight scan: corpse stands within this many blocks of the player, at most [SCAN_LIMIT] sight tests per scan. */
-    private const val SCAN_RADIUS = 32.0
-    private const val SCAN_LIMIT = 8
-
-    /** Added to a non-corpse helmet's rank: beyond any squared distance in the scan box. */
-    private const val OTHER_RANK = 1.0e6
     private const val DIM_ALPHA = 0.3f
     private val LOOT = Regex("""^\s*(\w+) CORPSE LOOT!\s*$""")
 
-    /** Spawn spots copied from meowdding-repo (MIT), keyed by sidebar layout id. */
-    private val data: CorpseSpotData by lazy {
+    /** Spawn spots copied from meowdding-repo (MIT), keyed by sidebar layout id; also read by [CorpseSpotMemory]. */
+    val data: CorpseSpotData by lazy {
         try {
             val text = CorpseLocator::class.java.getResourceAsStream("/assets/soul/mineshaft/corpse_spots.json")!!.use { it.readBytes().decodeToString() }
             CorpseSpotData.parse(text)
@@ -65,11 +56,13 @@ object CorpseLocator {
     var layout: String? = null
         private set
 
+    /** How spots are known for this stay's layout, and why ([state]): `waiting`, `listed`, `crystal`, `learned` or `sight-only`. */
+    private var mode = "waiting"
+    private var modeReason = "the sidebar has not named the layout yet"
+
     /** Null while the layout is unknown; a layout without spot data gets one with no spots (sight and party only). */
     var solver: CorpseLocatorSolver? = null
         private set
-
-    private var hasData = false
 
     /** Types by source and who shared what; per stay. */
     private val book = CorpseBook()
@@ -80,8 +73,8 @@ object CorpseLocator {
     /** Corpses the player located (a ding fit only it, or its stand was seen): what [ownCorpses] shares. */
     private val own = LinkedHashSet<CorpseSpot>()
 
-    /** Stand entity ids already turned into a located (or looted) corpse this stay: no sight test again. */
-    private val resolvedStands = HashSet<Int>()
+    /** How many of this visit's [CorpseSightings.corpses] were placed already. */
+    private var sightingsHandled = 0
 
     /** Types named by this stay's loot lines. */
     private val lootTypes = ArrayList<String>()
@@ -154,8 +147,11 @@ object CorpseLocator {
         DebugLogger.logFeatureEvent("Corpse locator: $type loot -> ${spot ?: "no corpse within ${CorpseLocatorSolver.LOOT_RADIUS}, kept for its stand"}")
     }
 
-    /** From [MineshaftTick], inside the mineshaft area, after the visit tracker read the layout. */
-    fun tick() {
+    /**
+     * From [MineshaftTick], inside the mineshaft area, after the visit tracker read the layout and
+     * the sight scan ran; [others] = the non-corpse helmeted stands in sight this scan (null on other ticks).
+     */
+    fun tick(others: List<OtherStand>?) {
         if (!enabled()) return
         val p = Minecraft.getInstance().player ?: return
         history.addLast(doubleArrayOf(p.x, p.y, p.z))
@@ -163,8 +159,8 @@ object CorpseLocator {
         if (layout == null) MineshaftState.serverInstance?.let { start(it) }
         val s = solver ?: return
         crossCheckTab(s, p.x, p.y, p.z)
+        placeSightings(s, others.orEmpty())
         if (++ticks % SCAN_TICKS == 0) {
-            scan(s, p.x, p.y, p.z)
             eliminate(s)
             inventory = buildSet {
                 val inv = p.inventory
@@ -175,36 +171,31 @@ object CorpseLocator {
     }
 
     /**
-     * Locates every corpse stand the player can see within [SCAN_RADIUS]: helmeted armor stands,
-     * best-ranked first, sight-tested ([MobSpotter.findAllVisibleIn]); the helmet is read only after
-     * that. A corpse helmet locates the corpse at once (its spot, or an extra outside every box); a
-     * helmet no corpse wears only types a corpse already located there and not yet seen (`other`),
-     * since mineshafts also hold decor stands (`WILL_O_WISP`, `GLACITE_HELMET` in the recordings).
+     * Places the corpse stands seen since the last call (their spot, a learned spot or an extra
+     * outside every box); a helmet no corpse wears only types a corpse already located there and not
+     * yet seen (`other`), since mineshafts also hold decor stands.
      */
-    private fun scan(s: CorpseLocatorSolver, px: Double, py: Double, pz: Double) {
-        val r = SCAN_RADIUS
-        val box = AABB(px - r, py - r, pz - r, px + r, py + r, pz + r)
-        // Corpse helmets rank ahead of decor (Will-o'-wisp, Glacite helmets) so those never take the sight-test budget.
-        val visible =
-            MobSpotter.findAllVisibleIn(box, SCAN_LIMIT) {
-                if (it !is ArmorStand || it.id in resolvedStands) return@findAllVisibleIn null
-                val head = it.getItemBySlot(EquipmentSlot.HEAD)
-                if (head.isEmpty) return@findAllVisibleIn null
-                val d = it.distanceToSqr(px, py, pz)
-                if (CorpseLook.typeOf(SkyblockItemUtils.getSkyblockId(head)) == CorpseLook.OTHER) d + OTHER_RANK else d
-            }
-        val typed = visible.map { it to CorpseLook.typeOf(SkyblockItemUtils.getSkyblockId((it as ArmorStand).getItemBySlot(EquipmentSlot.HEAD))) }
-        for ((stand, type) in typed.sortedBy { it.second == CorpseLook.OTHER }) {
-            val known = s.match(stand.x, stand.y, stand.z)
-            if (type == CorpseLook.OTHER && (known == null || known !in s.confirmed || known in seen)) continue
-            val spot = s.locate(stand.x, stand.y, stand.z, type)
-            resolvedStands += stand.id
-            if (spot == null || (spot in seen && book.seenTypes[spot] != CorpseLook.OTHER)) continue
-            seen += spot
-            own += spot
-            book.see(spot, type)?.let { DebugLogger.logFeatureEvent("Corpse locator: $spot seen as $type, was $it") }
-            DebugLogger.logFeatureEvent("Corpse locator: saw $type corpse at ${"%.2f %.2f %.2f".format(Locale.ROOT, stand.x, stand.y, stand.z)} -> $spot")
+    private fun placeSightings(s: CorpseLocatorSolver, others: List<OtherStand>) {
+        val seenNow = CorpseSightings.corpses
+        while (sightingsHandled < seenNow.size) {
+            val c = seenNow[sightingsHandled++]
+            place(s, s.locate(c.x, c.y, c.z, c.type), c.type, c.x, c.y, c.z)
         }
+        for (o in others) {
+            val known = s.match(o.x, o.y, o.z)
+            if (known == null || known !in s.confirmed || known in seen) continue
+            CorpseSightings.resolve(o.entityId)
+            place(s, s.locate(o.x, o.y, o.z, CorpseLook.OTHER), CorpseLook.OTHER, o.x, o.y, o.z)
+        }
+    }
+
+    private fun place(s: CorpseLocatorSolver, spot: CorpseSpot?, type: String, x: Double, y: Double, z: Double) {
+        if (spot == null || (spot in seen && book.seenTypes[spot] != CorpseLook.OTHER)) return
+        seen += spot
+        own += spot
+        book.see(spot, type)?.let { DebugLogger.logFeatureEvent("Corpse locator: $spot seen as $type, was $it") }
+        val learned = if (spot in s.learnedSpots) " (learned spot)" else ""
+        DebugLogger.logFeatureEvent("Corpse locator: saw $type corpse at ${"%.2f %.2f %.2f".format(Locale.ROOT, x, y, z)} -> $spot$learned")
     }
 
     /** Names located corpses without a type when the tab leaves only one type for them. */
@@ -235,15 +226,29 @@ object CorpseLocator {
     private fun start(id: String) {
         layout = id
         val spots = data.spots(id)
-        hasData = spots != null
-        if (spots == null) DebugLogger.logFeatureEvent("Corpse locator: no spot data for layout $id, sight and party only")
+        val learned = CorpseSpotMemory.forLayout(id)
         val fixedType = data.fixed[id]
-        val s = CorpseLocatorSolver(spots ?: emptyList(), fixed = fixedType != null)
+        val s = CorpseLocatorSolver(spots ?: emptyList(), fixed = fixedType != null, learned = learned)
+        val (m, why) = describe(id, spots != null, s.learnedSpots.size)
+        mode = m
+        modeReason = why
+        DebugLogger.logFeatureEvent("Corpse locator: layout $id, $m: $why")
         if (fixedType != null) for (spot in s.spots) book.seenTypes[spot] = fixedType
         for (d in pending) s.ding(d[0], d[1], d[2], d[3])?.let { if (it.fitting.size == 1) own += it.fitting[0] }
         pending.clear()
         solver = s
         CorpseShare.onStay(id)
+    }
+
+    /** The debug `mode` and its reason for a layout. */
+    private fun describe(id: String, listed: Boolean, learned: Int): Pair<String, String> {
+        val extra = if (learned > 0) ", plus $learned learned spot(s) confirmed by sight only" else ""
+        return when {
+            listed && CorpseSpotData.isCrystal(id) && id !in data.layouts -> "crystal" to "the shared crystal spots$extra"
+            listed -> "listed" to "bundled spots for $id$extra"
+            learned > 0 -> "learned" to "no bundled spots for $id; $learned learned spot(s), confirmed by sight only; dings confirm nothing"
+            else -> "sight-only" to "no spot data for $id: corpses are located by sight or from the party; dings confirm nothing"
+        }
     }
 
     /**
@@ -276,11 +281,12 @@ object CorpseLocator {
     private fun reset() {
         layout = null
         solver = null
-        hasData = false
+        mode = "waiting"
+        modeReason = "the sidebar has not named the layout yet"
         book.clear()
         seen.clear()
         own.clear()
-        resolvedStands.clear()
+        sightingsHandled = 0
         lootTypes.clear()
         inventory = emptySet()
         pending.clear()
@@ -329,8 +335,11 @@ object CorpseLocator {
             "enabled" to enabled(),
             "active" to active(),
             "layout" to layout,
-            "has_data" to hasData,
+            "mode" to mode,
+            "mode_reason" to modeReason,
+            "has_data" to (mode == "listed" || mode == "crystal"),
             "spots" to s?.spots?.map(::xyz),
+            "learned" to s?.learnedSpots?.map(::xyz),
             "extras" to s?.extras?.map(::xyz),
             "confirmed" to s?.confirmed?.map(::xyz),
             "looted" to s?.looted?.map(::xyz),

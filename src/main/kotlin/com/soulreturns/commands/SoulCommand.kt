@@ -35,6 +35,7 @@ import com.soulreturns.features.keybinds.CommandKeybindScreen
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.features.profit.dragon.DragonDebug
 import com.soulreturns.features.mining.metaldetector.MetalDetectorDebug
+import com.soulreturns.features.mining.mineshaft.CorpseSpotsDebug
 import com.soulreturns.features.profit.dragon.DragonSummary
 import com.soulreturns.features.profit.dragon.gui.DragonSessionScreen
 import com.soulreturns.features.profileviewer.SpvCommand
@@ -273,6 +274,12 @@ object SoulCommand {
                             .then(
                                 ClientCommands.literal("metaldetector").executes {
                                     MetalDetectorDebug.dump()
+                                    1
+                                },
+                            )
+                            .then(
+                                ClientCommands.literal("corpsespots").executes {
+                                    CorpseSpotsDebug.dump()
                                     1
                                 },
                             )

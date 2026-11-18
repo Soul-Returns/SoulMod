@@ -641,7 +641,7 @@ object ConfigRegistry {
             card("logvisits") {
                 FeatureCard(
                     "logvisits", "Log mineshaft visits", "Your spawn and loot odds in /soul mineshaft and the Profile Viewer", "mining", "mineshafts", "upload",
-                    "Sends the Soul backend: the mineshaft type and instance (ONYX_1), when you entered and left, the corpse counts, whether Littlefoot was there and whether you found it yourself or were warped in (and by whom). Nothing else.",
+                    "Sends the Soul backend: the mineshaft type and variant (ONYX_1), when you entered and left, the corpse counts, whether Littlefoot was there, whether you found it yourself or were warped in (and by whom), and where the corpses you saw lay, so the corpse locator can learn every spot. Nothing else.",
                     master = toggle("Log mineshaft visits", null, { cfg.mining.mineshaft.logVisits }, { v -> mineshaft { copy(logVisits = v) } }, d.mining.mineshaft.logVisits),
                     where = MINESHAFTS, synonyms = listOf("backend", "odds", "statistics", "privacy"),
                 )

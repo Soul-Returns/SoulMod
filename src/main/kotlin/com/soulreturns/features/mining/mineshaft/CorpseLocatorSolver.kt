@@ -22,15 +22,26 @@ data class DingFit(val ix: Int, val iy: Int, val iz: Int, val pitchByte: Int, va
 
 /**
  * The bundled spawn spots per mineshaft layout (sidebar id, e.g. `AMBE_1`), from meowdding-repo
- * (MIT, `assets/soul/mineshaft/corpse_spots.json`). [fixed] layouts always hold a corpse on their
- * spots (the Vanguard shaft), keyed to its type. Any id not in the file is an unknown layout.
+ * (MIT, `assets/soul/mineshaft/corpse_spots.json`). Every crystal shaft (id ending in `_C`) uses
+ * the one [crystal] list, also ids the file does not name (`RUBY_C`): crystal shafts differ only in
+ * gemstone color (owner; the six `_C` entries in the source are identical; `RUBY_C`'s three stands
+ * in recording `mineshaft-corpses-4` sit on them). [fixed] layouts always hold a corpse on their
+ * spots (the Vanguard shaft), keyed to its type. Any other id not in the file is an unknown layout.
  */
 @Serializable
-data class CorpseSpotData(val layouts: Map<String, List<List<Int>>> = emptyMap(), val fixed: Map<String, String> = emptyMap()) {
-    fun spots(layout: String): List<CorpseSpot>? = layouts[layout]?.map { CorpseSpot(it[0], it[1], it[2]) }
+data class CorpseSpotData(
+    val layouts: Map<String, List<List<Int>>> = emptyMap(),
+    val crystal: List<List<Int>> = emptyList(),
+    val fixed: Map<String, String> = emptyMap(),
+) {
+    fun spots(layout: String): List<CorpseSpot>? =
+        (layouts[layout] ?: crystal.takeIf { isCrystal(layout) && it.isNotEmpty() })?.map { CorpseSpot(it[0], it[1], it[2]) }
 
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
+
+        /** Crystal shafts share one spot list. */
+        fun isCrystal(layout: String): Boolean = layout.endsWith("_C")
 
         fun parse(text: String): CorpseSpotData = json.decodeFromString(serializer(), text)
     }
@@ -55,8 +66,21 @@ data class CorpseSpotData(val layouts: Map<String, List<List<Int>>> = emptyMap()
  * of sight outside every box (dataset gap, layout without data) or one a party member saw. Extras
  * are keyed by their floored position (never a listed spot: a stand inside a box belongs to it) and
  * are candidates like any spot, always confirmed and pinned.
+ *
+ * [learned] stand positions (seen on earlier visits, [CorpseSpotMemory]) are an **incomplete** list:
+ * a ding fitting only a learned spot is no proof (the target may be a corpse on a spot nobody
+ * recorded, e.g. its vertical mirror: JADE_1 has two spots 2.2 apart horizontally, 15 vertically),
+ * so a learned spot is confirmed **only by sight**. It is still a candidate, so a ding it fits never
+ * fits a listed spot alone (a corpse on a dataset gap cannot confirm the wrong listed spot).
  */
-class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
+class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, learned: List<DoubleArray> = emptyList()) {
+    /** Learned stand positions keyed by floored position, minus any inside a listed spot's box. */
+    private val learnedPoints = LinkedHashMap<CorpseSpot, DoubleArray>().also { m ->
+        for (p in learned) {
+            if (spots.any { standOffset(it, p[0], p[1], p[2]) != null }) continue
+            m.putIfAbsent(CorpseSpot(floor(p[0]).toInt(), floor(p[1]).toInt(), floor(p[2]).toInt()), p)
+        }
+    }
     private val confirmedSet = LinkedHashSet<CorpseSpot>()
     private val lootedSet = LinkedHashSet<CorpseSpot>()
     private val extraList = ArrayList<CorpseSpot>()
@@ -75,11 +99,12 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
     val confirmed: Set<CorpseSpot> get() = confirmedSet
     val looted: Set<CorpseSpot> get() = lootedSet
     val extras: List<CorpseSpot> get() = extraList
+    val learnedSpots: Set<CorpseSpot> get() = learnedPoints.keys
 
     var lastDing: DingFit? = null
         private set
 
-    fun candidates(): List<CorpseSpot> = (spots + extraList).filter { it !in lootedSet }
+    fun candidates(): List<CorpseSpot> = LinkedHashSet(spots + extraList + learnedPoints.keys).filter { it !in lootedSet }
 
     /** Feeds one ding (packet ints = position * 8, pitch byte); null when the byte is not a talisman distance. */
     fun ding(ix: Int, iy: Int, iz: Int, pitchByte: Int): DingFit? {
@@ -88,7 +113,7 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
         val explained = fitting.isNotEmpty() && fitting.all { it in confirmedSet }
         if (fitting.size == 1) {
             val s = fitting[0]
-            if (s !in confirmedSet) confirm(s)
+            if (s !in confirmedSet && s !in learnedPoints) confirm(s)
             if (s !in pins) regions[s]?.cut(ix, iy, iz, lo, hi)
         }
         return DingFit(ix, iy, iz, pitchByte, lo, hi, fitting, explained).also { lastDing = it }
@@ -100,20 +125,22 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
     }
 
     private fun fitsNow(ix: Int, iy: Int, iz: Int, s: CorpseSpot, lo: Double, hi: Double): Boolean {
-        pins[s]?.let { return cellPointMin(ix, iy, iz, it[0], it[1], it[2]) <= hi + EPS && cellPointMax(ix, iy, iz, it[0], it[1], it[2]) >= lo - EPS }
+        (pins[s] ?: learnedPoints[s])?.let { return cellPointMin(ix, iy, iz, it[0], it[1], it[2]) <= hi + EPS && cellPointMax(ix, iy, iz, it[0], it[1], it[2]) >= lo - EPS }
         regions[s]?.let { return it.fits(ix, iy, iz, lo, hi) }
         return fits(ix, iy, iz, s, lo, hi)
     }
 
     /**
-     * The listed spot or extra a stand at (x, y, z) is: the spot whose box (plus [STAND_MARGIN]) holds
-     * it, nearest its box, else an extra within [SAME_CORPSE]; null when neither (a new corpse). Looted
-     * ones count: their stand stays in the world.
+     * The listed spot, extra or learned spot a stand at (x, y, z) is: the spot whose box (plus
+     * [STAND_MARGIN]) holds it, nearest its box, else an extra or learned spot within [SAME_CORPSE];
+     * null when none (a new corpse). Looted ones count: their stand stays in the world.
      */
     fun match(x: Double, y: Double, z: Double): CorpseSpot? =
         spots.filter { standOffset(it, x, y, z) != null }.minByOrNull { pointDistance(x, y, z, it) + norm(x - it.x, y - it.y, z - it.z) * 1e-3 }
-            ?: extraList.filter { e -> pins[e]?.let { norm(x - it[0], y - it[1], z - it[2]) <= SAME_CORPSE } == true }
-                .minByOrNull { e -> pins.getValue(e).let { norm(x - it[0], y - it[1], z - it[2]) } }
+            ?: (extraList + learnedPoints.keys).distinct()
+                .mapNotNull { e -> (pins[e] ?: learnedPoints[e])?.let { e to norm(x - it[0], y - it[1], z - it[2]) } }
+                .filter { it.second <= SAME_CORPSE }
+                .minByOrNull { it.second }?.first
 
     /**
      * A corpse stand at (x, y, z) is known for certain (seen with line of sight, or seen by a party
@@ -168,16 +195,16 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
     /** The player's own position for [spot]: seen, or the dings' estimate once tight; null otherwise. */
     fun ownEstimate(spot: CorpseSpot): DoubleArray? = pins[spot] ?: regions[spot]?.takeIf { it.spread() <= TIGHT }?.centroid()
 
-    /** Best guess of the stand (seen, else the region's centroid, else the box center), for ranking candidates. */
+    /** Best guess of the stand (seen, else the region's centroid, else the learned position, else the box center), for ranking candidates. */
     fun center(spot: CorpseSpot): DoubleArray =
-        pins[spot] ?: regions[spot]?.centroid() ?: doubleArrayOf(spot.x.toDouble(), spot.y.toDouble(), spot.z.toDouble())
+        pins[spot] ?: regions[spot]?.centroid() ?: learnedPoints[spot] ?: doubleArrayOf(spot.x.toDouble(), spot.y.toDouble(), spot.z.toDouble())
 
     /** Radius of the region the dings left for [spot] (0 once seen); null when not confirmed. */
     fun spread(spot: CorpseSpot): Double? = if (spot in pins) 0.0 else regions[spot]?.spread()
 
     /** Distance from (x, y, z) to the nearest stand position still possible for [spot] (tests and loot). */
     fun possibleDistance(spot: CorpseSpot, x: Double, y: Double, z: Double): Double =
-        pins[spot]?.let { norm(x - it[0], y - it[1], z - it[2]) } ?: regions[spot]?.nearest(x, y, z) ?: pointDistance(x, y, z, spot)
+        (pins[spot] ?: learnedPoints[spot])?.let { norm(x - it[0], y - it[1], z - it[2]) } ?: regions[spot]?.nearest(x, y, z) ?: pointDistance(x, y, z, spot)
 
     /**
      * `<TYPE> CORPSE LOOT!` with the player at (px, py, pz): the candidate whose possible stand

@@ -121,9 +121,17 @@ class CorpseLocatorSolverTest {
 
     @Test
     fun unknownLayoutsHaveNoSpots() {
-        for (id in listOf("RUBY_C", "LITT_L", "NEWT_1")) assertNull(data.spots(id), id)
+        for (id in listOf("LITT_L", "NEWT_1")) assertNull(data.spots(id), id)
         assertTrue(data.layouts.isNotEmpty())
         for ((id, spots) in data.layouts) assertTrue(spots.isNotEmpty() && spots.all { it.size == 3 }, id)
+    }
+
+    @Test
+    fun everyCrystalShaftUsesTheSharedList() {
+        val crystal = listOf(CorpseSpot(-181, 14, -189), CorpseSpot(-162, 10, -155), CorpseSpot(-109, 7, -159))
+        // The six the source named, RUBY_C (recording mineshaft-corpses-4) and a gem nobody named yet.
+        for (id in listOf("AQUA_C", "CITR_C", "JASP_C", "ONYX_C", "OPAL_C", "PERI_C", "RUBY_C", "XXXX_C")) assertEquals(crystal, data.spots(id), id)
+        assertTrue(data.layouts.keys.none { CorpseSpotData.isCrystal(it) }, "stored once, under crystal")
     }
 
     @Test
@@ -169,7 +177,8 @@ class CorpseLocatorSolverTest {
         var worst = 0.0
         var errSum = 0.0
         var worstY = 0.0
-        for ((id, _) in data.layouts) {
+        val layouts = data.layouts.keys + "CRYST_C"
+        for (id in layouts) {
             val spots = data.spots(id)!!
             val fixed = id in data.fixed
             repeat(400) {
@@ -237,13 +246,92 @@ class CorpseLocatorSolverTest {
             }
         }
         println(
-            "simulation: $trials trials over ${data.layouts.size} layouts, $dings dings, ${"%.1f".format(100.0 * single / dings)}% fit one spot; " +
+            "simulation: $trials trials over ${layouts.size} layouts, $dings dings, ${"%.1f".format(100.0 * single / dings)}% fit one spot; " +
                 "dings until confirmed -> corpses: $needed; drawn at the estimate ${"%.1f".format(100.0 * drawn / shownFrames)}% of shown frames, " +
                 "horizontal error mean ${"%.2f".format(errSum / drawn)} max ${"%.2f".format(worst)}, height error max ${"%.2f".format(worstY)}",
         )
         assertTrue(single > dings * 0.85, "most dings decide alone")
         assertTrue(worst <= CorpseLocatorSolver.TIGHT + CorpseLocatorSolver.SLACK, "a tight estimate is within its spread of the stand")
     }
+
+    /**
+     * Incomplete lists. Every layout, one spot withheld from the list (a dataset gap) holding a corpse
+     * among 0-3 others: (a) the gap unknown, as before learning; (b) the gap's stand learned from an
+     * earlier visit; (c) a layout without bundled data whose learned list holds only some of its
+     * spots. Sticky-target dings, random walks, loots after sight as in the simulation above. A wrong
+     * waypoint = a shown spot with no unlooted corpse on it. (b) and (c) must never show one.
+     */
+    @Test
+    fun simulationAnIncompleteListNeverShowsAWrongWaypoint() {
+        val rnd = Random(20261119)
+        val wrong = intArrayOf(0, 0, 0)
+        val frames = intArrayOf(0, 0, 0)
+        for (id in data.layouts.keys + "CRYST_C") {
+            if (id in data.fixed) continue
+            val spots = data.spots(id)!!
+            repeat(150) {
+                val gap = spots.random(rnd)
+                val others = (spots - gap).shuffled(rnd).take(rnd.nextInt(0, minOf(3, spots.size - 1) + 1))
+                val chosen = others + gap
+                val box = CorpseLocatorSolver.SPREAD
+                val stands = chosen.associateWith { stand(it, rnd.nextDouble(-box, box), rnd.nextDouble(-box, box), rnd.nextDouble(-box, box)) }
+                val partial = chosen.filter { rnd.nextBoolean() }.map { stands.getValue(it) }
+                val solvers = listOf(
+                    CorpseLocatorSolver(spots - gap),
+                    CorpseLocatorSolver(spots - gap, learned = listOf(stands.getValue(gap))),
+                    CorpseLocatorSolver(emptyList(), learned = partial),
+                )
+                val looted = HashSet<CorpseSpot>()
+                var target: CorpseSpot? = null
+                repeat(40) {
+                    val unlooted = chosen.filter { it !in looted }
+                    if (unlooted.isEmpty()) return@repeat
+                    val focus = unlooted.random(rnd)
+                    val at = stands.getValue(focus)
+                    if (rnd.nextInt(12) == 0) {
+                        val p = doubleArrayOf(at[0] + rnd.nextDouble(-1.5, 1.5), at[1] - 0.5, at[2] + rnd.nextDouble(-1.5, 1.5))
+                        for (s in solvers) {
+                            assertNotNull(s.locate(at[0], at[1], at[2]), "$id: the seen stand is located")
+                            val key = assertNotNull(s.loot(p[0], p[1], p[2]), "$id: the loot finds the seen corpse")
+                            assertTrue(holds(s, key, at, spots - gap), "$id: loot attributed to $key, not the corpse on $focus")
+                        }
+                        looted += focus
+                        if (target == focus) target = null
+                        return@repeat
+                    }
+                    if (rnd.nextInt(10) == 0) {
+                        // Seen from afar without looting it: a sight locates it in every list.
+                        for (s in solvers) assertNotNull(s.locate(at[0], at[1], at[2]), "$id: the seen stand is located")
+                        return@repeat
+                    }
+                    val r = rnd.nextDouble(0.0, 22.0)
+                    val u = doubleArrayOf(rnd.nextDouble(-1.0, 1.0), rnd.nextDouble(-0.6, 0.6), rnd.nextDouble(-1.0, 1.0))
+                    val len = sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]).coerceAtLeast(1e-6)
+                    val player = doubleArrayOf(at[0] + u[0] / len * r, at[1] + u[1] / len * r, at[2] + u[2] / len * r)
+                    target = sticky(target, unlooted, stands, player)
+                    val measured = target ?: return@repeat
+                    for ((i, s) in solvers.withIndex()) {
+                        ding(s, player, stands.getValue(measured))
+                        for (shown in s.shown()) {
+                            frames[i]++
+                            if (unlooted.none { holds(s, shown, stands.getValue(it), spots - gap) }) wrong[i]++
+                        }
+                    }
+                }
+            }
+        }
+        println("incomplete lists (shown frames with a wrong waypoint): gap unknown ${wrong[0]}/${frames[0]}, gap learned ${wrong[1]}/${frames[1]}, partial learned list ${wrong[2]}/${frames[2]}")
+        assertEquals(0, wrong[1], "a learned gap never lets the gap's corpse confirm a wrong listed spot")
+        assertEquals(0, wrong[2], "a partial learned list confirms only by sight")
+    }
+
+    /** Whether shown key [k] stands for the corpse whose stand is at [at]: its listed box, else its pin within [CorpseLocatorSolver.SAME_CORPSE]. */
+    private fun holds(s: CorpseLocatorSolver, k: CorpseSpot, at: DoubleArray, listed: List<CorpseSpot>): Boolean =
+        if (k in listed) {
+            CorpseLocatorSolver.pointDistance(at[0], at[1], at[2], k) == 0.0
+        } else {
+            s.position(k)?.let { dist(it, at) <= CorpseLocatorSolver.SAME_CORPSE } ?: false
+        }
 
     /** The talisman's target: kept while within 20, else the nearest unlooted corpse within 20 (null: silent). */
     private fun sticky(target: CorpseSpot?, unlooted: List<CorpseSpot>, stands: Map<CorpseSpot, DoubleArray>, p: DoubleArray): CorpseSpot? {
@@ -341,7 +429,7 @@ class CorpseLocatorSolverTest {
 
     @Test
     fun aStandOutsideEveryBoxIsAnExtraCorpse() {
-        // RUBY_C has no data: sight alone locates, and the extra explains its dings and takes its loot.
+        // A layout without data: sight alone locates, and the extra explains its dings and takes its loot.
         val s = CorpseLocatorSolver(emptyList())
         val stand = doubleArrayOf(-150.3, 12.0, -170.6)
         val extra = assertNotNull(s.locate(stand[0], stand[1], stand[2], "Umber"))
@@ -368,6 +456,50 @@ class CorpseLocatorSolverTest {
         // Another type next to it is a different corpse.
         assertNotNull(s.locate(-150.5, 12.0, -168.0, "Umber"))
         assertEquals(1, s.shown().size)
+    }
+
+    @Test
+    fun aLearnedSpotIsConfirmedOnlyBySight() {
+        val learned = doubleArrayOf(-150.3, 12.2, -170.6)
+        val s = CorpseLocatorSolver(emptyList(), learned = listOf(learned))
+        val key = CorpseSpot(-151, 12, -171)
+        assertEquals(setOf(key), s.learnedSpots)
+        // Dings fitting only the learned spot, from all around: no proof (the list is incomplete), nothing shown, all audible.
+        for (p in listOf(doubleArrayOf(-140.0, 12.0, -170.0), doubleArrayOf(-150.0, 12.0, -160.0), doubleArrayOf(-158.0, 13.0, -178.0))) {
+            val fit = assertNotNull(ding(s, p, learned))
+            assertEquals(listOf(key), fit.fitting)
+            assertTrue(!fit.explained)
+        }
+        // A corpse on an unrecorded spot 15 above it, measured from halfway up: the mirror fits the learned spot too.
+        val above = doubleArrayOf(learned[0], learned[1] + 15, learned[2])
+        assertEquals(listOf(key), assertNotNull(ding(s, doubleArrayOf(-142.0, learned[1] + 7.5, -166.0), above)).fitting)
+        assertTrue(s.shown().isEmpty())
+        // Seen: the learned spot is the corpse, at the seen position, and its dings are explained.
+        assertEquals(key, s.locate(-150.31, 12.2, -170.58, "Umber"))
+        assertEquals(listOf(key), s.shown())
+        assertEquals(listOf(-150.31, 12.2, -170.58), s.position(key)!!.toList())
+        assertTrue(assertNotNull(ding(s, doubleArrayOf(-140.0, 12.0, -170.0), learned)).explained)
+    }
+
+    @Test
+    fun aLearnedGapKeepsAListedSpotFromAWrongConfirmation() {
+        val spots = data.spots("AMBE_1")!!
+        val listed = CorpseSpot(-172, 16, -186)
+        val player = doubleArrayOf(-160.0, 16.5, -186.0)
+        // A corpse on a spot the data misses, as far from the player as the listed spot's box.
+        val gap = doubleArrayOf(-160.5, 16.9, -197.5)
+        val unknown = CorpseLocatorSolver(spots)
+        assertEquals(listOf(listed), assertNotNull(ding(unknown, player, gap)).fitting)
+        assertEquals(listOf(listed), unknown.shown(), "without the learned gap the listed spot is confirmed wrongly")
+        val learned = CorpseLocatorSolver(spots, learned = listOf(gap))
+        assertEquals(2, assertNotNull(ding(learned, player, gap)).fitting.size)
+        assertTrue(learned.shown().isEmpty())
+    }
+
+    @Test
+    fun aLearnedPointOnAListedSpotIsDropped() {
+        val s = CorpseLocatorSolver(data.spots("AMBE_1")!!, learned = listOf(doubleArrayOf(-171.8, 16.4, -185.4)))
+        assertTrue(s.learnedSpots.isEmpty())
     }
 
     @Test

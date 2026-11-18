@@ -1091,10 +1091,10 @@ data class MetalDetectorConfig(
 @Serializable
 data class MineshaftConfig(
     /**
-     * Record each mineshaft visit to the Soul backend: the type and instance (`ONYX_1`), when you
-     * entered and left, the corpse counts, whether Littlefoot was there, and whether you found the
-     * mineshaft yourself or were warped in (and by whom). Nothing else — no coordinates, no
-     * inventory, no chat.
+     * Record each mineshaft visit to the Soul backend: the type and layout (`ONYX_1`), when you
+     * entered and left, the corpse counts, whether Littlefoot was there, whether you found the
+     * mineshaft yourself or were warped in (and by whom), and the positions of the corpse stands you
+     * saw (line of sight, `CorpseSightings`). Nothing else — no own coordinates, no inventory, no chat.
      *
      * Defaults **on**: it is what makes `/soul mineshaft` and the Profile Viewer's Soul tab able to
      * say anything at all, and none of it is information another player could not watch you do.

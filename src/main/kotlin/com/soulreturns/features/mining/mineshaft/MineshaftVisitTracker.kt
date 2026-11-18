@@ -95,8 +95,9 @@ object MineshaftVisitTracker {
     private fun startVisit() {
         visitOnAlpha = HypixelNetwork.isAlpha
         MineshaftState.beginVisit(System.currentTimeMillis())
-        // Clear here, not on leaving: finishVisit() has to see the counts from the moment we left.
+        // Clear here, not on leaving: finishVisit() has to see the counts and sightings from the moment we left.
         MineshaftCorpses.clear()
+        CorpseSightings.clear()
     }
 
     /**
@@ -141,6 +142,7 @@ object MineshaftVisitTracker {
         val profileId = MineshaftState.profileId
         val profileName = MineshaftState.profileName
         val corpses = MineshaftCorpses.byType.toMap()
+        val seenSpots = CorpseSightings.forUpload()
 
         MineshaftState.endVisit()
 
@@ -166,6 +168,8 @@ object MineshaftVisitTracker {
             return
         }
 
+        // A malformed layout or spot list makes the whole visit a 400: no layout, no spots.
+        val layout = visitLayout(instance)
         val payload = MineshaftVisitPayload(
             visitId = visitId,
             mineshaftType = type,
@@ -180,6 +184,8 @@ object MineshaftVisitTracker {
             profileId = profileId,
             // The backend caps the display name at 32 characters and rejects longer; the id is what counts.
             profileName = profileName?.takeIf { profileId != null && it.length <= 32 },
+            layout = layout,
+            corpseSpots = seenSpots.takeIf { layout != null },
         )
 
         // Spell the corpses out rather than counting the map: "corpses=2" reads as two corpses when it
@@ -191,7 +197,7 @@ object MineshaftVisitTracker {
         logger.info(
             "Mineshaft visit $instance — source=$source warpedBy=$warpedBy profile=${profileName ?: "-"}/${profileId ?: "-"} " +
                 "littlefoot=$littlefootFound " +
-                "corpses=[$corpseSummary] (${enteredSec.until(leftSec, ChronoUnit.SECONDS)}s)",
+                "corpses=[$corpseSummary] seenStands=${payload.corpseSpots?.size ?: "-"} (${enteredSec.until(leftSec, ChronoUnit.SECONDS)}s)",
         )
         MineshaftOutbox.submit(payload)
     }

@@ -17,7 +17,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
  *
  * Order inside the gate is deliberate: the corpse scan runs first so both corpse alerts see this
  * tick's counts rather than the previous one's, and the tracker's opportunistic capture runs before
- * the alerts so [MineshaftState.isWarpedVisit] is settled before anything can send.
+ * the alerts so [MineshaftState.isWarpedVisit] is settled before anything can send. The sight scan
+ * ([CorpseSightings]) runs after the tracker (it keys learned spots on the layout the tracker stored)
+ * and before the locator, which places what it saw.
  *
  * The Littlefoot lookup is done **here, once**, and handed to both consumers. It walks every rendered
  * entity, and the tracker (which wants to know whether Littlefoot was in this mineshaft) and the alert
@@ -50,6 +52,7 @@ object MineshaftTick {
                 "lapis_alert_fired" to s.lapisFired,
                 "vanguard_alert_fired" to s.vanguardFired,
                 "corpses" to MineshaftCorpses.byType.mapValues { (_, c) -> linkedMapOf("unlooted" to c.unlooted, "looted" to c.looted) },
+                "corpse_stands_seen" to CorpseSightings.corpses.map { linkedMapOf("pos" to listOf(it.x, it.y, it.z), "type" to it.type) },
             )
         }
     }
@@ -82,7 +85,9 @@ object MineshaftTick {
         MineshaftCorpses.scan()
         val littlefoot = if (needsLittlefootScan()) MobSpotter.findVisible(LittlefootAlert.TARGET_NAME) else null
         MineshaftVisitTracker.tick(littlefoot)
-        CorpseLocator.tick()
+        // After the tracker read the layout: the sight scan learns with it, the locator places from it.
+        val others = CorpseSightings.tick()
+        CorpseLocator.tick(others)
         LittlefootAlert.tick(now, littlefoot)
         LapisCorpseAlert.tick(now)
         VanguardCorpseAlert.tick(now)
