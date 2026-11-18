@@ -17,13 +17,15 @@ object TargetWaypoint {
     const val FILL_ALPHA = 0.3f
     private const val LINE_START = 0.5
 
-    fun draw(box: AABB, color: Int, lineWidth: Float, text: String) {
+    fun draw(box: AABB, color: Int, lineWidth: Float, text: String, line: Boolean = true) {
         val camera = Minecraft.getInstance().gameRenderer.mainCamera()
         val eye = camera.position()
         Gizmos.cuboid(box, GizmoStyle.strokeAndFill(color, lineWidth, alpha(color, FILL_ALPHA))).setAlwaysOnTop()
-        val fwd = camera.forwardVector()
-        val start = eye.add(fwd.x() * LINE_START, fwd.y() * LINE_START, fwd.z() * LINE_START)
-        Gizmos.line(start, box.center, color, lineWidth).setAlwaysOnTop()
+        if (line) {
+            val fwd = camera.forwardVector()
+            val start = eye.add(fwd.x() * LINE_START, fwd.y() * LINE_START, fwd.z() * LINE_START)
+            Gizmos.line(start, box.center, color, lineWidth).setAlwaysOnTop()
+        }
         label(text, box, eye, color)
     }
 

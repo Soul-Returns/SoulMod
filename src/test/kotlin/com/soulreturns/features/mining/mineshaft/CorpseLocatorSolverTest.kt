@@ -129,8 +129,8 @@ class CorpseLocatorSolverTest {
 
     @Test
     fun theVanguardShaftShowsItsSpotFromEntry() {
-        val label = assertNotNull(data.fixed["FAIR_1"])
-        assertEquals("Vanguard Corpse", label)
+        val type = assertNotNull(data.fixed["FAIR_1"])
+        assertEquals("Vanguard", type)
         val spots = data.spots("FAIR_1")!!
         val s = CorpseLocatorSolver(spots, fixed = true)
         assertEquals(spots, s.shown())

@@ -1,5 +1,6 @@
 package com.soulreturns.sound
 
+import com.soulreturns.features.dev.DevState
 import com.soulreturns.util.SoulLogger
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -84,6 +85,14 @@ object SoundLibrary {
     fun register() {
         val loaded = current()
         for (entry in loaded.entries) CustomClips.get(entry.id)
+        // What reached the engine (a sound canceled at the packet never does), newest first.
+        DevState.register("recent_sounds") {
+            mapOf(
+                "recent" to RecentSounds.snapshot().take(20).map {
+                    linkedMapOf("id" to it.id, "category" to it.category, "count" to it.count, "outcome" to it.outcome, "pitch" to it.pitch)
+                },
+            )
+        }
     }
 
     private fun current(): LibraryFile {

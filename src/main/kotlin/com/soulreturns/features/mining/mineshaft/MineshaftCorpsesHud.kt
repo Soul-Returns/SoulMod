@@ -133,20 +133,8 @@ object MineshaftCorpsesHud : MovableHud("mineshaft_corpses", "Mineshaft Corpses"
         )
     }
 
-    /**
-     * Colour for a corpse type. Matched case-insensitively against the four types that exist today;
-     * anything else is a type Hypixel added, and gets [MineshaftCorpseColors.other][com.soulreturns.config.MineshaftCorpseColors.other].
-     */
-    private fun colorFor(type: String): ChromaColor {
-        val colors = cfg.mining.mineshaft.corpsesHudColors
-        return when (type.lowercase()) {
-            "lapis" -> colors.lapis
-            "umber" -> colors.umber
-            "tungsten" -> colors.tungsten
-            "vanguard" -> colors.vanguard
-            else -> colors.other
-        }
-    }
+    /** Colour for a corpse type; a type Hypixel added gets `other` (shared with the corpse locator). */
+    private fun colorFor(type: String): ChromaColor = cfg.mining.mineshaft.corpsesHudColors.of(type)
 
     private fun rowWidth(
         row: Pair<String, MineshaftCorpses.Counts>?,

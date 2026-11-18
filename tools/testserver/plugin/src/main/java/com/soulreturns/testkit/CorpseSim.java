@@ -29,12 +29,19 @@ import org.bukkit.scheduler.BukkitTask;
  * {@code block.note_block.harp} at the player's position with pitch {@code floor(63 * (2 - (d/20)^2)) / 63},
  * d = feet to the nearest unlooted corpse stand, every ~400 ms + 30 ms per block, silent beyond 20.
  * Spots come from the mod's own {@code corpse_spots.json} (copied into this jar at build time).
+ * Stands wear their SkyBlock helmet id (Lapis {@code LAPIS_ARMOR_HELMET}, Umber {@code ARMOR_OF_YOG_HELMET},
+ * Tungsten {@code MINERAL_HELMET}, Vanguard {@code VANGUARD_HELMET}; {@code other} an id no corpse uses).
  */
 public final class CorpseSim {
-    private static final String[] TYPES = {"lapis", "umber", "tungsten", "vanguard"};
-    private static final Map<String, String> COLOR = Map.of("lapis", "§9", "umber", "§6", "tungsten", "§7", "vanguard", "§b");
+    private static final String[] TYPES = {"lapis", "umber", "tungsten", "vanguard", "other"};
+    private static final Map<String, String> COLOR = Map.of("lapis", "§9", "umber", "§6", "tungsten", "§7", "vanguard", "§b", "other", "§d");
+    private static final Map<String, String> HELMET_ID = Map.of(
+        "lapis", "LAPIS_ARMOR_HELMET", "umber", "ARMOR_OF_YOG_HELMET", "tungsten", "MINERAL_HELMET", "vanguard", "VANGUARD_HELMET", "other", "FROSTBITTEN_HELMET");
+    /** Stand-in looks only; the mod reads the id. */
     private static final Map<String, Material> HEAD = Map.of(
-        "lapis", Material.LAPIS_BLOCK, "umber", Material.BROWN_TERRACOTTA, "tungsten", Material.GRAY_CONCRETE, "vanguard", Material.DIAMOND_HELMET);
+        "lapis", Material.LAPIS_BLOCK, "umber", Material.BROWN_TERRACOTTA, "tungsten", Material.GRAY_CONCRETE, "vanguard", Material.DIAMOND_HELMET, "other", Material.GLASS);
+    /** {@code corpse wall}: stone this far east of the spot (the side {@code tp} puts the player on). */
+    private static final int WALL_OFFSET = 5;
     /** Hypixel's tab row follows the loot line by ~0.8 s. */
     private static final long TAB_LAG_TICKS = 16L;
 
@@ -59,6 +66,7 @@ public final class CorpseSim {
         BukkitTask task;
         long tick;
         long nextDing;
+        final List<Location> wall = new ArrayList<>();
     }
 
     private final SoulTestKit plugin;
@@ -72,7 +80,7 @@ public final class CorpseSim {
     }
 
     public List<String> completions(int pos) {
-        return pos == 1 ? List.of("start", "tp", "loot", "talisman", "status", "stop") : List.of();
+        return pos == 1 ? List.of("start", "tp", "wall", "loot", "talisman", "status", "stop") : List.of();
     }
 
     public List<String> command(Player player, String[] rest) {
@@ -83,8 +91,13 @@ public final class CorpseSim {
                 yield start(player, rest[1].toUpperCase(Locale.ROOT), java.util.Arrays.copyOfRange(rest, 2, rest.length));
             }
             case "tp" -> {
-                if (rest.length < 2) throw new IllegalArgumentException("corpse tp <spot> [distance]");
-                yield List.of(tp(player, Integer.parseInt(rest[1]), rest.length > 2 ? Double.parseDouble(rest[2]) : 12.0));
+                if (rest.length < 2) throw new IllegalArgumentException("corpse tp <spot> [distance] [side]");
+                yield List.of(tp(player, Integer.parseInt(rest[1]), rest.length > 2 ? Double.parseDouble(rest[2]) : 12.0,
+                    rest.length > 3 ? Double.parseDouble(rest[3]) : 0.0));
+            }
+            case "wall" -> {
+                if (rest.length < 2) throw new IllegalArgumentException("corpse wall <spot> [on|off]");
+                yield List.of(wall(player, Integer.parseInt(rest[1]), rest.length < 3 || rest[2].equalsIgnoreCase("on")));
             }
             case "loot" -> List.of(loot(player, rest.length > 1 ? Integer.parseInt(rest[1]) : -1));
             case "status" -> status(player);
@@ -99,7 +112,7 @@ public final class CorpseSim {
     }
 
     private static String usage() {
-        return "corpse <start <layout> [spot[:type]…]|tp <spot> [distance]|loot [spot]|talisman <on|off>|status|stop>";
+        return "corpse <start <layout> [spot[:type]…]|tp <spot> [distance] [side]|wall <spot> [on|off]|loot [spot]|talisman <on|off>|status|stop>";
     }
 
     private List<int[]> spots(String layout) {
@@ -153,7 +166,7 @@ public final class CorpseSim {
                     a.setGravity(false);
                     a.setPersistent(false);
                     a.setArms(true);
-                    a.setItem(EquipmentSlot.HEAD, new ItemStack(HEAD.get(type)));
+                    a.setItem(EquipmentSlot.HEAD, helmet(type));
                 });
                 s.corpses.add(c);
             }
@@ -168,7 +181,7 @@ public final class CorpseSim {
         player.setAllowFlight(true);
         player.setFlying(true);
         sessions.put(player.getUniqueId(), s);
-        if (!s.corpses.isEmpty()) tp(player, s.corpses.get(0).index, 14.0);
+        if (!s.corpses.isEmpty()) tp(player, s.corpses.get(0).index, 14.0, 0.0);
         s.task = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> tick(player, s), 1L, 1L);
         List<String> out = new ArrayList<>();
         out.add("mineshaft " + layout + (s.spots == null ? " (no spot data)" : ", " + s.corpses.size() + " corpse(s)"));
@@ -176,15 +189,45 @@ public final class CorpseSim {
         return out;
     }
 
-    /** Puts the player {@code distance} blocks east of a spot, one block up, facing it. */
-    private String tp(Player player, int index, double distance) {
+    private static ItemStack helmet(String type) {
+        JsonObject def = new JsonObject();
+        def.addProperty("material", HEAD.get(type).name());
+        def.addProperty("name", "§f" + HELMET_ID.get(type));
+        return Items.build(HELMET_ID.get(type), def, 1);
+    }
+
+    /** Puts the player {@code distance} blocks east of a spot ({@code side} blocks south), one block up, facing the stand. */
+    private String tp(Player player, int index, double distance, double side) {
         Session s = session(player);
         if (s.spots == null || index < 0 || index >= s.spots.size()) throw new IllegalArgumentException("no spot " + index);
         int[] b = s.spots.get(index);
-        Location at = new Location(player.getWorld(), b[0] + 0.5 + distance, b[1] + 1, b[2] + 0.5, 90f, 10f);
+        Location at = new Location(player.getWorld(), b[0] + 0.5 + distance, b[1] + 1, b[2] + 0.5 + side);
+        Location eye = at.clone().add(0, player.getEyeHeight(), 0);
+        at.setDirection(new Location(player.getWorld(), b[0] + 0.5, b[1] + 1.5, b[2] + 0.5).toVector().subtract(eye.toVector()));
         player.setFlying(true);
         player.teleport(at);
-        return String.format(Locale.ROOT, "at %.1f %.1f %.1f, %.1f blocks from spot %d", at.getX(), at.getY(), at.getZ(), distance, index);
+        return String.format(Locale.ROOT, "at %.1f %.1f %.1f, %.1f blocks from spot %d", at.getX(), at.getY(), at.getZ(), Math.hypot(distance, side), index);
+    }
+
+    /**
+     * A 5 wide, 5 high stone wall {@value #WALL_OFFSET} blocks east of a spot: from {@code tp <spot> 9} the
+     * stand is behind it (no line of sight), from {@code tp <spot> 9 6} it is in view again.
+     */
+    private String wall(Player player, int index, boolean on) {
+        Session s = session(player);
+        for (Location l : s.wall) l.getBlock().setType(Material.AIR);
+        s.wall.clear();
+        if (!on) return "wall removed";
+        if (s.spots == null || index < 0 || index >= s.spots.size()) throw new IllegalArgumentException("no spot " + index);
+        int[] b = s.spots.get(index);
+        for (int dz = -2; dz <= 2; dz++) {
+            for (int dy = -1; dy <= 3; dy++) {
+                Location l = new Location(player.getWorld(), b[0] + WALL_OFFSET, b[1] + dy, b[2] + dz);
+                l.getBlock().setType(Material.STONE);
+                s.wall.add(l);
+            }
+        }
+        return "wall at x " + (b[0] + WALL_OFFSET) + " east of spot " + index;
     }
 
     /** The loot line for the nearest unlooted corpse (or spot {@code index}); its tab row flips a moment later. */
@@ -221,6 +264,7 @@ public final class CorpseSim {
         if (s == null) return false;
         if (s.task != null) s.task.cancel();
         for (Corpse c : s.corpses) if (c.entity != null) c.entity.remove();
+        for (Location l : s.wall) l.getBlock().setType(Material.AIR);
         return true;
     }
 
@@ -228,6 +272,7 @@ public final class CorpseSim {
         for (Session s : sessions.values()) {
             if (s.task != null) s.task.cancel();
             for (Corpse c : s.corpses) if (c.entity != null) c.entity.remove();
+            for (Location l : s.wall) l.getBlock().setType(Material.AIR);
         }
         sessions.clear();
     }

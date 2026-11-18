@@ -1114,6 +1114,17 @@ data class MineshaftConfig(
     val corpseLocator: Boolean = false,
     /** Corpse locator waypoint color; gold, apart from the Metal Detector's cyan. */
     val corpseLocatorColor: ChromaColor = ChromaColor(0xFFFFAA00.toInt()),
+    /** Cancel the Organ Donor ding when it only points at corpses the locator already shows. */
+    val corpseLocatorMute: Boolean = true,
+    /** Dim a located Umber/Tungsten/Vanguard corpse (no line) while its key is not in the inventory. */
+    val corpseLocatorDimKeyless: Boolean = true,
+    /** Line from the crosshair to a located corpse, per type once it is known. */
+    val corpseLineLapis: Boolean = true,
+    val corpseLineUmber: Boolean = false,
+    val corpseLineTungsten: Boolean = false,
+    val corpseLineVanguard: Boolean = false,
+    /** Line to a located corpse whose type is not known yet (no line of sight so far) or not a known type. */
+    val corpseLineUnknown: Boolean = true,
     /** `/pc !ptme Found Littlefoot` on the first line-of-sight sighting each visit. */
     val littlefootPtme: Boolean = false,
     /** Also `/pc x: N, y: N, z: N` two seconds after the party warp, so waypoint mods pick it up. */
@@ -1157,7 +1168,17 @@ data class MineshaftCorpseColors(
     val title: ChromaColor = ChromaColor(0xFF55FFFF.toInt()),
     /** The "None" placeholder shown in a mineshaft with no corpses. */
     val none: ChromaColor = ChromaColor(0xFFAAAAAA.toInt()),
-)
+) {
+    /** Color for a corpse type (tab row name, any case): the four known ones, anything else [other]. */
+    fun of(type: String): ChromaColor =
+        when (type.lowercase()) {
+            "lapis" -> lapis
+            "umber" -> umber
+            "tungsten" -> tungsten
+            "vanguard" -> vanguard
+            else -> other
+        }
+}
 
 /**
  * Developer settings, shown only while [com.soulreturns.platform.devaccess.DevAccess] is unlocked.

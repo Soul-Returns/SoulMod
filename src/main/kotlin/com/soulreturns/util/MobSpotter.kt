@@ -5,6 +5,7 @@ import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.phys.AABB
 
 /**
  * Shared helpers for locating named SkyBlock mobs on the client. **All public methods enforce
@@ -61,5 +62,20 @@ object MobSpotter {
             if (fallback == null) fallback = entity
         }
         return fallback
+    }
+
+    /**
+     * First entity whose bounding box meets [box], that [accept] takes **and** the local player can
+     * see, or null. For things that are not named mobs (e.g. corpse armor stands, by their helmet).
+     * Line of sight selects among the matches, as in [findVisible].
+     */
+    fun findVisibleIn(box: AABB, accept: (Entity) -> Boolean): Entity? {
+        val mc = Minecraft.getInstance()
+        val self = mc.player ?: return null
+        val level = mc.level ?: return null
+        for (entity in level.getEntities(self, box) { accept(it) }) {
+            if (self.hasLineOfSight(entity)) return entity
+        }
+        return null
     }
 }

@@ -60,16 +60,18 @@ public abstract class ClientPacketListenerMixin {
         if (ImplosionHider.onSound(packet)) ci.cancel();
     }
 
-    @Inject(method = "handleSoundEvent", at = @At("HEAD"))
+    // Runs on both passes; vanilla plays on the render-thread pass, the only one CorpseLocator can cancel.
+    @Inject(method = "handleSoundEvent", at = @At("HEAD"), cancellable = true)
     private void soul$observeSound(ClientboundSoundPacket packet, CallbackInfo ci) {
         MetalDetector.onSound(packet);
-        CorpseLocator.onSound(packet);
+        boolean muteCorpseDing = CorpseLocator.onSound(packet);
         HollowsWeather.onSound(packet);
         F7Boss.onSound(packet);
         GoldorPhase.onSound(packet);
         SimonSays.onSound(packet);
         TerminalSolver.onSound(packet);
         Experiments.onSound(packet);
+        if (muteCorpseDing) ci.cancel();
     }
 
     @Inject(method = "handleSetTime", at = @At("HEAD"))

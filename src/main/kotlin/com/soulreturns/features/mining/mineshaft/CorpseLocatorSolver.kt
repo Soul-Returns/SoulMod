@@ -11,13 +11,16 @@ import kotlin.math.sqrt
 /** A corpse spawn spot: the block holding the corpse armor stand (stand position floored). */
 data class CorpseSpot(val x: Int, val y: Int, val z: Int)
 
-/** What one ding said: the distance interval from its pitch byte and the candidates it fits. */
-data class DingFit(val ix: Int, val iy: Int, val iz: Int, val pitchByte: Int, val lo: Double, val hi: Double, val fitting: List<CorpseSpot>)
+/**
+ * What one ding said: the distance interval from its pitch byte and the candidates it fits.
+ * [explained]: it fits only spots that were already confirmed before it (so it points at nothing new).
+ */
+data class DingFit(val ix: Int, val iy: Int, val iz: Int, val pitchByte: Int, val lo: Double, val hi: Double, val fitting: List<CorpseSpot>, val explained: Boolean = false)
 
 /**
  * The bundled spawn spots per mineshaft layout (sidebar id, e.g. `AMBE_1`), from meowdding-repo
  * (MIT, `assets/soul/mineshaft/corpse_spots.json`). [fixed] layouts always hold a corpse on their
- * spots (the Vanguard shaft), keyed to the label it gets. Any id not in the file is an unknown layout.
+ * spots (the Vanguard shaft), keyed to its type. Any id not in the file is an unknown layout.
  */
 @Serializable
 data class CorpseSpotData(val layouts: Map<String, List<List<Int>>> = emptyMap(), val fixed: Map<String, String> = emptyMap()) {
@@ -73,8 +76,9 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
             }
         }
         val fitting = candidates().filter { fits(ix, iy, iz, it, lo, hi) }
+        val explained = fitting.isNotEmpty() && fitting.all { it in confirmedSet }
         if (fitting.size == 1) confirmedSet += fitting[0]
-        return DingFit(ix, iy, iz, pitchByte, lo, hi, fitting).also { lastDing = it }
+        return DingFit(ix, iy, iz, pitchByte, lo, hi, fitting, explained).also { lastDing = it }
     }
 
     /**
@@ -105,6 +109,13 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false) {
 
         /** A ding farther than this from every recent client position is not ours (party member, lag spike). */
         const val OWN_RADIUS = 1.5
+
+        /**
+         * Whether to cancel this ding's playback: only one fully explained by already confirmed,
+         * unlooted spots. A ding that could be a new corpse (fits an unconfirmed candidate), the one
+         * that confirms, one that fits nothing and any ding while the locator is off stay audible.
+         */
+        fun mutes(fit: DingFit?, locatorOn: Boolean, muteOn: Boolean): Boolean = locatorOn && muteOn && fit != null && fit.explained
 
         /** `round(pitch * 63)` when the pitch is a talisman byte (n / 63 within float error), else null. */
         fun pitchByte(pitch: Float): Int? {
