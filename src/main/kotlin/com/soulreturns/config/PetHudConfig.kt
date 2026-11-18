@@ -48,8 +48,8 @@ data class PetHudConfig(
     val barColor: ChromaColor = ChromaColor(0xFF3B82F6.toInt()),
     /** Mark the summoned pet in the Pets menu (its lore has `Click to despawn!`). Not part of the HUD. */
     val highlightActive: Boolean = false,
-    /** Mark color for [highlightActive]: amber, readable on the vanilla and Dark UI menu backgrounds. */
-    val highlightColor: ChromaColor = ChromaColor(0xFFFFC21F.toInt()),
+    /** Mark color for [highlightActive]: a teal no SkyBlock rarity uses (pet names are rarity colored). */
+    val highlightColor: ChromaColor = ChromaColor(0xFF00C8A0.toInt()),
     /** Card behind the HUD (Move GUI toggle). */
     val background: Boolean = true,
     /** Card fill (alpha = opacity; chroma supported). */
