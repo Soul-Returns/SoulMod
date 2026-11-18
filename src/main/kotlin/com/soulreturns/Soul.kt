@@ -275,6 +275,7 @@ object Soul : ClientModInitializer {
         // Pet HUD data: after SkyblockSelfProfile (seeds on SelfProfileLoaded) and TabWidgets.
         PetState.register()
         PetHud.register()
+        com.soulreturns.features.pets.ActivePetMark.register()
         // Repoints /spv from its chat summary onto the Profile Viewer screen.
         ProfileViewerScreen.register()
         DungeonRunState.register()

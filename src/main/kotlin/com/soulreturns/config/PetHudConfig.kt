@@ -46,6 +46,10 @@ data class PetHudConfig(
     val barMode: Int = 0,
     /** Fixed bar color, Soul blue; chroma sweeps the rainbow along the bar. */
     val barColor: ChromaColor = ChromaColor(0xFF3B82F6.toInt()),
+    /** Mark the summoned pet in the Pets menu (its lore has `Click to despawn!`). Not part of the HUD. */
+    val highlightActive: Boolean = false,
+    /** Mark color for [highlightActive]: amber, readable on the vanilla and Dark UI menu backgrounds. */
+    val highlightColor: ChromaColor = ChromaColor(0xFFFFC21F.toInt()),
     /** Card behind the HUD (Move GUI toggle). */
     val background: Boolean = true,
     /** Card fill (alpha = opacity; chroma supported). */

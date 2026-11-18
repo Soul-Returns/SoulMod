@@ -1035,6 +1035,18 @@ object ConfigRegistry {
                     synonyms = listOf("pet", "autopet", "pet xp", "pet level", "taming", "golden dragon", "held item"),
                 )
             },
+            card("petmark") {
+                fun pet(block: com.soulreturns.config.PetHudConfig.() -> com.soulreturns.config.PetHudConfig) = ConfigManager.update { copy(petHud = petHud.block()) }
+                FeatureCard(
+                    "petmark", "Highlight active pet", "The summoned pet stands out in the Pets menu", "everyday", "hud", "paw",
+                    "In the Pets menu, the pet that reads \"Click to despawn!\" gets a colored mark. Only the page you are on is marked.",
+                    master = toggle("Highlight active pet", null, { cfg.petHud.highlightActive }, { v -> pet { copy(highlightActive = v) } }, d.petHud.highlightActive),
+                    simple = listOf(
+                        ColorOption("Color", null, { cfg.petHud.highlightColor }, { v -> pet { copy(highlightColor = v) } }, d.petHud.highlightColor, false),
+                    ),
+                    synonyms = listOf("pet", "pets menu", "active pet", "summoned", "despawn", "highlight"),
+                )
+            },
             card("helditem") {
                 FeatureCard(
                     "helditem", "Hide held item name", "No item name floating over the hotbar", "everyday", "hud", "eyeoff",

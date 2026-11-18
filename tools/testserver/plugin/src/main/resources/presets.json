@@ -456,7 +456,11 @@
         "§7Adds §c+1 ❁ Strength§7 for every digit",
         "§7in your bank balance.",
         "",
-        "§6§lLEGENDARY"
+        "§6§lLEGENDARY",
+        "",
+        "§eClick to despawn!",
+        "§eShift Left-click to toggle as favorite!",
+        "§eRight-click to convert to an item!"
       ],
       "petInfo": {
         "type": "GOLDEN_DRAGON",
@@ -485,7 +489,7 @@
         "§220 Combo §7(lasts §a4.5s§7)", "§6+8 §7coins per kill",
         "§225 Combo §7(lasts §a3.7s§7)", "§3+4☯ Combat Wisdom",
         "§230 Combo §7(lasts §a2.7s§7)", "§6+8 §7coins per kill",
-        "§8This pet's perks are active even", "§8when the pet is not summoned!", "", "§5§lEPIC"
+        "§8This pet's perks are active even", "§8when the pet is not summoned!", "", "§5§lEPIC", "", "§eLeft-click to summon!"
       ],
       "petInfo": {
         "type": "GRANDMA_WOLF",
@@ -505,7 +509,7 @@
       "material": "PLAYER_HEAD",
       "name": "§7[Lvl 100] §5Ender Dragon",
       "unique": true,
-      "lore": ["§8Combat Pet", "", "§7Crit Damage: §c+50", "§7Strength: §c+50", "", "§5§lEPIC"],
+      "lore": ["§8Combat Pet", "", "§7Crit Damage: §c+50", "§7Strength: §c+50", "", "§5§lEPIC", "", "§eLeft-click to summon!"],
       "petInfo": {
         "type": "ENDER_DRAGON",
         "active": false,
