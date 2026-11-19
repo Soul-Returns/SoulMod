@@ -4,6 +4,7 @@ import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.data.skyblock.SkyblockSelfProfile
 import com.soulreturns.features.islandchests.StoredChestItem
 import com.soulreturns.features.sacks.SackState
+import com.soulreturns.features.search.SackSearchSource
 import com.soulreturns.features.search.SearchEntry
 import com.soulreturns.features.search.SearchEverywhere
 import com.soulreturns.features.search.SearchHit
@@ -68,7 +69,7 @@ object ForgeOwned {
 
     /** Rebuilt only when a source's data changed (search entry lists, sack bucket, inventory, forge slots). */
     fun snapshot(): OwnedSnapshot {
-        val search = SearchEverywhere.sources.filter { it.enabled() }
+        val search = SearchEverywhere.sources.filter { it.enabled() && it.id != SackSearchSource.ID } // sacks are counted below, also with the search toggle off
         val lists = search.map { it.entries() }
         val sackData = if (SackState.enabled()) SackState.allCounts() else null
         val slots = ForgeStore.read().slots

@@ -831,17 +831,21 @@ object ConfigRegistry {
             // Inventory & Items › Inventory
             card("searcheverywhere") {
                 FeatureCard(
-                    "searcheverywhere", "Search everywhere", "One search over your island chests and storage", "inventory", "inventory", "search",
-                    "Finds an item in everything Soul remembers for this profile: chests you opened on your island and the storage pages you looked at. Press the key or use /soul search anywhere on SkyBlock. Each source takes part while its own feature is on. Its Forge tab (Ctrl+Tab) plans a forge recipe down to what you own.",
+                    "searcheverywhere", "Search everywhere", "One search over your island chests, storage and sacks", "inventory", "inventory", "search",
+                    "Finds an item in everything Soul remembers for this profile: chests you opened on your island and the storage pages you looked at, plus the sack counts Soul keeps. Press the key or use /soul search anywhere on SkyBlock. Each source takes part while its own feature is on. Its Forge tab (Ctrl+Tab) plans a forge recipe down to what you own.",
                     master = null, openAction = "openSearchEverywhere",
                     simple = listOf(
-                        action("Find stored items", "Search every remembered island chest and storage page", "Search", "openSearchEverywhere"),
+                        action("Find stored items", "Search every remembered island chest, storage page and counted sack item", "Search", "openSearchEverywhere"),
                         keybind("Search key", "Open search, or return to it while locating or from a page it opened. Also editable in /soul keybinds", { cfg.islandChests.searchKey }, { v ->
                             ConfigManager.update { CommandKeybinds.rebind(this, CommandKeybinds.Ref.IslandChests, v) }
                         }, d.islandChests.searchKey),
+                        toggle("Search sacks", "Include the sack tracker's counts from menus, [Sacks] messages and the SkyBlock API. Works with the Sack tracker panel off", { cfg.sacks.searchSacks }, { v ->
+                            ConfigManager.update { copy(sacks = sacks.copy(searchSacks = v)) }
+                            if (v) SackState.prefill()
+                        }, d.sacks.searchSacks),
                     ),
                     beta = true,
-                    synonyms = listOf("search", "find", "items", "where", "chest", "storage", "ender chest", "backpack", "forge", "recipe", "quick forge"),
+                    synonyms = listOf("search", "find", "items", "where", "chest", "storage", "sacks", "ender chest", "backpack", "forge", "recipe", "quick forge"),
                 )
             },
             card("islandchests") {

@@ -10,6 +10,11 @@ interface SearchPlace {
     val key: String
 }
 
+/** Id-only counts cannot claim a lore variant; they join an existing row only when its id is unambiguous. */
+interface IdKeyedPlace : SearchPlace {
+    fun count(item: StoredChestItem): Long
+}
+
 /** A place with the items last seen in it, in its own slot order (null = empty slot). */
 class SearchEntry(val place: SearchPlace, val items: List<StoredChestItem?>)
 

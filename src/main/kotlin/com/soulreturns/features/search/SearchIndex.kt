@@ -53,12 +53,30 @@ class SearchIndex {
 
         fun build(sources: List<Pair<String, List<SearchEntry>>>): List<SearchRow> {
             val groups = LinkedHashMap<String, Group>()
-            for ((source, entries) in sources) for (entry in entries) for (item in entry.items) {
-                if (item == null || item.count <= 0) continue
-                val group = groups.getOrPut(item.searchKey()) { Group(item) }
+            val keysById = HashMap<String, MutableSet<String>>()
+            fun add(source: String, entry: SearchEntry, item: StoredChestItem, key: String) {
+                val group = groups.getOrPut(key) { Group(item) }
                 val counted = group.bySource.getOrPut(source) { LinkedHashMap() }.getOrPut(entry.place.key) { Counted(entry.place) }
-                counted.count += item.count.toLong()
+                counted.count += (entry.place as? IdKeyedPlace)?.count(item) ?: item.count.toLong()
                 counted.stacks++
+            }
+            for ((source, entries) in sources) for (entry in entries) {
+                if (entry.place is IdKeyedPlace) continue
+                for (item in entry.items) {
+                    if (item == null || item.count <= 0) continue
+                    val key = item.searchKey()
+                    item.skyblockId?.let { keysById.getOrPut(it) { LinkedHashSet() } += key }
+                    add(source, entry, item, key)
+                }
+            }
+            // Id-keyed places join the one row of their id; with none or several variants they get their own row.
+            for ((source, entries) in sources) for (entry in entries) {
+                if (entry.place !is IdKeyedPlace) continue
+                for (item in entry.items) {
+                    if (item == null || item.count <= 0) continue
+                    val key = item.skyblockId?.let { keysById[it] }?.singleOrNull() ?: item.searchKey()
+                    add(source, entry, item, key)
+                }
             }
             return groups.map { (key, group) ->
                 val item = group.item

@@ -1,6 +1,7 @@
 package com.soulreturns.features.search.forge
 
 import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.features.search.SackSearchSource
 import com.soulreturns.features.search.SearchEverywhere
 import com.soulreturns.features.search.SearchEverywhereLayout
 import com.soulreturns.features.search.SearchEverywhereLayout.Rect
@@ -647,14 +648,14 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
             y = ly + ForgeLayout.USED + ForgeLayout.D_GAP
         }
         // Places: the search screen's real sections, then static headers.
-        val active = SearchEverywhere.active()
+        val active = SearchEverywhere.active().filter { it.id != SackSearchSource.ID }
         val sources = if (row == null) emptyList() else active.filter { row.has(it.id) }
         var placesH = 0
         if (row != null && sources.isNotEmpty()) {
             placesH = c.sectionsHeight(row, sources, right - x)
             c.drawSections(g, row, sources, x, right, y, vis)
         }
-        val searchIds = SearchEverywhere.sources.map { it.id }
+        val searchIds = SearchEverywhere.sources.map { it.id } - SackSearchSource.ID
         val statics = parts.filter { it.source !in searchIds }.map { p ->
             val label = if (p.source == "purse") "PURSE" else if (p.source == "bank") "BANK" else (ForgeOwned.source(p.source)?.label ?: p.source).uppercase()
             val note = if (p.source == "sacks") "from your sacks" else if (p.source == "inventory") "carried now" else if (p.source == "forge") "running in the forge" else ""

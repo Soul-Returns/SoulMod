@@ -89,6 +89,9 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
     private val pins = HashMap<CorpseSpot, DoubleArray>()
     private val hints = HashMap<CorpseSpot, DoubleArray>()
 
+    /** The dings that fit each spot alone (at most [SUPPORT_MAX]): its evidence when the tab says too many are shown. */
+    private val supportDings = HashMap<CorpseSpot, ArrayList<DingFit>>()
+
     /** Loot lines that matched no candidate (player position, type): a stand of that type seen there later was that corpse. */
     private val unplacedLoots = ArrayList<Pair<DoubleArray, String?>>()
 
@@ -116,7 +119,22 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
             if (s !in confirmedSet && s !in learnedPoints) confirm(s)
             if (s !in pins) regions[s]?.cut(ix, iy, iz, lo, hi)
         }
-        return DingFit(ix, iy, iz, pitchByte, lo, hi, fitting, explained).also { lastDing = it }
+        return DingFit(ix, iy, iz, pitchByte, lo, hi, fitting, explained).also { fit ->
+            lastDing = fit
+            if (fitting.size == 1) supportDings.getOrPut(fitting[0]) { ArrayList() }.let { if (it.size < SUPPORT_MAX) it += fit }
+        }
+    }
+
+    /**
+     * How many of the dings that fit shown [spot] alone still point only at it: a ding that now also
+     * fits another shown corpse's seen stand (pinned later, or an extra seen later) is explained by
+     * that corpse instead. The talisman only measures unlooted corpses, so this is the dings' vote
+     * that a corpse is there.
+     */
+    fun support(spot: CorpseSpot): Int {
+        val dings = supportDings[spot] ?: return 0
+        val others = shown().filter { it != spot && it in pins }
+        return dings.count { d -> others.none { o -> fitsNow(d.ix, d.iy, d.iz, o, d.lo, d.hi) } }
     }
 
     private fun confirm(s: CorpseSpot) {
@@ -183,6 +201,9 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
     }
 
     fun isPinned(spot: CorpseSpot): Boolean = spot in pins
+
+    /** The data's fixed spots (the Vanguard shaft): certain without a ding or a sight. */
+    fun isFixed(spot: CorpseSpot): Boolean = spot in fixedSpots
 
     /** A party member's position for [spot]: drawn only while the player has neither seen nor narrowed it to [TIGHT]. */
     fun hint(spot: CorpseSpot, x: Double, y: Double, z: Double) {
@@ -373,6 +394,9 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
 
         /** Two sightings of a corpse outside every box this close together are the same corpse. */
         const val SAME_CORPSE = 1.5
+
+        /** Dings kept per spot as its [support]. */
+        const val SUPPORT_MAX = 64
 
         /**
          * Whether to cancel this ding's playback: only one fully explained by already located,

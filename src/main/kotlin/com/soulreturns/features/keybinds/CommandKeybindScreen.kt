@@ -237,7 +237,7 @@ class CommandKeybindScreen(private val parent: Screen? = null) : SoulScreenBase(
             val columns = ((right - left + GAP) / (TILE_MIN_W + GAP)).coerceIn(1, 3)
             val tileW = (right - left - GAP * (columns - 1)) / columns
             drawBindingTile(
-                g, "Search everywhere", CHEST_ICON, Ref.IslandChests, cfg.islandChests.searchKey, cfg.islandChests.enabled || cfg.storageOverlay.enabled,
+                g, "Search everywhere", CHEST_ICON, Ref.IslandChests, cfg.islandChests.searchKey, cfg.islandChests.enabled || cfg.storageOverlay.enabled || cfg.sacks.searchSacks,
                 left, y, left + tileW, y + TILE_H,
                 listOf(
                     line("Search everywhere", ChatFormatting.WHITE),

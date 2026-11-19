@@ -21,7 +21,7 @@ import org.lwjgl.glfw.GLFW
  */
 object SearchEverywhere {
     /** Every source, in filter-chip order. A new source is one more entry here. */
-    internal val sources: List<SearchSource> = listOf(IslandChestSource, StorageSource)
+    internal val sources: List<SearchSource> = listOf(IslandChestSource, StorageSource, SackSearchSource)
     internal val index = SearchIndex()
     private val session = IslandChestSearchSession()
     private var registered = false
@@ -29,6 +29,7 @@ object SearchEverywhere {
     fun register() {
         if (registered) return
         registered = true
+        com.soulreturns.features.sacks.SackState.requireCounts { SackSearchSource.enabled() && SkyblockState.onSkyblock }
         ClientTickEvents.END_CLIENT_TICK.register { mc ->
             // Let GLFW finish the opening key's character callback before focusing search.
             if (session.takeRequest(available(), mc.player != null && mc.level != null, mc.gui.screen() != null, mc.isWindowActive)) {

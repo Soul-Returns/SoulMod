@@ -269,6 +269,8 @@ data class SackTrackerConfig(
     /** Master toggle: the panel, middle-click tracking and the tracked-slot markers. */
     val hud: Boolean = false,
     val tracked: List<TrackedSackItem> = emptyList(),
+    /** Search everywhere finds items in the counted sacks; counting then runs even with the tracker off. */
+    val searchSacks: Boolean = false,
     /** Default: right edge, upper middle. */
     val hudTransform: HudTransform = HudTransform(hAnchor = HudAnchor.END, vAnchor = HudAnchor.CENTER, offsetX = -9.5f, offsetY = -36.5f),
     val hudBackground: Boolean = true,

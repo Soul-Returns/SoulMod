@@ -217,7 +217,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         roundRect(g, r.x, r.y, r.right, r.bottom, HEAD_BG, SoulRenderPipelines.ROUND_BOTTOM)
         g.fill(r.x, r.y, r.right, r.y + 1, DIVIDER)
         val forgeMode = mode == MODE_FORGE
-        val left = if (forgeMode) forge.footerLeft() else "Island chests refresh when a chest is opened, storage when a page is opened."
+        val left = if (forgeMode) forge.footerLeft() else "Last known contents · Open containers to refresh them; [Sacks] messages also update sack counts."
         drawTextV(g, ellipsize(left, r.width - 40 - if (frame.compact) 0 else 230, em(9)), r.x + 20, r.y + 1, r.bottom, FAINT, em(9))
         if (frame.compact) return
         val parts = if (forgeMode) forge.footerKeys()
@@ -409,7 +409,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         if (cached.isEmpty() || (results.isEmpty() && query.isEmpty())) {
             if (filtered.size == 1) return listOf(Title(filtered[0].emptyTitle), Para(filtered[0].emptyText))
             return listOf(Title("Nothing seen yet"),
-                Para("Soul searches what you have already seen:\nchests you open on your island and the storage pages you look at."),
+                Para("Soul searches the contents it knows for this profile.\nOpen your containers once to learn what is in them."),
                 Coverage(active.map { Triple(it.color, if (it.entries().isNotEmpty()) it.searched() else "${it.label}: nothing seen yet", MUTED) }))
         }
         if (results.isNotEmpty()) return null
@@ -502,7 +502,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
 
         val plan = planSections(row, sources, inner.width)
         val stale = plan.built.any { it.second.stale }
-        val note = if (stale) "Older observations included. Items may have moved since." else "What you last saw, not a live count. Opening a chest or page refreshes it."
+        val note = if (stale) "Older observations included. Items may have moved since." else "Last known contents, not a live inventory. See each source for when its counts were updated."
         val noteLines = wrapText(note, inner.width, em(10))
         val contentH = plan.height
         val places = if (independent) SearchEverywhereLayout.places(col, noteLines.size)
@@ -614,7 +614,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         val inner = SearchEverywhereLayout.inner(col)
         tracked(g, "SEARCH EVERYWHERE", inner.x, inner.y, inner.y + 15, 9, FAINT)
         drawTextV(g, "Find it, wherever it is.", inner.x, inner.y + 19, inner.y + 51, WHITE, em(20))
-        val lines = wrapText("Type an item name, then choose a result to see every chest and storage page it was last seen in.", inner.width, em(12))
+        val lines = wrapText("Type an item name, then choose a result to see where it is and how much each source holds.", inner.width, em(12))
         lines.forEachIndexed { i, line ->
             val top = inner.y + 57 + (i * 19.2f).roundToInt()
             drawTextV(g, line, inner.x, top, top + 19, 0xFF999999.toInt(), em(12))
@@ -632,7 +632,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
             clippedRegion(r.x, r.y, r.right, r.bottom, section) { filter = source.id; listScroll.pos = 0f; search.focused = true }
             y += SearchEverywhereLayout.SRC_ROW_H + SearchEverywhereLayout.SRC_ROW_GAP
         }
-        val honest = listOf("Only what you or a sharing co-op client have seen.", "No scanning. No automatic opening.")
+        val honest = listOf("Only remembered contents and known item counts.", "No scanning. No automatic opening.")
         val honestTop = max(y + 6, inner.bottom - 32)
         honest.forEachIndexed { i, line ->
             drawTextV(g, line, (inner.x + inner.right) / 2 - textWidth(line, em(10)) / 2, honestTop + i * 16, honestTop + i * 16 + 16, 0xFF626262.toInt(), em(10))
