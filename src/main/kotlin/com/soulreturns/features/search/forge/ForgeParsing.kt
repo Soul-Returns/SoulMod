@@ -22,6 +22,7 @@ object ForgeParsing {
     private val INGREDIENT = Regex("""^(?:[\uE000-\uF8FF] )?(.+?)(?: x([\d,]+))?$""")
 
     const val FORGE_TITLE = "The Forge"
+    const val CONFIRM_TITLE = "Confirm Process"
     const val HOTM_TITLE = "Heart of the Mountain"
     const val RESULTS_TITLE = "Results"
     /** Forge main menu slots 10–16 = forge slots #1–#7. */

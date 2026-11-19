@@ -4,6 +4,7 @@ import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.data.recipes.RecipeCatalogClient
 import com.soulreturns.data.skyblock.ProfileType
 import com.soulreturns.data.skyblock.SkyblockProfileState
+import com.soulreturns.data.skyblock.SkyblockSelfProfile
 import com.soulreturns.data.skyblock.SkyblockState
 import com.soulreturns.features.search.SearchEverywhere
 import com.soulreturns.features.search.SearchEverywhereLayout.Rect
@@ -34,6 +35,8 @@ internal class ForgeTab(private val canvas: ForgeCanvas, showInSearch: (SearchRo
     companion object {
         /** Set by a click that wants the recipe search focused (Change goal); consumed by the next frame. */
         @JvmStatic var focusRequested = false
+
+        private const val API_MAX_AGE_MS = 5 * 60_000L
     }
 
     // ---------------------------------------------------------------- per-frame data
@@ -53,6 +56,9 @@ internal class ForgeTab(private val canvas: ForgeCanvas, showInSearch: (SearchRo
     /** Call once per frame before drawing in Forge mode. */
     fun begin() {
         s.forProfile(SearchEverywhere.profile())
+        // The SkyBlock API's forge processes fill slots this client never saw (a stale self profile reloads at most every 5 min).
+        Forge.syncApi()
+        SkyblockSelfProfile.refreshIfStale(API_MAX_AGE_MS)
         SearchEverywhere.rows(SearchEverywhere.active())
         val first = !ui.ready
         ui.d = gather()

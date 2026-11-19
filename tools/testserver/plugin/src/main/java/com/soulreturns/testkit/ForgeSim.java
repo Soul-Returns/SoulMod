@@ -48,7 +48,7 @@ public final class ForgeSim implements Listener {
     private static final boolean[] GRID = new boolean[54];
     private static final String DEFAULT_REQUIRES = "Requires Heart of the Mountain Tier 8";
     private static final String USAGE = "forge open | hotm | qf <0-20> | slots <free|three|chamber> | lock <OUTPUT_ID…|none|default>"
-        + " | start <slot 1-7> <OUTPUT_ID> | status | pack <on|off>";
+        + " | start <slot 1-7> <OUTPUT_ID> | confirm <on|off> | status | pack <on|off>";
 
     static {
         for (int r = 1; r <= 4; r++) for (int c = 1; c <= 7; c++) GRID[r * 9 + c] = true;
@@ -71,6 +71,8 @@ public final class ForgeSim implements Listener {
 
     private static final class State {
         int qf = 20;
+        /** {@code hx forge confirm on}: the Confirm Process button is lime and a click starts the process. */
+        boolean confirmOk;
         final Process[] slots = new Process[FORGE_SLOTS];
         final Map<String, String> locked = new LinkedHashMap<>();
     }
@@ -314,7 +316,7 @@ public final class ForgeSim implements Listener {
             case MAIN -> renderMain(inv, st);
             case PICKER -> renderPicker(inv, h);
             case CATEGORY -> renderCategory(inv, st, h);
-            case CONFIRM -> renderConfirm(inv, h);
+            case CONFIRM -> renderConfirm(inv, h, st);
             case HOTM -> renderHotm(inv, st);
         }
     }
@@ -407,7 +409,7 @@ public final class ForgeSim implements Listener {
         return i.name() + (i.amount() > 1 ? " §r§8x" + i.amount() : "");
     }
 
-    private void renderConfirm(Inventory inv, Holder h) {
+    private void renderConfirm(Inventory inv, Holder h, State st) {
         fill(inv);
         Recipe r = h.recipe;
         int next = 0;
@@ -428,7 +430,8 @@ public final class ForgeSim implements Listener {
             "     §r§eResult Item §r§f§m §r§f§m §r§f>"));
         Entry out = entry(r.id());
         inv.setItem(16, build(out, 1, out.lore()));
-        inv.setItem(31, ui("red_terracotta", "§aConfirm", "§cYou don't have the required items!"));
+        inv.setItem(31, st.confirmOk ? ui("lime_terracotta", "§aConfirm", "§eClick to confirm!")
+            : ui("red_terracotta", "§aConfirm", "§cYou don't have the required items!"));
         inv.setItem(48, ui("arrow", "§aGo Back", "§7To " + r.category()));
         inv.setItem(49, ui("barrier", "§cClose"));
     }
@@ -516,6 +519,11 @@ public final class ForgeSim implements Listener {
             }
             case CONFIRM -> {
                 if (slot == 48) openCategory(player, h.forgeSlot, h.category, h.page);
+                else if (slot == 31 && st.confirmOk && st.slots[h.forgeSlot - 1] == null) {
+                    // Hypixel starts the process and returns to The Forge (capture 2026-11-16).
+                    st.slots[h.forgeSlot - 1] = new Process(h.recipe.id(), System.currentTimeMillis());
+                    open(player);
+                }
             }
             case HOTM -> {
                 if (slot == 45) player.closeInventory();
@@ -595,6 +603,11 @@ public final class ForgeSim implements Listener {
                 refresh(player);
                 return List.of("slot " + slot + " busy with " + r.id() + ", " + ForgeModel.duration(ForgeModel.shownSeconds(r.base(), st.qf)));
             }
+            case "confirm" -> {
+                if (args.length < 2) throw new IllegalArgumentException("usage: /hx forge confirm <on|off>");
+                st.confirmOk = args[1].equalsIgnoreCase("on");
+                return List.of("Confirm Process is " + (st.confirmOk ? "lime: a click starts the process" : "red: you lack the items"));
+            }
             case "status" -> {
                 List<String> out = new ArrayList<>();
                 out.add("Quick Forge level " + st.qf + " = " + ForgeModel.percentText(ForgeModel.percent(st.qf)) + "%, recipe book "
@@ -640,12 +653,12 @@ public final class ForgeSim implements Listener {
 
     /** Tab completion for the words after {@code hx forge}; {@code pos} 1 = the subcommand. */
     List<String> completions(int pos, String[] args) {
-        if (pos == 1) return List.of("open", "hotm", "qf", "slots", "lock", "start", "status", "pack");
+        if (pos == 1) return List.of("open", "hotm", "qf", "slots", "lock", "start", "confirm", "status", "pack");
         String sub = args.length > 0 ? args[0].toLowerCase(Locale.ROOT) : "";
         return switch (sub) {
             case "qf" -> pos == 2 ? IntStream.rangeClosed(0, ForgeModel.MAX_LEVEL).mapToObj(String::valueOf).toList() : List.of();
             case "slots" -> pos == 2 ? List.of("free", "three", "chamber") : List.of();
-            case "pack" -> pos == 2 ? List.of("on", "off") : List.of();
+            case "pack", "confirm" -> pos == 2 ? List.of("on", "off") : List.of();
             case "lock" -> {
                 List<String> ids = new ArrayList<>(Arrays.asList("none", "default"));
                 ids.addAll(data().byId().keySet());

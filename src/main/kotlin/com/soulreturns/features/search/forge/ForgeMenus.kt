@@ -8,6 +8,8 @@ import com.soulreturns.features.inventorybuttons.InventoryButtonIcons
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SkyblockItemUtils
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
+import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.core.component.DataComponents
@@ -27,11 +29,23 @@ import kotlin.math.abs
 object ForgeMenus {
     private var screenSeen: AbstractContainerScreen<*>? = null
     private var stacks: Array<ItemStack?> = emptyArray()
-    private var lastSlotWrite = 0L
 
     fun register() {
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { scan() })
+        ScreenEvents.AFTER_INIT.register(
+            ScreenEvents.AfterInit { _, screen, _, _ ->
+                if (screen !is AbstractContainerScreen<*> || MessageDetector.stripColorCodes(screen.title.string).trim() != ForgeParsing.CONFIRM_TITLE) return@AfterInit
+                ScreenMouseEvents.allowMouseClick(screen).register(
+                    ScreenMouseEvents.AllowMouseClick { s, click ->
+                        if (Forge.enabled() && SkyblockState.onSkyblock) onConfirmClick(s as AbstractContainerScreen<*>, click.x(), click.y(), click.button())
+                        true
+                    },
+                )
+            },
+        )
     }
+
+    private const val CONFIRM_SLOT = 31
 
     private fun scan() {
         val screen = Minecraft.getInstance().gui.screen() as? AbstractContainerScreen<*>
@@ -50,6 +64,7 @@ object ForgeMenus {
         val items = slots.associate { it.index to it.item }
         val now = System.currentTimeMillis()
         if (title == ForgeParsing.FORGE_TITLE) readForge(items, now)
+        else if (title == ForgeParsing.CONFIRM_TITLE) readConfirm(items)
         else if (title == ForgeParsing.HOTM_TITLE) readHotm(items, now)
         else if (ForgeParsing.isPicker(title)) readPicker(items)
         else readRecipePage(title, items, now)
@@ -81,21 +96,42 @@ object ForgeMenus {
     private fun readForge(items: Map<Int, ItemStack>, now: Long) {
         // Wait for the contents: every forge slot holds something once the menu is filled.
         if (ForgeParsing.FORGE_SLOTS.any { items[it]?.isEmpty != false }) return
-        val qf = (ForgeStore.read().quickForge ?: 0.0) / 100
         val reads = ForgeParsing.FORGE_SLOTS.mapIndexed { i, index ->
             val stack = items.getValue(index)
             val parsed = ForgeParsing.forgeSlot(SkyblockItemUtils.getSkyblockId(stack), name(stack), lore(stack))
-            if (parsed is ForgeParsing.Busy) {
-                ForgeSlotRead(i + 1, "busy", ForgeItems.keyOf(stack) ?: parsed.outputId, parsed.name,
-                    Math.round(parsed.remainingSeconds / (1 - qf).coerceAtLeast(0.01)), now)
-            } else ForgeSlotRead(i + 1, if (parsed == ForgeParsing.Idle) "idle" else "unknown", readAt = now)
+            if (parsed is ForgeParsing.Busy) ForgeProcesses.fromMenu(i + 1, ForgeItems.keyOf(stack) ?: parsed.outputId, parsed.name, parsed.remainingSeconds, now)
+            else ForgeSlotRead(i + 1, if (parsed == ForgeParsing.Idle) "idle" else "unknown", ForgeItems.keyOf(stack), readAt = now, source = ForgeProcesses.MENU)
         }
-        val old = ForgeStore.read().slots
-        val same = old.size == reads.size && old.indices.all { old[it].state == reads[it].state && old[it].outputId == reads[it].outputId }
-        // The countdown changes the lore every second; rewrite only on a state change or every 30 s.
-        if (same && now - lastSlotWrite < 30_000L) return
-        lastSlotWrite = now
-        ForgeStore.update { copy(slots = reads, slotsAt = now) }
+        // The lore counts down every second; the merge keeps the stored end while a re-read agrees with it.
+        Forge.observeSlots(reads, now)
+    }
+
+    /** The Confirm Process menu as last seen with a clickable Confirm: what a click on slot 31 would start. */
+    private class PendingStart(val slot: Int, val id: String, val name: String)
+
+    private var pending: PendingStart? = null
+
+    private fun readConfirm(items: Map<Int, ItemStack>) {
+        val confirm = items[CONFIRM_SLOT]
+        val slotNumber = items[13]?.let { Regex("""^Forge Slot #(\d+)$""").matchEntire(name(it))?.groupValues?.get(1)?.toIntOrNull() }
+        val result = items[16]?.takeIf { !it.isEmpty }
+        val id = result?.let { ForgeItems.keyOf(it) ?: SkyblockItemUtils.getSkyblockId(it) }
+        // Green only: the red variant says `You don't have the required items!` and starts nothing.
+        val ok = confirm != null && !confirm.isEmpty && name(confirm) == "Confirm" &&
+            BuiltInRegistries.ITEM.getKey(confirm.item).path != "red_terracotta" && lore(confirm).any { it == "Click to confirm!" }
+        pending = if (ok && slotNumber != null && id != null) PendingStart(slotNumber, id, name(result)) else null
+    }
+
+    /** A click on the Confirm button of the Confirm Process menu starts the process we saw there. Never consumed. */
+    private fun onConfirmClick(screen: AbstractContainerScreen<*>, x: Double, y: Double, button: Int) {
+        if (button != 0) return
+        val p = pending ?: return
+        val slot = screen.menu.slots.firstOrNull { it.index == CONFIRM_SLOT } ?: return
+        val left = x - screen.leftPos
+        val top = y - screen.topPos
+        if (left < slot.x || left >= slot.x + 16 || top < slot.y || top >= slot.y + 16) return
+        pending = null
+        Forge.recordStart(p.slot, p.id, p.name)
     }
 
     private fun readHotm(items: Map<Int, ItemStack>, now: Long) {

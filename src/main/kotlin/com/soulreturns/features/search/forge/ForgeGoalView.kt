@@ -311,15 +311,18 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
     }
 
     private fun slotStrip(g: GuiGraphicsExtractor, x: Int, y: Int, vis: IntArray) {
-        class Cell(val kind: String, val id: String?, val sub: String, val tip: List<String>)
+        class Cell(val kind: String, val id: String?, val sub: String, val tip: List<String>, val key: String? = null)
         val cells = ArrayList<Cell>()
         val pct = Math.round(d.qf * 100)
+        val now = System.currentTimeMillis()
         for (b in d.busy) {
-            val shown = ForgeEngine.shownSeconds(b.remainingBase, d.qf)
-            val tip = arrayListOf("§f${ui.name(b.outputId)}", "§7Running · §a${ForgeFormat.duration(shown, 3)} left")
-            if (d.qf < ForgeEngine.QF_MAX) tip += "§8${ForgeFormat.duration(ForgeEngine.shownSeconds(b.remainingBase, ForgeEngine.QF_MAX), 3)} with Quick Forge 20"
-            cells += Cell("busy", b.outputId, ForgeFormat.duration(shown, 2), tip)
+            val left = b.secondsLeft(now)
+            // The end moment is stored; only the countdown changes, so the tooltip is keyed by the slot, not its text.
+            val tip = arrayListOf("§f${ui.name(b.outputId)}", "§7Running · §a${if (b.approx) "~" else ""}${ForgeFormat.duration(left, 3)} left")
+            if (b.approx) tip += "§8Estimated from your SkyBlock profile${if (d.qfInfo.known) " at Quick Forge $pct%" else ""}. Open The Forge to confirm."
+            cells += Cell("busy", b.outputId, (if (b.approx) "~" else "") + ForgeFormat.duration(left, 2), tip, "forge-slot:${b.slot}:${b.outputId}")
         }
+        for (dn in d.done) cells += Cell("done", dn.outputId, "ready", listOf("§f${ui.name(dn.outputId)}", "§aReady to collect", "§8Claim it in The Forge."), "forge-slot:${dn.slot}:${dn.outputId}:done")
         for (u in d.slots.filterIsInstance<Forge.Unknown>()) cells += Cell("unknown", null, "?", listOf("§fSlot not read", "§7Open The Forge to refresh"))
         for (id in m.plan.slots) {
             val base = m.byId[id]?.recipe?.baseSeconds ?: 0
@@ -329,6 +332,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
         for ((i, cell) in cells.take(ForgeEngine.SLOTS).withIndex()) {
             val r = ForgeLayout.slot(x, y, i)
             val (edge, fill, text) = if (cell.kind == "busy") Triple(0xFF5A3F2C.toInt(), 0xFF2A2019.toInt(), 0xFFE8A882.toInt())
+                else if (cell.kind == "done") Triple(ForgeColors.PILL_EDGE, ForgeColors.PILL_BG, ForgeColors.OK)
                 else if (cell.kind == "plan") Triple(ForgeColors.SEL_EDGE, ForgeColors.SEL_BG, 0xFFB9D5F8.toInt())
                 else Triple(0xFF303030.toInt(), 0, 0xFF888888.toInt())
             if (cell.kind == "idle" || cell.kind == "unknown") dashed(g, r, edge)
@@ -341,7 +345,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
                 c.text(g, c.fit(cell.sub, r.width - 2, ui.em(8)), r.x + (r.width - c.width(c.fit(cell.sub, r.width - 2, ui.em(8)), ui.em(8))) / 2, r.y + 27, r.y + 39, text, ui.em(8), false)
             } else if (cell.kind == "unknown") c.text(g, "?", r.x + (r.width - c.width("?", ui.em(13))) / 2, r.y, r.bottom, text, ui.em(13), false)
             else c.text(g, "idle", r.x + (r.width - c.width("idle", ui.em(8))) / 2, r.y, r.bottom, text, ui.em(8), false)
-            if (cell.tip.isNotEmpty() && c.hovered(r, vis)) c.tip(r, cell.tip)
+            if (cell.tip.isNotEmpty() && c.hovered(r, vis)) c.tip(r, cell.tip, cell.key)
         }
     }
 
@@ -361,7 +365,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
             ui.runs(g, r.x + 40, r.y + 34, r.y + 50, r.right - 12, listOf(Run("Forge ${ui.name(m.goal)} at The Forge: ", 0xFF9BC4A4.toInt())) + ui.durRuns(base, 4, 0xFF9BC4A4.toInt()), ui.em(10))
             y += ForgeLayout.READY_CARD + ForgeLayout.READY_GAP
         }
-        val running = if (d.busy.isNotEmpty()) "${d.busy.size} running · " else ""
+        val running = (if (d.busy.isNotEmpty()) "${d.busy.size} running · " else "") + (if (d.done.isNotEmpty()) "${d.done.size} ready · " else "")
         y += sectionHeader(g, x, right, y, true, "FORGE NOW", "$running${d.free} of ${ForgeEngine.SLOTS} slots free")
         slotStrip(g, x, y, vis)
         y += ForgeLayout.SLOT_ROW

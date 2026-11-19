@@ -83,6 +83,7 @@ legacy-formatted: `§` or `&` codes.
 | `hx sacks set <ID> <n>` / `hx sacks get <ID>` | set a count silently (no chat) / print it |
 | `hx menu forge` / `hx menu hotm` | `The Forge` and `Heart of the Mountain` as captured on Hypixel (see "Forge"); `hx forge open` = `hx menu forge` |
 | `hx forge qf <0-20>` | Quick Forge level (HotM item, every shown `Duration`, remaining time of running processes) |
+| `hx forge confirm <on\|off>` | `Confirm Process` button lime (`Click to confirm!`) instead of red; a click on it starts the process in that forge slot and returns to The Forge, as the capture shows (default off) |
 | `hx forge slots <free\|three\|chamber>` | all idle / Refined Titanium ×2 + Mithril Plate busy / all 7 Gemstone Chamber (35m 5s at 30 %) |
 | `hx forge lock <OUTPUT_ID…\|none\|default>` / `hx forge start <slot> <OUTPUT_ID>` / `hx forge status` | locked recipes / start a process / state |
 | `hx give <skyblock id> [count]` | item from presets.json `items`; unknown ids get a generic COMMON item with `{id:"…"}` |

@@ -744,6 +744,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
     // Requested during the frame by the hovered element (the last request wins). Shown once the same
     // content has been hovered for TIP_DELAY_MS; a click closes it until the pointer leaves that content.
     private var tipLines: List<String>? = null
+    private var tipIdentity: String? = null
     private val tipRect = IntArray(4)
     private var tipKey: String? = null
     private var tipSince = 0L
@@ -753,10 +754,15 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
      * Ask for a Soul tooltip for the hovered element at [x0]..[x1] × [y0]..[y1] (Soul px); call it only
      * while the pointer is over it. [lines] may switch color with `§7` (gray), `§8` (dark gray), `§a`
      * (green) and `§f` (white); each line wraps at [TIP_MAX_W]. [drawTooltip] draws it.
+     *
+     * [key] names WHAT is hovered when the lines carry a live value (a countdown): the show delay and a
+     * click's close are tracked by it, not by the text, which would restart the delay at every tick and make
+     * the tooltip blink. Default = the text itself.
      */
-    protected fun tooltip(x0: Int, y0: Int, x1: Int, y1: Int, lines: List<String>) {
+    protected fun tooltip(x0: Int, y0: Int, x1: Int, y1: Int, lines: List<String>, key: String? = null) {
         if (lines.isEmpty()) return
         tipLines = lines
+        tipIdentity = key
         tipRect[0] = x0
         tipRect[1] = y0
         tipRect[2] = x1
@@ -778,7 +784,8 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
     protected fun drawTooltip(g: GuiGraphicsExtractor, uiW: Int, uiH: Int) {
         val lines = tipLines
         tipLines = null
-        val key = if (lines == null || alertOpen || openDropdownToken != null) null else lines.joinToString("\n")
+        val key = if (lines == null || alertOpen || openDropdownToken != null) null else tipIdentity ?: lines.joinToString("\n")
+        tipIdentity = null
         if (key != tipKey) {
             tipKey = key
             tipSince = System.currentTimeMillis()

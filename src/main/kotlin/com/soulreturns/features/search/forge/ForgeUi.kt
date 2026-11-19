@@ -29,7 +29,8 @@ internal interface ForgeCanvas {
     /** A click region cut to [clip]. */
     fun region(r: Rect, clip: IntArray, action: () -> Unit)
     fun hovered(r: Rect, clip: IntArray): Boolean
-    fun tip(r: Rect, lines: List<String>)
+    /** [key] names the hovered element when [lines] hold a live value (see `SoulScreenBase.tooltip`). */
+    fun tip(r: Rect, lines: List<String>, key: String? = null)
     fun kbdWidth(label: String): Int
     fun kbd(g: GuiGraphicsExtractor, label: String, x: Int, y: Int)
     fun tracked(g: GuiGraphicsExtractor, text: String, x: Int, top: Int, bottom: Int, size: Int, color: Int): Int
@@ -63,6 +64,7 @@ internal class ForgeData(
 ) {
     val qf: Double get() = qfInfo.fraction
     val busy: List<Forge.Busy> = slots.filterIsInstance<Forge.Busy>()
+    val done: List<Forge.Done> = slots.filterIsInstance<Forge.Done>()
     fun known(source: String) = owned.known[source] == true
     val cats: ForgeCategories get() = ForgeCategories.current(index, book)
 }

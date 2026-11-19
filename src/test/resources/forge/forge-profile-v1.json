@@ -1,0 +1,69 @@
+{
+ "version": 1,
+ "quickForge": 30.0,
+ "quickForgeLevel": 20,
+ "quickForgeFrom": "hotm",
+ "quickForgeAt": 1795104900601,
+ "slots": [
+  {
+   "slot": 1,
+   "state": "busy",
+   "outputId": "REFINED_TITANIUM",
+   "name": "Refined Titanium",
+   "remainingBase": 40621,
+   "readAt": 1795104904821
+  },
+  {
+   "slot": 2,
+   "state": "busy",
+   "outputId": "REFINED_TITANIUM",
+   "name": "Refined Titanium",
+   "remainingBase": 20907,
+   "readAt": 1795104904821
+  },
+  {
+   "slot": 3,
+   "state": "busy",
+   "outputId": "MITHRIL_PLATE",
+   "name": "Mithril Plate",
+   "remainingBase": 20221,
+   "readAt": 1795104904821
+  },
+  {
+   "slot": 4,
+   "state": "idle",
+   "outputId": null,
+   "name": null,
+   "remainingBase": 0,
+   "readAt": 1795104904821
+  },
+  {
+   "slot": 5,
+   "state": "idle",
+   "outputId": null,
+   "name": null,
+   "remainingBase": 0,
+   "readAt": 1795104904821
+  },
+  {
+   "slot": 6,
+   "state": "idle",
+   "outputId": null,
+   "name": null,
+   "remainingBase": 0,
+   "readAt": 1795104904821
+  },
+  {
+   "slot": 7,
+   "state": "idle",
+   "outputId": null,
+   "name": null,
+   "remainingBase": 0,
+   "readAt": 1795104904821
+  }
+ ],
+ "slotsAt": 1795104904821,
+ "locked": {},
+ "lockedAt": 0,
+ "goal": "TITANIUM_DRILL_4"
+}

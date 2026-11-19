@@ -448,6 +448,34 @@ object SoulCommand {
                                     ),
                             )
                             .then(
+                                ClientCommands.literal("forge")
+                                    .then(
+                                        ClientCommands.literal("api")
+                                            .then(
+                                                ClientCommands.argument("slot", IntegerArgumentType.integer(1, 7))
+                                                    .then(
+                                                        ClientCommands.argument("id", StringArgumentType.word())
+                                                            .then(
+                                                                ClientCommands.argument("minutesAgo", IntegerArgumentType.integer(0, 100_000))
+                                                                    .executes { ctx ->
+                                                                        // A synthetic SkyBlock API answer for the forge fallback: one process in a slot.
+                                                                        val now = System.currentTimeMillis()
+                                                                        val slot = IntegerArgumentType.getInteger(ctx, "slot")
+                                                                        val id = StringArgumentType.getString(ctx, "id")
+                                                                        val started = now - IntegerArgumentType.getInteger(ctx, "minutesAgo") * 60_000L
+                                                                        com.soulreturns.features.search.forge.Forge.applyApi(
+                                                                            listOf(com.soulreturns.features.search.forge.ForgeProcesses.ApiProcess(slot, id, started)), now, null,
+                                                                        )
+                                                                        DevOutput.begin("/soul dev forge api")
+                                                                        DevOutput.line("§7API answer applied: slot $slot $id started ${IntegerArgumentType.getInteger(ctx, "minutesAgo")} min ago")
+                                                                        1
+                                                                    },
+                                                            ),
+                                                    ),
+                                            ),
+                                    ),
+                            )
+                            .then(
                                 ClientCommands.literal("soulstats")
                                     .executes {
                                         devSoulStats(null)

@@ -6,7 +6,13 @@ import com.soulreturns.stats.PersistentStats
 import com.soulreturns.stats.StatsHandle
 import kotlinx.serialization.Serializable
 
-/** One forge slot as last read from The Forge; remaining time kept as BASE seconds (before Quick Forge). */
+/**
+ * One forge slot as last known. A busy slot carries the wall-clock moment it finishes ([endsAt]); the tab does
+ * no Quick Forge math for it. [source] says where that moment came from (`ForgeProcesses` ranks them).
+ *
+ * Files written before payload version 2 hold only [remainingBase] (BASE seconds left at [readAt], to be scaled
+ * by whatever Quick Forge applies now): [source] is then empty and [ForgeProcesses.endsAt] interprets them.
+ */
 @Serializable
 data class ForgeSlotRead(
     val slot: Int,
@@ -14,9 +20,18 @@ data class ForgeSlotRead(
     val state: String,
     val outputId: String? = null,
     val name: String? = null,
-    /** Remaining base seconds at [readAt]: shown ÷ (1 − Quick Forge then); scaled by the current percent on display. */
+    /** Version 1 only: remaining base seconds at [readAt]. Version 2 writes 0. */
     val remainingBase: Long = 0,
+    /** When this slot was last observed or computed (ms). */
     val readAt: Long = 0,
+    /** Wall-clock end of a busy process (ms); 0 = not stored (version 1 rows). */
+    val endsAt: Long = 0,
+    /** When the process started (ms) if known: a start click or the API; 0 for a menu read. */
+    val startedAt: Long = 0,
+    /** `menu` | `start` | `api`; empty = a version 1 row. */
+    val source: String = "",
+    /** Computed without knowing the Quick Forge level the process started with. */
+    val approx: Boolean = false,
 )
 
 /**
@@ -25,7 +40,8 @@ data class ForgeSlotRead(
  */
 @Serializable
 data class ForgeProfileData(
-    val version: Int = 1,
+    /** 2: busy slots store [ForgeSlotRead.endsAt] and its source (version 1 rows keep loading, see [ForgeProcesses]). */
+    val version: Int = 2,
     /** Quick Forge percent (30.0 at level 20), null = never read on this profile. */
     val quickForge: Double? = null,
     val quickForgeLevel: Int? = null,
