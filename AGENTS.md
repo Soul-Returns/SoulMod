@@ -44,6 +44,7 @@ Read the matching file in **`.agents/rules/` before changing its area**. These f
 | [keybinds](.agents/rules/keybinds.md), [inventory](.agents/rules/inventory.md), [sounds](.agents/rules/sounds.md) | Input, inventories, audio |
 | [backend](.agents/rules/backend.md), [updater](.agents/rules/updater.md) | HTTP/auth/realtime contracts, update verification |
 | [skyblock-state](.agents/rules/skyblock-state.md), [profile-data](.agents/rules/profile-data.md), [stats](.agents/rules/stats.md), [catalogs-prices](.agents/rules/catalogs-prices.md) | State readers, profiles, persistence, catalogs/prices |
+| [party](.agents/rules/party.md) | Party state: chat lines, `/party list`, mod API party info |
 | [dungeons](.agents/rules/dungeons.md), [dragon-profit](.agents/rules/dragon-profit.md) | Dungeons, solvers, dragon tracking |
 | [metaldetector](.agents/rules/metaldetector.md), [mineshaft](.agents/rules/mineshaft.md), [nucleus](.agents/rules/nucleus.md), [commissions](.agents/rules/commissions.md) | Mining features |
 | [fishing](.agents/rules/fishing.md), [sacks](.agents/rules/sacks.md), [pet-hud](.agents/rules/pet-hud.md) | Fishing, sacks, pets |

@@ -695,7 +695,7 @@ object SoulCommand {
         }
     }
 
-    /** `/soul dev party` — the chat-tracked party state. */
+    /** `/soul dev party` — the tracked party state, where it came from and the tracker's counters. */
     private fun devParty() {
         DevOutput.begin("/soul dev party")
         DevOutput.line("Party:")
@@ -707,6 +707,13 @@ object SoulCommand {
         if (invites.isNotEmpty()) {
             DevOutput.line("  invites: " + invites.joinToString { "${it.from}→${it.to}${if (it.outgoing) " (out)" else ""}" })
         }
+        val d = PartyManager.diagnostics()
+        DevOutput.line("  unnamed=${d["unnamed"]} source=${d["source"]} updated=${d["updated_ms_ago"]}ms ago uncertain=${d["uncertain"]}")
+        DevOutput.line("  lines: ${d["lines"]}")
+        DevOutput.line("  events: ${d["events"]}")
+        DevOutput.line("  resync: ${d["resync"]}")
+        DevOutput.line("  corrections: ${d["corrections"]}")
+        DevOutput.line("  unknown lines: ${d["unknown_lines"]} ${d["unknown_samples"]}")
     }
 
     /** `/soul dev foliage` — hide-foliage toggle + location gating state. */

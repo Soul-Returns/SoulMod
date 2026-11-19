@@ -33,6 +33,8 @@ object HypixelModApi {
     data class PartyInfoEvent(
         val inParty: Boolean,
         val members: Set<UUID>,
+        val leader: UUID? = null,
+        val moderators: Set<UUID> = emptySet(),
     ) : Event
 
     fun register() {
@@ -59,13 +61,15 @@ object HypixelModApi {
         api.createHandler(ClientboundPartyInfoPacket::class.java) { packet ->
             val inParty = packet.isInParty
             val members: Set<UUID> = if (inParty) packet.members else emptySet()
-            Events.publish(PartyInfoEvent(inParty, members))
+            val leader = if (inParty) packet.leader.getOrNull() else null
+            val moderators = if (inParty) packet.memberMap.values.filter { it.role.name == "MOD" }.mapTo(HashSet()) { it.uuid } else emptySet()
+            Events.publish(PartyInfoEvent(inParty, members, leader, moderators))
         }
 
         logger.info("Hypixel Mod API handlers registered")
     }
 
-    /** Ask Hypixel to push a fresh [PartyInfoEvent] (needed to compute the devonian party hash). */
+    /** Ask Hypixel to push a fresh [PartyInfoEvent] (party tracking, the devonian party hash, corpse sharing). */
     fun requestPartyInfo() {
         try {
             HypixelModAPI.getInstance().sendPacket(ServerboundPartyInfoPacket())

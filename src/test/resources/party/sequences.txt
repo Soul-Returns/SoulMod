@@ -1,0 +1,317 @@
+# PartyTrackerSequenceTest: the failure sequences found by replaying sessions.txt, each a real excerpt
+# (session and time noted) with times rebased to its start, except wrapped_not_in_party whose order is
+# made up from real line shapes. `expect` lines hold what the session proves at that point (the mod API
+# packet or /party list there): in=yes|no, size, leader (none = unknown), members (named, sorted).
+# Packet lines are left out unless the sequence is about them, so the chat handling is what is tested.
+
+# Hypixel drops the s after a name ending in s: "You have joined [MVP+] Grace' party!". From s130 at 3082 s.
+sequence possessive_without_s
+0 chat -----\n[MVP+] Grace has invited you to join their party!\nYou have 60 seconds to accept. Click here to join!\n-----
+13 chat -----
+13 chat You have joined [MVP+] Grace' party!
+13 chat -----
+13 expect in=yes size=2 leader=Grace members=Alice,Grace
+64 world
+
+# Dungeon Party Finder joins never say "joined the party.". From s147 at 0 s.
+sequence finder_dungeon_join
+0 connect
+5 chat -----
+5 chat You are not currently in a party.
+5 chat -----
+8 world
+93 chat -----
+93 chat [MVP++] Alice invited [MVP+] Bob to the party! They have 60 seconds to accept.
+93 chat -----
+95 chat -----
+95 chat [MVP+] Bob joined the party.
+95 chat -----
+95 expect in=yes size=2 leader=Alice
+101 chat Queueing your party...
+101 chat Party Finder > Your party has been queued in the dungeon finder!
+105 chat Party Finder > Liam joined the dungeon group! (Berserk Level 37)
+105 expect size=3 leader=Alice
+123 chat Party Finder > Iris3 joined the dungeon group! (Healer Level 34)
+144 chat Party Finder > Peggy3 joined the dungeon group! (Tank Level 32)
+144 expect in=yes size=5 leader=Alice members=Alice,Bob,Iris3,Liam,Peggy3
+149 chat Party Finder > Your dungeon group is full! Click here to warp to the dungeon!
+
+# Kuudra Party Finder joins say "joined the group!". From s066 at 144 s.
+sequence finder_kuudra_join
+0 chat -----
+0 chat Party Members (2)
+0 chat Party Leader: [MVP++] Alice ●
+0 chat Party Members: [MVP+] Bob ●
+0 chat -----
+3 chat -----
+3 chat [MVP++] Alice invited [MVP+] Dave to the party! They have 60 seconds to accept.
+3 chat -----
+6 chat -----
+6 chat [MVP+] Dave joined the party.
+6 chat -----
+6 expect size=3
+35 chat Queueing your party...
+35 chat Party Finder > Your party has been queued in the party finder!
+141 chat Party Finder > Yves2 joined the group! (Combat Level 51)
+141 expect size=4 leader=Alice
+144 chat Party Finder > Your kuudra group is full!
+155 world
+311 chat -----
+311 chat [VIP] Yves2 has been removed from the party.
+311 chat -----
+311 expect size=3
+368 world
+390 chat Queueing your party...
+390 chat Party Finder > Your party has been queued in the party finder!
+467 chat Party Finder > Ivan3 joined the group! (Combat Level 60)
+467 expect size=4 members=Alice,Bob,Dave,Ivan3
+469 chat Party Finder > Your kuudra group is full!
+
+# Joining someone's group through the Party Finder only names yourself; the mod API packet completes it. From s130 at 170 s.
+sequence finder_self_join
+0 world
+7 chat -----
+7 chat You are not currently in a party.
+7 chat -----
+7 expect in=no
+28 chat Attempting to add you to the party...
+28 chat Party Finder > Alice joined the dungeon group! (Mage Level 48)
+28 expect in=yes
+28 info in Alice:MEMBER #2:MOD #3:MEMBER #4:LEADER #5:MEMBER
+28 expect in=yes size=5
+35 world
+
+# "The party was disbanded because the party leader disconnected.". From s003 at 0 s.
+sequence leader_disconnect_disband
+0 connect
+5 chat -----\n[MVP+] Carol has invited you to join their party!\nYou have 60 seconds to accept. Click here to join!\n-----
+6 chat -----
+6 chat You are not currently in a party!
+6 chat -----
+8 chat -----
+8 chat You have joined [MVP+] Carol's party!
+8 chat You'll be partying with: [MVP+] Dave
+8 chat -----
+8 expect in=yes size=3 leader=Carol
+9 chat -----
+9 chat Party Leader, [MVP+] Carol, summoned you to their server.
+9 chat -----
+274 chat -----
+274 chat Party Leader, [MVP+] Carol, summoned you to their server.
+274 chat -----
+414 chat -----
+414 chat Party Leader, [MVP+] Carol, summoned you to their server.
+414 chat -----
+530 connect
+561 chat -----
+561 chat The party leader, [MVP+] Carol has disconnected, they have 5 minutes to rejoin before the party is disbanded.
+561 chat -----
+797 chat -----
+797 chat [MVP+] Dave was removed from your party because they disconnected.
+797 chat -----
+861 chat -----
+861 chat The party was disbanded because the party leader disconnected.
+861 chat -----
+861 expect in=no
+
+# "The party was transferred to X because Y left" (Y is gone, X leads). From s104 at 6263 s.
+sequence transfer_because_left
+0 chat -----
+0 chat Party Members (4)
+0 chat Party Leader: [MVP++] Alice ●
+0 chat Party Moderators: [MVP+] Bob ● [MVP+] Niaj ●
+0 chat Party Members: [MVP+] Uma ●
+0 chat -----
+0 expect size=4 leader=Alice
+187 chat Queueing your party...
+187 chat Party Finder > Your party has been queued in the dungeon finder!
+190 chat Party Finder > Oscar2 joined the dungeon group! (Archer Level 35)
+196 chat -----
+196 chat The party was transferred to [MVP+] Niaj by [MVP++] Alice
+196 chat -----
+196 chat -----
+196 chat You are not this party's leader!
+196 chat -----
+197 chat -----
+197 chat [MVP] Oscar2 has been removed from the party.
+197 chat -----
+200 chat -----
+200 chat The party was transferred to [MVP++] Alice by [MVP+] Niaj
+200 chat -----
+208 chat -----
+208 chat The party was transferred to [MVP+] Niaj by [MVP++] Alice
+208 chat -----
+239 chat Party Finder > Your party has been queued in the dungeon finder!
+241 chat Party Finder > Jack3 joined the dungeon group! (Healer Level 37)
+254 world
+611 world
+883 chat -----
+883 chat [MVP+] Jack3 has been removed from the party.
+883 chat -----
+900 chat -----
+900 chat [MVP+] Niaj invited [MVP+] Peggy2 to the party! They have 60 seconds to accept.
+900 chat -----
+902 chat -----
+902 chat [MVP+] Peggy2 joined the party.
+902 chat -----
+958 world
+998 world
+1002 chat -----
+1002 chat You are not this party's leader!
+1002 chat -----
+1002 chat -----
+1002 chat Party Leader, [MVP+] Niaj, summoned you to their server.
+1002 chat -----
+1002 world
+1312 world
+1675 world
+2012 world
+2077 chat -----
+2077 chat Niaj is already in the party.
+2077 chat -----
+2384 world
+2769 world
+3110 world
+3445 world
+3457 world
+3759 chat -----
+3759 chat The party was transferred to [MVP++] Alice because [MVP+] Niaj left
+3759 chat -----
+3759 expect in=yes size=4 leader=Alice members=Alice,Bob,Peggy2,Uma
+3781 world
+4029 chat -----
+4029 chat [MVP+] Uma has left the party.
+4029 chat -----
+4029 expect size=3 leader=Alice
+4033 chat -----
+4033 chat Party Members (3)
+4033 chat Party Leader: [MVP++] Alice ●
+4033 chat Party Moderators: [MVP+] Bob ●
+4033 chat Party Members: [MVP+] Peggy2 ●
+4033 chat -----
+4034 chat -----
+4034 chat [MVP+] Peggy2 has left the party.
+4034 chat -----
+4034 expect size=2
+
+# "Kicked X because they were offline." after /party kickoffline. From s144 at 8595 s.
+sequence kicked_offline
+0 chat -----
+0 chat [MVP+] Vera has disconnected, they have 5 minutes to rejoin before they are removed from the party.
+0 chat -----
+8 chat -----
+8 chat Party Members (5)
+8 chat Party Leader: [MVP++] Alice ●
+8 chat Party Members: [VIP+] Sam ● [MVP+] Uma ● [MVP+] Bob ● [MVP+] Vera ●
+8 chat -----
+8 expect size=5
+42 chat -----
+42 chat Party Members (5)
+42 chat Party Leader: [MVP++] Alice ●
+42 chat Party Members: [VIP+] Sam ● [MVP+] Uma ● [MVP+] Bob ● [MVP+] Vera ●
+42 chat -----
+45 chat -----
+45 chat Kicked [MVP+] Vera because they were offline.
+45 chat -----
+45 expect in=yes size=4 leader=Alice members=Alice,Bob,Sam,Uma
+46 world
+
+# A "joined the party." line says nothing about who leads. From s136 at 340 s.
+sequence join_never_names_leader
+0 chat -----\n[MVP+] Grace has invited you to join their party!\nYou have 60 seconds to accept. Click here to join!\n-----
+1 chat -----
+1 chat You have joined [MVP+] Grace' party!
+1 chat You'll be partying with: [MVP+] Olivia
+1 chat -----
+6 chat -----
+16 chat -----
+16 chat [MVP+] Judy joined the party.
+16 chat -----
+16 expect in=yes size=4 leader=Grace members=Alice,Grace,Judy,Olivia
+76 chat -----
+76 chat Party Members (4)
+76 chat Party Leader: [MVP+] Grace ●
+76 chat Party Members: [MVP++] Alice ● [MVP+] Judy ● [MVP+] Olivia ●
+76 chat -----
+
+# Inviting as a moderator (or with All Invite) does not make you the leader. From s004 at 5786 s.
+sequence own_invite_inside_party
+0 chat -----
+0 chat The party was transferred to [MVP+] Alice by [MVP+] Carol
+0 chat -----
+2 chat -----
+2 chat SkyBlock Party Warp (2 players)
+2 chat ⚔ [MVP+] Carol warped to your instance
+2 chat ⚔ [MVP+] Dave warped to your instance
+2 chat -----
+2 expect in=yes size=3 leader=Alice
+108 chat -----
+108 chat The party was transferred to [MVP+] Carol by [MVP+] Alice
+108 chat -----
+108 expect leader=Carol
+111 chat -----
+111 chat Party Leader, [MVP+] Carol, summoned you to their server.
+111 chat -----
+202 chat -----
+202 chat Party Leader, [MVP+] Carol, summoned you to their server.
+202 chat -----
+401 chat -----
+401 chat Party Leader, [MVP+] Carol, summoned you to their server.
+401 chat -----
+530 chat -----
+530 chat [MVP+] Alice invited [MVP+] Erin to the party! They have 60 seconds to accept.
+530 chat -----
+532 chat -----
+532 chat [MVP+] Erin joined the party.
+532 chat -----
+532 expect in=yes size=4 leader=Carol members=Alice,Carol,Dave,Erin
+
+# A new connection starts unknown instead of keeping the last party. From s136 at 416 s.
+sequence reconnect_resets_state
+0 chat -----
+0 chat Party Members (4)
+0 chat Party Leader: [MVP+] Grace ●
+0 chat Party Members: [MVP++] Alice ● [MVP+] Judy ● [MVP+] Olivia ●
+0 chat -----
+0 expect in=yes size=4
+13 world
+17 world
+450 connect
+450 expect in=no
+453 chat -----
+453 chat You are not currently in a party.
+453 chat -----
+456 world
+459 chat -----\n[MVP+] Grace has invited you to join their party!\nYou have 60 seconds to accept. Click here to join!\n-----
+461 chat -----
+461 chat You have joined [MVP+] Grace' party!
+461 chat You'll be partying with: [MVP+] Olivia, [MVP+] Judy
+461 chat -----
+461 expect in=yes size=4 leader=Grace
+
+# Hypixel sometimes wraps the reply in its dividers as one message. Made-up order, real line shapes.
+sequence wrapped_not_in_party
+0 connect
+20 chat You have joined [MVP+] Bob's party!
+20 expect in=yes size=2 leader=Bob
+900 chat -----\nYou are not in a party right now.\n-----
+900 expect in=no
+
+# Shapes no replayed session shows (they come from the legacy-mod logs left out of sessions.txt). Real
+# lines, made-up order.
+sequence rare_shapes
+0 connect
+20 chat -----
+20 chat Created a public party! Players can join with /party join Alice
+20 chat Party is capped at 2 players.
+20 chat -----
+20 expect in=yes size=1 leader=Alice members=Alice
+300 chat You left the party.
+300 expect in=no
+600 chat You have joined [MVP+] Carol's party!
+600 chat You'll be partying with: [MVP+] Dave
+600 expect in=yes size=3 leader=Carol
+900 chat -----
+900 chat You have been kicked from the party by [MVP+] Carol 
+900 chat -----
+900 expect in=no
