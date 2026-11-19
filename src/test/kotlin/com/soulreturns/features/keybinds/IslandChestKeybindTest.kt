@@ -50,7 +50,7 @@ class IslandChestKeybindTest {
         )
         assertEquals(listOf("Command #1: /test"), CommandKeybinds.soulConflicts(key, CommandKeybinds.Ref.IslandChests, config, false))
         assertEquals(listOf("Soul: Search everywhere"), CommandKeybinds.soulConflicts("key.mouse.4", CommandKeybinds.Ref.Custom(0), config, false))
-        val disabled = config.copy(islandChests = config.islandChests.copy(enabled = false))
+        val disabled = config.copy(islandChests = config.islandChests.copy(enabled = false), sacks = config.sacks.copy(searchSacks = false))
         assertTrue(CommandKeybinds.soulConflicts(key, CommandKeybinds.Ref.Custom(0), disabled, false).isEmpty())
         // Search everywhere also opens with only the storage overlay on, so the binding still counts.
         val storageOnly = disabled.copy(storageOverlay = disabled.storageOverlay.copy(enabled = true))

@@ -270,7 +270,7 @@ data class SackTrackerConfig(
     val hud: Boolean = false,
     val tracked: List<TrackedSackItem> = emptyList(),
     /** Search everywhere finds items in the counted sacks; counting then runs even with the tracker off. */
-    val searchSacks: Boolean = false,
+    val searchSacks: Boolean = true,
     /** Default: right edge, upper middle. */
     val hudTransform: HudTransform = HudTransform(hAnchor = HudAnchor.END, vAnchor = HudAnchor.CENTER, offsetX = -9.5f, offsetY = -36.5f),
     val hudBackground: Boolean = true,
