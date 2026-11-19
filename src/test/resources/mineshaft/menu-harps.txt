@@ -1,0 +1,3992 @@
+# MenuQuietReplayTest: container open/close and harps at the player (BLOCKS, volume 1) from every recording (soul-dev/recordings): open/close = screen_open/screen_close, the screen class, server switches
+rec 2026-11-11_12-50-59_dungeon-solo
+-124123 open
+-75218 open
+-74273 open
+-73266 open
+-73106 open
+-71413 open
+-51258 open
+87 close
+39083 close
+47381 open
+47584 open
+48263 open
+48349 open
+48652 open
+52889 close
+53084 close
+53980 open
+54086 open
+55407 close
+55585 close
+55739 open
+56084 open
+57367 open
+57372 open
+58020 open
+63015 open
+67366 close
+67585 close
+74584 close
+75845 open
+76084 open
+76846 open
+77547 open
+78386 close
+78585 close
+79856 open
+80087 open
+81223 close
+81569 open
+85506 close
+85584 close
+86095 open
+86586 open
+87058 close
+87065 open
+111867 close
+111868 open
+130573 close
+130584 close
+132584 open
+133587 close
+133837 open
+134086 open
+134670 open
+134727 close
+135085 close
+144920 open
+145085 open
+145878 close
+146084 close
+177654 open
+178086 open
+179500 open
+180193 close
+180585 close
+181085 open
+182084 close
+182421 open
+182587 open
+184407 close
+184584 close
+196084 open
+199085 close
+201112 open
+201586 open
+202125 close
+202127 open
+203529 close
+203585 close
+204085 open
+207084 close
+211085 open
+212584 close
+269086 open
+269583 close
+269583 close
+271088 open
+272584 close
+281200 open
+281586 open
+281669 close
+282085 close
+286661 open
+287065 close
+290752 open
+291086 open
+291127 close
+291584 close
+295383 open
+295586 open
+295836 close
+296085 close
+304229 open
+304585 open
+304725 close
+305085 close
+330908 open
+331087 open
+331607 open
+331631 close
+332085 close
+337557 open
+337588 open
+338178 open
+338725 open
+340838 open
+342490 open
+343590 open
+344644 close
+345085 close
+390464 open
+390586 open
+391218 open
+391288 close
+391586 close
+460211 open
+460586 open
+461766 close
+462084 close
+465583 close
+467147 open
+467585 open
+468801 open
+469715 close
+470085 close
+479661 open
+479971 close
+499594 open
+500086 open
+500793 open
+500861 close
+501084 close
+516367 open
+516586 open
+517963 close
+518084 close
+666729 open
+667085 open
+668091 close
+668585 close
+669918 open
+670088 open
+670501 open
+670796 close
+671084 close
+673084 close
+693917 open
+694087 open
+694370 close
+694584 close
+702984 open
+703085 open
+703332 close
+703584 close
+722775 open
+723088 open
+723699 open
+723712 close
+724085 close
+755861 open
+756092 open
+756319 close
+756585 close
+757330 open
+757586 open
+758044 close
+758085 close
+762672 open
+763088 open
+763411 close
+763584 close
+867084 close
+867819 open
+868088 open
+868184 close
+868197 open
+868308 close
+868583 close
+878506 open
+878587 open
+878806 close
+879086 close
+885961 open
+886085 open
+886336 close
+886585 close
+924256 open
+924585 open
+925296 open
+925311 close
+925586 close
+931021 open
+931086 open
+931416 close
+931585 close
+1041583 close
+1043400 open
+1043586 open
+1043674 close
+1043772 open
+1043824 close
+1044084 close
+1052480 open
+1052585 open
+1052739 close
+1053085 close
+1060499 open
+1060584 open
+1060798 close
+1061085 close
+1065156 open
+1065445 close
+1090796 open
+1091086 open
+1091987 close
+1091998 open
+1092138 close
+1092585 close
+1096440 open
+1096589 open
+1097248 open
+1097440 close
+1097585 close
+1104696 open
+1105087 open
+1105282 open
+1105389 close
+1105585 close
+1114630 open
+1115086 open
+1115501 close
+1115585 close
+1121600 open
+1122086 open
+1125137 close
+1125584 close
+1131887 open
+1132086 open
+1134134 close
+1135584 close
+1140086 open
+1141084 close
+1161587 open
+1162585 close
+1162717 open
+1163085 open
+1163374 open
+1163383 close
+1163586 close
+1235440 open
+1235589 open
+1235838 close
+1236088 close
+1238586 open
+1239585 close
+1244084 close
+1246597 open
+1247084 close
+1247975 open
+1248086 open
+1248328 close
+1248352 open
+1248454 close
+1248585 close
+1255818 open
+1256086 open
+1256173 close
+1256594 close
+1258980 open
+1259086 open
+1259672 close
+1260085 close
+1310419 open
+1310587 open
+1311121 open
+1311607 open
+1311670 close
+1312085 close
+1324797 open
+1325087 open
+1330349 close
+1330583 close
+1331087 open
+1331244 close
+1349086 open
+1349587 close
+1404586 open
+1405087 close
+1414583 close
+1415621 open
+1416004 close
+1416211 open
+1416244 close
+1437814 open
+1438067 close
+1444134 open
+1444398 close
+1446574 open
+1446587 open
+1446947 close
+1447085 close
+1453440 open
+1453584 open
+1453706 close
+1454086 close
+1483229 open
+1483585 open
+1484460 open
+1484690 close
+1485084 close
+1519587 open
+1520085 close
+1583521 open
+1583586 open
+1584777 close
+1585084 close
+1590087 close
+1592436 open
+1592586 open
+1593482 open
+1596234 open
+1597300 open
+1598544 open
+1599085 open
+1600092 open
+1600667 open
+1603845 open
+1604467 open
+1605513 open
+1606121 open
+1608730 open
+1611636 close
+1612084 close
+1615801 open
+1616085 open
+1616955 open
+1617972 open
+1624287 open
+1637873 open
+1642352 close
+1642584 close
+1741818 open
+1742087 open
+1745398 close
+1745584 close
+1746087 open
+1746584 close
+1819586 open
+1820585 close
+1821086 open
+1822623 open
+1823019 close
+1823085 close
+1823530 open
+1823587 open
+1826208 close
+1826584 close
+1826989 open
+1827084 open
+1828145 open
+1828888 open
+1829140 open
+1829348 close
+1829444 menu 69 Confirm_Sell_Offer
+1829535 menu 88 Confirm_Sell_Offer
+1829585 close
+1830086 open
+1831083 close
+1831393 open
+1831585 open
+1832939 close
+1833085 close
+1833587 open
+1835084 close
+1837393 open
+1837586 open
+1839101 open
+1841102 open
+1841644 close
+1842083 close
+1862786 open
+1863087 open
+1864327 close
+1865084 close
+1865405 open
+1865586 open
+1866345 open
+1866696 close
+1867024 open
+1867271 close
+1868084 close
+1868269 open
+1868585 open
+1869858 open
+1869943 close
+1870085 close
+1871585 open
+1872585 close
+1877084 open
+1886085 close
+1904783 open
+1905087 open
+1905922 open
+1917801 close
+1918085 close
+1950115 open
+1950584 open
+1955491 open
+1956318 open
+1966368 close
+1966585 close
+1966992 open
+1967086 open
+1967363 close
+1968237 open
+1968932 open
+1979796 close
+1980085 close
+1995083 close
+1997017 open
+1997086 open
+1999010 open
+1999338 close
+1999585 close
+2014149 open
+2014340 close
+2045226 open
+2045585 open
+2046153 close
+2046165 open
+2046294 close
+2046584 close
+2079586 open
+2080585 close
+2161647 open
+2162086 open
+2162767 close
+2163085 close
+2167256 open
+2167583 open
+2167586 open
+2167597 close
+2168086 close
+2172084 close
+2188204 open
+2188478 close
+2231667 open
+2232087 open
+2232270 open
+2232284 close
+2232584 close
+2266584 open
+2267084 close
+2301085 open
+2301583 close
+2361375 open
+2361586 open
+2362434 close
+2362585 close
+2364590 close
+2367337 open
+2367554 close
+2369165 open
+2369584 open
+2370185 open
+2371706 open
+2371941 close
+2372085 close
+2372285 open
+2372585 open
+2373123 open
+2374533 open
+2374745 close
+2375084 close
+2375505 open
+2375585 open
+2376203 open
+2377396 open
+2378014 close
+2378085 close
+2378251 open
+2378587 open
+2379084 open
+2380069 open
+2380341 close
+2380584 close
+2380713 open
+2381088 open
+2381537 open
+2382426 open
+2382648 close
+2382958 open
+2383724 open
+2384689 open
+2385317 close
+2385585 close
+2385608 open
+2386086 open
+2386209 open
+2387515 open
+2387777 close
+2388084 close
+2389373 open
+2389586 open
+2391436 open
+2391945 open
+2392199 close
+2392552 open
+2393393 open
+2394258 open
+2394640 close
+2395085 close
+2395123 open
+2395585 open
+2395709 open
+2396469 open
+2396691 close
+2397084 close
+2397586 open
+2398084 close
+2398591 open
+2399087 open
+2399558 open
+2400070 open
+2400220 close
+2400585 close
+2402085 open
+2405047 open
+2405793 close
+2406084 close
+rec 2026-11-18_02-55-36_mineshaft-corpses
+-279830 open
+-278269 open
+-275956 open
+-275056 open
+-273557 open
+-272845 open
+-176145 open
+-174417 open
+-148658 open
+-8759 open
+-8124 open
+-6606 open
+-5549 open
+440 close
+442 close
+216273 open
+216445 open
+216699 close
+216721 open
+216742 open
+217250 close
+217441 close
+217944 close
+218585 ding 90
+219397 ding 90
+220188 ding 90
+220996 ding 93
+222788 ding 84
+223625 ding 96
+225089 ding 108
+225734 ding 114
+226316 ding 116
+226935 ding 108
+227588 ding 66
+228593 ding 72
+229525 ding 98
+230282 ding 114
+230893 ding 90
+231674 ding 78
+232583 ding 95
+233324 ding 110
+233989 ding 113
+241039 ding 125
+247777 ding 107
+248448 ding 87
+249278 ding 86
+250125 ding 85
+250982 ding 106
+251683 ding 112
+252337 ding 110
+252983 ding 102
+253687 ding 101
+254376 ding 71
+264837 ding 82
+265692 ding 121
+266248 ding 123
+266784 ding 125
+275890 ding 66
+276855 ding 68
+279722 ding 123
+280251 ding 119
+280838 ding 90
+283442 open
+283945 close
+710897 ding 64
+711888 ding 73
+712815 ding 75
+713746 ding 74
+714689 ding 72
+715616 ding 75
+716532 ding 78
+717449 ding 82
+718297 ding 88
+719098 ding 89
+719889 ding 89
+720690 ding 89
+721471 ding 90
+722298 ding 91
+723092 ding 91
+723888 ding 104
+724593 ding 115
+725187 ding 121
+725745 ding 119
+726347 ding 109
+727000 ding 110
+727622 ding 110
+728298 ding 110
+728934 ding 111
+729588 ding 111
+730231 ding 112
+730873 ding 112
+731522 ding 112
+732194 ding 112
+732822 ding 112
+733500 ding 112
+734135 ding 112
+734794 ding 108
+735436 ding 106
+736147 ding 110
+736797 ding 110
+737441 ding 109
+738097 ding 109
+738741 ding 110
+739393 ding 110
+740046 ding 110
+740689 ding 110
+741348 ding 110
+741993 ding 110
+742647 ding 110
+743298 ding 110
+743947 ding 110
+744589 ding 110
+745240 ding 110
+745884 ding 110
+746538 ding 111
+747188 ding 110
+747840 ding 110
+748497 ding 112
+749139 ding 113
+749743 ding 115
+750332 ding 115
+750943 ding 115
+751546 ding 115
+752133 ding 115
+752738 ding 116
+753347 ding 116
+753941 ding 116
+754542 ding 116
+755154 ding 116
+755749 ding 117
+756388 ding 114
+756960 ding 110
+757639 ding 101
+758306 ding 99
+759057 ding 90
+760678 ding 88
+761477 ding 91
+762284 ding 91
+763096 ding 91
+763897 ding 92
+764663 ding 93
+765467 ding 94
+766259 ding 94
+767088 ding 94
+767838 ding 94
+768586 ding 94
+769347 ding 94
+770771 ding 97
+771546 ding 78
+815441 close
+873572 open
+873946 open
+875028 open
+876312 open
+877028 open
+878787 open
+879573 open
+884735 close
+884941 close
+925003 open
+925443 open
+926859 open
+927607 open
+928107 open
+929646 open
+930203 open
+931626 open
+932227 open
+935347 close
+935440 close
+938442 close
+944808 open
+944949 open
+962582 close
+963865 open
+964456 open
+965204 open
+965955 open
+968084 open
+971327 open
+972833 open
+988608 open
+997675 open
+999137 open
+1000788 open
+1006757 open
+1008452 open
+1012053 open
+1024869 close
+1024941 close
+1025443 open
+1026096 open
+1026898 open
+1030477 close
+1030941 close
+1034793 open
+1034944 open
+1039515 open
+1048216 close
+1048441 close
+1055315 open
+1055445 open
+1056672 close
+1056941 close
+1069962 open
+1069970 open
+1075962 close
+1076441 close
+1076512 open
+1076946 open
+1078751 close
+1078944 close
+1079613 open
+1079947 open
+1080603 close
+1080914 open
+1083115 close
+1083441 close
+1083917 open
+1083947 open
+1084566 close
+1084897 open
+1087465 close
+1087895 open
+1089586 open
+1090488 open
+1092808 close
+1092947 close
+1093443 open
+1093790 open
+1094114 close
+1094444 close
+1094492 open
+1094789 close
+1095205 open
+1095450 open
+1097308 close
+1097445 close
+1098635 open
+1098949 open
+1100139 close
+1100441 close
+1100560 open
+1100951 open
+1102248 close
+1102287 open
+1110918 close
+1110961 close
+1113404 open
+1113445 open
+1114046 close
+1114442 close
+1117440 close
+1153948 close
+1169938 open
+1169951 open
+1171855 close
+1171941 close
+1204101 open
+1204444 open
+1205765 open
+1206098 close
+1206441 close
+1206684 open
+1206961 open
+1210240 close
+1210440 close
+1211950 open
+1212945 close
+1213944 open
+1215441 close
+1334362 open
+1334445 open
+1336441 close
+1336585 open
+1336948 open
+1337497 close
+1337943 close
+1365440 close
+1369840 open
+1369944 open
+1371577 close
+1371942 close
+1380159 open
+1380448 open
+1382425 close
+1382465 open
+1383182 close
+1383224 open
+1385368 close
+1385444 close
+1386165 open
+1386445 open
+1386510 close
+1386942 close
+1386984 open
+1387447 open
+1390548 close
+1392443 close
+1398805 open
+1398951 open
+1406871 close
+1406942 close
+1407443 open
+1407941 close
+1411490 close
+1417334 open
+1417445 open
+1418968 close
+1419442 close
+1420924 open
+1420946 open
+1427297 close
+1427442 close
+1430132 open
+1430446 open
+1431432 close
+1431443 close
+1432275 open
+1432444 open
+1433004 close
+1433441 close
+1433973 open
+1434445 open
+1434639 close
+1434941 close
+1436734 open
+1436945 open
+1437992 close
+1438442 close
+1438813 open
+1438949 open
+1439509 close
+1439942 close
+1443440 close
+1444414 open
+1444444 open
+1446283 close
+1446440 close
+1446944 open
+1449441 close
+1466204 open
+1466444 open
+1468210 open
+1468560 open
+1469008 open
+1470189 open
+1470844 close
+1470942 close
+1473441 close
+1474890 open
+1474945 open
+1477146 close
+1477442 close
+1478442 open
+1479441 close
+1479907 open
+1479945 open
+1484770 open
+1486755 open
+1487581 open
+1490260 open
+1493791 open
+1494697 open
+1495152 open
+1498206 open
+1499556 open
+1502609 open
+1507440 close
+1509145 open
+1509445 open
+1511866 close
+1511942 close
+1512318 open
+1512446 open
+1513752 close
+1513787 open
+1514600 close
+1514635 open
+1518282 close
+1518444 close
+1518943 open
+1519217 open
+1519712 open
+1520381 open
+1520844 open
+1521419 close
+1521438 open
+1522144 close
+1522441 close
+1543943 open
+1545441 close
+1545724 open
+1545948 open
+1548461 close
+1548892 open
+1550558 close
+1550598 open
+1551590 close
+1551945 close
+1552445 open
+1552945 close
+1559943 open
+1563441 close
+1573707 open
+1573948 open
+1574360 close
+1574440 close
+1607942 open
+1608441 close
+1608897 open
+1608949 open
+1609621 open
+1609833 close
+1609947 close
+1671494 open
+1671947 open
+1672798 open
+1675086 open
+1675928 open
+1677039 open
+1677545 open
+1679363 close
+1679442 close
+1679873 open
+1679947 open
+1681339 close
+1681375 open
+1682800 close
+1682841 open
+1690395 close
+1690428 open
+1696798 close
+1696833 open
+1699113 close
+1699455 close
+1703442 open
+1704348 open
+1712963 close
+1713445 close
+1723797 open
+1723945 open
+1724499 close
+1724553 open
+1724576 open
+1724948 close
+1725444 close
+1725444 close
+1730942 open
+1731942 close
+1734203 ding 89
+1735038 ding 119
+1735638 ding 121
+1736180 ding 123
+1736747 ding 124
+1737266 ding 123
+1737824 ding 123
+1738387 ding 123
+1738930 ding 121
+1739489 ding 123
+1740030 ding 124
+1740587 ding 124
+1741138 ding 124
+1741684 ding 124
+1742233 ding 124
+1742790 ding 124
+1743321 ding 123
+1743888 ding 123
+1744440 ding 123
+1744972 ding 123
+1745539 ding 124
+1746097 ding 125
+1746638 ding 123
+1747220 ding 90
+1772273 ding 118
+1772859 ding 122
+1773439 ding 125
+1774402 ding 76
+1775337 ding 77
+1776239 ding 75
+1777139 ding 77
+1778014 ding 80
+1805443 ding 76
+1806338 ding 77
+1807237 ding 110
+1807881 ding 112
+1808546 ding 115
+1809140 ding 110
+1809788 ding 111
+1810981 ding 124
+1811547 ding 125
+1812081 ding 125
+1812645 ding 125
+1813183 ding 125
+1910443 open
+1910955 open
+1911557 open
+1912734 open
+1916091 open
+1916786 open
+1920307 close
+1920440 close
+2318942 close
+2324942 open
+2324978 open
+2326606 open
+2328382 open
+2328940 open
+2330902 open
+2332250 open
+2335960 close
+2336440 close
+2550622 open
+2550943 open
+2551100 close
+2551164 open
+2551185 open
+2552175 close
+2552439 close
+2552942 close
+2559487 ding 98
+2560230 ding 86
+2561070 ding 104
+2561795 ding 111
+2562419 ding 124
+2562996 ding 108
+2563638 ding 94
+2564393 ding 84
+2567296 ding 105
+2567977 ding 112
+2570538 ding 123
+2571078 ding 120
+2571621 ding 101
+2572325 ding 103
+2573035 ding 75
+2577522 ding 74
+2578482 ding 71
+2579437 ding 73
+2580389 ding 84
+2588528 ding 114
+2589155 ding 115
+2589737 ding 115
+2590336 ding 116
+2593646 ding 74
+2595538 ding 72
+2597095 ding 123
+2597645 ding 125
+2598196 ding 125
+2603274 ding 97
+2604038 ding 65
+2605387 ding 98
+2605891 ding 97
+2606587 ding 94
+2607309 ding 91
+2608943 close
+2784286 open
+2784448 open
+2784749 close
+2784803 open
+2784827 open
+2785185 close
+2785439 close
+2786577 close
+2789147 ding 77
+2790047 ding 79
+2790958 ding 100
+2792295 ding 98
+2793540 open
+2793937 ding 77
+2793949 open
+2794122 open
+2794319 close
+2794447 close
+2798243 ding 79
+2799142 ding 84
+2800046 ding 118
+2800595 ding 118
+2801196 ding 114
+2801805 ding 111
+2802446 ding 112
+2803104 ding 109
+2803746 ding 107
+2804396 ding 109
+2805046 ding 112
+2805716 ding 113
+2806305 ding 113
+2806897 ding 110
+2807555 ding 112
+2808197 ding 112
+2808855 ding 112
+2809505 ding 112
+2810147 ding 112
+2810806 ding 112
+2811239 open
+2811447 ding 111
+2811596 open
+2811854 open
+2812098 ding 111
+2812606 open
+2812753 ding 111
+2813415 ding 111
+2813466 close
+2813594 close
+2814048 ding 114
+2814648 ding 125
+2817266 ding 97
+2818016 ding 125
+2819287 ding 76
+2829268 ding 70
+2833593 close
+rec 2026-11-18_04-41-37_mineshaft-corpses-2
+-266900 open
+-244667 open
+-243830 open
+-180816 open
+-179766 open
+-179743 open
+137 close
+487 ding 122
+1036 ding 122
+1558 ding 122
+2137 ding 122
+2670 ding 122
+3234 ding 122
+3749 ding 122
+4297 ding 122
+4877 ding 122
+5430 ding 122
+5959 ding 122
+6538 ding 122
+7050 ding 122
+7634 ding 122
+8194 ding 122
+8736 ding 122
+9250 ding 122
+9835 ding 122
+10352 ding 122
+10935 ding 122
+11460 ding 122
+12036 ding 122
+12561 ding 122
+13136 ding 122
+13681 ding 122
+14234 ding 122
+14786 ding 122
+15319 ding 122
+15885 ding 122
+16409 ding 122
+16984 ding 122
+17540 ding 122
+18085 ding 122
+18635 ding 122
+19185 ding 122
+19729 ding 122
+20278 ding 122
+20835 ding 122
+21386 ding 122
+21945 ding 122
+22495 ding 122
+23036 ding 122
+23576 ding 122
+24137 ding 122
+24676 ding 122
+25235 ding 122
+25765 ding 122
+26344 ding 122
+26876 ding 122
+27415 ding 122
+27987 ding 122
+28534 ding 122
+29065 ding 122
+29627 ding 122
+30195 ding 122
+30743 ding 122
+31284 ding 122
+31846 ding 122
+32378 ding 122
+32936 ding 122
+33473 ding 122
+34045 ding 122
+34567 ding 122
+35128 ding 122
+35679 ding 122
+36236 ding 122
+36793 ding 122
+37336 ding 122
+37877 ding 122
+38443 ding 122
+38994 ding 122
+39538 ding 122
+40086 ding 122
+40635 ding 122
+41194 ding 122
+41736 ding 122
+42279 ding 122
+42836 ding 122
+43379 ding 122
+43937 ding 122
+44493 ding 122
+45036 ding 122
+45586 ding 122
+46133 ding 120
+48572 ding 94
+49384 ding 88
+50222 ding 88
+51071 ding 88
+51923 ding 88
+52788 ding 88
+53635 ding 88
+54486 ding 88
+55326 ding 88
+56194 ding 88
+57037 ding 88
+57877 ding 88
+58744 ding 88
+59588 ding 88
+60428 ding 88
+61287 ding 88
+63339 ding 65
+64335 ding 89
+65135 ding 102
+65852 ding 108
+67132 ding 112
+67793 ding 121
+68342 ding 120
+68893 ding 122
+69985 ding 117
+84490 open
+84641 open
+85513 open
+86644 open
+86997 close
+87139 close
+87487 open
+87643 open
+88606 open
+89351 close
+89636 close
+99791 open
+100144 open
+102751 open
+103841 close
+104137 close
+113992 open
+114143 open
+114647 open
+115545 open
+116069 close
+116139 close
+122635 close
+162223 open
+162642 open
+162646 close
+162716 open
+162741 open
+163145 close
+163659 close
+163660 close
+167094 ding 92
+167924 ding 97
+168645 ding 111
+169316 ding 112
+169944 ding 109
+170636 ding 106
+171314 ding 105
+172005 ding 106
+172716 ding 106
+173435 ding 106
+174157 ding 106
+174847 ding 106
+175546 ding 106
+176284 ding 106
+176984 ding 106
+177685 ding 106
+178359 ding 106
+179095 ding 106
+179786 ding 106
+180486 ding 106
+181185 ding 106
+181886 ding 106
+182585 ding 106
+183283 ding 106
+183986 ding 106
+184670 ding 106
+185395 ding 106
+186086 ding 106
+186785 ding 106
+187486 ding 106
+188184 ding 106
+188884 ding 106
+189633 ding 111
+190211 ding 122
+190904 ding 123
+191488 ding 123
+191935 ding 125
+199193 ding 107
+199844 ding 110
+200637 open
+201141 close
+201145 ding 100
+201870 ding 116
+202444 ding 117
+203043 ding 120
+210283 ding 92
+211094 ding 102
+211794 ding 107
+212443 ding 114
+213043 ding 118
+214187 ding 110
+214833 ding 98
+219639 close
+256719 open
+257135 close
+257178 open
+257200 open
+257640 open
+257644 close
+258154 close
+258154 close
+263589 ding 87
+265244 ding 82
+267593 ding 73
+270543 ding 103
+271246 ding 107
+271893 ding 109
+272534 ding 117
+273134 ding 122
+273688 ding 125
+274244 ding 125
+280594 ding 119
+281191 ding 123
+281743 ding 125
+282307 ding 124
+282844 ding 123
+283393 ding 123
+284490 ding 115
+285094 ding 111
+285779 ding 120
+286293 ding 124
+334636 open
+335136 close
+762142 open
+763637 close
+834742 close
+838255 open
+838640 open
+839223 open
+870249 close
+870636 close
+874066 open
+874154 open
+875894 open
+877354 open
+878120 open
+879503 open
+880207 open
+888745 close
+889137 close
+1091640 open
+1091664 open
+1092172 close
+1092227 open
+1092255 open
+1092891 close
+1093136 close
+1093636 close
+1099185 ding 78
+1100084 ding 105
+1100780 ding 113
+1101385 ding 108
+1102094 ding 100
+1102814 ding 101
+1103507 ding 99
+1109227 ding 102
+1109935 ding 99
+1110290 open
+1110641 open
+1110676 ding 104
+1111132 open
+1111232 close
+1111376 ding 104
+1111636 close
+1112780 ding 98
+1114344 ding 64
+1115342 ding 69
+1117241 ding 65
+1118231 ding 67
+1119244 ding 69
+1121232 ding 66
+1122232 ding 65
+1123285 ding 96
+1124007 ding 79
+1124896 ding 77
+1125835 ding 79
+1126728 ding 80
+1127635 ding 77
+1128534 ding 81
+1129435 ding 81
+1130348 ding 77
+1131236 ding 77
+1132147 ding 74
+1133135 ding 80
+1134330 ding 85
+1135186 ding 86
+1136008 ding 84
+1136885 ding 83
+1137706 ding 82
+1138581 ding 82
+1139444 ding 83
+1140286 ding 82
+1141127 ding 81
+1141994 ding 81
+1142804 ding 81
+1143684 ding 86
+1144526 ding 83
+1145356 ding 84
+1146236 ding 85
+1147085 ding 81
+1147639 close
+1152704 open
+1152909 close
+1153269 open
+1153641 open
+1154751 open
+1154891 close
+1155141 close
+1226143 open
+1226577 open
+1227125 open
+1233408 open
+1233905 open
+1234402 open
+1239194 open
+1239301 open
+1240390 open
+1240803 open
+1269590 open
+1272119 open
+1272617 open
+1273568 open
+1273719 open
+1274082 open
+1274202 open
+1274533 open
+1274698 open
+1287256 open
+1287662 open
+1288161 open
+1288665 open
+1291072 open
+1291212 open
+1291530 open
+1291693 open
+1292327 open
+1292477 open
+1292922 open
+1293074 open
+1293521 open
+1295267 close
+1295637 close
+1299136 open
+1299767 open
+1300308 open
+1306793 close
+1307135 close
+1312144 open
+1312179 open
+1312791 close
+1313145 close
+1314136 open
+1314638 close
+1318305 open
+1318647 open
+1320024 close
+1320066 open
+1327103 close
+1327157 close
+1327546 open
+1327641 open
+1328733 close
+1329138 close
+1330229 open
+1330642 open
+1331189 open
+1337090 menu 126 Fossil_Excavator
+1337827 menu 126 Fossil_Excavator
+1338640 menu 126 Fossil_Excavator
+1340199 close
+1340523 open
+1341697 open
+1342444 menu 126 Fossil_Excavator
+1343044 menu 126 Fossil_Excavator
+1343666 menu 126 Fossil_Excavator
+1348244 menu 126 Fossil_Excavator
+1351493 close
+1351637 close
+1351898 open
+1352142 open
+1352893 open
+1353522 menu 126 Fossil_Excavator
+1354745 menu 126 Fossil_Excavator
+1355667 menu 126 Fossil_Excavator
+1359024 menu 126 Fossil_Excavator
+1359228 menu 126 Fossil_Excavator
+1360221 menu 126 Fossil_Excavator
+1360375 menu 126 Fossil_Excavator
+1360943 menu 126 Fossil_Excavator
+1362035 close
+1362136 close
+1362305 open
+1362643 open
+1363013 open
+1367994 menu 126 Fossil_Excavator
+1368996 menu 126 Fossil_Excavator
+1369345 menu 126 Fossil_Excavator
+1369815 menu 126 Fossil_Excavator
+1370879 menu 126 Fossil_Excavator
+1371093 menu 126 Fossil_Excavator
+1372959 close
+1373138 close
+1373442 open
+1373639 open
+1374783 open
+1386875 menu 126 Fossil_Excavator
+1387341 menu 126 Fossil_Excavator
+1387795 menu 126 Fossil_Excavator
+1388767 close
+1389043 open
+1390196 open
+1396338 menu 126 Fossil_Excavator
+1396386 menu 126 Fossil_Excavator
+1397567 menu 126 Fossil_Excavator
+1397713 menu 126 Fossil_Excavator
+1398434 menu 126 Fossil_Excavator
+1398810 close
+1399095 open
+1399905 open
+1401095 menu 126 Fossil_Excavator
+1403444 menu 126 Fossil_Excavator
+1404943 menu 126 Fossil_Excavator
+1405238 menu 126 Fossil_Excavator
+1406117 menu 126 Fossil_Excavator
+1406582 menu 126 Fossil_Excavator
+1407954 close
+1408136 close
+1408250 open
+1408641 open
+1408860 open
+1412580 menu 126 Fossil_Excavator
+1414790 menu 126 Fossil_Excavator
+1415994 menu 126 Fossil_Excavator
+1416544 menu 126 Fossil_Excavator
+1418493 close
+1418636 close
+1418777 open
+1419141 open
+1419446 open
+1423644 menu 126 Fossil_Excavator
+1425145 menu 126 Fossil_Excavator
+1425749 menu 126 Fossil_Excavator
+1425928 menu 126 Fossil_Excavator
+1426890 menu 126 Fossil_Excavator
+1427040 menu 126 Fossil_Excavator
+1428118 close
+1428137 close
+1428413 open
+1428641 open
+1429242 open
+1430480 menu 126 Fossil_Excavator
+1435629 menu 126 Fossil_Excavator
+1436545 menu 126 Fossil_Excavator
+1437946 menu 126 Fossil_Excavator
+1438536 close
+1438637 close
+1438833 open
+1439139 open
+1440439 open
+1442994 menu 126 Fossil_Excavator
+1447165 menu 126 Fossil_Excavator
+1447643 menu 126 Fossil_Excavator
+1447825 menu 126 Fossil_Excavator
+1447974 menu 126 Fossil_Excavator
+1449652 close
+1450138 close
+1450759 open
+1451143 open
+1453485 open
+1458846 menu 126 Fossil_Excavator
+1459295 menu 126 Fossil_Excavator
+1459793 menu 126 Fossil_Excavator
+1459994 menu 126 Fossil_Excavator
+1461245 menu 126 Fossil_Excavator
+1462478 close
+1462643 close
+1462885 open
+1463141 open
+1463989 open
+1473445 menu 126 Fossil_Excavator
+1473593 menu 126 Fossil_Excavator
+1473894 menu 126 Fossil_Excavator
+1474745 menu 126 Fossil_Excavator
+1475159 close
+1475638 open
+1477116 open
+1478244 menu 126 Fossil_Excavator
+1478895 menu 126 Fossil_Excavator
+1482928 menu 126 Fossil_Excavator
+1484045 menu 126 Fossil_Excavator
+1484443 menu 126 Fossil_Excavator
+1484595 menu 126 Fossil_Excavator
+1485088 menu 126 Fossil_Excavator
+1486091 close
+1486137 close
+1486408 open
+1486640 open
+1487117 open
+1488714 menu 126 Fossil_Excavator
+1492873 menu 126 Fossil_Excavator
+1493332 menu 126 Fossil_Excavator
+1493768 menu 126 Fossil_Excavator
+1494422 menu 126 Fossil_Excavator
+1495238 menu 126 Fossil_Excavator
+1496684 close
+1496940 open
+1497606 open
+1499893 menu 126 Fossil_Excavator
+1502108 menu 126 Fossil_Excavator
+1506895 menu 126 Fossil_Excavator
+1507868 close
+1508138 close
+1508212 open
+1508641 open
+1508861 open
+1514424 menu 126 Fossil_Excavator
+1514572 menu 126 Fossil_Excavator
+1515319 menu 126 Fossil_Excavator
+1515640 menu 126 Fossil_Excavator
+1516144 menu 126 Fossil_Excavator
+1516634 menu 126 Fossil_Excavator
+1516794 menu 126 Fossil_Excavator
+1518105 close
+1518137 close
+1518801 open
+1519141 open
+1520260 open
+1522681 menu 126 Fossil_Excavator
+1525746 menu 126 Fossil_Excavator
+1525795 menu 126 Fossil_Excavator
+1526178 menu 126 Fossil_Excavator
+1526413 menu 126 Fossil_Excavator
+1526945 menu 126 Fossil_Excavator
+1527094 menu 126 Fossil_Excavator
+1527844 menu 126 Fossil_Excavator
+1528459 close
+1528640 close
+1528683 open
+1529140 open
+1529827 open
+1533068 menu 126 Fossil_Excavator
+1534293 menu 126 Fossil_Excavator
+1534946 menu 126 Fossil_Excavator
+1535742 menu 126 Fossil_Excavator
+1536645 menu 126 Fossil_Excavator
+1536946 menu 126 Fossil_Excavator
+1537445 menu 126 Fossil_Excavator
+1537959 close
+1538140 close
+1538232 open
+1538641 open
+1538901 open
+1540045 menu 126 Fossil_Excavator
+1540544 menu 126 Fossil_Excavator
+1543036 menu 126 Fossil_Excavator
+1544594 menu 126 Fossil_Excavator
+1544794 menu 126 Fossil_Excavator
+1545643 menu 126 Fossil_Excavator
+1546087 menu 126 Fossil_Excavator
+1546644 menu 126 Fossil_Excavator
+1548271 close
+1548636 close
+1548683 open
+1549141 open
+1549571 open
+1554394 menu 126 Fossil_Excavator
+1556226 menu 126 Fossil_Excavator
+1557256 menu 126 Fossil_Excavator
+1557694 menu 126 Fossil_Excavator
+1558345 close
+1558580 open
+1559304 open
+1560353 menu 126 Fossil_Excavator
+1561898 menu 126 Fossil_Excavator
+1567117 menu 126 Fossil_Excavator
+1568145 menu 126 Fossil_Excavator
+1568939 close
+1569137 close
+1569264 open
+1569643 open
+1569994 open
+1574955 menu 126 Fossil_Excavator
+1576040 menu 126 Fossil_Excavator
+1577344 menu 126 Fossil_Excavator
+1578768 close
+1579082 open
+1579807 open
+1584714 menu 126 Fossil_Excavator
+1586788 menu 126 Fossil_Excavator
+1587435 menu 126 Fossil_Excavator
+1589546 menu 126 Fossil_Excavator
+1590809 close
+1591137 close
+1591326 open
+1591641 open
+1591896 open
+1592995 menu 126 Fossil_Excavator
+1597195 menu 126 Fossil_Excavator
+1598295 menu 126 Fossil_Excavator
+1598973 menu 126 Fossil_Excavator
+1599166 menu 126 Fossil_Excavator
+1599465 menu 126 Fossil_Excavator
+1600711 close
+1601136 close
+1601177 open
+1601642 open
+1602132 open
+1603875 menu 126 Fossil_Excavator
+1605232 menu 126 Fossil_Excavator
+1607532 menu 126 Fossil_Excavator
+1607895 menu 126 Fossil_Excavator
+1608194 menu 126 Fossil_Excavator
+1609946 menu 126 Fossil_Excavator
+1611246 close
+1611638 close
+1613003 open
+1613143 open
+1613427 close
+1613638 close
+1614637 open
+1617139 close
+1617272 open
+1617641 open
+1618161 close
+1618198 open
+1625617 close
+1625659 close
+1626137 open
+1627579 open
+1632754 close
+1632795 open
+1639636 close
+1640640 open
+1641637 close
+1642638 open
+1644137 close
+1644970 close
+1648890 open
+1649147 open
+1651238 open
+1660721 close
+1661136 close
+1661311 open
+1661640 open
+1681056 open
+1682271 open
+1684185 open
+1704858 close
+1705137 close
+1719138 open
+1721138 close
+rec 2026-11-18_17-21-33_mineshaft-corpses-3
+-289714 open
+-288908 open
+-288881 open
+-76701 open
+-71633 open
+-67332 open
+-66679 open
+-62524 open
+-59590 open
+-58502 open
+-57221 open
+-50791 open
+-49103 open
+-48299 open
+118 close
+3249 open
+3623 open
+6511 close
+6622 close
+7483 open
+7623 open
+8765 close
+9122 close
+10118 open
+10446 open
+11045 open
+15790 close
+16118 close
+18117 close
+39520 open
+39624 open
+40608 open
+41547 close
+41620 close
+43118 open
+44117 close
+50119 open
+51118 close
+60117 open
+61117 close
+62117 open
+63119 close
+66117 open
+66618 close
+82121 close
+84120 open
+85634 close
+85635 close
+102622 open
+103117 close
+108117 open
+109623 open
+111589 close
+111617 close
+157619 open
+158620 close
+158620 close
+159121 open
+160619 close
+162619 close
+186619 open
+187621 close
+193117 close
+197119 close
+208410 open
+208627 open
+209038 open
+209057 close
+209120 close
+219780 open
+220120 open
+221286 close
+221616 close
+226041 open
+226122 open
+226482 close
+226619 close
+245018 open
+245122 open
+246289 open
+246582 close
+246623 close
+265117 open
+266117 close
+266623 close
+266624 open
+269618 close
+270117 close
+284450 open
+284626 open
+295669 close
+297117 close
+301532 open
+301624 open
+302520 close
+302621 close
+310623 open
+320117 close
+320315 open
+320627 open
+321893 close
+322120 close
+329507 open
+329627 open
+345741 close
+346122 close
+347120 open
+348620 close
+366647 close
+368902 open
+369119 open
+369711 open
+371264 open
+373101 open
+374494 close
+374618 close
+375033 open
+375121 open
+375699 close
+375740 open
+377110 close
+377143 close
+377474 open
+377620 open
+379704 open
+391959 open
+393009 open
+393767 open
+395018 open
+395616 open
+397426 close
+397618 close
+399629 close
+403574 open
+403624 open
+404799 close
+404846 open
+426579 close
+426620 open
+433833 close
+434121 close
+434603 open
+434622 open
+435633 close
+438085 open
+442597 close
+442652 close
+443117 open
+445616 close
+447891 open
+448127 open
+449182 close
+449224 open
+457829 close
+458120 close
+458851 open
+459122 open
+464396 close
+464617 close
+464837 open
+465127 open
+468001 close
+468121 close
+468342 open
+468622 open
+471512 close
+471618 close
+472222 open
+472620 open
+476565 open
+485117 close
+517621 open
+518210 close
+518619 close
+520872 open
+521124 open
+522340 close
+522621 close
+522770 open
+523121 open
+523206 close
+523584 open
+525252 close
+525617 close
+525981 open
+526122 open
+526344 close
+526618 close
+526781 open
+527124 open
+528431 close
+528470 open
+529721 close
+530121 close
+530268 open
+530623 open
+556579 close
+556617 close
+560622 close
+563619 open
+564120 close
+594341 open
+594623 open
+595192 open
+595631 close
+596112 open
+600297 close
+600620 close
+612754 open
+613122 open
+613305 close
+613621 close
+619498 open
+619620 open
+623369 open
+625678 open
+626444 open
+627234 open
+631285 open
+635724 open
+659610 close
+659618 close
+702619 open
+703118 close
+706120 close
+708871 open
+709139 open
+724285 open
+725335 open
+726465 close
+726618 close
+726976 open
+727122 open
+728871 close
+729118 close
+729425 open
+729622 open
+731183 open
+731782 open
+732009 close
+732120 close
+732278 open
+732626 open
+734225 close
+734617 close
+737445 open
+737621 open
+738955 open
+740649 open
+741049 open
+741498 open
+742116 open
+742475 open
+742903 open
+743749 open
+744150 open
+745394 close
+745617 close
+746619 open
+747618 close
+748001 open
+748121 open
+754084 close
+754118 close
+754448 open
+754621 open
+756098 close
+756118 close
+756908 open
+757121 open
+758045 close
+758117 close
+758620 open
+759117 close
+775120 open
+775344 open
+775858 open
+776290 open
+776922 close
+777118 close
+777620 close
+781590 open
+781625 open
+784713 open
+786084 open
+786892 close
+787123 close
+799776 open
+799879 open
+800126 open
+801535 open
+802725 close
+803119 close
+803432 open
+803629 open
+805065 open
+805744 open
+806303 open
+806467 close
+806515 menu 69 Confirm_Sell_Offer
+806622 menu 88 Confirm_Sell_Offer
+806629 close
+830038 open
+830127 open
+830930 open
+833902 close
+834121 close
+856120 open
+856687 open
+857916 open
+869389 open
+869824 close
+870881 open
+871424 open
+871875 open
+872620 close
+873734 close
+874121 open
+874969 open
+875493 open
+876559 close
+876619 close
+882119 open
+882785 open
+883950 open
+886446 open
+887580 close
+887620 close
+888116 close
+891622 open
+892117 close
+988281 open
+988623 open
+988672 close
+989118 close
+1000619 open
+1001617 close
+1002005 open
+1002123 open
+1009067 close
+1009117 close
+1009619 open
+1010619 close
+1013986 open
+1014125 open
+1015062 close
+1015117 close
+1016620 open
+1018117 close
+1019818 open
+1020123 open
+1023938 close
+1024118 close
+1026117 open
+1027118 close
+1036657 open
+1037122 open
+1037988 close
+1038119 close
+1038620 open
+1039617 close
+1048618 open
+1049617 close
+1050295 open
+1050623 open
+1050816 close
+1051120 close
+1054952 open
+1055126 open
+1055692 close
+1055734 open
+1056858 close
+1057121 close
+1057621 open
+1058619 close
+1079602 open
+1079624 open
+1080339 close
+1080623 close
+1080657 open
+1081120 open
+1084034 close
+1084117 close
+1085473 open
+1085623 open
+1086009 close
+1086122 close
+1087119 open
+1088120 close
+1088898 open
+1089122 open
+1090581 close
+1090618 close
+1091691 open
+1092013 close
+1094120 open
+1095117 close
+1096322 open
+1096622 open
+1097787 close
+1098117 close
+1099579 open
+1099622 open
+1099985 close
+1100116 close
+1197108 open
+1197136 open
+1198234 close
+1198618 close
+1198854 open
+1199121 open
+1200405 close
+1200619 close
+1206671 open
+1207124 open
+1208149 close
+1208617 close
+1212620 close
+1214637 open
+1215118 open
+1215296 open
+1221946 close
+1222117 close
+1224606 open
+1224635 open
+1226556 close
+1226603 open
+1233977 close
+1234120 close
+1234622 open
+1236620 close
+1242622 close
+rec 2026-11-18_17-42-36_mineshaft-corpses-4
+-273894 open
+-260170 open
+-248189 open
+-242357 open
+-225518 open
+-211880 open
+-207223 open
+-206441 open
+-182573 open
+-181518 open
+-176702 open
+-173277 open
+-170484 open
+-165853 open
+-162596 open
+-65067 open
+-63321 open
+-55504 open
+-47538 open
+-46879 open
+-37569 open
+-35572 open
+443 close
+75495 open
+75945 open
+76561 open
+78170 open
+78898 open
+79933 open
+80645 open
+81069 open
+81782 open
+82288 open
+82809 open
+83351 open
+83914 open
+84373 open
+85104 open
+85359 open
+86057 open
+86609 open
+87172 open
+87568 open
+88229 close
+88446 close
+90614 open
+90947 open
+92355 close
+92443 close
+190253 open
+190445 open
+190694 close
+190769 open
+190791 open
+191138 close
+191442 close
+191941 close
+195501 ding 102
+196215 ding 103
+196927 ding 106
+197644 ding 106
+198315 ding 104
+199019 ding 106
+199739 ding 104
+200444 ding 106
+201142 ding 106
+201842 ding 110
+202473 ding 118
+203074 ding 123
+203621 ding 125
+204692 ding 84
+205526 ding 85
+207094 ding 103
+207766 ding 100
+208550 ding 103
+209247 ding 118
+209849 ding 119
+210401 ding 121
+210926 ding 121
+211502 ding 125
+212037 ding 125
+222698 ding 63
+223686 ding 117
+224302 ding 122
+224836 ding 123
+225396 ding 125
+244676 ding 71
+245641 ding 107
+246252 ding 109
+246915 ding 110
+247553 ding 110
+248217 ding 113
+248893 ding 113
+249505 ding 120
+250095 ding 123
+250634 ding 123
+251167 ding 124
+251724 ding 124
+252295 ding 124
+252836 ding 125
+783447 open
+783800 open
+784499 open
+794587 close
+794942 close
+834417 open
+834445 open
+835155 close
+835442 close
+835948 open
+836448 close
+836448 close
+837445 open
+839447 close
+839995 open
+840443 open
+843443 close
+844453 open
+844467 open
+847444 close
+852016 open
+852449 open
+854154 close
+854444 close
+854548 open
+854947 open
+856415 close
+856457 open
+857377 close
+857421 open
+949003 close
+949446 close
+949551 open
+949946 open
+950798 open
+951916 close
+951935 open
+953309 open
+956914 close
+956933 open
+957474 open
+963344 close
+963364 open
+964370 open
+983597 close
+983944 close
+984158 open
+984450 open
+985711 close
+985945 close
+989755 open
+989948 open
+990488 close
+990943 close
+1015534 open
+1015946 open
+1016896 close
+1016942 close
+1019106 open
+1019446 open
+1020094 open
+1030071 close
+1030444 close
+1032445 close
+1033748 open
+1033943 open
+1034218 close
+1034444 close
+1034536 open
+1034943 open
+1035562 close
+1035942 close
+1038445 close
+1041267 open
+1041448 open
+1043313 close
+1043442 close
+1049373 open
+1049446 open
+1050069 open
+1054902 menu 126 Fossil_Excavator
+1055455 menu 126 Fossil_Excavator
+1055653 menu 126 Fossil_Excavator
+1058127 menu 126 Fossil_Excavator
+1058301 menu 126 Fossil_Excavator
+1058719 close
+1058943 close
+1059000 open
+1059445 open
+1059758 open
+1061603 menu 126 Fossil_Excavator
+1062303 menu 126 Fossil_Excavator
+1063135 menu 126 Fossil_Excavator
+1064613 close
+1064959 open
+1065694 open
+1067062 menu 126 Fossil_Excavator
+1067942 menu 126 Fossil_Excavator
+1068139 menu 126 Fossil_Excavator
+1069001 menu 126 Fossil_Excavator
+1069153 menu 126 Fossil_Excavator
+1071589 close
+1071875 open
+1072644 open
+1073042 menu 126 Fossil_Excavator
+1084195 menu 126 Fossil_Excavator
+1086674 close
+1086925 open
+1088144 open
+1089300 menu 126 Fossil_Excavator
+1090826 menu 126 Fossil_Excavator
+1091296 menu 126 Fossil_Excavator
+1091426 menu 126 Fossil_Excavator
+1091926 menu 126 Fossil_Excavator
+1092243 menu 126 Fossil_Excavator
+1093103 menu 126 Fossil_Excavator
+1093922 close
+1093943 close
+1094175 open
+1094446 open
+1095257 open
+1095750 menu 126 Fossil_Excavator
+1095949 menu 126 Fossil_Excavator
+1096190 menu 126 Fossil_Excavator
+1097503 menu 126 Fossil_Excavator
+1098201 menu 126 Fossil_Excavator
+1099552 close
+1099817 open
+1100622 open
+1101002 menu 126 Fossil_Excavator
+1101316 menu 126 Fossil_Excavator
+1102446 menu 126 Fossil_Excavator
+1102845 menu 126 Fossil_Excavator
+1103101 menu 126 Fossil_Excavator
+1106526 close
+1106788 open
+1107814 open
+1108202 menu 126 Fossil_Excavator
+1108434 menu 126 Fossil_Excavator
+1109936 menu 126 Fossil_Excavator
+1110643 menu 126 Fossil_Excavator
+1110977 menu 126 Fossil_Excavator
+1112849 close
+1112943 close
+1113094 open
+1113450 open
+1114025 open
+1116245 menu 126 Fossil_Excavator
+1116890 menu 126 Fossil_Excavator
+1119491 close
+1119741 open
+1120485 open
+1120948 menu 126 Fossil_Excavator
+1121601 menu 126 Fossil_Excavator
+1122451 menu 126 Fossil_Excavator
+1125527 close
+1125808 open
+1126561 open
+1128263 menu 126 Fossil_Excavator
+1128932 menu 126 Fossil_Excavator
+1129500 menu 126 Fossil_Excavator
+1130347 menu 126 Fossil_Excavator
+1131690 menu 126 Fossil_Excavator
+1132397 close
+1132442 close
+1132638 open
+1132948 open
+1133430 open
+1135424 menu 126 Fossil_Excavator
+1135928 menu 126 Fossil_Excavator
+1136103 menu 126 Fossil_Excavator
+1138694 close
+1138946 open
+1139667 open
+1141002 menu 126 Fossil_Excavator
+1142027 menu 126 Fossil_Excavator
+1143727 menu 126 Fossil_Excavator
+1144868 close
+1144942 close
+1145094 open
+1145447 open
+1145818 open
+1146302 menu 126 Fossil_Excavator
+1146829 menu 126 Fossil_Excavator
+1147312 menu 126 Fossil_Excavator
+1147675 menu 126 Fossil_Excavator
+1148374 menu 126 Fossil_Excavator
+1149050 menu 126 Fossil_Excavator
+1150299 close
+1150446 close
+1150599 open
+1150946 open
+1151382 open
+1157153 menu 126 Fossil_Excavator
+1157303 menu 126 Fossil_Excavator
+1157585 menu 126 Fossil_Excavator
+1157994 menu 126 Fossil_Excavator
+1158753 menu 126 Fossil_Excavator
+1159401 close
+1159446 close
+1159946 open
+1161388 open
+1162633 open
+1165347 menu 126 Fossil_Excavator
+1165747 menu 126 Fossil_Excavator
+1166553 menu 126 Fossil_Excavator
+1167557 close
+1168941 close
+1168941 close
+1169446 open
+1170947 close
+1172444 close
+1174447 open
+1175942 close
+1176447 close
+1176447 open
+1179448 close
+1179945 close
+1180447 open
+1182963 close
+1183448 close
+1183449 open
+1186467 close
+1186944 close
+1187448 open
+1189943 close
+1190446 close
+1190446 open
+1193468 close
+1193942 close
+1196770 open
+1196943 open
+1197600 open
+1199003 menu 126 Fossil_Excavator
+1199902 menu 126 Fossil_Excavator
+1200339 menu 126 Fossil_Excavator
+1201066 menu 126 Fossil_Excavator
+1201252 menu 126 Fossil_Excavator
+1201884 menu 126 Fossil_Excavator
+1202658 close
+1202897 open
+1203582 open
+1205116 menu 126 Fossil_Excavator
+1211528 menu 126 Fossil_Excavator
+1213748 close
+1213943 close
+1214440 open
+1214454 open
+1215224 open
+1215553 menu 126 Fossil_Excavator
+1215754 menu 126 Fossil_Excavator
+1217302 menu 126 Fossil_Excavator
+1218502 menu 126 Fossil_Excavator
+1220325 close
+1220443 close
+1220600 open
+1220947 open
+1221356 open
+1222151 menu 126 Fossil_Excavator
+1224103 menu 126 Fossil_Excavator
+1224803 menu 126 Fossil_Excavator
+1224977 menu 126 Fossil_Excavator
+1226567 close
+1226845 open
+1227519 open
+1228957 menu 126 Fossil_Excavator
+1229227 menu 126 Fossil_Excavator
+1229378 menu 126 Fossil_Excavator
+1230003 menu 126 Fossil_Excavator
+1230806 menu 126 Fossil_Excavator
+1230952 menu 126 Fossil_Excavator
+1231246 menu 126 Fossil_Excavator
+1231769 close
+1231943 close
+1232064 open
+1232446 open
+1233041 open
+1233929 menu 126 Fossil_Excavator
+1234112 menu 126 Fossil_Excavator
+1234283 menu 126 Fossil_Excavator
+1235446 menu 126 Fossil_Excavator
+1235605 menu 126 Fossil_Excavator
+1235900 menu 126 Fossil_Excavator
+1236148 menu 126 Fossil_Excavator
+1238940 close
+1238942 close
+1239192 open
+1239448 open
+1239975 open
+1241450 menu 126 Fossil_Excavator
+1242384 menu 126 Fossil_Excavator
+1242840 menu 126 Fossil_Excavator
+1245733 close
+1245943 close
+1246074 open
+1246448 open
+1246847 open
+1247538 menu 126 Fossil_Excavator
+1248032 menu 126 Fossil_Excavator
+1249892 menu 126 Fossil_Excavator
+1250355 menu 126 Fossil_Excavator
+1250552 menu 126 Fossil_Excavator
+1251526 close
+1251836 open
+1252523 open
+1254302 menu 126 Fossil_Excavator
+1255133 menu 126 Fossil_Excavator
+1255640 menu 126 Fossil_Excavator
+1256153 menu 126 Fossil_Excavator
+1256495 menu 126 Fossil_Excavator
+1257928 close
+1257943 close
+1258516 open
+1258945 open
+1259364 open
+1259745 menu 126 Fossil_Excavator
+1260253 menu 126 Fossil_Excavator
+1260351 menu 126 Fossil_Excavator
+1261152 menu 126 Fossil_Excavator
+1261803 menu 126 Fossil_Excavator
+1264151 menu 126 Fossil_Excavator
+1264451 menu 126 Fossil_Excavator
+1266587 close
+1266942 close
+1267815 open
+1267948 open
+1268440 open
+1269000 menu 126 Fossil_Excavator
+1269151 menu 126 Fossil_Excavator
+1270598 menu 126 Fossil_Excavator
+1270746 menu 126 Fossil_Excavator
+1270908 menu 126 Fossil_Excavator
+1271092 menu 126 Fossil_Excavator
+1271401 menu 126 Fossil_Excavator
+1271552 menu 126 Fossil_Excavator
+1272353 menu 126 Fossil_Excavator
+1272803 menu 126 Fossil_Excavator
+1273211 close
+1273443 close
+1273483 open
+1273945 open
+1274203 open
+1275442 menu 126 Fossil_Excavator
+1276093 menu 126 Fossil_Excavator
+1277923 menu 126 Fossil_Excavator
+1278431 menu 126 Fossil_Excavator
+1278904 close
+1278942 close
+1279176 open
+1279451 open
+1279932 open
+1280417 menu 126 Fossil_Excavator
+1281062 menu 126 Fossil_Excavator
+1281753 menu 126 Fossil_Excavator
+1281853 menu 126 Fossil_Excavator
+1282345 menu 126 Fossil_Excavator
+1282853 menu 126 Fossil_Excavator
+1283251 menu 126 Fossil_Excavator
+1285871 menu 126 Fossil_Excavator
+1286903 menu 126 Fossil_Excavator
+1287231 close
+1287443 close
+1287532 open
+1287950 open
+1288603 open
+1289716 menu 126 Fossil_Excavator
+1290151 menu 126 Fossil_Excavator
+1290449 menu 126 Fossil_Excavator
+1291064 menu 126 Fossil_Excavator
+1291591 menu 126 Fossil_Excavator
+1293690 close
+1293944 close
+1294099 open
+1294447 open
+1294810 open
+1296003 menu 126 Fossil_Excavator
+1296302 menu 126 Fossil_Excavator
+1296452 menu 126 Fossil_Excavator
+1298537 menu 126 Fossil_Excavator
+1299353 menu 126 Fossil_Excavator
+1299542 menu 126 Fossil_Excavator
+1299997 close
+1300443 close
+1303943 open
+1306942 close
+1309992 open
+1310450 open
+1414324 open
+1419160 close
+1419443 close
+1425189 open
+1425451 open
+1426401 close
+1426440 open
+1427251 close
+1428444 close
+1458716 open
+1458946 open
+1468488 close
+1468954 open
+1470079 close
+1470117 open
+1476668 close
+1477944 close
+1598944 open
+1600942 close
+1612443 open
+1615443 close
+1630443 open
+1631256 open
+1632210 close
+1632442 close
+1648442 open
+1648942 close
+1659143 open
+1659446 open
+1659603 close
+1659676 open
+1659697 open
+1660147 close
+1660442 close
+1660835 ding 81
+1660941 close
+1665752 ding 100
+1667151 ding 97
+1667904 ding 100
+1668675 ding 107
+1669330 ding 108
+1669991 ding 112
+1670616 ding 121
+1671192 ding 125
+1671745 ding 125
+1672293 ding 125
+1672816 ding 124
+1673392 ding 125
+1699943 open
+1700445 close
+1721616 open
+1721945 open
+1722438 close
+1722443 close
+1851943 open
+1853442 close
+1871943 open
+1872942 close
+2030993 ding 69
+2031915 ding 82
+2032780 ding 84
+2033607 ding 83
+2034468 ding 83
+2035346 ding 83
+2036192 ding 82
+2037006 ding 81
+2037928 ding 80
+2038842 ding 79
+2039742 ding 79
+2040652 ding 79
+2041544 ding 79
+2042429 ding 80
+2043318 ding 80
+2044223 ding 82
+2045103 ding 81
+2046001 ding 78
+2046904 ding 78
+2047798 ding 78
+2048702 ding 82
+2049537 ding 82
+2050401 ding 84
+2051238 ding 86
+2052095 ding 82
+2052952 ding 84
+2053802 ding 85
+2054637 ding 85
+2055498 ding 85
+2056343 ding 85
+2057202 ding 85
+2058052 ding 85
+2058901 ding 83
+2059752 ding 82
+2060591 ding 80
+2061502 ding 80
+2062394 ding 80
+2063300 ding 81
+2064195 ding 81
+2065096 ding 82
+2065950 ding 83
+2066800 ding 85
+2067646 ding 90
+2068451 ding 100
+2069195 ding 104
+2069900 ding 110
+2070550 ding 111
+2071199 ding 117
+2072398 ding 113
+2073050 ding 113
+2073700 ding 112
+2074351 ding 111
+2075002 ding 111
+2075661 ding 111
+2076330 ding 111
+2076954 ding 111
+2077630 ding 111
+2078278 ding 111
+2078941 ding 111
+2079569 ding 111
+2080207 ding 109
+2080882 ding 108
+2081542 ding 107
+2082168 ding 107
+2082843 ding 106
+2083543 ding 105
+2084241 ding 104
+2084932 ding 104
+2085641 ding 104
+2086337 ding 104
+2087772 ding 104
+2088475 ding 106
+2089172 ding 106
+2089863 ding 105
+2090600 ding 105
+2091266 ding 105
+2091977 ding 105
+2092667 ding 105
+2093394 ding 109
+2094039 ding 108
+2094689 ding 111
+2095329 ding 112
+2095987 ding 112
+2096625 ding 112
+2097316 ding 113
+2097917 ding 114
+2098518 ding 114
+2099143 ding 114
+2099723 ding 114
+2100336 ding 114
+2100923 ding 114
+2101528 ding 115
+2102135 ding 115
+2102734 ding 115
+2103314 ding 116
+2103937 ding 115
+2104540 ding 114
+2105152 ding 114
+2105742 ding 114
+2106331 ding 114
+2106930 ding 114
+2107532 ding 114
+2108135 ding 116
+2108733 ding 124
+2109292 ding 119
+2109826 ding 114
+2110440 ding 116
+2111037 ding 116
+2111629 ding 116
+2112250 ding 116
+2112841 ding 116
+2113443 ding 116
+2114035 ding 116
+2114646 ding 116
+2115240 ding 115
+2115852 ding 115
+2116450 ding 115
+2117047 ding 115
+2117651 ding 116
+2118235 ding 116
+2118841 ding 117
+2119452 ding 117
+2120046 ding 117
+2120650 ding 116
+2121251 ding 116
+2121851 ding 116
+2122442 ding 116
+2123043 ding 115
+2123639 ding 113
+2124250 ding 112
+2124892 ding 111
+2125539 ding 110
+2126201 ding 110
+2126851 ding 108
+2127500 ding 108
+2128150 ding 108
+2128801 ding 108
+2129450 ding 108
+2130093 ding 106
+2130842 ding 106
+2131541 ding 104
+2132251 ding 104
+2132948 ding 104
+2133651 ding 104
+2134351 ding 104
+2135051 ding 103
+2135740 ding 101
+2136441 ding 108
+2137101 ding 111
+2137725 ding 110
+2138387 ding 108
+2139827 ding 74
+2140777 ding 73
+2141783 ding 63
+2142170 ding 63
+2143198 ding 63
+2144198 ding 63
+2145157 ding 63
+2146190 ding 63
+2147193 ding 63
+2148191 ding 69
+2149198 ding 69
+2150108 ding 70
+2292971 open
+2293444 open
+2293883 close
+2293940 close
+2294446 open
+2294942 close
+2297940 close
+2298446 open
+2302441 close
+2336635 open
+2336946 open
+2337886 close
+2337925 open
+2353446 close
+2383446 open
+2383751 close
+2383944 close
+2387446 open
+2390940 close
+2391942 open
+2393441 close
+2409967 open
+2410446 open
+2410559 close
+2411941 close
+2412853 open
+2412945 open
+2415316 close
+2415441 close
+2415943 open
+2647442 close
+2688859 open
+2688944 open
+2690376 open
+2692937 close
+2692944 close
+2768798 open
+2768944 open
+2769453 close
+2769511 open
+2769536 open
+2770148 close
+2770441 close
+2770940 close
+2774662 ding 88
+2776263 ding 109
+2776912 ding 120
+2777460 ding 123
+2778042 ding 125
+2789698 ding 86
+2790575 ding 110
+2791211 ding 112
+2792516 ding 106
+2793220 ding 104
+2793906 ding 100
+2794691 ding 100
+2795421 ding 100
+2796195 ding 100
+2796943 ding 100
+2797667 ding 100
+2798442 ding 100
+2799166 ding 100
+2799942 ding 100
+2800667 ding 100
+2801440 ding 100
+2802176 ding 100
+2802944 ding 100
+2803665 ding 100
+2804428 ding 100
+2805191 ding 100
+2805951 ding 100
+2806700 ding 100
+2807441 ding 100
+2808180 ding 100
+2808918 ding 100
+2809696 ding 100
+2810432 ding 100
+2811192 ding 100
+2811951 ding 100
+2812687 ding 100
+2813445 ding 100
+2814176 ding 100
+2814943 ding 100
+2815687 ding 100
+2816439 ding 100
+2817202 ding 100
+2817951 ding 100
+2818704 ding 100
+2819439 ding 100
+2820193 ding 100
+2820937 ding 100
+2821698 ding 100
+2822456 ding 100
+2823201 ding 100
+2823945 ding 100
+2824584 open
+2824702 ding 100
+2824947 open
+2825470 ding 100
+2826242 ding 100
+2826993 ding 100
+2827717 ding 100
+2828072 close
+2828442 close
+2828492 ding 100
+2829209 ding 100
+2829990 ding 100
+2830731 ding 100
+2831478 ding 100
+2832241 ding 100
+2832974 ding 100
+2833749 ding 100
+2834498 ding 100
+2835240 ding 100
+2836000 ding 100
+2836750 ding 100
+2837491 ding 100
+2838250 ding 100
+2838977 ding 100
+2839740 ding 100
+2840501 ding 100
+2841250 ding 100
+2841994 ding 100
+2842742 ding 100
+2843493 ding 100
+2844251 ding 100
+2845000 ding 100
+2845750 ding 100
+2846539 ding 100
+2847290 ding 100
+2848045 ding 100
+2848801 ding 100
+2849545 ding 100
+2850294 ding 100
+2851032 ding 100
+2851783 ding 100
+2852551 ding 100
+2853285 ding 100
+2854051 ding 100
+2854828 ding 100
+2855592 ding 100
+2856331 ding 100
+2857091 ding 100
+2857841 ding 100
+2858640 ding 100
+2859373 ding 100
+2860150 ding 100
+2860887 ding 100
+2861623 ding 100
+2862390 ding 100
+2863150 ding 100
+2863863 ding 100
+2864647 ding 100
+2865375 ding 100
+2866142 ding 100
+2866893 ding 100
+2867641 ding 100
+2868379 ding 100
+2869140 ding 100
+2869896 ding 100
+2870648 ding 100
+2871393 ding 100
+2872150 ding 100
+2872900 ding 100
+2873652 ding 100
+2874420 ding 100
+2875151 ding 100
+2875900 ding 100
+2876647 ding 100
+2877424 ding 100
+2878151 ding 100
+2878916 ding 100
+2879662 ding 100
+2880443 ding 100
+2881190 ding 100
+2881938 ding 100
+2882672 ding 116
+2883281 ding 123
+2883822 ding 124
+2884364 ding 121
+2884460 open
+2884941 close
+2884951 ding 112
+2885233 open
+2885463 open
+2885563 ding 110
+2885913 open
+2885969 close
+2886236 ding 110
+2886446 close
+2898943 close
+rec 2026-11-19_16-16-53_mineshaft-double-waypoint
+-230612 open
+-228453 open
+-215631 open
+363 close
+1609067 open
+1610066 close
+1625561 close
+1639305 open
+1639414 close
+1655843 open
+1656064 open
+1664871 close
+1665062 close
+1671238 open
+1671294 close
+1677739 open
+1677951 close
+1681650 open
+1681793 close
+1688462 open
+1688564 open
+1688609 close
+1689063 close
+1704062 open
+1704310 open
+1704815 open
+1741606 open
+1775551 open
+1782743 open
+1808860 open
+1810886 open
+1816835 open
+1819008 open
+1819750 open
+1820864 open
+1826767 open
+1830303 open
+1833099 open
+1841203 close
+1841561 close
+1921061 open
+1921315 open
+1921822 open
+1923099 open
+1928058 close
+1928061 close
+1928561 open
+1929062 close
+1936065 close
+2063129 open
+2063564 open
+2063614 close
+2063698 open
+2063722 open
+2064194 close
+2064580 close
+2064580 close
+2067641 ding 90
+2068456 ding 78
+2069324 ding 83
+2070935 ding 104
+2071647 ding 108
+2072307 ding 116
+2072897 ding 122
+2073992 ding 107
+2074656 ding 97
+2075385 ding 76
+2076957 ding 124
+2078034 ding 117
+2078633 ding 97
+2081655 ding 107
+2082334 ding 84
+2083652 ding 90
+2090657 ding 80
+2091547 ding 104
+2092257 ding 88
+2093653 ding 97
+2094410 ding 109
+2095046 ding 117
+2095656 ding 114
+2096260 ding 120
+2096789 ding 121
+2097357 ding 120
+2098456 ding 124
+2098999 ding 125
+2116110 ding 123
+2116665 ding 125
+2117214 ding 125
+2122695 ding 82
+2123557 ding 69
+2124505 ding 69
+2125494 ding 69
+2126513 ding 69
+2127505 ding 69
+2128505 ding 69
+2129502 ding 69
+2130505 ding 73
+2131452 ding 72
+2132415 ding 86
+2133260 ding 86
+2134106 ding 82
+2134954 ding 67
+2136005 ding 65
+2136984 ding 65
+2138065 ding 64
+2378357 ding 86
+2379215 ding 101
+2379914 ding 105
+2380628 ding 109
+2381291 ding 109
+2381951 ding 108
+2382594 ding 108
+2383255 ding 108
+2383907 ding 108
+2384555 ding 108
+2385188 ding 108
+2385856 ding 108
+2386505 ding 107
+2387157 ding 107
+2387806 ding 107
+2388456 ding 107
+2389106 ding 107
+2389762 ding 107
+2390403 ding 109
+2391046 ding 117
+2391665 ding 121
+2392192 ding 122
+2392764 ding 124
+2393305 ding 124
+2393855 ding 124
+2394406 ding 124
+2394949 ding 124
+2395508 ding 124
+2396058 ding 124
+2396610 ding 124
+2397155 ding 124
+2397709 ding 124
+2398258 ding 124
+2398814 ding 124
+2399364 ding 123
+2399913 ding 124
+2400462 ding 123
+2401011 ding 124
+2401615 ding 124
+2402114 ding 124
+2402678 ding 124
+2403810 ding 118
+2404415 ding 121
+2404927 ding 121
+2405494 ding 120
+2406038 ding 120
+2406585 ding 120
+2407157 ding 120
+2407705 ding 119
+2408313 ding 119
+2408880 ding 118
+2409480 ding 117
+2410105 ding 116
+2410713 ding 115
+2411305 ding 113
+2411905 ding 113
+2412480 ding 113
+2413105 ding 113
+2413715 ding 113
+2414300 ding 113
+2414940 ding 112
+2415607 ding 112
+2416264 ding 112
+2416886 ding 112
+2417556 ding 112
+2418188 ding 112
+2418853 ding 120
+2419396 ding 121
+2419954 ding 121
+2420503 ding 121
+2421061 ding 120
+2421598 ding 121
+2422156 ding 121
+2422712 ding 121
+2423256 ding 121
+2423806 ding 121
+2424362 ding 122
+2424904 ding 120
+2425456 ding 115
+2426056 ding 106
+2426756 ding 107
+2427399 ding 104
+2428115 ding 112
+2428749 ding 108
+2429406 ding 108
+2430056 ding 105
+2430755 ding 103
+2431463 ding 103
+2432155 ding 103
+2432856 ding 103
+2433565 ding 102
+2434262 ding 102
+2434956 ding 105
+2435652 ding 108
+2436307 ding 106
+2437010 ding 108
+2437659 ding 107
+2438304 ding 105
+2439006 ding 102
+2439740 ding 103
+2440465 ding 107
+2441100 ding 105
+2441797 ding 104
+2442505 ding 107
+2443147 ding 109
+2443783 ding 111
+2444461 ding 111
+2445105 ding 111
+2445755 ding 111
+2446398 ding 106
+2447083 ding 102
+2447802 ding 102
+2448514 ding 102
+2449206 ding 103
+2449901 ding 115
+2450507 ding 118
+2451105 ding 118
+2452356 ding 119
+2452356 ding 119
+2453015 ding 119
+2453608 ding 118
+2454214 ding 118
+2454815 ding 119
+2455408 ding 119
+2456012 ding 119
+2456609 ding 119
+2457213 ding 119
+2457815 ding 119
+2458412 ding 119
+2459023 ding 119
+2459656 ding 119
+2460230 ding 119
+2460856 ding 119
+2461420 ding 119
+2462041 ding 119
+2462649 ding 120
+2463207 ding 121
+2463750 ding 121
+2464307 ding 121
+2464853 ding 121
+2465405 ding 121
+2465955 ding 121
+2466506 ding 121
+2467055 ding 121
+2467612 ding 121
+2468162 ding 121
+2468714 ding 121
+2469306 ding 121
+2469856 ding 120
+2470380 ding 120
+2470955 ding 118
+2471556 ding 123
+2472101 ding 119
+2472705 ding 116
+2473279 ding 117
+2473905 ding 115
+2474507 ding 115
+2475096 ding 116
+2475706 ding 116
+2476284 ding 116
+2476884 ding 116
+2477506 ding 116
+2478106 ding 116
+2478693 ding 116
+2479306 ding 116
+2479906 ding 114
+2480511 ding 113
+2481106 ding 113
+2481706 ding 113
+2482300 ding 110
+2482955 ding 112
+2483612 ding 112
+2484257 ding 112
+2484909 ding 112
+2485555 ding 111
+2486209 ding 103
+2486914 ding 101
+2487628 ding 97
+2488362 ding 93
+2489162 ding 94
+2489913 ding 94
+2490713 ding 94
+2491465 ding 94
+2492266 ding 94
+2493106 ding 94
+2493916 ding 94
+2494683 ding 94
+2495484 ding 94
+2496290 ding 92
+2497082 ding 76
+2499738 ding 63
+2500757 ding 63
+2502763 ding 63
+2503748 ding 63
+2504758 ding 63
+2505764 ding 63
+2506749 ding 63
+2507755 ding 63
+2508764 ding 65
+2509750 ding 65
+2510756 ding 66
+2511750 ding 68
+2512755 ding 68
+2513756 ding 68
+2702560 close
+2711226 open
+2711565 open
+2711948 open
+2714874 close
+2715061 close
+2854841 open
+2855064 open
+2855559 close
+2855561 close
+2855594 open
+2855614 open
+2856065 open
+2856169 close
+2856561 close
+2857064 close
+2860965 ding 81
+2862572 ding 113
+2863158 ding 114
+2864459 ding 90
+2865266 ding 79
+2867966 ding 66
+2882539 ding 117
+2883157 ding 111
+2883799 ding 118
+2884406 ding 116
+2888027 ding 84
+2890056 ding 97
+2891385 ding 123
+2891956 ding 113
+2892555 ding 82
+2894027 ding 67
+2895047 ding 83
+2895874 ding 99
+2896664 ding 102
+2897335 ding 102
+2898038 ding 102
+2898730 ding 102
+2899456 ding 102
+2900132 ding 102
+2900824 ding 102
+2901527 ding 102
+2902228 ding 102
+2902948 ding 102
+2903628 ding 102
+2904362 ding 102
+2905063 ding 102
+2905764 ding 102
+2906457 ding 102
+2907163 ding 102
+2907852 ding 105
+2908555 ding 111
+2909206 ding 117
+2909806 ding 116
+2910956 ding 123
+2911514 ding 121
+2912560 open
+2912664 ding 72
+2913560 close
+2913561 close
+3423358 open
+3423579 open
+3434190 open
+3435096 open
+3439759 close
+3440065 close
+3440266 open
+3440569 open
+3441794 close
+3442859 open
+3444158 open
+3444817 open
+3446536 open
+3446810 close
+3447064 close
+3447201 open
+3447564 open
+3452100 open
+3466583 close
+3468061 close
+3478063 open
+3478560 close
+3478767 open
+3479066 open
+3481214 close
+3481561 close
+3486271 open
+3486566 open
+3487436 open
+3489553 close
+3489560 close
+3490053 open
+3490088 open
+3492409 close
+3492564 close
+3502414 open
+3502564 open
+3503613 open
+3504344 open
+3506456 open
+3507115 open
+3507918 open
+3508419 open
+3508885 open
+3509540 open
+3510109 open
+3511531 open
+3512299 open
+3512763 open
+3513164 open
+3515386 open
+3517746 open
+3520167 open
+3520803 open
+3531296 open
+3531658 open
+3532824 close
+3533062 close
+3533198 open
+3533565 open
+3534753 close
+3535009 open
+3535823 open
+3536491 open
+3538239 open
+3539241 open
+3552225 close
+3554062 close
+3556192 close
+3557564 open
+3558561 close
+3560388 open
+3560564 open
+3561475 close
+3561517 open
+3562811 close
+3562853 open
+3563613 close
+3563655 open
+3569060 close
+3570561 open
+3570901 close
+3571065 close
+3571560 open
+3588563 close
+3589561 open
+3592061 close
+3593263 open
+3593567 open
+3600018 close
+rec 2026-11-19_16-16-53_mineshaft-double-waypoint_part2
+997 open
+1040 open
+2046 close
+2095 open
+3040 close
+9393 close
+9538 close
+10034 open
+10534 close
+14119 open
+14538 open
+15043 close
+15535 close
+15630 open
+15911 close
+17037 open
+17053 open
+20592 close
+21034 close
+26774 open
+27039 open
+31181 close
+31533 close
+32245 open
+32538 open
+49781 close
+50035 close
+50536 open
+50558 open
+52496 close
+52559 close
+56569 open
+57039 open
+58035 open
+60718 close
+61035 close
+63189 open
+63542 open
+64479 close
+64515 open
+67634 close
+69034 close
+70931 open
+71039 open
+77051 close
+77537 close
+81599 open
+81919 close
+85007 open
+85039 open
+87081 close
+87534 close
+88184 open
+88540 open
+101111 close
+101533 close
+102140 open
+102540 open
+134237 close
+134534 close
+135159 open
+135538 open
+137713 open
+139458 open
+141159 open
+142814 open
+145046 open
+146787 open
+148685 open
+151153 close
+151537 close
+152942 open
+153036 open
+155342 open
+156561 open
+158563 open
+160501 open
+170418 open
+173620 open
+173749 close
+180035 close
+182508 open
+182537 open
+183709 open
+187017 close
+187034 close
+190146 open
+190537 open
+191445 open
+192594 open
+193095 open
+195544 open
+195856 close
+196036 close
+197036 open
+201036 close
+208326 open
+208538 open
+210122 close
+210535 close
+210754 open
+211040 open
+214893 close
+215035 close
+215538 open
+217534 close
+218534 open
+221034 close
+223035 open
+228534 close
+231258 open
+231537 open
+237369 open
+241951 close
+242034 close
+242923 open
+243043 open
+245617 close
+245659 open
+248481 close
+248517 open
+253095 close
+254534 close
+256534 close
+258660 open
+259042 open
+261147 open
+261298 close
+261538 close
+261896 open
+262043 open
+264588 open
+264830 close
+265037 close
+268538 open
+269047 close
+276540 open
+280037 close
+284503 open
+284544 open
+285793 open
+289641 close
+290036 close
+290783 open
+291037 open
+316148 close
+316535 close
+322622 open
+322679 close
+326539 open
+326554 open
+326608 close
+327035 close
+331832 open
+331911 close
+342962 open
+343030 close
+350575 open
+350678 close
+351534 open
+353571 close
+362533 open
+362744 open
+363447 open
+364384 close
+364534 close
+366035 open
+367038 close
+378058 open
+378075 open
+378433 close
+378534 close
+382534 open
+391536 close
+391998 open
+392043 open
+396344 close
+396538 close
+441037 open
+442035 close
+443038 open
+446537 close
+446578 open
+447042 open
+448935 close
+449039 close
+450574 close
+456035 open
+456582 open
+457126 open
+457922 open
+459748 open
+461318 open
+462250 open
+462906 open
+464331 open
+464552 close
+465033 close
+503038 open
+503050 open
+503790 close
+503860 open
+503880 open
+504338 close
+504534 close
+505036 close
+515583 ding 69
+518580 ding 80
+519483 ding 119
+520031 ding 124
+520572 ding 113
+521179 ding 105
+522529 ding 119
+523084 ding 115
+523683 ding 114
+524284 ding 95
+526579 ding 71
+527538 ding 77
+528430 ding 77
+529339 ding 77
+530233 ding 77
+531131 ding 77
+532031 ding 77
+532937 ding 77
+533834 ding 77
+534738 ding 77
+535635 ding 77
+536534 ding 77
+537441 ding 77
+538337 ding 77
+539238 ding 77
+540139 ding 77
+541079 ding 77
+541970 ding 77
+542879 ding 77
+543763 ding 77
+544664 ding 77
+545586 ding 77
+546465 ding 77
+547366 ding 77
+548383 ding 77
+549179 ding 77
+550087 ding 77
+550995 ding 77
+551910 ding 77
+552818 ding 77
+553697 ding 77
+554638 ding 77
+555492 ding 77
+556405 ding 77
+557301 ding 77
+558199 ding 77
+559322 ding 77
+560032 ding 77
+560932 ding 77
+561829 ding 77
+562733 ding 77
+563633 ding 77
+573494 ding 119
+574102 ding 124
+574679 ding 124
+575200 ding 124
+575534 open
+575781 ding 124
+576037 close
+576305 ding 124
+576850 ding 124
+577403 ding 124
+577981 ding 124
+578502 ding 124
+579080 ding 124
+579611 ding 124
+580180 ding 124
+580718 ding 124
+581280 ding 124
+581802 ding 124
+582388 ding 124
+582925 ding 124
+583479 ding 124
+584020 ding 124
+584580 ding 124
+585154 ding 124
+585684 ding 124
+586233 ding 124
+586783 ding 124
+587333 ding 124
+587884 ding 124
+588429 ding 124
+588980 ding 124
+589533 ding 124
+590083 ding 124
+590633 ding 124
+591185 ding 124
+591732 ding 124
+592284 ding 124
+592833 ding 124
+593384 ding 124
+593938 ding 124
+594487 ding 124
+595034 ding 125
+595584 ding 124
+596137 ding 124
+596688 ding 124
+597233 ding 124
+597789 ding 124
+598334 ding 124
+598888 ding 124
+599036 close
+1165792 open
+1166039 open
+1166339 close
+1166391 open
+1166414 open
+1166832 close
+1167033 close
+1167537 close
+1170879 ding 87
+1171728 ding 95
+1172481 ding 92
+1173331 ding 95
+1174088 ding 97
+1174825 ding 117
+1175430 ding 122
+1175975 ding 123
+1178443 open
+1178538 open
+1182443 open
+1184050 open
+1184107 close
+1184533 close
+1187629 ding 108
+1188332 ding 99
+1189029 ding 108
+1189680 ding 120
+1190223 ding 123
+1190779 ding 125
+1200938 ding 75
+1201883 ding 80
+1202784 ding 112
+1203987 ding 116
+1204586 ding 123
+1205137 ding 124
+1205696 ding 122
+1346354 open
+1346537 open
+1347064 open
+1349473 close
+1349534 close
+1512536 open
+1513788 open
+1514326 open
+1516351 close
+1516533 close
+rec 2026-11-19_17-46-59_mineshaft-phantom
+-292045 open
+-291507 open
+200 close
+398 ding 121
+946 ding 121
+1498 ding 121
+2046 ding 121
+2604 ding 121
+3155 ding 121
+3699 ding 121
+4255 ding 121
+4815 ding 121
+5702 close
+12521 open
+12705 open
+54079 close
+54201 close
+54701 open
+55200 close
+59202 open
+59701 close
+64094 open
+64205 open
+67237 close
+67701 close
+68233 open
+68706 open
+69702 close
+71225 open
+71703 open
+89297 close
+89700 close

@@ -149,9 +149,9 @@ class CorpseStayTest {
         assertEquals(4, st.solver.shown().size)
         assertEquals(setOf(c1, c2, c3), drawn().toSet())
         // The player walks up to X and sees its box empty on two scans: X is withdrawn and loses its type.
-        st.look(setOf(x))
+        st.look(setOf(x), -150.0, 10.0, -144.0)
         assertTrue(x in st.solver.shown(), "one scan is not enough")
-        st.look(setOf(x))
+        st.look(setOf(x), -150.0, 10.0, -144.0)
         assertEquals(setOf(c1, c2, c3), st.solver.shown().toSet())
         assertNull(st.typeOf(x))
         assertTrue(x in st.solver.empty)
@@ -235,7 +235,7 @@ class CorpseStayTest {
                     st.solver.moved(p[0], p[1], p[2])
                     for (c in unlooted) if (dist(p, stands.getValue(c)) <= 6) stands.getValue(c).let { st.see(it[0], it[1], it[2], typeOf.getValue(c)) }
                     // A ding-only spot within 6 whose box holds no unlooted corpse: the player sees it empty.
-                    st.look(st.solver.shown().filter { st.solver.isDingOnly(it) && CorpseLocatorSolver.pointDistance(p[0], p[1], p[2], it) <= 6 && !holds(it) }.toSet())
+                    st.look(st.solver.shown().filter { st.solver.isDingOnly(it) && CorpseLocatorSolver.pointDistance(p[0], p[1], p[2], it) <= 6 && !holds(it) }.toSet(), p[0], p[1], p[2])
                     if (d <= 1.5) {
                         st.loot(p[0], p[1], p[2], typeOf.getValue(focus), aimed = f)
                         looted += focus

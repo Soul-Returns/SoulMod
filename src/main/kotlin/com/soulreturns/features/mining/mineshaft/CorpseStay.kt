@@ -1,11 +1,14 @@
 package com.soulreturns.features.mining.mineshaft
 
+import java.util.Locale
+
 /**
  * One stay's corpse locator state above the [solver] (pure, rule://mineshaft): seen stands placed on
  * spots, loot lines and the tab's LOOTED backup, party corpses, types, and what to draw ([shown]).
- * [CorpseLocator] feeds it from the game; replays feed it from recordings.
+ * [CorpseLocator] feeds it from the game; replays feed it from recordings. [trace] gets one line per
+ * decision a waypoint depends on (placed, withdrawn, loot, cap, elimination); [log] the rest.
  */
-class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> Unit = {}) {
+class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> Unit = {}, private val trace: (String) -> Unit = log) {
     /** Types by source and who shared what. */
     val book = CorpseBook()
 
@@ -42,18 +45,19 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         val fit = solver.ding(ix, iy, iz, pitchByte) ?: return null
         fit.withdrawn?.let {
             forget(it)
-            log("Corpse locator: withdrew ${solver.lastWithdrawal}")
+            trace("withdrew ${solver.lastWithdrawal}; ding $pitchByte at ${at(ix / 8.0, iy / 8.0, iz / 8.0)}")
         }
-        fit.placed?.let { log("Corpse locator: placed $it from the dings") }
+        fit.placed?.let { trace("placed $it from the dings; ding $pitchByte at ${at(ix / 8.0, iy / 8.0, iz / 8.0)}") }
         solver.runTarget?.let { own += it }
         return fit
     }
 
     /**
-     * One sight scan: [lookedEmpty] = the ding-only corpses whose whole box the player saw from close
-     * by with no corpse stand on it. One that stays so for [EMPTY_SCANS] scans in a row is withdrawn.
+     * One sight scan with the player at (x, y, z): [lookedEmpty] = the ding-only corpses whose whole
+     * box the player saw from close by with no corpse stand on it. One that stays so for
+     * [EMPTY_SCANS] scans in a row is withdrawn.
      */
-    fun look(lookedEmpty: Set<CorpseSpot>) {
+    fun look(lookedEmpty: Set<CorpseSpot>, x: Double, y: Double, z: Double) {
         emptyLooks.keys.retainAll(lookedEmpty)
         for (spot in lookedEmpty) {
             val n = (emptyLooks[spot] ?: 0) + 1
@@ -64,7 +68,7 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
             emptyLooks -= spot
             if (solver.seenEmpty(spot)) {
                 forget(spot)
-                log("Corpse locator: withdrew ${solver.lastWithdrawal}")
+                trace("withdrew ${solver.lastWithdrawal}; player at ${at(x, y, z)}")
             }
         }
     }
@@ -85,7 +89,7 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         val spot = solver.loot(x, y, z, type, aimed)
         val how = if (aimed != null) "the stand under the crosshair" else "guessed from the position"
         lastLoot = "$type -> ${spot ?: "no corpse within ${CorpseLocatorSolver.LOOT_RADIUS}, kept for its stand"} ($how)"
-        log("Corpse locator: $type loot $lastLoot")
+        trace("loot $lastLoot; player at ${at(x, y, z)}")
         return spot
     }
 
@@ -104,7 +108,7 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         tabHandled = looted
         if (looted - tabBaseline > solver.looted.size) {
             val spot = solver.loot(x, y, z)
-            log("Corpse locator: tab LOOTED $looted without a loot line -> ${spot ?: "no spot near"}")
+            trace("tab LOOTED $looted without a loot line -> ${spot ?: "no spot near"}; player at ${at(x, y, z)}")
         }
     }
 
@@ -130,7 +134,7 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         own += spot
         book.see(spot, type)?.let { log("Corpse locator: $spot seen as $type, was $it") }
         val learned = if (spot in solver.learnedSpots) " (learned spot)" else ""
-        log("Corpse locator: saw $type corpse at ${"%.2f %.2f %.2f".format(java.util.Locale.ROOT, x, y, z)} -> $spot$learned")
+        trace("placed $spot by sight: $type stand at ${at(x, y, z)}$learned")
     }
 
     /** Names located corpses without a type when the tab ([rows]: type -> total, LOOTED) leaves one type for them. */
@@ -140,7 +144,7 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         if (unknown.isEmpty()) return
         val type = CorpseElimination.typeOfRest(rows, lootTypes, shown.mapNotNull { typeOf(it) }, unknown.size) ?: return
         for (spot in unknown) book.inferredTypes[spot] = type
-        log("Corpse locator: $unknown are $type by elimination")
+        trace("$unknown are $type by elimination")
     }
 
     /** A party member's located corpses ([CorpseBook.receive]). */
@@ -180,7 +184,7 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         for (spot in order.filter { it !in held }.drop(total)) held[spot] = "${describe(spot)}; the tab lists $total unlooted"
         if (held.keys != capped.keys && held.isNotEmpty()) {
             capEvents++
-            log("Corpse locator: ${all.size} located but the tab lists $unlooted unlooted; not drawing ${held.entries.joinToString { (k, v) -> "$k ($v)" }}")
+            trace("${all.size} located but the tab lists $unlooted unlooted; not drawing ${held.entries.joinToString { (k, v) -> "$k ($v)" }}")
         }
         capped = held
         return all.filter { it !in held }
@@ -218,4 +222,6 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         /** Sight scans in a row that must see a ding-only spot empty before it is withdrawn. */
         const val EMPTY_SCANS = 2
     }
+
+    private fun at(x: Double, y: Double, z: Double) = "(%.1f, %.1f, %.1f)".format(Locale.ROOT, x, y, z)
 }

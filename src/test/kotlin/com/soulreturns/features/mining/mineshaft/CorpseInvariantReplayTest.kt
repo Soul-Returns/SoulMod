@@ -2,6 +2,7 @@ package com.soulreturns.features.mining.mineshaft
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
  * Every recorded Glacite Mineshaft stay (`mineshaft/corpse-stays.txt`, generated from the
@@ -45,9 +46,12 @@ class CorpseInvariantReplayTest {
     /** One violation: drawn corpses beyond the tab's unlooted rows. */
     private data class Violation(val stay: String, val tick: Int, val drawn: List<CorpseSpot>, val unlooted: Map<String, Int>, val why: String)
 
-    private fun replay(stay: Stay, guarded: Boolean, withdrawn: MutableList<String> = ArrayList()): List<Violation> {
+    private fun replay(stay: Stay, guarded: Boolean, withdrawn: MutableList<String> = ArrayList(), traced: MutableList<String> = ArrayList()): List<Violation> {
         val solver = CorpseLocatorSolver(data.spots(stay.layout).orEmpty(), fixed = stay.layout in data.fixed)
-        val st = CorpseStay(solver) { if (it.contains("withdrew")) withdrawn += "${stay.layout} ${stay.source}: $it" }
+        val st = CorpseStay(solver, trace = {
+            traced += it
+            if (it.contains("withdrew")) withdrawn += "${stay.layout} ${stay.source}: $it"
+        })
         data.fixed[stay.layout]?.let { type -> for (s in solver.spots) st.book.seenTypes[s] = type }
         val history = ArrayDeque<Pair<Int, DoubleArray>>()
         var unlooted: Map<String, Int> = emptyMap()
@@ -110,5 +114,17 @@ class CorpseInvariantReplayTest {
         println("withdrawals over ${stays.size} recorded stays: ${withdrawn.size}")
         for (w in withdrawn) println("  $w")
         assertEquals(emptyList(), withdrawn)
+    }
+
+    /** The info trace (CorpseStay `trace`, `latest.log`) stays about ten lines per shaft. */
+    @Test
+    fun theTraceStaysShort() {
+        val counts = stays.map { stay ->
+            val traced = ArrayList<String>()
+            replay(stay, guarded = true, traced = traced)
+            stay.layout to traced.size
+        }
+        println("trace lines per stay (without the layout line): $counts")
+        assertTrue(counts.all { it.second <= 20 }, "a stay logged more than 20 trace lines")
     }
 }

@@ -11,9 +11,11 @@ import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.MobSpotter
 import com.soulreturns.util.SkyblockItemUtils
+import com.soulreturns.util.SoulLogger
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
 import net.minecraft.client.player.LocalPlayer
 import net.minecraft.core.BlockPos
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
@@ -51,6 +53,9 @@ object CorpseLocator {
     private const val EMPTY_LOOK_RANGE = 8.0
     private val LOOT = Regex("""^\s*(\w+) CORPSE LOOT!\s*$""")
 
+    /** One line per decision (layout, placed, withdrawn, loot, cap, elimination), to trace a stay from latest.log. */
+    private val logger = SoulLogger("Soul/Corpse")
+
     /** Spawn spots copied from meowdding-repo (MIT), keyed by sidebar layout id; also read by [CorpseSpotMemory]. */
     val data: CorpseSpotData by lazy {
         try {
@@ -85,7 +90,9 @@ object CorpseLocator {
     private val history = ArrayDeque<DoubleArray>()
     private var dings = 0
     private var muted = 0
+    private var guiDropped = 0
     private var ticks = 0
+    private val menus = MenuQuiet()
 
     fun register() {
         Events.subscribe<ChatMessage> { if (it.source == ChatMessage.Source.SERVER) onChat(it.raw) }
@@ -116,6 +123,10 @@ object CorpseLocator {
         val n = CorpseLocatorSolver.pitchByte(packet.pitch) ?: return false
         val p = mc.player ?: return false
         if (!CorpseLocatorSolver.isOwnDing(packet.x, packet.y, packet.z, history + doubleArrayOf(p.x, p.y, p.z))) return false
+        if (menus.blocks(containerOpen(mc))) {
+            guiDropped++
+            return false
+        }
         // Raw packet coordinates are position * 8 as ints (getX is int / 8.0, exact in a double).
         val ix = Math.round(packet.x * 8).toInt()
         val iy = Math.round(packet.y * 8).toInt()
@@ -130,6 +141,12 @@ object CorpseLocator {
         val mute = !tabAllLooted() && CorpseLocatorSolver.mutes(fit, active(), cfg.mining.mineshaft.corpseLocatorMute)
         if (mute) muted++
         return mute
+    }
+
+    /** A server container (also behind a Soul overlay) or any container screen is open. */
+    private fun containerOpen(mc: Minecraft): Boolean {
+        val p = mc.player ?: return false
+        return mc.gui.screen() is AbstractContainerScreen<*> || p.containerMenu !== p.inventoryMenu
     }
 
     private fun onChat(raw: String) {
@@ -150,7 +167,9 @@ object CorpseLocator {
      */
     fun tick(others: List<OtherStand>?) {
         if (!enabled()) return
-        val p = Minecraft.getInstance().player ?: return
+        val mc = Minecraft.getInstance()
+        val p = mc.player ?: return
+        menus.tick(containerOpen(mc))
         history.addLast(doubleArrayOf(p.x, p.y, p.z))
         while (history.size > HISTORY_TICKS) history.removeFirst()
         if (layout == null) MineshaftState.serverInstance?.let { start(it) }
@@ -161,7 +180,7 @@ object CorpseLocator {
         placeSightings(st, others.orEmpty())
         if (++ticks % SCAN_TICKS == 0) {
             st.eliminate(MineshaftCorpses.byType.mapValues { (_, c) -> c.total to c.looted })
-            st.look(lookedEmpty(st, p))
+            st.look(lookedEmpty(st, p), p.x, p.y, p.z)
             inventory = buildSet {
                 val inv = p.inventory
                 for (i in 0 until inv.containerSize) SkyblockItemUtils.getSkyblockId(inv.getItem(i))?.let { add(it) }
@@ -215,11 +234,11 @@ object CorpseLocator {
         val learned = CorpseSpotMemory.forLayout(id)
         val fixedType = data.fixed[id]
         val s = CorpseLocatorSolver(spots ?: emptyList(), fixed = fixedType != null, learned = learned)
-        val st = CorpseStay(s) { DebugLogger.logFeatureEvent(it) }
+        val st = CorpseStay(s, log = { DebugLogger.logFeatureEvent(it) }, trace = { logger.info("Corpse locator $id: $it") })
         val (m, why) = describe(id, spots != null, s.learnedSpots.size)
         mode = m
         modeReason = why
-        DebugLogger.logFeatureEvent("Corpse locator: layout $id, $m: $why")
+        logger.info("Corpse locator $id: layout resolved, $m: $why")
         if (fixedType != null) for (spot in s.spots) st.book.seenTypes[spot] = fixedType
         for (d in pending) st.ding(d[0], d[1], d[2], d[3], d[4].toLong())
         pending.clear()
@@ -258,6 +277,7 @@ object CorpseLocator {
         history.clear()
         dings = 0
         muted = 0
+        guiDropped = 0
         ticks = 0
         CorpseShare.reset()
     }
@@ -337,6 +357,7 @@ object CorpseLocator {
             "keys" to inventory.filter { it.endsWith("_KEY") },
             "dings" to dings,
             "dings_muted" to muted,
+            "dings_gui" to guiDropped,
             "dings_audible" to dings - muted,
             "pending" to pending.size,
             "last_ding" to ding?.let {
