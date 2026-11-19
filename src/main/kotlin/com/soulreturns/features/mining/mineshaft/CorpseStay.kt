@@ -32,11 +32,17 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
     fun ding(ix: Int, iy: Int, iz: Int, pitchByte: Int): DingFit? =
         solver.ding(ix, iy, iz, pitchByte)?.also { if (it.fitting.size == 1) own += it.fitting[0] }
 
-    /** `<TYPE> CORPSE LOOT!` with the player at (x, y, z). */
-    fun loot(x: Double, y: Double, z: Double, type: String): CorpseSpot? {
+    /** The last loot line's attribution, for DevState. */
+    var lastLoot: String? = null
+        private set
+
+    /** `<TYPE> CORPSE LOOT!` with the player at (x, y, z); [aimed]: the corpse stand under the crosshair then, if any. */
+    fun loot(x: Double, y: Double, z: Double, type: String, aimed: DoubleArray? = null): CorpseSpot? {
         lootTypes += type
-        val spot = solver.loot(x, y, z, type)
-        log("Corpse locator: $type loot -> ${spot ?: "no corpse within ${CorpseLocatorSolver.LOOT_RADIUS}, kept for its stand"}")
+        val spot = solver.loot(x, y, z, type, aimed)
+        val how = if (aimed != null) "the stand under the crosshair" else "guessed from the position"
+        lastLoot = "$type -> ${spot ?: "no corpse within ${CorpseLocatorSolver.LOOT_RADIUS}, kept for its stand"} ($how)"
+        log("Corpse locator: $type loot $lastLoot")
         return spot
     }
 

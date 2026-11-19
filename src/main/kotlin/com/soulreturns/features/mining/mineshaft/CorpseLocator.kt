@@ -16,7 +16,10 @@ import net.minecraft.client.Minecraft
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
+import net.minecraft.world.entity.EquipmentSlot
+import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.EntityHitResult
 import java.util.Locale
 
 /**
@@ -126,8 +129,12 @@ object CorpseLocator {
         val st = stay ?: return
         if (!active()) return
         val type = LOOT.matchEntire(MessageDetector.stripColorCodes(raw))?.groupValues?.get(1) ?: return
-        val p = Minecraft.getInstance().player ?: return
-        st.loot(p.x, p.y, p.z, type)
+        val mc = Minecraft.getInstance()
+        val p = mc.player ?: return
+        // The corpse just opened is the one under the crosshair (in sight by definition), if its helmet says that type.
+        val aimed = ((mc.hitResult as? EntityHitResult)?.entity as? ArmorStand)
+            ?.takeIf { CorpseLook.typeOf(SkyblockItemUtils.getSkyblockId(it.getItemBySlot(EquipmentSlot.HEAD))).equals(type, ignoreCase = true) }
+        st.loot(p.x, p.y, p.z, type, aimed?.let { doubleArrayOf(it.x, it.y, it.z) })
     }
 
     /**
@@ -272,6 +279,7 @@ object CorpseLocator {
             "extras" to s?.extras?.map(::xyz),
             "confirmed" to s?.confirmed?.map(::xyz),
             "looted" to s?.looted?.map(::xyz),
+            "last_loot" to st?.lastLoot,
             "shown" to s?.shown()?.map(::xyz),
             "drawn" to drawn?.map(::xyz),
             "capped" to st?.capped?.entries?.associate { (k, v) -> key(k) to v },

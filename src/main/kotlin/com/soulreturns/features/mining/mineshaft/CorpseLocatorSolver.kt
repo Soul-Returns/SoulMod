@@ -228,25 +228,36 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
         (pins[spot] ?: learnedPoints[spot])?.let { norm(x - it[0], y - it[1], z - it[2]) } ?: regions[spot]?.nearest(x, y, z) ?: pointDistance(x, y, z, spot)
 
     /**
-     * `<TYPE> CORPSE LOOT!` with the player at (px, py, pz): the candidate whose possible stand
-     * positions come within [LOOT_RADIUS] (confirmed ones first, then the one whose best guess,
-     * [center], is nearest: the boxes of two spots 6 apart both come within reach) becomes looted.
-     * Null when none is that close; the position is kept so the stand, seen later, stays hidden.
+     * `<TYPE> CORPSE LOOT!` with the player at (px, py, pz). [aimed]: the corpse stand under the
+     * crosshair then (the one just opened, seen by definition): that corpse is looted, located first
+     * if it was not. Otherwise the candidate whose possible stand positions come within [LOOT_RADIUS]
+     * (confirmed ones first, then the one whose best guess, [center], is nearest: the boxes of two
+     * spots 6 apart both come within reach) becomes looted. Null when none is that close; the position
+     * is kept so the stand, seen later, stays hidden.
      */
-    fun loot(px: Double, py: Double, pz: Double, type: String? = null): CorpseSpot? {
+    fun loot(px: Double, py: Double, pz: Double, type: String? = null, aimed: DoubleArray? = null): CorpseSpot? {
+        if (aimed != null) {
+            val key = locate(aimed[0], aimed[1], aimed[2], type) ?: return null
+            markLooted(key)
+            return key
+        }
         val near = candidates().map { it to possibleDistance(it, px, py, pz) }.filter { it.second <= LOOT_RADIUS }
         val spot = near.minWithOrNull(compareBy<Pair<CorpseSpot, Double>>({ it.first !in confirmedSet }, { c -> center(c.first).let { norm(px - it[0], py - it[1], pz - it[2]) } }))?.first
         if (spot == null) {
             unplacedLoots += doubleArrayOf(px, py, pz) to type
             return null
         }
+        markLooted(spot)
+        return spot
+    }
+
+    private fun markLooted(spot: CorpseSpot) {
         lootedSet += spot
         confirmedSet -= spot
         regions -= spot
         hints -= spot
         // An extra keeps its pin: its stand stays in the world and must not come back.
         if (spot in spots) pins -= spot
-        return spot
     }
 
     /** Corpses to draw: confirmed and not looted. */
