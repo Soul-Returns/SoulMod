@@ -120,6 +120,31 @@ class CorpseLocatorSolverTest {
         assertEquals(setOf(a, b), s.shown().toSet())
     }
 
+    /**
+     * AMET_1: a ding from the corpse on A fits A and B, the player walks 6 blocks, A is now beyond 20
+     * and the talisman takes the corpse on C, whose ding fits B and C. Intersecting the two dings would
+     * place B, where no corpse is; A's possible reach beyond 20 ends the run between them, with or
+     * without the tick's position check.
+     */
+    @Test
+    fun twoCorpsesDingsAcrossATargetSwitchNeverPlaceTheSpotBothFit() {
+        val spots = data.spots("AMET_1")!!
+        val a = CorpseSpot(-184, 9, -178)
+        val b = CorpseSpot(-178, 3, -163)
+        val c = CorpseSpot(-158, 20, -165)
+        val p1 = doubleArrayOf(-171.3, 10.8, -170.18)
+        val p2 = doubleArrayOf(-167.06, 10.8, -165.89)
+        for (tickCheck in listOf(true, false)) {
+            val s = CorpseLocatorSolver(spots)
+            s.moved(p1[0], p1[1], p1[2])
+            assertEquals(setOf(a, b), ding(s, p1, stand(a, fy = 0.3))!!.fitting.toSet())
+            assertTrue(dist(p2, stand(a, fy = 0.3)) > CorpseLocatorSolver.RANGE)
+            if (tickCheck) s.moved(p2[0], p2[1], p2[2])
+            assertEquals(setOf(b, c), ding(s, p2, stand(c, fy = 0.3))!!.fitting.toSet())
+            assertTrue(b !in s.shown(), "the spot both dings fit was placed (tick check $tickCheck)")
+        }
+    }
+
     @Test
     fun aSpotOneDingPlacedIsWithdrawnWhenTheRunsNextDingMissesIt() {
         val a = CorpseSpot(-150, 10, -170)

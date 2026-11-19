@@ -150,9 +150,14 @@ object CorpseLocator {
     }
 
     private fun onChat(raw: String) {
-        val st = stay ?: return
         if (!active()) return
         val type = LOOT.matchEntire(MessageDetector.stripColorCodes(raw))?.groupValues?.get(1) ?: return
+        val st = stay
+        if (st == null) {
+            // Before the layout: the queued dings measured the corpse just looted; replayed later they would join the next target's run.
+            pending.clear()
+            return
+        }
         val mc = Minecraft.getInstance()
         val p = mc.player ?: return
         // The corpse just opened is the one under the crosshair (in sight by definition), if its helmet says that type.
@@ -170,6 +175,8 @@ object CorpseLocator {
         val mc = Minecraft.getInstance()
         val p = mc.player ?: return
         menus.tick(containerOpen(mc))
+        // Before the stay too: queued dings carry it, so their pauses end runs on replay.
+        ticks++
         history.addLast(doubleArrayOf(p.x, p.y, p.z))
         while (history.size > HISTORY_TICKS) history.removeFirst()
         if (layout == null) MineshaftState.serverInstance?.let { start(it) }
@@ -178,7 +185,7 @@ object CorpseLocator {
         val counts = MineshaftCorpses.byType.values
         if (counts.isNotEmpty()) st.tab(counts.sumOf { it.looted }, p.x, p.y, p.z)
         placeSightings(st, others.orEmpty())
-        if (++ticks % SCAN_TICKS == 0) {
+        if (ticks % SCAN_TICKS == 0) {
             st.eliminate(MineshaftCorpses.byType.mapValues { (_, c) -> c.total to c.looted })
             st.look(lookedEmpty(st, p), p.x, p.y, p.z)
             inventory = buildSet {
