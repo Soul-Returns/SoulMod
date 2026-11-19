@@ -638,6 +638,18 @@ object ConfigRegistry {
                     where = MINESHAFTS, synonyms = listOf("vanguard", "corpse", "ptme", "party"),
                 )
             },
+            card("vanguardguild") {
+                FeatureCard(
+                    "vanguardguild", "Vanguard guild call", "Posts in guild chat when you find a Vanguard shaft and invites whoever answers \"me\"", "mining", "mineshafts", "shield",
+                    "When you find a mineshaft with a Vanguard corpse, posts a message in guild chat and invites every guild member who answers \"me\" to your party, one by one, until the shaft collapses. Only in a shaft you found yourself. Use \"!warp\" with another mod once your party is ready.",
+                    master = toggle("Vanguard guild call", null, { cfg.mining.mineshaft.vanguardGuild }, { v -> mineshaft { copy(vanguardGuild = v) } }, d.mining.mineshaft.vanguardGuild),
+                    simple = listOf(
+                        toggle("Skip when in a party", "Do nothing if you are already in a party when you enter the shaft",
+                            { cfg.mining.mineshaft.vanguardGuildSkipInParty }, { v -> mineshaft { copy(vanguardGuildSkipInParty = v) } }, d.mining.mineshaft.vanguardGuildSkipInParty),
+                    ),
+                    where = MINESHAFTS, synonyms = listOf("vanguard", "guild", "gc", "invite", "party", "warp", "me", "gamble"),
+                )
+            },
             card("logvisits") {
                 FeatureCard(
                     "logvisits", "Log mineshaft visits", "Your spawn and loot odds in /soul mineshaft and the Profile Viewer", "mining", "mineshafts", "upload",

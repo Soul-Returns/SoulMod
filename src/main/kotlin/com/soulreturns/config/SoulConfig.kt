@@ -1145,6 +1145,13 @@ data class MineshaftConfig(
     val lapisThreshold: Int = 3,
     /** `/pc !ptme Found Vanguard Corpse in Mineshaft` — there is at most one per mineshaft, so no threshold. */
     val vanguardPtme: Boolean = false,
+    /**
+     * Vanguard guild call: in a shaft you found that holds a Vanguard corpse, say so in guild chat and invite every guild
+     * member who answers "me" to the party until the shaft collapses (rule://mineshaft). Default off: it posts and invites by itself.
+     */
+    val vanguardGuild: Boolean = false,
+    /** The guild call does nothing when you are already in a party as you enter the shaft. */
+    val vanguardGuildSkipInParty: Boolean = true,
     /** Played for you when a Littlefoot, Lapis or Vanguard alert fires, even outside a party; never on a warped visit (null = silent). */
     val alertSound: SoundRef? = null,
 )

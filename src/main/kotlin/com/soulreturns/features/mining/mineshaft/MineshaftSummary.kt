@@ -51,7 +51,7 @@ object MineshaftSummary {
         soulChat("§7  source: $sourceLine")
 
         val m = cfg.mining.mineshaft
-        val tracking = m.logVisits || m.corpsesHud || m.littlefootPtme || m.lapisPtme || m.vanguardPtme
+        val tracking = m.logVisits || m.corpsesHud || m.littlefootPtme || m.lapisPtme || m.vanguardPtme || m.vanguardGuild
         val corpses = MineshaftCorpses.byType
         if (!tracking) {
             // Distinguish "this mineshaft has no corpses" from "nothing is watching for them". Both
