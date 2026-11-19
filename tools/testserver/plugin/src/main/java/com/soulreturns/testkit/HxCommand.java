@@ -280,7 +280,9 @@ public final class HxCommand implements TabExecutor {
             }
             case "chat" -> {
                 need(rest, 1, "chat <text…>");
-                Nms.sendSystemChat(target, Txt.of(plugin.fill(target, String.join(" ", rest))), false);
+                // `\n` makes one multi-line message, as Hypixel sends some blocks.
+                String text = plugin.fill(target, String.join(" ", rest)).replace("\\n", "\n");
+                Nms.sendSystemChat(target, Txt.of(text), false);
                 sender.sendMessage("§a" + who + "chat sent");
             }
             case "pet" -> {

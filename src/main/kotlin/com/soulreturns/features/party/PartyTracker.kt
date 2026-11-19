@@ -55,6 +55,7 @@ class PartyTracker(private val emit: (PartyEvent) -> Unit = {}) {
     private var listOpen = false
     private var listLeader: PartyMember? = null
     private val listMembers = LinkedHashMap<String, PartyMember>()
+    private var listLineAt = 0L
     private var warpBlock = false
 
     private var lastInfoRoles: Map<UUID, PartyRole>? = null
@@ -229,6 +230,7 @@ class PartyTracker(private val emit: (PartyEvent) -> Unit = {}) {
     /** At most one request per call; the caller sends it. */
     fun poll(now: Long): Request? {
         pruneInvites(now)
+        if (listOpen && now - listLineAt >= LIST_IDLE_MS) finishList(now)
         if (infoDueAt in 0..now) {
             infoDueAt = -1L
             lastInfoSentAt = now
@@ -358,9 +360,9 @@ class PartyTracker(private val emit: (PartyEvent) -> Unit = {}) {
 
         // `/party list`: group 1/2 = display/name of the first player, 3/4 of the second
         shape("list_header", """Party Members \(\d+\)""") { _, now -> startList(now) }
-        shape("list_leader", """Party Leader: (.+)""") { m, _ -> if (listOpen) listEntries(m.groupValues[1], PartyRole.LEADER) }
-        shape("list_moderators", """Party Moderators: ?(.*)""") { m, _ -> if (listOpen) listEntries(m.groupValues[1], PartyRole.MODERATOR) }
-        shape("list_members", """Party Members: ?(.*)""") { m, _ -> if (listOpen) listEntries(m.groupValues[1], PartyRole.MEMBER) }
+        shape("list_leader", """Party Leader: (.+)""") { m, now -> if (listOpen) listEntries(m.groupValues[1], PartyRole.LEADER, now) }
+        shape("list_moderators", """Party Moderators: ?(.*)""") { m, now -> if (listOpen) listEntries(m.groupValues[1], PartyRole.MODERATOR, now) }
+        shape("list_members", """Party Members: ?(.*)""") { m, now -> if (listOpen) listEntries(m.groupValues[1], PartyRole.MEMBER, now) }
 
         // joining
         shape("you_joined", """You have joined $a's? party!""") { m, now -> youJoined(m.groupValues[1], m.groupValues[2], now) }
@@ -691,9 +693,11 @@ class PartyTracker(private val emit: (PartyEvent) -> Unit = {}) {
         listOpen = true
         listLeader = null
         listMembers.clear()
+        listLineAt = now
     }
 
-    private fun listEntries(section: String, role: PartyRole) {
+    private fun listEntries(section: String, role: PartyRole, now: Long) {
+        listLineAt = now
         for (entry in section.split(LIST_SPLIT)) {
             for (part in entry.split(", ")) {
                 val display = part.trim()
@@ -903,6 +907,9 @@ class PartyTracker(private val emit: (PartyEvent) -> Unit = {}) {
         const val LIST_FLOOR_MS = 60_000L
         const val ECHO_WINDOW_MS = 5_000L
         const val INVITE_LIFETIME_MS = 60_000L
+
+        /** A `/party list` answer that never gets its closing divider ends this long after its last line. */
+        const val LIST_IDLE_MS = 1_000L
 
         /** A packet this long after a request's reason already reflects it. */
         private const val SATISFIES_AFTER_MS = 250L

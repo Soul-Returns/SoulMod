@@ -83,6 +83,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         var hx = new HxCommand(this);
         command.setExecutor(hx);
         command.setTabCompleter(hx);
+        getCommand("party").setExecutor(new PartyCommand(this));
         for (String rule : GAMERULES) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "gamerule " + rule);
         for (World world : Bukkit.getWorlds()) {
             // Only the overworld has a world clock in 26.x; setTime throws for the others.

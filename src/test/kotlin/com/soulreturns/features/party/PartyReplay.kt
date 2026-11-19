@@ -35,6 +35,9 @@ object PartyReplay {
 
         fun disconnect() {}
 
+        /** Time passes (the client tick); requests are not answered here. */
+        fun tick(t: Long) {}
+
         fun view(): View
     }
 
@@ -56,6 +59,10 @@ object PartyReplay {
 
         override fun disconnect() = tracker.onDisconnect()
 
+        override fun tick(t: Long) {
+            tracker.poll(t)
+        }
+
         override fun view(): View {
             val s = tracker.state ?: return View(false, 0, false)
             val leader = s.leader?.name
@@ -67,6 +74,7 @@ object PartyReplay {
     fun expectFailures(session: Session, s: Subject): List<String> {
         val out = ArrayList<String>()
         for (e in session.events) {
+            s.tick(e.t)
             when (e.kind) {
                 "connect" -> connect(s, e.t)
                 "world" -> s.join(e.t)

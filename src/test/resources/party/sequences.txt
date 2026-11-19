@@ -315,3 +315,14 @@ sequence rare_shapes
 900 chat You have been kicked from the party by [MVP+] Carol 
 900 chat -----
 900 expect in=no
+
+# A /party list answer whose closing divider never arrives ends a second after its last line. From s144
+# at 8595 s, the closing divider left out.
+sequence list_without_closing_divider
+0 chat [MVP+] Vera has disconnected, they have 5 minutes to rejoin before they are removed from the party.
+0 expect in=yes size=2 leader=none
+8 chat -----
+8 chat Party Members (5)
+8 chat Party Leader: [MVP++] Alice ●
+8 chat Party Members: [VIP+] Sam ● [MVP+] Uma ● [MVP+] Bob ● [MVP+] Vera ●
+10 expect in=yes size=5 leader=Alice members=Alice,Bob,Sam,Uma,Vera

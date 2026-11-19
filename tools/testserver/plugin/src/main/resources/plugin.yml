@@ -8,6 +8,9 @@ commands:
     description: Fake Hypixel SkyBlock state for the SoulMod test client (hx help).
     usage: /hx help
     permission: soultestkit.hx
+  party:
+    description: Hypixel's /party list answer for the party hx party set; other subcommands are not simulated.
+    usage: /party list
 permissions:
   soultestkit.hx:
     default: op

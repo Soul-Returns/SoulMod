@@ -300,6 +300,20 @@ class PartyTrackerTest {
     }
 
     @Test
+    fun partyListWithoutItsClosingDivider() {
+        joinBobsParty()
+        chat("-----", "Party Members (2)", "Party Leader: [MVP++] Alice ●", "Party Members: [VIP] Erin ●")
+        tracker.poll(now + PartyTracker.LIST_IDLE_MS - 1)
+        assertEquals("Bob", leader(), "still reading the list")
+        tracker.poll(now + PartyTracker.LIST_IDLE_MS)
+        assertEquals("Alice", leader())
+        assertEquals(listOf("Alice", "Erin"), names())
+
+        chat("Party Members (3)", "Party Leader: [MVP++] Alice ●", "Party Members: [VIP] Erin ● Frank ●", "Autopet equipped your [Lvl 100] Griffin! VIEW RULE")
+        assertEquals(listOf("Alice", "Erin", "Frank"), names(), "an unrelated line ends the list at once")
+    }
+
+    @Test
     fun partyListReplacesTheRoster() {
         joinBobsParty()
         events.clear()

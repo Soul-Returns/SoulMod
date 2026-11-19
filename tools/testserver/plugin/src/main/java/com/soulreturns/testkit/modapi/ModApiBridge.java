@@ -82,6 +82,8 @@ public final class ModApiBridge implements PluginMessageListener {
                 case HypixelWire.PARTY_INFO -> {
                     int version = HypixelWire.requestVersion(message);
                     state.log("<- hypixel:party_info v" + version);
+                    // In the server log too, so request pacing can be read with timestamps.
+                    plugin.getLogger().info(player.getName() + " requested hypixel:party_info v" + version);
                     if (version < 1 || version > HypixelWire.PARTY_INFO_VERSION) {
                         error(player, state, channel);
                         return;

@@ -54,11 +54,15 @@ class PartyTrackerSequenceTest {
     @Test
     fun rareShapes() = check("rare_shapes")
 
+    @Test
+    fun listWithoutClosingDivider() = check("list_without_closing_divider")
+
     private companion object {
         val TESTED = listOf(
             "possessive_without_s", "finder_dungeon_join", "finder_kuudra_join", "finder_self_join",
             "leader_disconnect_disband", "transfer_because_left", "kicked_offline", "join_never_names_leader",
             "own_invite_inside_party", "reconnect_resets_state", "wrapped_not_in_party", "rare_shapes",
+            "list_without_closing_divider",
         )
     }
 }
