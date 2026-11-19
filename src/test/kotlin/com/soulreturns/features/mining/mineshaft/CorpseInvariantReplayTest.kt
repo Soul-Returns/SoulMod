@@ -45,21 +45,24 @@ class CorpseInvariantReplayTest {
     /** One violation: drawn corpses beyond the tab's unlooted rows. */
     private data class Violation(val stay: String, val tick: Int, val drawn: List<CorpseSpot>, val unlooted: Map<String, Int>, val why: String)
 
-    private fun replay(stay: Stay, guarded: Boolean): List<Violation> {
+    private fun replay(stay: Stay, guarded: Boolean, withdrawn: MutableList<String> = ArrayList()): List<Violation> {
         val solver = CorpseLocatorSolver(data.spots(stay.layout).orEmpty(), fixed = stay.layout in data.fixed)
-        val st = CorpseStay(solver)
+        val st = CorpseStay(solver) { if (it.contains("withdrew")) withdrawn += "${stay.layout} ${stay.source}: $it" }
         data.fixed[stay.layout]?.let { type -> for (s in solver.spots) st.book.seenTypes[s] = type }
         val history = ArrayDeque<Pair<Int, DoubleArray>>()
         var unlooted: Map<String, Int> = emptyMap()
         val out = ArrayList<Violation>()
         for (e in stay.events) {
             when (e) {
-                is Pos -> history.addLast(e.tick to e.p)
+                is Pos -> {
+                    history.addLast(e.tick to e.p)
+                    solver.moved(e.p[0], e.p[1], e.p[2])
+                }
                 is Ding -> {
                     while (history.size > 1 && history.first().first < e.tick - 30) history.removeFirst()
                     val n = CorpseLocatorSolver.pitchByte(e.pitch) ?: continue
                     if (!CorpseLocatorSolver.isOwnDing(e.ix / 8.0, e.iy / 8.0, e.iz / 8.0, history.map { it.second })) continue
-                    st.ding(e.ix, e.iy, e.iz, n)
+                    st.ding(e.ix, e.iy, e.iz, n, e.tick.toLong())
                 }
                 is Loot -> history.lastOrNull()?.second?.let { st.loot(it[0], it[1], it[2], e.type) }
                 is Tab -> {
@@ -97,5 +100,15 @@ class CorpseInvariantReplayTest {
         for (v in raw.distinctBy { it.stay to it.drawn }) println("  unguarded: $v")
         assertEquals(emptyList(), guarded.distinctBy { it.stay to it.drawn })
         assertEquals(emptyList(), raw.distinctBy { it.stay to it.drawn })
+    }
+
+    /** Real dings all measure a real corpse (the sticky target): the run rule never withdraws a spot in a recorded stay. */
+    @Test
+    fun realDingsNeverWithdrawASpot() {
+        val withdrawn = ArrayList<String>()
+        for (stay in stays) replay(stay, guarded = true, withdrawn = withdrawn)
+        println("withdrawals over ${stays.size} recorded stays: ${withdrawn.size}")
+        for (w in withdrawn) println("  $w")
+        assertEquals(emptyList(), withdrawn)
     }
 }

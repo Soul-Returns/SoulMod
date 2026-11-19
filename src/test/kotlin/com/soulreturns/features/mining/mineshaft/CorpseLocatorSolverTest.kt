@@ -108,15 +108,50 @@ class CorpseLocatorSolverTest {
     }
 
     @Test
-    fun aDingMeasuringAnotherCorpseNeverDropsALocatedOne() {
+    fun aDingMeasuringAnotherCorpseAfterTheRunEndsNeverDropsALocatedOne() {
         val a = CorpseSpot(-150, 10, -170)
         val b = CorpseSpot(-150, 10, -150)
         val s = CorpseLocatorSolver(listOf(a, b))
         ding(s, doubleArrayOf(-149.5, 10.0, -178.0), stand(a))
         assertEquals(listOf(a), s.shown())
-        // Standing on a, the talisman still measures b (it keeps its target): a stays.
+        // The player went out of a's range (the talisman may take b now), then the talisman measures b: a stays.
+        s.moved(-149.5, 10.0, -195.0)
         ding(s, doubleArrayOf(-149.5, 10.0, -168.0), stand(b))
         assertEquals(setOf(a, b), s.shown().toSet())
+    }
+
+    @Test
+    fun aSpotOneDingPlacedIsWithdrawnWhenTheRunsNextDingMissesIt() {
+        val a = CorpseSpot(-150, 10, -170)
+        val b = CorpseSpot(-150, 10, -150)
+        val s = CorpseLocatorSolver(listOf(a, b))
+        // A stray measurement (no corpse on a): 8 blocks from a, nothing else fits.
+        val stray = s.ding((-149.5 * 8).toInt(), 80, (-178.0 * 8).toInt(), CorpseLocatorSolver.byteFor(8.0)!!)!!
+        assertEquals(a, stray.placed)
+        // Same run, the talisman's real target b: a cannot be it, so a goes. One ding against one: b waits for the next.
+        val next = ding(s, doubleArrayOf(-149.5, 10.0, -168.0), stand(b))!!
+        assertEquals(a, next.withdrawn)
+        assertEquals(emptyList(), s.shown())
+        ding(s, doubleArrayOf(-149.5, 10.0, -167.0), stand(b))
+        assertEquals(listOf(b), s.shown())
+        assertEquals(1, s.withdrawals)
+    }
+
+    @Test
+    fun oneStrayDingAfterTwoAgreeingOnesIsIgnored() {
+        val a = CorpseSpot(-150, 10, -170)
+        val b = CorpseSpot(-150, 10, -150)
+        val s = CorpseLocatorSolver(listOf(a, b))
+        ding(s, doubleArrayOf(-149.5, 10.0, -178.0), stand(a))
+        ding(s, doubleArrayOf(-149.5, 10.0, -177.0), stand(a))
+        // A stray 18 from the player there fits only b: held, nothing placed, a kept.
+        val stray = s.ding((-149.5 * 8).toInt(), 80, (-168.0 * 8).toInt(), CorpseLocatorSolver.byteFor(18.0)!!)!!
+        assertNull(stray.placed)
+        assertNull(stray.withdrawn)
+        assertEquals(listOf(a), s.shown())
+        ding(s, doubleArrayOf(-149.5, 10.0, -176.0), stand(a))
+        assertEquals(listOf(a), s.shown())
+        assertEquals(0, s.withdrawals)
     }
 
     @Test
@@ -200,6 +235,7 @@ class CorpseLocatorSolverTest {
                         // means looking at it: the sight scan has located it (the ding alone may measure another).
                         val spot = stands.entries.first { it.value === focus }.key
                         val p = doubleArrayOf(focus[0] + rnd.nextDouble(-1.5, 1.5), focus[1] - 0.5, focus[2] + rnd.nextDouble(-1.5, 1.5))
+                        s.moved(p[0], p[1], p[2])
                         target = sticky(target, unlooted, stands, p)
                         target?.let { ding(s, p, stands.getValue(it)) }
                         assertEquals(spot, s.locate(focus[0], focus[1], focus[2]), "$id: the seen stand is its spot")
@@ -214,13 +250,14 @@ class CorpseLocatorSolverTest {
                     val len = sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]).coerceAtLeast(1e-6)
                     val player = doubleArrayOf(focus[0] + u[0] / len * r, focus[1] + u[1] / len * r, focus[2] + u[2] / len * r)
                     val shownBefore = s.shown().toSet()
+                    s.moved(player[0], player[1], player[2])
                     target = sticky(target, unlooted, stands, player)
                     val measured = target ?: return@repeat
                     val fit = ding(s, player, stands.getValue(measured)) ?: return@repeat
                     dings++
                     if (fit.fitting.size == 1) single++
                     assertTrue(measured in fit.fitting, "$id: the measured spot fits")
-                    assertTrue(s.shown().containsAll(shownBefore), "$id: a located corpse disappeared")
+                    assertTrue(s.shown().containsAll(shownBefore), "$id: a located corpse disappeared: ${s.lastWithdrawal}; ding $fit measuring $measured at ${stands.getValue(measured).toList()} from ${player.toList()}; corpses $stands")
                     for (shown in s.shown()) {
                         assertTrue(shown in unlooted, "$id: shown $shown holds no unlooted corpse (corpses $chosen, looted $looted)")
                         val truth = stands.getValue(shown)
@@ -291,6 +328,7 @@ class CorpseLocatorSolverTest {
                     if (rnd.nextInt(12) == 0) {
                         val p = doubleArrayOf(at[0] + rnd.nextDouble(-1.5, 1.5), at[1] - 0.5, at[2] + rnd.nextDouble(-1.5, 1.5))
                         for (s in solvers) {
+                            s.moved(p[0], p[1], p[2])
                             assertNotNull(s.locate(at[0], at[1], at[2]), "$id: the seen stand is located")
                             val key = assertNotNull(s.loot(p[0], p[1], p[2]), "$id: the loot finds the seen corpse")
                             assertTrue(holds(s, key, at, spots - gap), "$id: loot attributed to $key, not the corpse on $focus")
@@ -308,6 +346,7 @@ class CorpseLocatorSolverTest {
                     val u = doubleArrayOf(rnd.nextDouble(-1.0, 1.0), rnd.nextDouble(-0.6, 0.6), rnd.nextDouble(-1.0, 1.0))
                     val len = sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]).coerceAtLeast(1e-6)
                     val player = doubleArrayOf(at[0] + u[0] / len * r, at[1] + u[1] / len * r, at[2] + u[2] / len * r)
+                    for (s in solvers) s.moved(player[0], player[1], player[2])
                     target = sticky(target, unlooted, stands, player)
                     val measured = target ?: return@repeat
                     for ((i, s) in solvers.withIndex()) {

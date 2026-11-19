@@ -91,6 +91,19 @@ object MobSpotter {
         return out
     }
 
+    /**
+     * Whether the player sees every one of [points] (a place, not an entity): each has a clear ray from
+     * the eyes under the same rules as [seesBody]. False for no points. For "I looked there and nothing
+     * stood there" (the Corpse locator's empty spot), which only sight may conclude.
+     */
+    fun seesAll(points: List<Vec3>): Boolean {
+        val mc = Minecraft.getInstance()
+        val self = mc.player ?: return false
+        val level = mc.level ?: return false
+        val eye = self.eyePosition
+        return points.isNotEmpty() && points.all { it.distanceTo(eye) <= SIGHT_RANGE && clearRay(level, eye, it) }
+    }
+
     /** Vanilla's sight range for [LocalPlayer.hasLineOfSight]. */
     private const val SIGHT_RANGE = 128.0
 

@@ -9,10 +9,13 @@ import com.soulreturns.features.dev.DevState
 import com.soulreturns.features.mining.TargetWaypoint
 import com.soulreturns.util.DebugLogger
 import com.soulreturns.util.MessageDetector
+import com.soulreturns.util.MobSpotter
 import com.soulreturns.util.SkyblockItemUtils
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
+import net.minecraft.client.player.LocalPlayer
+import net.minecraft.core.BlockPos
 import net.minecraft.network.protocol.game.ClientboundSoundPacket
 import net.minecraft.sounds.SoundEvents
 import net.minecraft.sounds.SoundSource
@@ -20,6 +23,7 @@ import net.minecraft.world.entity.EquipmentSlot
 import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.EntityHitResult
+import net.minecraft.world.phys.Vec3
 import java.util.Locale
 
 /**
@@ -42,6 +46,9 @@ object CorpseLocator {
     private const val SCAN_TICKS = 10
 
     private const val DIM_ALPHA = 0.3f
+
+    /** A ding-only spot is looked at "from close by" within this many blocks of the eyes ([lookedEmpty]). */
+    private const val EMPTY_LOOK_RANGE = 8.0
     private val LOOT = Regex("""^\s*(\w+) CORPSE LOOT!\s*$""")
 
     /** Spawn spots copied from meowdding-repo (MIT), keyed by sidebar layout id; also read by [CorpseSpotMemory]. */
@@ -116,10 +123,10 @@ object CorpseLocator {
         dings++
         val st = stay
         if (st == null) {
-            if (layout == null && pending.size < PENDING_MAX) pending += intArrayOf(ix, iy, iz, n)
+            if (layout == null && pending.size < PENDING_MAX) pending += intArrayOf(ix, iy, iz, n, ticks)
             return false
         }
-        val fit = st.ding(ix, iy, iz, n)
+        val fit = st.ding(ix, iy, iz, n, ticks.toLong())
         val mute = !tabAllLooted() && CorpseLocatorSolver.mutes(fit, active(), cfg.mining.mineshaft.corpseLocatorMute)
         if (mute) muted++
         return mute
@@ -148,11 +155,13 @@ object CorpseLocator {
         while (history.size > HISTORY_TICKS) history.removeFirst()
         if (layout == null) MineshaftState.serverInstance?.let { start(it) }
         val st = stay ?: return
+        st.solver.moved(p.x, p.y, p.z)
         val counts = MineshaftCorpses.byType.values
         if (counts.isNotEmpty()) st.tab(counts.sumOf { it.looted }, p.x, p.y, p.z)
         placeSightings(st, others.orEmpty())
         if (++ticks % SCAN_TICKS == 0) {
             st.eliminate(MineshaftCorpses.byType.mapValues { (_, c) -> c.total to c.looted })
+            st.look(lookedEmpty(st, p))
             inventory = buildSet {
                 val inv = p.inventory
                 for (i in 0 until inv.containerSize) SkyblockItemUtils.getSkyblockId(inv.getItem(i))?.let { add(it) }
@@ -169,6 +178,27 @@ object CorpseLocator {
             st.see(c.x, c.y, c.z, c.type)
         }
         for (o in others) if (st.seeOther(o.x, o.y, o.z)) CorpseSightings.resolve(o.entityId)
+    }
+
+    /**
+     * The ding-only corpses ([CorpseLocatorSolver.isDingOnly]) the player sees the whole box of from
+     * within [EMPTY_LOOK_RANGE] with no stand on it: every free block of the box (where a stand's feet
+     * would be) in clear view ([MobSpotter.seesAll]). A stand there would have been seen by this scan.
+     */
+    private fun lookedEmpty(st: CorpseStay, p: LocalPlayer): Set<CorpseSpot> {
+        val level = Minecraft.getInstance().level ?: return emptySet()
+        val out = HashSet<CorpseSpot>()
+        for (spot in st.solver.shown()) {
+            if (!st.solver.isDingOnly(spot)) continue
+            if (p.eyePosition.distanceTo(Vec3(spot.x.toDouble(), spot.y.toDouble(), spot.z.toDouble())) > EMPTY_LOOK_RANGE) continue
+            val free = ArrayList<Vec3>()
+            for (dx in -1..0) for (dy in -1..0) for (dz in -1..0) {
+                val pos = BlockPos(spot.x + dx, spot.y + dy, spot.z + dz)
+                if (level.getBlockState(pos).getCollisionShape(level, pos).isEmpty) free += Vec3.atCenterOf(pos)
+            }
+            if (MobSpotter.seesAll(free)) out += spot
+        }
+        return out
     }
 
     /** A party member's located corpses ([CorpseBook.receive]). Client thread. */
@@ -191,7 +221,7 @@ object CorpseLocator {
         modeReason = why
         DebugLogger.logFeatureEvent("Corpse locator: layout $id, $m: $why")
         if (fixedType != null) for (spot in s.spots) st.book.seenTypes[spot] = fixedType
-        for (d in pending) st.ding(d[0], d[1], d[2], d[3])
+        for (d in pending) st.ding(d[0], d[1], d[2], d[3], d[4].toLong())
         pending.clear()
         stay = st
         CorpseShare.onStay(id)
@@ -279,6 +309,11 @@ object CorpseLocator {
             "extras" to s?.extras?.map(::xyz),
             "confirmed" to s?.confirmed?.map(::xyz),
             "looted" to s?.looted?.map(::xyz),
+            "ding_only" to s?.shown()?.filter { s.isDingOnly(it) }?.map(::xyz),
+            "run_target" to s?.runTarget?.let(::xyz),
+            "withdrawals" to s?.withdrawals,
+            "last_withdrawal" to s?.lastWithdrawal,
+            "seen_empty" to s?.empty?.map(::xyz),
             "last_loot" to st?.lastLoot,
             "shown" to s?.shown()?.map(::xyz),
             "drawn" to drawn?.map(::xyz),

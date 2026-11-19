@@ -17,8 +17,20 @@ data class CorpseSpot(val x: Int, val y: Int, val z: Int)
 /**
  * What one ding said: the distance interval from its pitch byte and the candidates it fits.
  * [explained]: it fits only corpses that were already located before it (so it points at nothing new).
+ * [placed]: the spot this ding's run located; [withdrawn]: the ding-placed spot this ding's run disproved.
  */
-data class DingFit(val ix: Int, val iy: Int, val iz: Int, val pitchByte: Int, val lo: Double, val hi: Double, val fitting: List<CorpseSpot>, val explained: Boolean = false)
+data class DingFit(
+    val ix: Int,
+    val iy: Int,
+    val iz: Int,
+    val pitchByte: Int,
+    val lo: Double,
+    val hi: Double,
+    val fitting: List<CorpseSpot>,
+    val explained: Boolean = false,
+    val placed: CorpseSpot? = null,
+    val withdrawn: CorpseSpot? = null,
+)
 
 /**
  * The bundled spawn spots per mineshaft layout (sidebar id, e.g. `AMBE_1`), from meowdding-repo
@@ -58,9 +70,17 @@ data class CorpseSpotData(
  *
  * Fit test: the player is anywhere in the 1/8-block cell the packet position was truncated from
  * ([cellLo]/[cellHi]), the stand anywhere in what is known of it: its seen position ([pin]), else
- * the region the dings left of its box (confirmed spots), else the whole box. A candidate is
- * **confirmed** when a ding fits it alone; confirmed stays until looted or the stay ends. Each ding
- * that fits only one spot also narrows that spot's region ([Region]): the target is then that spot.
+ * the region the dings left of its box (confirmed spots), else the whole box. Each ding that fits
+ * only one spot narrows that spot's region ([Region]).
+ *
+ * **Runs** (the sticky target, load-bearing): between two run ends ([endRun]: a loot line, a pause in
+ * the dings, a candidate that could now be beyond [RANGE]) every ding measures the same corpse. A
+ * run places a spot as soon as one candidate fits every ding of it (so a single ding that fits one
+ * spot places it at once); a spot a run placed must fit the run's following dings. One that does not
+ * is withdrawn ([DingFit.withdrawn]) when the run agreed with it only once or two dings in a row
+ * disagree (one stray ding after two agreeing ones is ignored); then the run is solved again from
+ * all its dings, else from the disagreeing ones. Spots certain without the dings (seen, a party
+ * member's, fixed) are never withdrawn by dings: a disagreeing ding ends the run.
  *
  * Besides the listed [spots], corpses can be located without data ([extras]): a stand seen with line
  * of sight outside every box (dataset gap, layout without data) or one a party member saw. Extras
@@ -95,6 +115,34 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
     /** Loot lines that matched no candidate (player position, type): a stand of that type seen there later was that corpse. */
     private val unplacedLoots = ArrayList<Pair<DoubleArray, String?>>()
 
+    /** Spots only the player's dings located (not seen, not a party member's, not fixed): what a run may withdraw. */
+    private val dingPlaced = HashSet<CorpseSpot>()
+
+    /** Spots the player looked at from close by and saw no corpse on: no candidate until a stand is seen there. */
+    private val emptySpots = LinkedHashSet<CorpseSpot>()
+
+    /** This run's dings that agree with its target (all of them while no target is placed). */
+    private val runDings = ArrayList<DingFit>()
+
+    /** Consecutive dings that do not fit the run's target. */
+    private val runAgainst = ArrayList<DingFit>()
+
+    /** While no target is placed: the candidates every ding of the run fits; null = no run. */
+    private var runCandidates: Set<CorpseSpot>? = null
+
+    /** The spot this run measures, once placed or known. */
+    var runTarget: CorpseSpot? = null
+        private set
+
+    /** This run began against a target its first ding did not fit: it places only on two dings. */
+    private var runContested = false
+
+    /** Ding-placed spots withdrawn this stay (a run's later dings, or sight) and the last one with why. */
+    var withdrawals = 0
+        private set
+    var lastWithdrawal: String? = null
+        private set
+
     init {
         for (s in fixedSpots) confirm(s)
     }
@@ -107,22 +155,146 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
     var lastDing: DingFit? = null
         private set
 
-    fun candidates(): List<CorpseSpot> = LinkedHashSet(spots + extraList + learnedPoints.keys).filter { it !in lootedSet }
+    fun candidates(): List<CorpseSpot> = LinkedHashSet(spots + extraList + learnedPoints.keys).filter { it !in lootedSet && it !in emptySpots }
+
+    /** Spots seen empty from close by this stay ([seenEmpty]). */
+    val empty: Set<CorpseSpot> get() = emptySpots
+
+    /** Whether [spot] is shown on the player's own dings alone: a run's later dings, or a look at its box, may withdraw it. */
+    fun isDingOnly(spot: CorpseSpot): Boolean = spot in dingPlaced
 
     /** Feeds one ding (packet ints = position * 8, pitch byte); null when the byte is not a talisman distance. */
     fun ding(ix: Int, iy: Int, iz: Int, pitchByte: Int): DingFit? {
         val (lo, hi) = interval(pitchByte) ?: return null
         val fitting = candidates().filter { fitsNow(ix, iy, iz, it, lo, hi) }
         val explained = fitting.isNotEmpty() && fitting.all { it in confirmedSet }
-        if (fitting.size == 1) {
-            val s = fitting[0]
-            if (s !in confirmedSet && s !in learnedPoints) confirm(s)
-            if (s !in pins) regions[s]?.cut(ix, iy, iz, lo, hi)
+        val fit = DingFit(ix, iy, iz, pitchByte, lo, hi, fitting, explained)
+        if (fitting.size == 1) supportDings.getOrPut(fitting[0]) { ArrayList() }.let { if (it.size < SUPPORT_MAX) it += fit }
+        // A corpse the run may be measuring could be out of range here: the talisman may have switched.
+        if ((runTarget?.let { listOf(it) } ?: runCandidates.orEmpty()).any { maxReach(ix, iy, iz, it) > RANGE }) endRun()
+        val target = runTarget
+        var placed: CorpseSpot? = null
+        var withdrawn: CorpseSpot? = null
+        if (target == null) {
+            placed = extendRun(fit)
+        } else if (target in fitting) {
+            runDings += fit
+            runAgainst.clear()
+            if (fitting.size == 1 && target !in pins) regions[target]?.cut(ix, iy, iz, lo, hi)
+        } else if (target !in dingPlaced) {
+            // Seen, a party member's or fixed: certain. A stray, or the talisman switched unnoticed: wait for a second ding.
+            endRun()
+            runContested = true
+            placed = extendRun(fit)
+        } else {
+            runAgainst += fit
+            if (runDings.size < 2 || runAgainst.size >= 2) {
+                val all = runDings + runAgainst
+                val against = runAgainst.toList()
+                withdraw(target, "${against.size} ding(s) of its run do not fit it, ${runDings.size} did")
+                withdrawn = target
+                if (!startRun(all) && !startRun(against)) endRun()
+                // One ding against one: either may be the stray, so the next ding decides.
+                runContested = true
+                placed = decideRun()
+            }
         }
-        return DingFit(ix, iy, iz, pitchByte, lo, hi, fitting, explained).also { fit ->
-            lastDing = fit
-            if (fitting.size == 1) supportDings.getOrPut(fitting[0]) { ArrayList() }.let { if (it.size < SUPPORT_MAX) it += fit }
+        return fit.copy(placed = placed, withdrawn = withdrawn).also { lastDing = it }
+    }
+
+    /** The talisman may measure another corpse from the next ding on (a loot line, a pause in the dings). */
+    fun endRun() {
+        runDings.clear()
+        runAgainst.clear()
+        runCandidates = null
+        runTarget = null
+        runContested = false
+    }
+
+    /**
+     * The player is at (x, y, z) (client position, every tick): where a corpse the run may be
+     * measuring could be out of the talisman's range ([RANGE] less [MOVE_MARGIN] for the server's
+     * position lagging ours), it may go silent and take another corpse without a ding between, so the
+     * run ends.
+     */
+    fun moved(x: Double, y: Double, z: Double) {
+        val watched = runTarget?.let { listOf(it) } ?: runCandidates ?: return
+        if (watched.any { farthest(x, y, z, it) > RANGE - MOVE_MARGIN }) endRun()
+    }
+
+    /** Farthest the stand of [s] can be from (x, y, z): its pin, else its region, else its box. */
+    private fun farthest(x: Double, y: Double, z: Double, s: CorpseSpot): Double =
+        (pins[s] ?: learnedPoints[s])?.let { norm(x - it[0], y - it[1], z - it[2]) }
+            ?: regions[s]?.farthest(x, y, z)
+            ?: norm(max(abs(x - (s.x - SPREAD)), abs(x - (s.x + SPREAD))), max(abs(y - (s.y - SPREAD)), abs(y - (s.y + SPREAD))), max(abs(z - (s.z - SPREAD)), abs(z - (s.z + SPREAD))))
+
+    /** Adds a ding to a run without a target: the candidates fitting all its dings; none left starts the run anew from this ding. */
+    private fun extendRun(fit: DingFit): CorpseSpot? {
+        val prev = runCandidates
+        val both = prev?.let { p -> fit.fitting.filter { it in p } }
+        if (prev != null && both.isNullOrEmpty()) endRun()
+        runCandidates = if (both.isNullOrEmpty()) fit.fitting.toSet() else both.toSet()
+        runDings += fit
+        return decideRun()
+    }
+
+    /** A run from [dings] (one corpse measured by all of them): false when no candidate fits every one. */
+    private fun startRun(dings: List<DingFit>): Boolean {
+        val fitAll = candidates().filter { s -> dings.all { fitsNow(it.ix, it.iy, it.iz, s, it.lo, it.hi) } }
+        if (fitAll.isEmpty()) return false
+        endRun()
+        runDings += dings
+        runCandidates = fitAll.toSet()
+        return true
+    }
+
+    /** One candidate left: the run's target; placed (returned) unless already shown. A learned spot is placed only by sight. */
+    private fun decideRun(): CorpseSpot? {
+        val only = runCandidates?.singleOrNull() ?: return null
+        if (runContested && runDings.size < 2) return null
+        if (only in learnedPoints && only !in confirmedSet) return null
+        runCandidates = null
+        runTarget = only
+        val placed = only !in confirmedSet
+        if (placed) {
+            confirm(only)
+            dingPlaced += only
         }
+        if (only !in pins) for (d in runDings) if (d.fitting.singleOrNull() == only) regions[only]?.cut(d.ix, d.iy, d.iz, d.lo, d.hi)
+        return only.takeIf { placed }
+    }
+
+    private fun withdraw(spot: CorpseSpot, why: String) {
+        confirmedSet -= spot
+        dingPlaced -= spot
+        regions -= spot
+        hints -= spot
+        supportDings -= spot
+        withdrawals++
+        lastWithdrawal = "$spot: $why"
+    }
+
+    /**
+     * The player looked at all of [spot]'s box from close by and no corpse stand stood there: a corpse
+     * the dings alone placed there is withdrawn, and the spot is no candidate until a stand is seen on
+     * it. Seen, party and fixed corpses stay (the stand, or the data, beats a look at the box).
+     */
+    fun seenEmpty(spot: CorpseSpot): Boolean {
+        if (spot !in dingPlaced) return false
+        withdraw(spot, "seen empty from close by")
+        emptySpots += spot
+        if (runTarget == spot) endRun()
+        return true
+    }
+
+    /** Farthest the stand of [s] can be from the packet's cell: its pin, else its region, else its box. */
+    private fun maxReach(ix: Int, iy: Int, iz: Int, s: CorpseSpot): Double {
+        (pins[s] ?: learnedPoints[s])?.let { return cellPointMax(ix, iy, iz, it[0], it[1], it[2]) }
+        regions[s]?.let { r ->
+            val half = norm((cellHi(ix) - cellLo(ix)) / 2, (cellHi(iy) - cellLo(iy)) / 2, (cellHi(iz) - cellLo(iz)) / 2)
+            return r.farthest((cellLo(ix) + cellHi(ix)) / 2, (cellLo(iy) + cellHi(iy)) / 2, (cellLo(iz) + cellHi(iz)) / 2) + half
+        }
+        return maxDistance(ix, iy, iz, s)
     }
 
     /**
@@ -172,6 +344,9 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
         if (known != null && known in lootedSet) return null
         val key = known ?: CorpseSpot(floor(x).toInt(), floor(y).toInt(), floor(z).toInt())
         val at = doubleArrayOf(x, y, z)
+        // A stand stands there: certain, whatever the dings or an earlier look said.
+        emptySpots -= key
+        dingPlaced -= key
         if (key !in confirmedSet) {
             val loot = unplacedLoots.firstOrNull { (p, t) -> norm(x - p[0], y - p[1], z - p[2]) <= LOOT_RADIUS && (t == null || type == null || t.equals(type, true)) }
             if (loot != null) {
@@ -188,10 +363,11 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
         return key
     }
 
-    /** A party member located listed [spot]: shown like one of the player's own, unless the player looted it. */
+    /** A party member located listed [spot]: shown like one of the player's own, unless the player looted it or saw it empty. */
     fun locateSpot(spot: CorpseSpot): Boolean {
-        if (spot !in spots || spot in lootedSet) return false
+        if (spot !in spots || spot in lootedSet || spot in emptySpots) return false
         if (spot !in confirmedSet) confirm(spot)
+        dingPlaced -= spot
         return true
     }
 
@@ -236,6 +412,7 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
      * is kept so the stand, seen later, stays hidden.
      */
     fun loot(px: Double, py: Double, pz: Double, type: String? = null, aimed: DoubleArray? = null): CorpseSpot? {
+        endRun()
         if (aimed != null) {
             val key = locate(aimed[0], aimed[1], aimed[2], type) ?: return null
             markLooted(key)
@@ -253,6 +430,7 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
 
     private fun markLooted(spot: CorpseSpot) {
         lootedSet += spot
+        dingPlaced -= spot
         confirmedSet -= spot
         regions -= spot
         hints -= spot
@@ -367,10 +545,23 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
             }
             return best
         }
+
+        /** Farthest a stand still possible here can be from (x, y, z), each point counted as its cube ([SLACK]). */
+        fun farthest(x: Double, y: Double, z: Double): Double {
+            var best = 0.0
+            forAlive { _, px, py, pz ->
+                best = maxOf(best, norm(x - px, y - py, z - pz))
+                true
+            }
+            return best + SLACK
+        }
     }
 
     companion object {
         const val RANGE = 20.0
+
+        /** Client position against the server's at a ding: within 0.9 over 1 s, up to 3 for one frame when falling (recording 02-55-36). */
+        const val MOVE_MARGIN = 3.0
         const val MIN_BYTE = 63
         const val MAX_BYTE = 126
 

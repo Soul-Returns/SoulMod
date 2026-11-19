@@ -29,8 +29,51 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
 
     fun typeOf(spot: CorpseSpot): String? = book.typeOf(spot)
 
-    fun ding(ix: Int, iy: Int, iz: Int, pitchByte: Int): DingFit? =
-        solver.ding(ix, iy, iz, pitchByte)?.also { if (it.fitting.size == 1) own += it.fitting[0] }
+    private var lastDingTick: Long? = null
+    private val emptyLooks = HashMap<CorpseSpot, Int>()
+
+    /**
+     * One own ding at client [tick]. A pause over [RUN_PAUSE_TICKS] since the last one ends the
+     * talisman's run (it may have gone silent beyond 20 and taken another corpse since).
+     */
+    fun ding(ix: Int, iy: Int, iz: Int, pitchByte: Int, tick: Long): DingFit? {
+        lastDingTick?.let { if (tick - it > RUN_PAUSE_TICKS) solver.endRun() }
+        lastDingTick = tick
+        val fit = solver.ding(ix, iy, iz, pitchByte) ?: return null
+        fit.withdrawn?.let {
+            forget(it)
+            log("Corpse locator: withdrew ${solver.lastWithdrawal}")
+        }
+        fit.placed?.let { log("Corpse locator: placed $it from the dings") }
+        solver.runTarget?.let { own += it }
+        return fit
+    }
+
+    /**
+     * One sight scan: [lookedEmpty] = the ding-only corpses whose whole box the player saw from close
+     * by with no corpse stand on it. One that stays so for [EMPTY_SCANS] scans in a row is withdrawn.
+     */
+    fun look(lookedEmpty: Set<CorpseSpot>) {
+        emptyLooks.keys.retainAll(lookedEmpty)
+        for (spot in lookedEmpty) {
+            val n = (emptyLooks[spot] ?: 0) + 1
+            if (n < EMPTY_SCANS) {
+                emptyLooks[spot] = n
+                continue
+            }
+            emptyLooks -= spot
+            if (solver.seenEmpty(spot)) {
+                forget(spot)
+                log("Corpse locator: withdrew ${solver.lastWithdrawal}")
+            }
+        }
+    }
+
+    /** A withdrawn corpse: not the player's to share, and its type by elimination no longer holds. */
+    private fun forget(spot: CorpseSpot) {
+        own -= spot
+        book.inferredTypes -= spot
+    }
 
     /** The last loot line's attribution, for DevState. */
     var lastLoot: String? = null
@@ -166,5 +209,13 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         } else {
             "dings only, $support ding(s) point only at it"
         }
+    }
+
+    companion object {
+        /** Dings come every 10-15 ticks (recordings: 1,076 of 1,133 gaps under 25 ticks); a longer pause ends the run. */
+        const val RUN_PAUSE_TICKS = 32
+
+        /** Sight scans in a row that must see a ding-only spot empty before it is withdrawn. */
+        const val EMPTY_SCANS = 2
     }
 }
