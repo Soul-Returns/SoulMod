@@ -601,11 +601,13 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
         const val SUPPORT_MAX = 64
 
         /**
-         * Whether to cancel this ding's playback: only one fully explained by already located,
-         * unlooted corpses. A ding that could be a new corpse (fits an unconfirmed candidate), the one
-         * that confirms, one that fits nothing and any ding while the locator is off stay audible.
+         * Whether to cancel an own talisman ding's playback (rule://mineshaft): with the mute on, every
+         * one while the layout's spots are known ([mode] `listed` / `crystal`) or while it waits in the
+         * short startup queue ([queued], layout not read yet). Audible where dings place nothing
+         * (`learned`, `sight-only`, the queue full): there the ding is the player's only cue.
          */
-        fun mutes(fit: DingFit?, locatorOn: Boolean, muteOn: Boolean): Boolean = locatorOn && muteOn && fit != null && fit.explained
+        fun mutes(mode: String, queued: Boolean, locatorOn: Boolean, muteOn: Boolean): Boolean =
+            locatorOn && muteOn && (mode == "listed" || mode == "crystal" || (mode == "waiting" && queued))
 
         /** `round(pitch * 63)` when the pitch is a talisman byte (n / 63 within float error), else null. */
         fun pitchByte(pitch: Float): Int? {

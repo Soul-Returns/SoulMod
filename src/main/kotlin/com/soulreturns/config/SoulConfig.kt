@@ -1116,7 +1116,7 @@ data class MineshaftConfig(
     val corpseLocator: Boolean = false,
     /** Corpse locator waypoint color until the type is known; green, apart from every corpse type's color. */
     val corpseLocatorColor: ChromaColor = ChromaColor(0xFF55FF55.toInt()),
-    /** Cancel the Organ Donor ding when it only points at corpses the locator already shows. */
+    /** Cancel every Organ Donor ding in a mineshaft whose spots are known; the locator still reads it. */
     val corpseLocatorMute: Boolean = true,
     /** Dim a located Umber/Tungsten/Vanguard corpse (no line) while its key is not in the inventory. */
     val corpseLocatorDimKeyless: Boolean = true,

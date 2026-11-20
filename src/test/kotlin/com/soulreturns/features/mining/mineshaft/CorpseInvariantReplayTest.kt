@@ -46,7 +46,9 @@ class CorpseInvariantReplayTest {
     /** One violation: drawn corpses beyond the tab's unlooted rows. */
     private data class Violation(val stay: String, val tick: Int, val drawn: List<CorpseSpot>, val unlooted: Map<String, Int>, val why: String)
 
-    private fun replay(stay: Stay, guarded: Boolean, withdrawn: MutableList<String> = ArrayList(), traced: MutableList<String> = ArrayList()): List<Violation> {
+    /** [audible]: own dings, audible under 0.3.2-beta.3's mute (only dings fitting nothing but located corpses), audible under the full mute. */
+    private fun replay(stay: Stay, guarded: Boolean, withdrawn: MutableList<String> = ArrayList(), traced: MutableList<String> = ArrayList(), audible: IntArray = IntArray(3)): List<Violation> {
+        val mode = if (data.spots(stay.layout) != null) "listed" else "sight-only"
         val solver = CorpseLocatorSolver(data.spots(stay.layout).orEmpty(), fixed = stay.layout in data.fixed)
         val st = CorpseStay(solver, trace = {
             traced += it
@@ -66,7 +68,10 @@ class CorpseInvariantReplayTest {
                     while (history.size > 1 && history.first().first < e.tick - 30) history.removeFirst()
                     val n = CorpseLocatorSolver.pitchByte(e.pitch) ?: continue
                     if (!CorpseLocatorSolver.isOwnDing(e.ix / 8.0, e.iy / 8.0, e.iz / 8.0, history.map { it.second })) continue
-                    st.ding(e.ix, e.iy, e.iz, n, e.tick.toLong())
+                    val fit = st.ding(e.ix, e.iy, e.iz, n, e.tick.toLong())
+                    audible[0]++
+                    if (fit == null || !fit.explained) audible[1]++
+                    if (!CorpseLocatorSolver.mutes(mode, queued = false, locatorOn = true, muteOn = true)) audible[2]++
                 }
                 is Loot -> history.lastOrNull()?.second?.let { st.loot(it[0], it[1], it[2], e.type) }
                 is Tab -> {
@@ -126,5 +131,18 @@ class CorpseInvariantReplayTest {
         }
         println("trace lines per stay (without the layout line): $counts")
         assertTrue(counts.all { it.second <= 20 }, "a stay logged more than 20 trace lines")
+    }
+
+    /** The full mute: no own ding audible where the layout's spots are known; a layout without data keeps every one. */
+    @Test
+    fun theFullMuteSilencesEveryDingWhereTheSpotsAreKnown() {
+        val rows = stays.map { stay ->
+            val a = IntArray(3)
+            replay(stay, guarded = true, audible = a)
+            Triple(stay, a, data.spots(stay.layout) != null)
+        }
+        for ((stay, a, _) in rows) println("audible dings ${stay.layout} ${stay.source}: ${a[0]} own, ${a[1]} audible before, ${a[2]} after")
+        println("audible dings over ${rows.size} stays: ${rows.sumOf { it.second[0] }} own, ${rows.sumOf { it.second[1] }} audible before, ${rows.sumOf { it.second[2] }} after")
+        for ((stay, a, listed) in rows) assertEquals(if (listed) 0 else a[0], a[2], "${stay.layout} ${stay.source}")
     }
 }

@@ -583,7 +583,7 @@ object ConfigRegistry {
                     master = toggle("Corpse locator", null, { cfg.mining.mineshaft.corpseLocator }, { v -> mineshaft { copy(corpseLocator = v) } }, d.mining.mineshaft.corpseLocator),
                     simple = listOf(
                         color("Waypoint color", "Until you have seen which corpse it is", { cfg.mining.mineshaft.corpseLocatorColor }, { v -> mineshaft { copy(corpseLocatorColor = v) } }, d.mining.mineshaft.corpseLocatorColor),
-                        toggle("Mute located corpses", "Silences the ding once it only points at corpses already shown",
+                        toggle("Mute the ding", "Silences the Organ Donor ding in mineshafts; the locator still uses it. Shafts without spot data keep it",
                             { cfg.mining.mineshaft.corpseLocatorMute }, { v -> mineshaft { copy(corpseLocatorMute = v) } }, d.mining.mineshaft.corpseLocatorMute),
                         toggle("Dim corpses without a key", "Umber, Tungsten and Vanguard corpses fade and lose their line while their key is not in your inventory",
                             { cfg.mining.mineshaft.corpseLocatorDimKeyless }, { v -> mineshaft { copy(corpseLocatorDimKeyless = v) } }, d.mining.mineshaft.corpseLocatorDimKeyless),

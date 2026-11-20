@@ -173,7 +173,7 @@ class CorpseLocatorReplayTest {
     /**
      * RUBY_C (recording mineshaft-corpses-4): the owner's "broken" shaft. The source data never named
      * it, so 0.3.2-beta.2 had no spots and played all 31 dings. With the shared crystal list the
-     * Tungsten is located from the dings and its dings are muted while he stands next to it.
+     * Tungsten is located from the dings.
      */
     @Test
     fun theRubyCStayLocatesFromTheDingsWithTheSharedCrystalList() {
@@ -183,19 +183,16 @@ class CorpseLocatorReplayTest {
         val solver = CorpseLocatorSolver(assertNotNull(data.spots("RUBY_C")))
         var dings = 0
         var confirmedAt = -1
-        var muted = 0
         for (e in stay.events) {
             if (e is Loot) solver.loot(e.x, e.y, e.z)
             if (e !is Ding) continue
-            val fit = assertNotNull(solver.ding(e.ix, e.iy, e.iz, CorpseLocatorSolver.pitchByte(e.pitch)!!))
+            assertNotNull(solver.ding(e.ix, e.iy, e.iz, CorpseLocatorSolver.pitchByte(e.pitch)!!))
             dings++
             if (confirmedAt < 0 && tungsten.spot in solver.shown()) confirmedAt = dings
-            if (CorpseLocatorSolver.mutes(fit, locatorOn = true, muteOn = true)) muted++
         }
         assertTrue(confirmedAt > 0, "the Tungsten is located")
         assertEquals(listOf(tungsten.spot), solver.shown())
-        println("RUBY_C: $dings dings, Tungsten located at ding $confirmedAt, $muted muted")
-        assertTrue(muted >= dings - confirmedAt - 5, "its dings are muted once located")
+        println("RUBY_C: $dings dings, Tungsten located at ding $confirmedAt")
     }
 
     @Test

@@ -133,12 +133,10 @@ object CorpseLocator {
         val iz = Math.round(packet.z * 8).toInt()
         dings++
         val st = stay
-        if (st == null) {
-            if (layout == null && pending.size < PENDING_MAX) pending += intArrayOf(ix, iy, iz, n, ticks)
-            return false
-        }
-        val fit = st.ding(ix, iy, iz, n, ticks.toLong())
-        val mute = !tabAllLooted() && CorpseLocatorSolver.mutes(fit, active(), cfg.mining.mineshaft.corpseLocatorMute)
+        val queued = st == null && pending.size < PENDING_MAX
+        if (queued) pending += intArrayOf(ix, iy, iz, n, ticks)
+        st?.ding(ix, iy, iz, n, ticks.toLong())
+        val mute = CorpseLocatorSolver.mutes(mode, queued, active(), cfg.mining.mineshaft.corpseLocatorMute)
         if (mute) muted++
         return mute
     }
