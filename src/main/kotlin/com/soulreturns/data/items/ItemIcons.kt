@@ -43,10 +43,12 @@ object ItemIcons {
 
     /**
      * The source order, pure. A seen look whose Hypixel pack model is not loaded now is skipped (it would draw the
-     * missing-model checkerboard). [material] is a modern item id or null; [skin] a head profile JSON for skull items.
+     * missing-model checkerboard), and a bare paper look (Hypixel's placeholder material, seen without its model)
+     * yields to a pack [model]. [material] is a modern item id or null; [skin] a head profile JSON for skull items.
      */
     internal fun choose(seen: ItemLook?, packHas: (String) -> Boolean, model: String?, material: String?, skin: String?, glint: Boolean): ItemLook? {
-        if (seen != null && usable(seen, packHas)) return seen
+        val bare = seen != null && seen.item == PAPER && seen.model.isEmpty()
+        if (seen != null && usable(seen, packHas) && !(bare && model != null)) return seen
         if (model != null) return ItemLook(material ?: PAPER, model = model, glint = glint)
         if (material == null) return null
         if (material == PLAYER_HEAD) return skin?.let { ItemLook(material, skin = it, glint = glint) }
@@ -58,7 +60,16 @@ object ItemIcons {
         displayName?.let { MessageDetector.stripColorCodes(it).replace(PUA, "").trim() }?.takeIf { it.isNotEmpty() }
 
     /** Pack model and catalogs only (no seen looks); [name] is the display name used to match a model. */
-    fun catalogLook(id: String, name: String?): ItemLook? {
+    fun catalogLook(id: String, name: String?): ItemLook? = lookWith(null, id, name)
+
+    /** The full order for [id]; [name] matters only for ids whose model is named after the display name. */
+    fun look(id: String, name: String? = null): ItemLook? {
+        val models = PackModels.index
+        return lookWith(sources.firstNotNullOfOrNull { source -> source.look(id)?.takeIf { usable(it, models::contains) } }, id, name)
+    }
+
+    /** [choose] with [seen] (a caller's own seen look) and the catalogs' parts for [id]. */
+    fun lookWith(seen: ItemLook?, id: String, name: String?): ItemLook? {
         val entry = ItemCatalogClient.byId(id)
         val shown = name ?: cleanName(entry?.displayName)
         val head = entry?.skin ?: if (entry == null) RecipeCatalogClient.index.heads[id] else null
@@ -66,14 +77,7 @@ object ItemIcons {
             else LegacyMaterials.itemId(entry?.material, id.substringAfter(':', "").toIntOrNull() ?: entry?.damage ?: 0)
         val skin = head?.let(HeadSkins::profileJson)
         val models = PackModels.index
-        return choose(null, models::contains, models.resolve(id, shown), material, skin, shown?.startsWith("Enchanted ") == true)
-    }
-
-    /** The full order for [id]; [name] matters only for ids whose model is named after the display name. */
-    fun look(id: String, name: String? = null): ItemLook? {
-        val models = PackModels.index
-        val seen = sources.firstNotNullOfOrNull { source -> source.look(id)?.takeIf { usable(it, models::contains) } }
-        return seen ?: catalogLook(id, name)
+        return choose(seen, models::contains, models.resolve(id, shown), material, skin, shown?.startsWith("Enchanted ") == true)
     }
 
     private fun usable(look: ItemLook, packHas: (String) -> Boolean) = !look.model.startsWith("${PackModels.NAMESPACE}:") || packHas(look.model)

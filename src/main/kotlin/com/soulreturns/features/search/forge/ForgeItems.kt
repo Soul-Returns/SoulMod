@@ -98,9 +98,9 @@ object ForgeItems {
         val name = entry?.name ?: ItemIcons.cleanName(catalog?.displayName)
             ?: stored?.let(SearchItems::name) ?: petName(id) ?: id
         val color = SkyblockRarity.forName(catalog?.rarity)?.color ?: stored?.let(SearchItems::color) ?: petColor(id) ?: 0xFFFFFFFF.toInt()
-        // Exact stack seen anywhere > the loaded Hypixel pack's model for the id > catalog material > paper.
-        val look = entry?.look?.look() ?: book.looks[id]?.look() ?: stored?.look
-            ?: ItemIcons.catalogLook(id, name) ?: InventoryButtonIcons.ItemLook(PAPER, glint = name.startsWith("Enchanted "))
+        // Exact stack seen anywhere > the loaded Hypixel pack's model for the id > catalog material > paper (ItemIcons.choose).
+        val seen = entry?.look?.look() ?: book.looks[id]?.look() ?: stored?.look
+        val look = ItemIcons.lookWith(seen, id, name) ?: InventoryButtonIcons.ItemLook(PAPER, glint = name.startsWith("Enchanted "))
         return Info(name, color, look)
     }
 

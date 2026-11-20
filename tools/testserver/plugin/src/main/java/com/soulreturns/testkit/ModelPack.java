@@ -33,7 +33,10 @@ final class ModelPack {
         "collections/gemstone", new Color(0xF04040),
         "uncategorized/glacite", new Color(0x80D0F0),
         "uncategorized/tungsten", new Color(0x505060),
-        "uncategorized/umber", new Color(0xA06030));
+        "uncategorized/umber", new Color(0xA06030),
+        // Trophy fish: paper items only Hypixel's pack draws (the Profile Viewer's Fishing rows).
+        "fishing/trophy/lava/blobfish_diamond", new Color(0x40E0F0),
+        "fishing/trophy/lava/volcanic_stonefish_diamond", new Color(0x606070));
 
     private HttpServer server;
     private byte[] zip;

@@ -48,6 +48,13 @@ class ItemIconsTest {
     }
 
     @Test
+    fun aBarePaperLookYieldsToThePackModel() {
+        val bare = ItemLook("minecraft:paper")
+        assertEquals(ItemLook("minecraft:paper", model = packModel), ItemIcons.choose(bare, loaded, packModel, "minecraft:paper", null, false))
+        assertEquals(bare, ItemIcons.choose(bare, noPack, null, "minecraft:paper", null, false))
+    }
+
+    @Test
     fun aSeenLookWhosePackModelIsNotLoadedFallsThrough() {
         val seen = ItemLook("minecraft:paper", model = packModel)
         assertEquals(ItemLook("minecraft:diamond"), ItemIcons.choose(seen, noPack, null, "minecraft:diamond", null, false))

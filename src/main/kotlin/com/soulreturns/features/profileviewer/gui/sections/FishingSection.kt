@@ -19,6 +19,7 @@ import com.soulreturns.features.profileviewer.gui.kit.KitStyle
 import com.soulreturns.features.profileviewer.gui.kit.Node
 import com.soulreturns.features.profileviewer.gui.kit.Rich
 import com.soulreturns.features.profileviewer.gui.kit.Ui
+import net.minecraft.world.item.ItemStack
 
 /**
  * Trophy fish per fish and tier, items fished and sea creature kills (mock `fishingSec`). Trophy frogs
@@ -91,21 +92,24 @@ object FishingSection : ProfileSection {
         override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
             val n = columns(w)
             val tracks = KitLayout.trackX(w, n, COL_GAP)
+            val icons = fish.map { icon(it) }
+            val indent = if (icons.any { it != null }) ICON + 4 else 0
             for ((i, f) in fish.withIndex()) {
                 val ry = y + (i / n) * (ROW_H + ROW_GAP)
                 if (ry + ROW_H < c.viewTop || ry > c.viewBottom) continue
                 val cx = x + tracks[i % n]
                 val cw = KitLayout.spanWidth(tracks, i % n, 1, COL_GAP)
-                paintRow(c, f, cx, ry, cw)
+                paintRow(c, f, icons[i], indent, cx, ry, cw)
             }
         }
 
-        private fun paintRow(c: KitCanvas, f: TrophyFishEntry, x: Int, y: Int, w: Int) {
+        // The fish's item at its best tier caught (bronze before any catch): `BLOBFISH_GOLD`.
+        private fun icon(f: TrophyFishEntry) = ItemIcons.icon("${f.key.uppercase()}_${TROPHY_TIERS[f.bestTier.coerceAtLeast(0)].uppercase()}")
+
+        private fun paintRow(c: KitCanvas, f: TrophyFishEntry, icon: ItemStack?, indent: Int, x: Int, y: Int, w: Int) {
             val none = f.bestTier < 0
             val name = SkyblockRarity.colorFor(f.rarity, KitStyle.TEXT).let { if (none) (it and 0x00FFFFFF) or (0x73 shl 24) else it }
-            // The fish's item at its best tier caught (bronze before any catch): `BLOBFISH_GOLD`.
-            val icon = ItemIcons.icon("${f.key.uppercase()}_${TROPHY_TIERS[f.bestTier.coerceAtLeast(0)].uppercase()}")
-            val nx = if (icon != null) x + ICON + 4 else x
+            val nx = x + indent
             icon?.let { c.item(it, x, y + (ROW_H - 1 - ICON) / 2, ICON, count = false) }
             Rich.of(f.name).ellipsize(c, KitStyle.SMALL, x + w - f.tiers.size * (COUNT_W + 4) - nx).draw(c, nx, y, y + ROW_H - 1, KitStyle.SMALL, name)
             for (t in f.tiers.indices) {
