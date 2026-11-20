@@ -200,7 +200,10 @@ class ProfileViewerScreen private constructor(
         popover = null
         search.focused = false
         if (!same) {
-            // A different player: drop the previous one entirely, never a half-updated screen.
+            // A different player: drop the previous one entirely, never a half-updated screen, and start
+            // on the Overview like the mock's lookup (a refresh or profile switch keeps the section).
+            sectionId = OverviewSection.id
+            railScroll.pos = 0f
             view = null
             profile = null
             member = null
@@ -753,7 +756,12 @@ class ProfileViewerScreen private constructor(
         canvas.viewTop = top
         canvas.viewBottom = y1
         beginClip(g, x0, top, x1, y1)
-        root.paint(canvas, bx0, top + L.BODY_PAD_TOP - st.pos.roundToInt(), bw, contentH)
+        canvas.culling = true
+        try {
+            root.paint(canvas, bx0, top + L.BODY_PAD_TOP - st.pos.roundToInt(), bw, contentH)
+        } finally {
+            canvas.culling = false
+        }
         endClip(g)
         drawScrollbar(g, mx, my, st, x0, top, x1 - 4, y1 - 4)
     }
@@ -1185,23 +1193,38 @@ class ProfileViewerScreen private constructor(
         override val nowMs: Long get() = now
         override val state: ViewState get() = viewState
 
+        /**
+         * While the body paints, a draw entirely outside the visible band is dropped: the scissor would
+         * discard it anyway, and every submitted element costs vanilla a scan of its layer.
+         */
+        var culling = false
+
+        private fun outside(y0: Int, y1: Int): Boolean = culling && (y1 <= viewTop || y0 >= viewBottom)
+
         override fun width(text: String, size: Float, bold: Boolean): Int = tw(text, size, bold)
 
         override fun trackedWidth(text: String, size: Float, tracking: Float, bold: Boolean): Int = trackedW(text, size, tracking, bold)
 
-        override fun rect(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, corner: Int) = this@ProfileViewerScreen.rect(x0, y0, x1, y1, color, corner)
+        override fun rect(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, corner: Int) {
+            if (!outside(y0, y1)) this@ProfileViewerScreen.rect(x0, y0, x1, y1, color, corner)
+        }
 
-        override fun text(text: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean) = txt(text, x, top, bottom, color, size, bold)
+        override fun text(text: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean) {
+            if (!outside(top, bottom)) txt(text, x, top, bottom, color, size, bold)
+        }
 
         override fun tracked(text: String, cx: Int, cy: Int, color: Int, size: Float, tracking: Float, bold: Boolean) {
+            if (outside(cy - size.toInt(), cy + size.toInt())) return
             frame?.let { tracked(it, text, cx, cy, color, size, tracking, bold) }
         }
 
         override fun icon(name: String, x: Int, y: Int, size: Int, color: Int) {
+            if (outside(y, y + size)) return
             frame?.let { drawIcon(it, name, x, y, size, color) }
         }
 
         override fun item(stack: ItemStack, x: Int, y: Int, size: Int, count: Boolean) {
+            if (outside(y, y + size)) return
             val g = frame ?: return
             g.pose().pushMatrix()
             g.pose().translate(x.toFloat(), y.toFloat())
@@ -1209,6 +1232,10 @@ class ProfileViewerScreen private constructor(
             g.fakeItem(stack, 0, 0)
             if (count) g.itemDecorations(Minecraft.getInstance().font, stack, 0, 0)
             g.pose().popMatrix()
+        }
+
+        override fun layer() {
+            frame?.nextStratum()
         }
 
         override fun face(uuidUndashed: String, x: Int, y: Int, size: Int) {

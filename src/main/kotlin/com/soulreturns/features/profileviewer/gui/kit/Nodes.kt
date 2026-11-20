@@ -462,6 +462,7 @@ class CardNode(
     }
 
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
+        c.layer()
         val x1 = x + w
         val y1 = y + h
         when (kind) {

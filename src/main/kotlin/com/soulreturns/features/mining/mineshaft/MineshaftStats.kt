@@ -75,13 +75,24 @@ data class MineshaftStats(
     companion object {
         private val json = Json { ignoreUnknownKeys = true }
 
+        /** Recent decodes by payload identity: the Profile Viewer asks every frame with the same objects. */
+        private val recent = ArrayDeque<Pair<JsonObject, MineshaftStats?>>()
+        private const val RECENT_MAX = 8
+
         /** Decode a `mineshaft` namespace payload, or null if it is not one. */
-        fun from(payload: JsonObject): MineshaftStats? =
-            try {
+        fun from(payload: JsonObject): MineshaftStats? {
+            synchronized(recent) { recent.firstOrNull { it.first === payload }?.let { return it.second } }
+            val stats = try {
                 json.decodeFromJsonElement(serializer(), payload)
             } catch (_: Throwable) {
                 null
             }
+            synchronized(recent) {
+                recent.addFirst(payload to stats)
+                if (recent.size > RECENT_MAX) recent.removeLast()
+            }
+            return stats
+        }
     }
 }
 

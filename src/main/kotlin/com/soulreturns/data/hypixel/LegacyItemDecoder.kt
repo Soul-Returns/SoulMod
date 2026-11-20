@@ -15,6 +15,7 @@ import net.minecraft.util.datafix.DataFixers
 import net.minecraft.util.datafix.fixes.References
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.component.CustomData
+import net.minecraft.world.item.component.TooltipDisplay
 import java.io.ByteArrayInputStream
 import java.util.Base64
 
@@ -33,6 +34,9 @@ object LegacyItemDecoder {
     private val logger = SoulLogger("Soul/LegacyItems")
 
     private const val LEGACY_DATA_VERSION = 99
+
+    /** 1.8 `HideFlags` bit for attribute modifiers. */
+    private const val HIDE_MODIFIERS = 2
 
     /**
      * Numeric ids added in 1.8, which vanilla's id fix (written for 1.7 saves; 1.8 already saved names) does
@@ -95,6 +99,12 @@ object LegacyItemDecoder {
             ItemStack.EMPTY
         }
         if (stack.isEmpty) return stack
+        // The fixer only hides modifiers stored on the item; Hypixel's flag also hid the item type's defaults
+        // (a sword's "6 Attack Damage"), which its own tooltips never show.
+        if ((legacy.getCompoundOrEmpty("tag").getIntOr("HideFlags", 0) and HIDE_MODIFIERS) != 0) {
+            val display = stack.getOrDefault(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT)
+            stack.set(DataComponents.TOOLTIP_DISPLAY, display.withHidden(DataComponents.ATTRIBUTE_MODIFIERS, true))
+        }
         if (!extra.isEmpty) stack.set(DataComponents.CUSTOM_DATA, CustomData.of(extra))
         modern?.getStringOr("minecraft:item_model", "")?.takeIf { it.isNotEmpty() }?.let(Identifier::tryParse)
             ?.let { stack.set(DataComponents.ITEM_MODEL, it) }

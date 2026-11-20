@@ -241,6 +241,7 @@ object InventoriesSection : ProfileSection {
         override fun measure(m: KitMeasure, w: Int): Int = PAD_TOP + HEAD_H + HEAD_GAP + body.height(m, w - PAD_X * 2) + PAD_BOTTOM
 
         override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
+            c.layer()
             c.rect(x, y, x + w, y + h, S.CARD_BG, Corner.MEDIUM)
             val ix = x + PAD_X
             val top = y + PAD_TOP
@@ -270,13 +271,18 @@ object InventoriesSection : ProfileSection {
         }
     }
 
-    /** `.cnav`: the container list, one 24 px button per container; [stateKey] is the section's `container` value. */
+    /**
+     * `.cnav`: the container list, one 24 px button per container; [stateKey] is the section's `container` value.
+     * Sticky like the mock's (`position: sticky; top: 0`): it stays at the top of the body while the pages scroll,
+     * within the [h] its split row gives it.
+     */
     private class NavNode(val entries: List<NavEntry>, val stateKey: String) : Node() {
         override fun measure(m: KitMeasure, w: Int): Int = entries.size * ROW_H + (entries.size - 1) * GAP
 
         override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
+            val top = max(y, minOf(c.viewTop, y + h - height(c, w)))
             for ((i, e) in entries.withIndex()) {
-                val y0 = y + i * (ROW_H + GAP)
+                val y0 = top + i * (ROW_H + GAP)
                 val y1 = y0 + ROW_H
                 val hover = !e.off && c.hovered(x, y0, x + w, y1)
                 if (e.on) {

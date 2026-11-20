@@ -97,6 +97,12 @@ interface KitCanvas : KitMeasure {
     fun gradient(x0: Int, y0: Int, x1: Int, y1: Int, top: Int, bottom: Int, corner: Int = Corner.MEDIUM) = rect(x0, y0, x1, y1, top, corner)
 
     /**
+     * Starts a new draw layer: everything after it draws above everything before. Cards call it first, so
+     * vanilla's per-element overlap scan only walks one card's elements instead of the whole body's.
+     */
+    fun layer() = Unit
+
+    /**
      * The player's full-body model in the box, wearing [armor] (helmet to boots; null or empty = none),
      * turning toward the pointer. Drawn only once the skin is ready; returns the [PlayerModel] state so
      * the caller draws its own fallback (head on a silhouette while loading, the silhouette on failure).
