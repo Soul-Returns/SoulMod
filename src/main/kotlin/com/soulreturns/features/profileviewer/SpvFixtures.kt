@@ -20,6 +20,8 @@ import com.soulreturns.util.MojangUuid
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -43,7 +45,7 @@ import java.util.UUID
  * File shape (every key but `name` and `uuid` optional):
  * ```
  * { "name": "Slayer_Sam", "uuid": "<32 hex>", "self": false,
- *   "skin": "<textures.minecraft.net hash>", "slim": false,
+ *   "skin": "<textures.minecraft.net hash>" | "loading" | "none", "slim": false,
  *   "resolveMs": 400, "profilesMs": 900, "hold": false,
  *   "failure": { "kind": "not-found" | "no-profiles" | "rate-limited" | "offline" | "other", "retryAfter": 30 },
  *   "profiles": { …a Hypixel /skyblock/profiles body… }, "profile": "Banana",
@@ -53,9 +55,13 @@ import java.util.UUID
  * ```
  * `self: true` swaps in your own name and uuid (the fixture's `uuid` member becomes yours); `hold: true`
  * stops after resolving (the loading state). `skin` gives the player a skin texture inline (the test
- * client has no session server to resolve one by uuid); without it the skin lookup goes by uuid. `hotmTree`
+ * client has no session server to resolve one by uuid); without it the skin lookup goes by uuid; `"loading"`
+ * and `"none"` force the figure's "Loading skin" and "No skin" fallbacks. `hotmTree`
  * stands in for the backend's Heart of the Mountain catalog until its next refresh (the shared payload is
  * `src/test/resources/profileviewer/fragments/hotm-tree.json`).
+ *
+ * Times relative to the load: any string `"now"`, `"now-<ms>"` or `"now+<ms>"` becomes that epoch-ms number
+ * ([resolveTimes]), so Forge start times and the like stay plausible whenever the fixture is played.
  */
 object SpvFixtures {
     private val json = Json { ignoreUnknownKeys = true }
@@ -68,7 +74,7 @@ object SpvFixtures {
             return
         }
         val root = try {
-            json.parseToJsonElement(Files.readString(file)).jsonObject
+            resolveTimes(json.parseToJsonElement(Files.readString(file)), System.currentTimeMillis()).jsonObject
         } catch (e: Exception) {
             DevOutput.line("§cCould not read §f$file§c: ${e.message}")
             return
@@ -81,7 +87,9 @@ object SpvFixtures {
             PlayerIdentity(root.str("uuid") ?: "00000000000000000000000000000000", root.str("name") ?: name)
         }
         val skin = root.str("skin")
-        if (!self && skin != null) {
+        if (skin == "loading" || skin == "none") ProfileFigure.fixtureSkinStates[identity.uuidUndashed] = skin
+        else ProfileFigure.fixtureSkinStates.remove(identity.uuidUndashed)
+        if (!self && skin != null && skin != "loading" && skin != "none") {
             val model = if (root.bool("slim")) ""","metadata":{"model":"slim"}""" else ""
             val textures = """{"textures":{"SKIN":{"url":"http://textures.minecraft.net/texture/$skin"$model}}}"""
             val value = Base64.getEncoder().encodeToString(textures.toByteArray())
@@ -137,6 +145,17 @@ object SpvFixtures {
                     preloaded = PreloadedExtras(soulStats(root["soulStats"] as? JsonObject), caps(root["caps"] as? JsonObject), root.num("loadedAgoMs") ?: 0L),
                 ),
             )
+        }
+    }
+
+    private val RELATIVE = Regex("now([+-]\\d+)?")
+
+    /** [element] with every `"now"`, `"now-<ms>"` and `"now+<ms>"` string replaced by `nowMs` plus the offset. */
+    internal fun resolveTimes(element: JsonElement, nowMs: Long): JsonElement = when (element) {
+        is JsonObject -> JsonObject(element.mapValues { resolveTimes(it.value, nowMs) })
+        is JsonArray -> JsonArray(element.map { resolveTimes(it, nowMs) })
+        is JsonPrimitive -> if (!element.isString) element else {
+            RELATIVE.matchEntire(element.content)?.let { JsonPrimitive(nowMs + (it.groupValues[1].toLongOrNull() ?: 0L)) } ?: element
         }
     }
 

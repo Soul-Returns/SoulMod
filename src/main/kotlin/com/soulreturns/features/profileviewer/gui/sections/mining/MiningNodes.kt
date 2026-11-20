@@ -83,9 +83,12 @@ class HotmTreeNode(
         // `.hn.off .mc-item { opacity: .35 }`: items cannot be drawn translucent, so a veil goes on top.
         if (st.disabled) c.rect(x + 1, y + 1, x + SLOT - 1, y + SLOT - 1, OFF_VEIL, Corner.SQUARE)
         if (spec.count > 1) {
+            // On a dark chip in the slot's corner, smaller from three digits on (Mole's 182), so it never melts into the item.
             val label = spec.count.toString()
-            val lw = c.width(label, COUNT_SIZE, true)
-            c.text(label, x + SLOT - lw, y + 11, y + SLOT + 1, 0xFFFFFFFF.toInt(), COUNT_SIZE, true)
+            val size = if (label.length >= 3) COUNT_SIZE_SMALL else COUNT_SIZE
+            val lw = c.width(label, size, true)
+            c.rect(x + SLOT - lw - 2, y + 12, x + SLOT + 1, y + SLOT + 1, COUNT_BG, Corner.SMALL)
+            c.text(label, x + SLOT - lw, y + 12, y + SLOT + 1, 0xFFFFFFFF.toInt(), size, true)
         }
         // `.hn.tlock { opacity: .32 }` over the card background.
         if (!st.open) c.rect(x, y, x + SLOT, y + SLOT, TLOCK_VEIL, Corner.SQUARE)
@@ -101,6 +104,8 @@ class HotmTreeNode(
 
         private val LABEL_SIZE = S.px(10f)
         private val COUNT_SIZE = S.px(9f)
+        private val COUNT_SIZE_SMALL = S.px(8f)
+        private val COUNT_BG = 0xE0141414.toInt()
         private val TIER_OFF_BG = 0xFF202020.toInt()
         private val TIER_OFF = 0xFF555555.toInt()
         private val TIER_ON_BG = 0xFF1C2A1C.toInt()

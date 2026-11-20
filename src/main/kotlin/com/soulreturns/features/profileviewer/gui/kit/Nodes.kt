@@ -905,9 +905,9 @@ class SearchFieldNode(val key: String, val placeholder: String, val w: Int = S.F
     override fun measure(m: KitMeasure, w: Int): Int = S.FIELD_H
 
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
-        val cw = if (count != null) c.width(count, S.CAPTION) + 6 else 0
-        c.field(key, x, y, x + this.w - cw, y + S.FIELD_H, placeholder)
-        if (count != null) c.text(count, x + this.w - cw + 2, y, y + S.FIELD_H, S.ACCENT_LIGHT, S.CAPTION)
+        val cw = if (count != null) c.width(count, S.CAPTION) + 5 else 0
+        c.field(key, x, y, x + this.w, y + S.FIELD_H, placeholder, cw)
+        if (count != null) c.text(count, x + this.w - cw, y, y + S.FIELD_H, S.ACCENT_LIGHT, S.CAPTION)
     }
 }
 

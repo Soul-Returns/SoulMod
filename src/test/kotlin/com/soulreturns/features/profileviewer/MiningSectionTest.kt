@@ -106,7 +106,7 @@ class MiningSectionTest {
                 JsonObject(profile + ("members" to JsonObject(members + (uuid to JsonObject(members[uuid]!!.jsonObject + fragment)))))
             },
         )
-        return JsonObject(f + ("profiles" to JsonObject(wrap + ("profiles" to profiles))))
+        return SpvFixtures.resolveTimes(JsonObject(f + ("profiles" to JsonObject(wrap + ("profiles" to profiles)))), NOW).jsonObject
     }
 
     private fun context(name: String): ProfileContext {
@@ -165,7 +165,7 @@ class MiningSectionTest {
         )) assertTrue(s in text, "missing '$s' in: $text")
         assertTrue("Jasper" !in text, "only the five Nucleus crystals")
         assertTrue(text.indexOf("Lapis corpses") < text.indexOf("Umber corpses") && text.indexOf("Umber corpses") < text.indexOf("Tungsten corpses"))
-        assertEquals(5, Regex("Empty").findAll(text).count(), "7 slots at tier 10, two busy")
+        assertEquals(4, Regex("Empty").findAll(text).count(), "7 slots at tier 10, three busy")
     }
 
     @Test
@@ -195,7 +195,7 @@ class MiningSectionTest {
             "Mole", "182", "Warm Heart", "50 off", "Mithril", "431,207", "Glacite",
         )) assertTrue(s in text, "missing '$s' in: $text")
         assertTrue(c.items.isEmpty(), "no tree, no node items")
-        assertEquals(1, Regex("Empty").findAll(text).count(), "without the tree the Forge lists up to the last busy slot")
+        assertEquals(0, Regex("Empty").findAll(text).count(), "without the tree the Forge lists up to the last busy slot (1 to 3, all busy)")
     }
 
     @Test

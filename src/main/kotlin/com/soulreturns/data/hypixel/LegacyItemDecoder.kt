@@ -34,6 +34,21 @@ object LegacyItemDecoder {
 
     private const val LEGACY_DATA_VERSION = 99
 
+    /**
+     * Numeric ids added in 1.8, which vanilla's id fix (written for 1.7 saves; 1.8 already saved names) does
+     * not know, so they would upgrade to air. Hypixel's blobs use them: drills are prismarine shards, Mithril
+     * is prismarine crystals, the Lapis Armor helmet a sea lantern. Block-only ids are left out.
+     */
+    private val V18_IDS = mapOf(
+        165 to "slime", 166 to "barrier", 167 to "iron_trapdoor", 168 to "prismarine", 169 to "sea_lantern",
+        179 to "red_sandstone", 180 to "red_sandstone_stairs", 182 to "stone_slab2",
+        183 to "spruce_fence_gate", 184 to "birch_fence_gate", 185 to "jungle_fence_gate", 186 to "dark_oak_fence_gate", 187 to "acacia_fence_gate",
+        188 to "spruce_fence", 189 to "birch_fence", 190 to "jungle_fence", 191 to "dark_oak_fence", 192 to "acacia_fence",
+        409 to "prismarine_shard", 410 to "prismarine_crystals", 411 to "rabbit", 412 to "cooked_rabbit", 413 to "rabbit_stew",
+        414 to "rabbit_foot", 415 to "rabbit_hide", 416 to "armor_stand", 423 to "mutton", 424 to "cooked_mutton", 425 to "banner",
+        427 to "spruce_door", 428 to "birch_door", 429 to "jungle_door", 430 to "acacia_door", 431 to "dark_oak_door",
+    )
+
     /** One stack per slot, [ItemStack.EMPTY] for empty or undecodable ones; empty list on a bad blob. */
     fun decode(base64: String): List<ItemStack> = decodeSlots(base64)?.map { it ?: ItemStack.EMPTY } ?: emptyList()
 
@@ -63,6 +78,7 @@ object LegacyItemDecoder {
     private fun fix(legacy: CompoundTag): ItemStack {
         if (legacy.isEmpty || legacy.getShortOr("id", 0) == 0.toShort()) return ItemStack.EMPTY
         val item = legacy.copy()
+        V18_IDS[legacy.getShortOr("id", 0).toInt()]?.let { item.putString("id", "minecraft:$it") }
         val modern = item.remove("components") as? CompoundTag
         val extra = item.getCompoundOrEmpty("tag").getCompoundOrEmpty("ExtraAttributes")
         val ops = Minecraft.getInstance().connection?.registryAccess()?.createSerializationContext(NbtOps.INSTANCE) ?: NbtOps.INSTANCE

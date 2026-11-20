@@ -87,6 +87,9 @@ interface KitCanvas : KitMeasure {
     /** A single-line text field bound to [ViewState.field]([key]). */
     fun field(key: String, x0: Int, y0: Int, x1: Int, y1: Int, placeholder: String)
 
+    /** [field] with [trailing] px at its right kept free of text, for a count drawn inside the frame. */
+    fun field(key: String, x0: Int, y0: Int, x1: Int, y1: Int, placeholder: String, trailing: Int) = field(key, x0, y0, x1, y1, placeholder)
+
     /** Switches the viewer to another section (`ctx.open` from inside a click). */
     fun openSection(id: String)
 

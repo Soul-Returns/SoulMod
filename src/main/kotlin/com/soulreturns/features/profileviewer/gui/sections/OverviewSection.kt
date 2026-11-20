@@ -127,7 +127,7 @@ object OverviewSection : ProfileSection {
 
     private fun identityLines(ctx: ProfileContext, ui: Ui) = with(ui) {
         val member = ctx.member
-        row(0) {
+        row(6) {
             text(ctx.name, KitStyle.TITLE, bold = true, wrap = false)
             if (ctx.isSelf) chips(Chip.you())
             grow()

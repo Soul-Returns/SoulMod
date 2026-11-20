@@ -31,8 +31,11 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class ProfileFigure(val uuidUndashed: String, private val name: String) {
     private val uuid: UUID = MojangUuid.parse(uuidUndashed) ?: UUID(0L, 0L)
-    private val lookup: CompletableFuture<Optional<PlayerSkinRenderCache.RenderInfo>> =
-        Minecraft.getInstance().playerSkinRenderCache().lookup(profile(uuidUndashed))
+    private val lookup: CompletableFuture<Optional<PlayerSkinRenderCache.RenderInfo>> = when (fixtureSkinStates[uuidUndashed]) {
+        "loading" -> CompletableFuture()
+        "none" -> CompletableFuture.completedFuture(Optional.empty())
+        else -> Minecraft.getInstance().playerSkinRenderCache().lookup(profile(uuidUndashed))
+    }
     private var player: FigurePlayer? = null
     private var worn: List<ItemStack?>? = null
 
@@ -88,6 +91,9 @@ class ProfileFigure(val uuidUndashed: String, private val name: String) {
 
         /** Dev fixtures: skins given inline (`/soul dev spv fixture`), since the test client has no session server. */
         val fixtureSkins = ConcurrentHashMap<String, GameProfile>()
+
+        /** Dev fixtures: `"loading"` holds the skin lookup forever, `"none"` fails it (the figure's two fallbacks). */
+        val fixtureSkinStates = ConcurrentHashMap<String, String>()
 
         /** What the skin cache resolves for [uuidUndashed]: a fixture's inline skin, else the uuid. */
         fun profile(uuidUndashed: String): ResolvableProfile =

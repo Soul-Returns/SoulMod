@@ -10,24 +10,36 @@ import kotlin.math.max
  * Immutable and cheap: a section builds these every frame.
  */
 class Rich private constructor(val runs: List<Run>) {
-    /** [color] null = the drawing node's default color. */
-    class Run(val text: String, val color: Int?, val bold: Boolean, val minW: Int = 0)
+    /**
+     * [color] null = the drawing node's default color. [size] set = a run in its own size (not bold unless
+     * [bold]), on the line's baseline: a unit after a big number (`+38 Strength`).
+     */
+    class Run(val text: String, val color: Int?, val bold: Boolean, val minW: Int = 0, val size: Float? = null)
 
     val isEmpty: Boolean get() = runs.all { it.text.isEmpty() }
 
     /** The text without codes. */
     val plain: String get() = runs.joinToString("") { it.text }
 
+    private fun Run.width(m: KitMeasure, lineSize: Float, lineBold: Boolean): Int =
+        m.width(text, size ?: lineSize, if (size != null) bold else lineBold || bold)
+
     fun width(m: KitMeasure, size: Float, bold: Boolean = false): Int =
-        runs.sumOf { max(m.width(it.text, size, bold || it.bold), it.minW) }
+        runs.sumOf { max(it.width(m, size, bold), it.minW) }
 
     /** Draws on one line, vertically centered between [top] and [bottom]; returns the end x. */
     fun draw(c: KitCanvas, x: Int, top: Int, bottom: Int, size: Float, color: Int, bold: Boolean = false): Int {
         var cx = x
         for (r in runs) {
             if (r.text.isEmpty()) continue
-            c.text(r.text, cx, top, bottom, r.color ?: color, size, bold || r.bold)
-            cx += max(c.width(r.text, size, bold || r.bold), r.minW)
+            val rs = r.size
+            if (rs == null) {
+                c.text(r.text, cx, top, bottom, r.color ?: color, size, bold || r.bold)
+            } else {
+                val dy = ((size - rs) * BASELINE).toInt()
+                c.text(r.text, cx, top + dy, bottom + dy, r.color ?: color, rs, r.bold)
+            }
+            cx += max(r.width(c, size, bold), r.minW)
         }
         return cx
     }
@@ -39,15 +51,15 @@ class Rich private constructor(val runs: List<Run>) {
         val out = ArrayList<Run>()
         var used = 0
         for (r in runs) {
-            val w = m.width(r.text, size, bold || r.bold)
+            val w = r.width(m, size, bold)
             if (used + w + ell <= maxW) {
                 out += r
                 used += w
                 continue
             }
             var end = r.text.length
-            while (end > 0 && used + m.width(r.text.substring(0, end), size, bold || r.bold) + ell > maxW) end--
-            out += Run(r.text.substring(0, end).trimEnd() + ELLIPSIS, r.color, r.bold)
+            while (end > 0 && used + Run(r.text.substring(0, end), r.color, r.bold, 0, r.size).width(m, size, bold) + ell > maxW) end--
+            out += Run(r.text.substring(0, end).trimEnd() + ELLIPSIS, r.color, r.bold, 0, r.size)
             return Rich(out)
         }
         return Rich(out)
@@ -61,24 +73,24 @@ class Rich private constructor(val runs: List<Run>) {
             val t = r.text
             for (i in t.indices) {
                 if (t[i] == ' ') {
-                    words += Run(t.substring(start, i + 1), r.color, r.bold)
+                    words += Run(t.substring(start, i + 1), r.color, r.bold, 0, r.size)
                     start = i + 1
                 }
             }
-            if (start < t.length) words += Run(t.substring(start), r.color, r.bold)
+            if (start < t.length) words += Run(t.substring(start), r.color, r.bold, 0, r.size)
         }
         val lines = ArrayList<Rich>()
         var line = ArrayList<Run>()
         var w = 0
         for (word in words) {
-            val ww = m.width(word.text.trimEnd(), size, bold || word.bold)
+            val ww = Run(word.text.trimEnd(), word.color, word.bold, 0, word.size).width(m, size, bold)
             if (line.isNotEmpty() && w + ww > maxW && line.last().text.endsWith(' ')) {
                 lines += Rich(trimTail(line))
                 line = ArrayList()
                 w = 0
             }
             line += word
-            w += m.width(word.text, size, bold || word.bold)
+            w += word.width(m, size, bold)
         }
         if (line.isNotEmpty()) lines += Rich(trimTail(line))
         return lines.ifEmpty { listOf(this) }
@@ -86,7 +98,7 @@ class Rich private constructor(val runs: List<Run>) {
 
     private fun trimTail(line: List<Run>): List<Run> {
         val last = line.last()
-        return line.dropLast(1) + Run(last.text.trimEnd(), last.color, last.bold)
+        return line.dropLast(1) + Run(last.text.trimEnd(), last.color, last.bold, 0, last.size)
     }
 
     override fun toString(): String = plain
@@ -94,6 +106,9 @@ class Rich private constructor(val runs: List<Run>) {
     companion object {
         const val ELLIPSIS = "…"
         val EMPTY = Rich(emptyList())
+
+        /** How far below the center a glyph's baseline sits, per px of font size (lines up mixed sizes). */
+        private const val BASELINE = 0.35f
 
         /** Minecraft's 16 chat colors, `§0`..`§f`. */
         val MC_COLORS: IntArray = intArrayOf(
@@ -147,6 +162,9 @@ class Rich private constructor(val runs: List<Run>) {
 
         /** One run in an explicit color (a Soul color that has no `§` code). */
         fun colored(text: String, color: Int, bold: Boolean = false, minW: Int = 0): Rich = Rich(listOf(Run(text, color, bold, minW)))
+
+        /** One run in its own [size] on the line's baseline. */
+        fun sized(text: String, color: Int, size: Float, bold: Boolean = false): Rich = Rich(listOf(Run(text, color, bold, 0, size)))
 
         /** Runs side by side. */
         fun join(vararg parts: Rich): Rich = Rich(parts.flatMap { it.runs })

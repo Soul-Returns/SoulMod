@@ -68,7 +68,7 @@ DEV_ACCESS_OFFLINE = HERE / "cache/dev_access.offline.json"
 DEV_ACCESS_LOCAL = HERE / "cache/dev_access.local.json"
 SOUL_CONFIG = GAME / "config/soul/config.json"
 # 2/3 of the user's 2560x1440 / GUI scale 3 / Soul scale 2 setup: same proportions in a smaller window, width even so GUI 2 divides it exactly (GUI 2, Soul 2*2/3)
-SOUL_UI_SCALE = 1.3333
+SOUL_UI_SCALE = float(os.environ.get("SOUL_TEST_UI_SCALE", "1.3333"))   # override per launch, e.g. 1.7787 = a 1080p monitor at Soul 2
 W, H = 1708, 960
 SHOTS = HERE / "shots"
 CACHE = HERE / "cache"

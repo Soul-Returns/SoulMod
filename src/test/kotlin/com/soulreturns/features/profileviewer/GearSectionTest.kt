@@ -142,8 +142,9 @@ class GearSectionTest {
     private fun blobText(base64: String): String =
         String(GZIPInputStream(ByteArrayInputStream(Base64.getDecoder().decode(base64))).readBytes(), Charsets.UTF_8)
 
+    /** The rarity lines (`§lLEGENDARY DUNGEON BOOTS`) in a blob's raw bytes; bold enchant and ability lines do not count. */
     private fun typeLines(base64: String): List<String> =
-        Regex("§l([A-Z ]+)").findAll(blobText(base64)).map { it.groupValues[1].trim() }.toList()
+        Regex("§l((?:COMMON|UNCOMMON|RARE|EPIC|LEGENDARY|MYTHIC|DIVINE|SPECIAL|VERY SPECIAL)\\b[A-Z ]*)").findAll(blobText(base64)).map { it.groupValues[1].trim() }.toList()
 
     private fun stack(item: net.minecraft.world.item.Item, name: String, typeLine: String?, modifier: String? = null): ItemStack {
         val s = ItemStack(bound(item))

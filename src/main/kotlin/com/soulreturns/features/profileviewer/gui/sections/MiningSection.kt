@@ -201,12 +201,13 @@ object MiningSection : ProfileSection {
     private fun mineshaftCard(ui: Ui, ctx: ProfileContext) {
         val state = ctx.soulState
         if (state == ProfileViewerState.SOUL_LOADING) {
-            ui.card("Mineshafts", kind = SoulCards.kind(ctx), span = 2) { skeleton(4) }
+            ui.card("Mineshafts", kind = SoulCards.kind(ctx)) { skeleton(4) }
             return
         }
         val payload = ctx.soulNamespace("mineshaft")
         if (payload != null && MineshaftStatsSection.card(ui, ctx, payload, full = false)) return
-        ui.card("Mineshaft odds", kind = CardNode.EMPTY, span = 2) {
+        // One column like the mock's empty card; only the odds themselves take two.
+        ui.card("Mineshaft odds", kind = CardNode.EMPTY) {
             if (state == ProfileViewerState.SOUL_DATA) {
                 empty("pv_soul", "No mineshafts recorded", "Soul hasn't recorded a Glacite Mineshaft for ${ctx.name} yet.")
             } else {

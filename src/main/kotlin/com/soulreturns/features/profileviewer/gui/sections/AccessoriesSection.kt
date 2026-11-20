@@ -68,7 +68,11 @@ object AccessoriesSection : ProfileSection {
             tile("Bag slots", Format.num(parsed.size), sub = if (upgrades != null) "$upgrades upgrades bought" else "upgrades not reported")
             tile(
                 "Tuning",
-                if (tuning.isEmpty()) Rich.of("—") else Rich.join(*tuning.flatMap { listOf(Rich.of("+${it.points} "), Rich.colored(it.stat, S.TEXT_DIM), Rich.of("  ")) }.toTypedArray()),
+                if (tuning.isEmpty()) Rich.of("—") else Rich.join(
+                    *tuning.flatMap {
+                        listOf(Rich.sized("+${it.points} ", S.TEXT, S.px(12f), bold = true), Rich.sized(it.stat, S.TEXT_DIM, S.px(9.5f)), Rich.sized("  ", S.TEXT, S.px(12f)))
+                    }.toTypedArray(),
+                ),
                 sub = "points from Magical Power",
                 tip = tuning.takeIf { it.isNotEmpty() }?.joinToString(" · ") { "${it.stat} +${it.points}" },
             )

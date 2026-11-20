@@ -81,8 +81,9 @@
   "forge": {
     "forge_processes": {
       "forge_1": {
-        "1": {"type": "FORGING", "id": "REFINED_MITHRIL", "startTime": 1799996400000, "slot": 1, "notified": false, "oldItem": null},
-        "3": {"type": "FORGING", "id": "MITHRIL_PLATE", "startTime": 1799928000000, "slot": 3, "notified": false, "oldItem": null}
+        "1": {"type": "FORGING", "id": "REFINED_MITHRIL", "startTime": "now-3600000", "slot": 1, "notified": false, "oldItem": null},
+        "2": {"type": "FORGING", "id": "REFINED_DIAMOND", "startTime": "now-90000000", "slot": 2, "notified": false, "oldItem": null},
+        "3": {"type": "FORGING", "id": "MITHRIL_PLATE", "startTime": "now-14400000", "slot": 3, "notified": false, "oldItem": null}
       }
     }
   }

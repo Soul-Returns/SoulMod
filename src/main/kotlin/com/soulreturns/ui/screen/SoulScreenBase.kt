@@ -632,7 +632,8 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
      * A full single-line editor bound to [field]: selection highlight, caret, horizontal scroll that
      * keeps the caret in view, and click-to-place-caret. [viewport] (x0, y0, x1, y1) clips the hit
      * region for a field inside a scrolled body; [onFocus] runs after the field took focus. [inset] is
-     * the text's left padding (a field with a fixed prefix drawn by the caller widens it). A
+     * the text's left padding (a field with a fixed prefix drawn by the caller widens it), [trailing] the
+     * room kept free at the right (a count the caller draws inside the frame). A
      * [SoulTextField.masked] field draws one bullet per char, so every index still lines up.
      */
     protected fun drawTextField(
@@ -647,12 +648,13 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
         inset: Int = 6,
         background: Int = Theme.FIELD_BG,
         border: Int = Theme.FIELD_BORDER,
+        trailing: Int = 0,
         onFocus: () -> Unit = {},
     ) {
         val text = if (field.masked) "•".repeat(field.text.length) else field.text
         roundRect(g, x0, y0, x1, y1, if (field.focused) Theme.ACCENT else border, SoulRenderPipelines.ROUND_SMALL)
         roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, background, SoulRenderPipelines.ROUND_SMALL)
-        val available = (x1 - x0 - inset - 6).coerceAtLeast(1)
+        val available = (x1 - x0 - inset - 6 - trailing).coerceAtLeast(1)
         field.visibleStart = field.visibleStart.coerceIn(0, field.cursor)
         while (field.visibleStart < field.cursor && textWidth(text.substring(field.visibleStart, field.cursor)) > available - 1) {
             field.visibleStart = text.offsetByCodePoints(field.visibleStart, 1)

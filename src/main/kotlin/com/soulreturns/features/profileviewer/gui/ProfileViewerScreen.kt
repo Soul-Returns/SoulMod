@@ -1081,7 +1081,7 @@ class ProfileViewerScreen private constructor(
         "1 – 9" to "Jump to a section",
         "0" to "Soul section",
         "R" to "Refresh",
-        "Esc" to "Close popups, then the viewer",
+        "Esc" to "Clear a search, close popups, then the viewer",
     )
 
     private fun drawKeysPop(card: L.Card) {
@@ -1228,10 +1228,12 @@ class ProfileViewerScreen private constructor(
             if (popover == null) pendingItem = stack
         }
 
-        override fun field(key: String, x0: Int, y0: Int, x1: Int, y1: Int, placeholder: String) {
+        override fun field(key: String, x0: Int, y0: Int, x1: Int, y1: Int, placeholder: String) = field(key, x0, y0, x1, y1, placeholder, 0)
+
+        override fun field(key: String, x0: Int, y0: Int, x1: Int, y1: Int, placeholder: String, trailing: Int) {
             val g = frame ?: return
             val f = viewState.field(key)
-            drawTextField(g, x0, y0, x1, y1, f, placeholder, viewport = bodyRect, inset = 20, background = KitStyle.FIELD_BG, border = KitStyle.FIELD_EDGE) {
+            drawTextField(g, x0, y0, x1, y1, f, placeholder, viewport = bodyRect, inset = 20, background = KitStyle.FIELD_BG, border = KitStyle.FIELD_EDGE, trailing = trailing) {
                 search.focused = false
                 popover = null
                 viewState.blurFields()
@@ -1345,12 +1347,15 @@ class ProfileViewerScreen private constructor(
             }
         }
         if (key == GLFW.GLFW_KEY_ESCAPE) {
-            if (popover != null) {
-                popover = null
-                search.focused = false
+            // Clear the focused field's text, then blur it (and close a popover), then close the viewer.
+            val field = if (search.focused) search else viewState.focusedField()
+            if (field != null && field.text.isNotEmpty()) {
+                field.set("")
+                searchHl = -1
                 return true
             }
-            if (search.focused || viewState.focusedField() != null) {
+            if (popover != null || field != null) {
+                popover = null
                 search.focused = false
                 viewState.blurFields()
                 return true
