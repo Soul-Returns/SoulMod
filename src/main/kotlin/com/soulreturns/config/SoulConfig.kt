@@ -389,8 +389,8 @@ data class InventoryButton(
 data class ProfileViewerConfig(
     /** Whether `/sp`, `/soul sp` and the optional `/pv` open the viewer. */
     val enabled: Boolean = true,
-    /** Default-on by explicit choice; disabling returns `/pv` to other mods or the server live. */
-    val pvCommand: Boolean = true,
+    /** Off by default; while on, Soul answers `/pv` ahead of other mods, off returns it to them live. */
+    val pvCommand: Boolean = false,
     /**
      * Let other Soul users see statistics **Soul collected about your gameplay** (mineshaft visits
      * and corpses first; other trackers later) when they open your profile — data Hypixel does not

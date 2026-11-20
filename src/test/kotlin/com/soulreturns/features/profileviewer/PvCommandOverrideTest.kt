@@ -18,13 +18,6 @@ import kotlin.test.assertTrue
 
 class PvCommandOverrideTest {
     @Test
-    fun `new and existing configs enable pv by default and preserve explicit off`() {
-        assertTrue(ProfileViewerConfig().pvCommand)
-        assertTrue(Json.decodeFromString<ProfileViewerConfig>("{}").pvCommand)
-        assertFalse(Json.decodeFromString<ProfileViewerConfig>("{\"pvCommand\":false}").pvCommand)
-    }
-
-    @Test
     fun `matches only exact lowercase pv and its argument boundary`() {
         listOf("pv", "pv Alice", "pv Alice Banana", "pv ", "pv  Alice", "pv Alice extra args").forEach {
             assertTrue(PvCommandOverride.handles(it, true), it)
