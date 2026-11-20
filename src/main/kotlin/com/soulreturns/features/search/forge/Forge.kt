@@ -23,7 +23,7 @@ object Forge {
 
     fun register() {
         ForgeMenus.register()
-        ForgeModels.register()
+        com.soulreturns.data.items.ItemIcons.addSeen(ForgeItems.Seen)
         Events.subscribe<SelfProfileLoaded> { syncApi() }
         // Owned sacks are part of the Forge tab's counts: keep them counted while it can be opened.
         SackState.requireCounts { enabled() && SkyblockState.onSkyblock }

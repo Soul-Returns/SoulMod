@@ -93,7 +93,9 @@ the table is kept here with credit to the authors above by the maintainer's deci
   provides the Heart of the Mountain tree of the Profile Viewer (`constants/hotmlayout.json`,
   `constants/leveling.json`: layout, maxima, cost formulas, HOTM XP and rewards), corrected by
   Soul's in-game captures, served by the Soul backend as `/hotm/tree` and cached on disk by the
-  mod (`hotm_tree.json`).
+  mod (`hotm_tree.json`). The same `/recipes` ingest serves the head texture hashes of pets, pet
+  skins and skull items Hypixel's item list lacks (`petHeads`, `heads`), drawn as heads in the
+  Profile Viewer.
 - SkyHelper-Networth, https://github.com/Altpapier/SkyHelper-Networth, Copyright (c) 2022 Altpapier:
   the same pet table as published there, and the Catacombs class XP deltas. Its inventory API
   field layout was consulted for storage previews; no parser code was copied.

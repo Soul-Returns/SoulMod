@@ -18,17 +18,22 @@ import java.util.zip.ZipOutputStream;
 
 /**
  * {@code /hx forge pack on|off}: a tiny server resource pack in namespace {@code hypixel_skyblock} that
- * defines item models the way Hypixel's pack does ({@code items/item/uncategorized/<name>.json}), with our
+ * defines item models the way Hypixel's pack does ({@code items/item/<folder>/<name>.json}), with our
  * own flat placeholder textures, to test the mod's model lookup for unseen forge items. Built in memory and
  * served from 127.0.0.1 on an ephemeral port; the test client accepts server packs (servers.dat).
  */
 final class ModelPack {
-    /** Model name → placeholder colour (a framed square, nothing like Hypixel's art). */
+    /** Model path under {@code item/} → placeholder colour (a framed square, nothing like Hypixel's art). */
     private static final Map<String, Color> MODELS = Map.of(
-        "refined_diamond", new Color(0x2EC4F0),
-        "refined_titanium", new Color(0xE0E0E8),
-        "gemstone_mixture", new Color(0xE040A0),
-        "titanium", new Color(0x9090A0));
+        "uncategorized/refined_diamond", new Color(0x2EC4F0),
+        "uncategorized/refined_titanium", new Color(0xE0E0E8),
+        "uncategorized/gemstone_mixture", new Color(0xE040A0),
+        "uncategorized/titanium", new Color(0x9090A0),
+        // Collections: by display name ("Gemstone", as Hypixel's pack has it) and by id (`GLACITE`, `TUNGSTEN`).
+        "collections/gemstone", new Color(0xF04040),
+        "uncategorized/glacite", new Color(0x80D0F0),
+        "uncategorized/tungsten", new Color(0x505060),
+        "uncategorized/umber", new Color(0xA06030));
 
     private HttpServer server;
     private byte[] zip;
@@ -80,12 +85,12 @@ final class ModelPack {
                 + "\"pack_format\":88,\"min_format\":88,\"max_format\":88}}");
             for (var e : MODELS.entrySet()) {
                 String name = e.getKey();
-                String ref = "hypixel_skyblock:item/uncategorized/" + name;
-                put(z, "assets/hypixel_skyblock/items/item/uncategorized/" + name + ".json",
+                String ref = "hypixel_skyblock:item/" + name;
+                put(z, "assets/hypixel_skyblock/items/item/" + name + ".json",
                     "{\"model\":{\"type\":\"minecraft:model\",\"model\":\"" + ref + "\"}}");
-                put(z, "assets/hypixel_skyblock/models/item/uncategorized/" + name + ".json",
+                put(z, "assets/hypixel_skyblock/models/item/" + name + ".json",
                     "{\"parent\":\"minecraft:item/generated\",\"textures\":{\"layer0\":\"" + ref + "\"}}");
-                z.putNextEntry(new ZipEntry("assets/hypixel_skyblock/textures/item/uncategorized/" + name + ".png"));
+                z.putNextEntry(new ZipEntry("assets/hypixel_skyblock/textures/item/" + name + ".png"));
                 z.write(texture(e.getValue()));
                 z.closeEntry();
             }

@@ -19,7 +19,7 @@ import net.minecraft.client.Minecraft
 import java.util.Locale
 
 /**
- * The `/spv` flow: validate the name → resolve it to a uuid → fetch that player's SkyBlock profiles
+ * The `/sp` flow: validate the name → resolve it to a uuid → fetch that player's SkyBlock profiles
  * → choose one → hand it to the renderer.
  *
  * ### The renderer is a seam — three of them
@@ -29,7 +29,7 @@ import java.util.Locale
  * `ProfileViewerScreen.register()` repoints them at the screen without touching anything below.
  *
  * The failure and start seams exist because a `Screen` covers Minecraft's chat HUD: a screen that
- * opens on `/spv` must be able to say "loading" and "that player does not exist" *itself*, since a
+ * opens on `/sp` must be able to say "loading" and "that player does not exist" *itself*, since a
  * chat line printed behind it cannot be read. Every failure still prints its chat line as well, so
  * nothing is lost for anyone who never opens the screen.
  *
@@ -51,7 +51,7 @@ object ProfileViewerService {
     /**
      * Called the moment a lookup starts, with the trimmed name, so a renderer can show a loading
      * state before the network work finishes. Runs on the caller's thread (the client thread, for
-     * `/spv`). Default: nothing — the chat renderer already prints its own "Loading …" line.
+     * `/sp`). Default: nothing — the chat renderer already prints its own "Loading …" line.
      */
     @Volatile
     var onLookupStarted: (String) -> Unit = {}
@@ -256,7 +256,7 @@ object ProfileViewerService {
 
         val others = view.profiles.cuteNames().filter { !it.equals(profile.cuteName, ignoreCase = true) }
         if (others.isNotEmpty()) {
-            soulChat("  §8profiles: §7" + others.joinToString("§8, §7") + " §8(/spv ${view.identity.name} <profile>)")
+            soulChat("  §8profiles: §7" + others.joinToString("§8, §7") + " §8(/sp ${view.identity.name} <profile>)")
         }
 
         if (member.apiAccessDisabled) {

@@ -1,5 +1,6 @@
 package com.soulreturns.features.profileviewer.gui.sections
 
+import com.soulreturns.data.items.ItemIcons
 import com.soulreturns.data.hypixel.BlobItem
 import com.soulreturns.data.hypixel.SackLine
 import com.soulreturns.data.hypixel.ItemBlobs
@@ -225,7 +226,7 @@ object InventoriesSection : ProfileSection {
         }
         val worth = rows.sumOf { InventoryLookups.price(it.id) * it.count }
         card("Sack items", sub = "${Format.num(rows.size)} items${if (worth > 0) " · worth ${coins(worth)} coins" else ""}") {
-            add(SackListNode(rows.map { Triple(sackName(it.id), it.count, it.fromSoul) }))
+            add(SackListNode(rows.map { SackRow(it.id, sackName(it.id), it.count, it.fromSoul) }))
         }
     }
 
@@ -313,8 +314,13 @@ object InventoriesSection : ProfileSection {
         }
     }
 
-    /** `.sack` rows as columns of at least 220 px, filled top to bottom: name left, count right, empty ones dimmed. */
-    private class SackListNode(val rows: List<Triple<String, Long, Boolean>>) : Node() {
+    private class SackRow(val id: String, val name: String, val count: Long, val soul: Boolean)
+
+    /**
+     * `.sack` rows as columns of at least 220 px, filled top to bottom: the item's icon (when one is known) and name
+     * left, count right, empty ones dimmed.
+     */
+    private class SackListNode(val rows: List<SackRow>) : Node() {
         private fun cols(w: Int) = KitLayout.autoFillColumns(w, SACK_COL_MIN, COL_GAP)
         private fun perColumn(w: Int) = (rows.size + cols(w) - 1) / cols(w)
 
@@ -328,18 +334,21 @@ object InventoriesSection : ProfileSection {
                 val ry = y + (i % per) * ROW_H
                 if (ry + ROW_H < c.viewTop || ry > c.viewBottom) continue
                 val rx = x + (i / per) * (colW + COL_GAP)
-                val (name, count, soul) = row
-                val zero = count == 0L
-                val value = Format.num(count)
+                val zero = row.count == 0L
+                val value = Format.num(row.count)
                 val vw = c.width(value, S.SMALL, true)
-                c.text(value, rx + colW - vw, ry, ry + ROW_H, if (zero) S.TEXT_GHOST else if (soul) S.ACCENT_LIGHT else S.TEXT, S.SMALL, true)
-                c.text(Rich.of(name).ellipsize(c, S.SMALL, colW - vw - 8).plain, rx, ry, ry + ROW_H, if (zero) S.TEXT_GHOST else S.TEXT_MID, S.SMALL)
+                c.text(value, rx + colW - vw, ry, ry + ROW_H, if (zero) S.TEXT_GHOST else if (row.soul) S.ACCENT_LIGHT else S.TEXT, S.SMALL, true)
+                val nx = rx + ICON + 4
+                ItemIcons.icon(row.id)?.let { c.item(it, rx, ry + (ROW_H - ICON) / 2, ICON, count = false) }
+                c.text(Rich.of(row.name).ellipsize(c, S.SMALL, rx + colW - vw - 8 - nx).plain, nx, ry, ry + ROW_H, if (zero) S.TEXT_GHOST else S.TEXT_MID, S.SMALL)
             }
         }
 
         private companion object {
             const val ROW_H = 15
             const val COL_GAP = 14
+            /** `.xs` item size: fits the 15 px row. */
+            const val ICON = 12
         }
     }
 

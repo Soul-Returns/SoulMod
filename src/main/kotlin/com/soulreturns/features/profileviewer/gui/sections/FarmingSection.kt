@@ -3,6 +3,7 @@ package com.soulreturns.features.profileviewer.gui.sections
 import com.soulreturns.data.hypixel.JacobCrop
 import com.soulreturns.data.hypixel.gardenPlayer
 import com.soulreturns.data.hypixel.jacobsContest
+import com.soulreturns.data.items.CollectionIcons
 import com.soulreturns.features.profileviewer.gui.ProfileContext
 import com.soulreturns.features.profileviewer.gui.ProfileSection
 import com.soulreturns.features.profileviewer.gui.kit.Cell
@@ -82,7 +83,7 @@ object FarmingSection : ProfileSection {
         val color = bracket?.let { BRACKET_COLORS[it] }
         return TableRow(
             listOf(
-                Cell.of(crop.name, bold = true),
+                Cell.of(crop.name, bold = true, icon = CollectionIcons.collection(crop.id, crop.name)),
                 if (bracket == null || color == null) Cell.DASH else Cell(chips = listOf(Chip(bracket.uppercase(), color, KitStyle.CHIP_BG, color))),
                 crop.personalBest?.let { Cell.of(Format.num(it)) } ?: Cell.DASH,
             ),

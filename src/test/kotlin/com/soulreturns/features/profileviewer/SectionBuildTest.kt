@@ -58,7 +58,7 @@ class SectionBuildTest {
         ProfileItems.synchronous = true
     }
 
-    private companion object {
+    internal companion object {
         val bindItemComponents: Unit by lazy {
             BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(VanillaRegistries.createLookup()).forEach { it.apply() }
         }

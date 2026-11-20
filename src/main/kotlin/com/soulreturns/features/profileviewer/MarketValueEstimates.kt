@@ -98,7 +98,7 @@ object MarketValueEstimates {
         val personal = m.personalBank
         val bank = if (coop == null && personal == null) null else (coop ?: 0.0) + (personal ?: 0.0)
         if (bank == null) hidden += "Bank: Banking API off"
-        val pets = PetsSection.rows(PetState.apiPets(m), { null }, { it }).map { it.priceKey }
+        val pets = PetsSection.rows(PetState.apiPets(m), { null }, heldName = { it }).map { it.priceKey }
         val essence = m.essenceAmounts.orEmpty().filter { it.amount > 0 }.associate { it.type to it.amount }
         return MarketValue.Inputs(m.purse, bank, groups, m.sacks, pets, essence, hidden)
     }

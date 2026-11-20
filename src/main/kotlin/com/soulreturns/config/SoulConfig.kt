@@ -376,7 +376,7 @@ data class InventoryButton(
 )
 
 /**
- * `/spv` — the SkyBlock Profile Viewer
+ * `/sp` — the SkyBlock Profile Viewer
  * ([com.soulreturns.features.profileviewer.ProfileViewerService]).
  *
  * [enabled] defaults **on** as an exception to the opt-in policy, deliberately: it is a command the
@@ -387,8 +387,10 @@ data class InventoryButton(
  */
 @Serializable
 data class ProfileViewerConfig(
-    /** Whether `/spv` and `/soul spv` do anything. */
+    /** Whether `/sp`, `/soul sp` and the optional `/pv` open the viewer. */
     val enabled: Boolean = true,
+    /** Default-on by explicit choice; disabling returns `/pv` to other mods or the server live. */
+    val pvCommand: Boolean = true,
     /**
      * Let other Soul users see statistics **Soul collected about your gameplay** (mineshaft visits
      * and corpses first; other trackers later) when they open your profile — data Hypixel does not

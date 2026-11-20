@@ -1,8 +1,13 @@
 package com.soulreturns.features.profileviewer
 
+import com.mojang.brigadier.CommandDispatcher
+import com.mojang.brigadier.ParseResults
 import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
-import com.mojang.brigadier.suggestion.SuggestionProvider
+import com.mojang.brigadier.suggestion.Suggestions
+import com.mojang.brigadier.suggestion.SuggestionsBuilder
+import com.mojang.brigadier.exceptions.CommandSyntaxException
+import com.soulreturns.config.cfg
 import com.soulreturns.data.hypixel.PlayerIdentityResolver
 import com.soulreturns.features.party.PartyManager
 import com.soulreturns.util.soulChat
@@ -10,38 +15,32 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource
 import net.minecraft.client.Minecraft
+import java.util.concurrent.CompletableFuture
 
-/**
- * `/spv` — the SkyBlock Profile Viewer.
- *
- * - `/spv` — you
- * - `/spv <name>` — that player's selected profile
- * - `/spv <name> <profile>` — that player's named profile (`cute_name`, e.g. `Banana`)
- *
- * Registered twice: as the top-level `/spv` everyone already types, and as `/soul spv` so it is
- * discoverable from the mod's own command tree. [node] builds a fresh subtree per call — brigadier
- * builders are consumed by `register`, so the two registrations must not share one.
- */
+/** `/sp [name] [profile]` and `/soul sp [name] [profile]` share a fresh subtree. */
 object SpvCommand {
+    // Never merge /pv into Fabric's dispatcher: Brigadier cannot restore another mod's merged node.
+    private val pvDispatcher by lazy {
+        CommandDispatcher<FabricClientCommandSource>().apply { register(node("pv")) }
+    }
+
     fun register() {
         ClientCommandRegistrationCallback.EVENT.register { dispatcher, _ ->
             dispatcher.register(node())
         }
     }
 
-    /**
-     * The `spv` subtree. Also grafted under `/soul` by
-     * [com.soulreturns.commands.SoulCommand], which is why this is exposed rather than inlined.
-     */
-    fun node(): LiteralArgumentBuilder<FabricClientCommandSource> =
-        ClientCommands.literal("spv")
+    fun node(): LiteralArgumentBuilder<FabricClientCommandSource> = node("sp")
+
+    private fun node(literal: String): LiteralArgumentBuilder<FabricClientCommandSource> =
+        ClientCommands.literal(literal)
             .executes {
                 openSelf()
                 1
             }
             .then(
                 ClientCommands.argument("name", StringArgumentType.word())
-                    .suggests(nameSuggestions)
+                    .suggests { _, builder -> suggestNames(builder) }
                     .executes { ctx ->
                         ProfileViewerService.open(StringArgumentType.getString(ctx, "name"))
                         1
@@ -58,6 +57,35 @@ object SpvCommand {
                     ),
             )
 
+    private fun usePv(): Boolean = cfg.profileViewer.enabled && cfg.profileViewer.pvCommand
+
+    @JvmStatic
+    fun interceptPv(command: String): Boolean {
+        if (!PvCommandOverride.handles(command, usePv())) return false
+        val source = Minecraft.getInstance().connection?.suggestionsProvider as? FabricClientCommandSource ?: return false
+        try {
+            pvDispatcher.execute(command, source)
+        } catch (e: CommandSyntaxException) {
+            soulChat("§c${e.message}")
+        }
+        return true
+    }
+
+    @JvmStatic
+    @Suppress("UNCHECKED_CAST")
+    fun <S> suggestionDispatcher(original: CommandDispatcher<S>, input: String): CommandDispatcher<S> {
+        if (!usePv()) return original
+        return PvCommandOverride.dispatcher(original, pvDispatcher as CommandDispatcher<S>, input, true)
+    }
+
+    @JvmStatic
+    fun completePvRoot(
+        original: CompletableFuture<Suggestions>,
+        parse: ParseResults<*>,
+        cursor: Int,
+    ): CompletableFuture<Suggestions> =
+        PvCommandOverride.completeRoot(original, parse.reader.string, cursor, usePv())
+
     private fun openSelf() {
         val self = Minecraft.getInstance().user.name
         if (self.isNullOrBlank()) {
@@ -67,11 +95,7 @@ object SpvCommand {
         ProfileViewerService.open(self)
     }
 
-    /**
-     * Completions for the name argument: you, your party, then anyone looked up this session. All
-     * three are names the player is plausibly about to type, and none of them costs a request.
-     */
-    private val nameSuggestions = SuggestionProvider<FabricClientCommandSource> { _, builder ->
+    private fun suggestNames(builder: SuggestionsBuilder): CompletableFuture<Suggestions> {
         val candidates = LinkedHashSet<String>()
         try {
             candidates.add(Minecraft.getInstance().user.name)
@@ -82,6 +106,6 @@ object SpvCommand {
         }
         val typed = builder.remaining.lowercase()
         candidates.filter { it.lowercase().startsWith(typed) }.forEach(builder::suggest)
-        builder.buildFuture()
+        return builder.buildFuture()
     }
 }

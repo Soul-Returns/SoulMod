@@ -5,11 +5,13 @@ import com.soulreturns.data.hypixel.katTypesSacrificed
 import com.soulreturns.data.hypixel.petMarketKey
 import com.soulreturns.data.hypixel.petScore
 import com.soulreturns.data.items.ItemCatalogClient
+import com.soulreturns.data.items.ItemIcons
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.data.skyblock.SkyblockRarity
 import com.soulreturns.features.pets.ApiPet
 import com.soulreturns.features.pets.PetItems
+import com.soulreturns.features.pets.PetHeads
 import com.soulreturns.features.pets.PetLevels
 import com.soulreturns.features.pets.PetState
 import com.soulreturns.features.profileviewer.gui.ProfileContext
@@ -27,7 +29,9 @@ import com.soulreturns.features.profileviewer.gui.kit.Rich
 import com.soulreturns.features.profileviewer.gui.kit.Ui
 import com.soulreturns.features.profileviewer.gui.kit.bar
 import com.soulreturns.features.profileviewer.gui.kit.framed
+import com.soulreturns.features.profileviewer.gui.kit.itemSizeFor
 import com.soulreturns.util.MessageDetector
+import net.minecraft.world.item.ItemStack
 import kotlin.math.max
 
 /**
@@ -65,6 +69,10 @@ object PetsSection : ProfileSection {
         val live: Boolean,
         /** The market key (`TYPE;tier`), null for an unknown tier. */
         val priceKey: String?,
+        /** The pet's real head ([PetHeads]), null = the rarity tile. */
+        val head: ItemStack? = null,
+        /** The held item's icon ([ItemIcons]), null = text only. */
+        val heldIcon: ItemStack? = null,
     ) {
         val fraction: Float get() = if (maxed) 1f else if (need > 0) (into / need).toFloat().coerceIn(0f, 1f) else 0f
         val color: Int get() = rarity?.color ?: S.TEXT
@@ -79,9 +87,16 @@ object PetsSection : ProfileSection {
 
     /**
      * Every pet of [pets] as a row. [live] gives the Pet HUD's XP reading for a pet (null = none); it counts only
-     * when it is ahead of the API's. [heldName] turns a held item id into its display name.
+     * when it is ahead of the API's. [heldName] turns a held item id into its display name, [head] gives a pet's
+     * head and [heldIcon] a held item's icon (both null when unknown).
      */
-    internal fun rows(pets: List<ApiPet>, live: (ApiPet) -> Double?, heldName: (String) -> String): List<PetRow> = pets.map { p ->
+    internal fun rows(
+        pets: List<ApiPet>,
+        live: (ApiPet) -> Double?,
+        head: (ApiPet) -> ItemStack? = { null },
+        heldIcon: (String) -> ItemStack? = { null },
+        heldName: (String) -> String,
+    ): List<PetRow> = pets.map { p ->
         val name = PetItems.titleOf(p.type)
         val rarity = shownRarity(p.tier, p.heldItem)
         val liveXp = live(p)?.takeIf { it > p.exp }
@@ -93,6 +108,7 @@ object PetsSection : ProfileSection {
             held = p.heldItem?.let(heldName),
             skin = p.skin?.let { PetItems.titleOf(it.removePrefix("PET_SKIN_")) },
             active = p.active, live = liveXp != null, priceKey = petMarketKey(p.type, p.tier, lv.level),
+            head = head(p), heldIcon = p.heldItem?.let(heldIcon),
         )
     }
 
@@ -113,10 +129,20 @@ object PetsSection : ProfileSection {
     }
 
     /** The Pet HUD's reading only counts for your own profile that is also the one you are playing. */
+    private fun playing(ctx: ProfileContext) = ctx.isSelf && ctx.profile.cuteName.equals(SkyblockProfileState.current, ignoreCase = true)
+
     internal fun liveReader(ctx: ProfileContext): (ApiPet) -> Double? {
-        if (!ctx.isSelf || !ctx.profile.cuteName.equals(SkyblockProfileState.current, ignoreCase = true)) return { null }
+        if (!playing(ctx)) return { null }
         return { p -> p.uuid?.let { PetState.tracker.record(it) }?.takeIf { it.expLive }?.exp }
     }
+
+    /** Real heads; the head a Pets menu showed counts only for the profile you are playing (the Pet HUD's records). */
+    internal fun headReader(ctx: ProfileContext): (ApiPet) -> ItemStack? {
+        val own = playing(ctx)
+        return { p -> PetHeads.icon(p.type, p.tier, p.skin, if (own) p.uuid?.let { PetState.tracker.record(it) }?.icon else null) }
+    }
+
+    internal fun heldIcon(id: String): ItemStack? = ItemIcons.icon(id)
 
     internal fun heldName(id: String): String {
         val named = ItemCatalogClient.byId(id)?.displayName?.takeIf { it.isNotBlank() }?.let(MessageDetector::stripColorCodes)
@@ -126,7 +152,7 @@ object PetsSection : ProfileSection {
     // ------------------------------------------------------------------ build
 
     override fun build(ctx: ProfileContext, ui: Ui) {
-        val rows = rows(PetState.apiPets(ctx.member), liveReader(ctx), ::heldName)
+        val rows = rows(PetState.apiPets(ctx.member), liveReader(ctx), headReader(ctx), ::heldIcon, ::heldName)
         render(ctx, ui, rows, ui.value("sort", "level"), ui.query("query"))
     }
 
@@ -184,10 +210,29 @@ internal fun petTooltipLines(p: PetsSection.PetRow): List<String> {
 private fun rarityCode(r: SkyblockRarity?): Char = if (r == null) 'f' else "fa956dbcc4"[r.ordinal.coerceIn(0, 9)]
 
 /**
- * A pet line: a rarity-tinted icon tile (Hypixel's pet heads are textures the API does not carry, so the tile
- * wears the paw in the rarity's color) with the name, level and XP bar. [hero] is the large Active pet form,
- * otherwise the framed `.pet` row of the list.
+ * The pet's tile: its real head ([PetsSection.PetRow.head]) on a tint of its rarity with a rarity edge; without a
+ * known head the paw in the rarity's color.
  */
+internal fun KitCanvas.petTile(p: PetsSection.PetRow, x: Int, y: Int, size: Int) {
+    val head = p.head
+    if (head == null) {
+        framed(x, y, x + size, y + size, S.SLOT_BG, S.SLOT_EDGE, Corner.SQUARE)
+        val glyph = size * 3 / 5
+        icon("pv_paw", x + (size - glyph) / 2, y + (size - glyph) / 2, glyph, p.color)
+        return
+    }
+    framed(x, y, x + size, y + size, tint(S.SLOT_BG, p.color), (p.color and 0x00FFFFFF) or (0xB0 shl 24), Corner.SQUARE)
+    val isz = itemSizeFor(size)
+    item(head, x + (size - isz) / 2, y + (size - isz) / 2, isz, count = false)
+}
+
+/** [base] with 18 % of [color] mixed in, opaque. */
+private fun tint(base: Int, color: Int): Int {
+    fun mix(shift: Int) = (((base shr shift) and 0xFF) * 82 + ((color shr shift) and 0xFF) * 18) / 100
+    return (0xFF shl 24) or (mix(16) shl 16) or (mix(8) shl 8) or mix(0)
+}
+
+/** A pet line: its tile ([petTile]) with the name, level and XP bar. [hero] is the large Active pet form, otherwise the framed `.pet` row of the list. */
 private class PetNode(private val p: PetsSection.PetRow, private val hero: Boolean) : Node() {
     private val iconSize get() = if (hero) S.SLOT_LG else S.SLOT
     private val padX get() = if (hero) 0 else 10
@@ -204,9 +249,7 @@ private class PetNode(private val p: PetsSection.PetRow, private val hero: Boole
         if (!hero) c.framed(x, y, x + w, y + h, S.CARD_BG, if (p.active) S.ACCENT else 0, Corner.MEDIUM)
         val ix = x + padX
         val iy = y + (h - iconSize) / 2
-        c.framed(ix, iy, ix + iconSize, iy + iconSize, S.SLOT_BG, S.SLOT_EDGE, Corner.SQUARE)
-        val glyph = iconSize * 3 / 5
-        c.icon("pv_paw", ix + (iconSize - glyph) / 2, iy + (iconSize - glyph) / 2, glyph, p.color)
+        c.petTile(p, ix, iy, iconSize)
         c.tooltip(ix, iy, ix + iconSize, iy + iconSize, petTooltipLines(p), "pet:${p.name}:${p.level}")
 
         val tx = ix + iconSize + gap
@@ -229,7 +272,12 @@ private class PetNode(private val p: PetsSection.PetRow, private val hero: Boole
             Rich.of(xpLine).ellipsize(c, S.CAPTION, tw).draw(c, tx, cy, cy + LH_CAPTION, S.CAPTION, S.TEXT_DIM)
             cy += LH_CAPTION + 4
             val held = if (p.held != null) "Holding §6${p.held}" else "No pet item"
-            Rich.of(held + (if (p.skin != null) "§7 · ${p.skin} skin" else "")).ellipsize(c, S.CAPTION, tw).draw(c, tx, cy, cy + LH_CAPTION, S.CAPTION, S.TEXT_DIM)
+            var hx = tx
+            if (p.heldIcon != null) {
+                c.item(p.heldIcon, tx, cy + (LH_CAPTION - HELD_ICON) / 2, HELD_ICON, count = false)
+                hx += HELD_ICON + 3
+            }
+            Rich.of(held + (if (p.skin != null) "§7 · ${p.skin} skin" else "")).ellipsize(c, S.CAPTION, tx + tw - hx).draw(c, hx, cy, cy + LH_CAPTION, S.CAPTION, S.TEXT_DIM)
         } else {
             if (p.active) Chip.accent("ACTIVE").paint(c, end + 6, cy + titleH / 2)
             cy += titleH + 2
@@ -238,5 +286,10 @@ private class PetNode(private val p: PetsSection.PetRow, private val hero: Boole
             cy += LH_CAPTION + 3
             c.bar(tx, cy, tw, p.fraction, p.maxed)
         }
+    }
+
+    private companion object {
+        /** The held item's icon on the Active pet's caption line. */
+        const val HELD_ICON = 12
     }
 }

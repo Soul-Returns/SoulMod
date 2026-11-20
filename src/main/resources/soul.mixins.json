@@ -25,6 +25,8 @@
     "MouseHandlerMixin",
     "MultiPlayerGameModeMixin",
     "PlayerMixin",
+    "ProfileViewerCommandMixin",
+    "ProfileViewerSuggestionsMixin",
     "RecipeBookButtonMixin",
     "RecipeBookHideMixin",
     "ScreenEffectRendererMixin",

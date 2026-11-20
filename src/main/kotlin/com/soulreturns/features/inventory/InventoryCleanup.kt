@@ -76,7 +76,7 @@ object InventoryCleanup {
                 ScreenEvents.afterBackground(screen).register(
                     ScreenEvents.AfterBackground { _, g, mouseX, mouseY, _ -> draw(g, screen.leftPos, screen.topPos, preview = false, mouseX = mouseX, mouseY = mouseY) },
                 )
-                // A left click on the info display's "Profile" link opens /spv and is consumed.
+                // A left click on the info display's "Profile" link opens /sp and is consumed.
                 ScreenMouseEvents.allowMouseClick(screen).register(
                     ScreenMouseEvents.AllowMouseClick { _, click ->
                         val carrying = Minecraft.getInstance().player?.containerMenu?.carried?.isEmpty == false

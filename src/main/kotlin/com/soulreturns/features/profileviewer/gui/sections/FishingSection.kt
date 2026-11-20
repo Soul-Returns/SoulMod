@@ -4,6 +4,7 @@ import com.soulreturns.data.hypixel.TROPHY_TIERS
 import com.soulreturns.data.hypixel.TrophyFishEntry
 import com.soulreturns.data.hypixel.fishingCounts
 import com.soulreturns.data.hypixel.trophyFishing
+import com.soulreturns.data.items.ItemIcons
 import com.soulreturns.data.skyblock.SkyblockRarity
 import com.soulreturns.features.profileviewer.gui.LocalSoulCards
 import com.soulreturns.features.profileviewer.gui.ProfileContext
@@ -102,7 +103,11 @@ object FishingSection : ProfileSection {
         private fun paintRow(c: KitCanvas, f: TrophyFishEntry, x: Int, y: Int, w: Int) {
             val none = f.bestTier < 0
             val name = SkyblockRarity.colorFor(f.rarity, KitStyle.TEXT).let { if (none) (it and 0x00FFFFFF) or (0x73 shl 24) else it }
-            c.text(f.name, x, y, y + ROW_H - 1, name, KitStyle.SMALL)
+            // The fish's item at its best tier caught (bronze before any catch): `BLOBFISH_GOLD`.
+            val icon = ItemIcons.icon("${f.key.uppercase()}_${TROPHY_TIERS[f.bestTier.coerceAtLeast(0)].uppercase()}")
+            val nx = if (icon != null) x + ICON + 4 else x
+            icon?.let { c.item(it, x, y + (ROW_H - 1 - ICON) / 2, ICON, count = false) }
+            Rich.of(f.name).ellipsize(c, KitStyle.SMALL, x + w - f.tiers.size * (COUNT_W + 4) - nx).draw(c, nx, y, y + ROW_H - 1, KitStyle.SMALL, name)
             for (t in f.tiers.indices) {
                 val right = x + w - (f.tiers.size - 1 - t) * (COUNT_W + 4)
                 val v = f.tiers[t]
@@ -120,6 +125,7 @@ object FishingSection : ProfileSection {
             const val ROW_H = 18
             const val ROW_GAP = 1
             const val COUNT_W = 30
+            const val ICON = 14
         }
     }
 }

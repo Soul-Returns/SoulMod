@@ -144,7 +144,7 @@ object SoulCommand {
                                 },
                             ),
                     )
-                    // `/soul spv …` — the same subtree SpvCommand registers at top level.
+                    // `/soul sp …` — the same subtree SpvCommand registers at top level.
                     .then(SpvCommand.node())
                     // `/soul update [check|install|skip|close]` — the updater's chat buttons run these.
                     .then(com.soulreturns.features.updater.UpdateNotices.node())

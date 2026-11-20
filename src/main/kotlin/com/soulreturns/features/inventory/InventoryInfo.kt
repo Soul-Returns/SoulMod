@@ -171,7 +171,7 @@ object InventoryInfo {
         val font = Minecraft.getInstance().font
         if (linkHovered) {
             InventoryCleanup.ownTooltip {
-                g.setComponentTooltipForNextFrame(font, listOf(net.minecraft.network.chat.Component.literal("Open your profile viewer (/spv)")), mouseX, mouseY)
+                g.setComponentTooltipForNextFrame(font, listOf(net.minecraft.network.chat.Component.literal("Open your profile viewer (/sp)")), mouseX, mouseY)
             }
         } else if (hovered != null && cfg.inventoryInfo.hoverDetails && hovered.details.isNotEmpty()) {
             InventoryCleanup.ownTooltip { g.setComponentTooltipForNextFrame(font, hovered.details, mouseX, mouseY) }

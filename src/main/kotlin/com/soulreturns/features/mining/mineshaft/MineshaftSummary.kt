@@ -114,7 +114,7 @@ object MineshaftSummary {
                         "(${percent(total.littlefootFindRate)})$unassigned",
                 )
             }
-            soulChat("§8  full breakdown: /spv → Soul")
+            soulChat("§8  full breakdown: /sp → Soul")
         }
     }
 

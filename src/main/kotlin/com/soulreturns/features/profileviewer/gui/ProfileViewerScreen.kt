@@ -57,7 +57,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * The Profile Viewer — `/spv`, spec `mocks/profile-viewer/`. A centered card: header (who, which
+ * The Profile Viewer — `/sp`, spec `mocks/profile-viewer/`. A centered card: header (who, which
  * profile, player search, status), a section rail, and the active [ProfileSection]'s body built
  * with the card toolkit (`gui/kit/`).
  *
@@ -119,7 +119,7 @@ class ProfileViewerScreen private constructor(
 
         /**
          * A lookup started: show it. Reuses the open screen; otherwise opens one through `execute`,
-         * because a `/spv` typed into chat is dispatched before the chat screen tears itself down.
+         * because a `/sp` typed into chat is dispatched before the chat screen tears itself down.
          */
         private fun beginLookup(name: String) {
             if (!enabled()) return

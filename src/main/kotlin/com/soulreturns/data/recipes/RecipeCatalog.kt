@@ -47,4 +47,8 @@ data class RecipeCatalogSnapshot(
     val overridesVersion: Int? = null,
     val forge: List<ForgeRecipeEntry> = emptyList(),
     val crafting: List<CraftingRecipeEntry> = emptyList(),
+    /** Pet head texture hashes from the same NEU ingest: `TYPE` (highest tier), `TYPE;tier` only where a tier differs. */
+    val petHeads: Map<String, String> = emptyMap(),
+    /** Head texture hashes of NEU skull items `/items` does not serve (essences, …), by SkyBlock id. */
+    val heads: Map<String, String> = emptyMap(),
 )

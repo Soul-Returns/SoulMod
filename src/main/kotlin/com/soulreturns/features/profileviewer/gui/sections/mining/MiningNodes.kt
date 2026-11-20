@@ -1,5 +1,6 @@
 package com.soulreturns.features.profileviewer.gui.sections.mining
 
+import com.soulreturns.data.items.ItemIcons
 import com.soulreturns.data.hypixel.HotmNodeDef
 import com.soulreturns.data.hypixel.HotmNodeState
 import com.soulreturns.data.hypixel.HotmProgress
@@ -247,10 +248,10 @@ class LegendNode(private val entries: List<Pair<HotmLore.Spec, String>>) : Node(
     }
 }
 
-/** One `.fg` Forge slot: [name] null = empty; [right] the time left or "Ready" ([ready] green). */
-class ForgeRow(val slot: Int, val name: String?, val right: String?, val ready: Boolean)
+/** One `.fg` Forge slot: [name] null = empty; [right] the time left or "Ready" ([ready] green); [id] the output's SkyBlock id, for its icon. */
+class ForgeRow(val slot: Int, val name: String?, val right: String?, val ready: Boolean, val id: String? = null)
 
-/** `.fgs`: the Forge slots, one 20 px row each. */
+/** `.fgs`: the Forge slots, one 20 px row each: slot number, the output's icon (when known) and name, time left. */
 class ForgeRowsNode(private val rows: List<ForgeRow>) : Node() {
     override fun measure(m: KitMeasure, w: Int): Int = if (rows.isEmpty()) 0 else rows.size * ROW_H + (rows.size - 1) * GAP
 
@@ -261,7 +262,9 @@ class ForgeRowsNode(private val rows: List<ForgeRow>) : Node() {
             c.rect(x, by, x + BOX, by + BOX, BOX_BG, Corner.SMALL)
             val n = r.slot.toString()
             c.text(n, x + (BOX - c.width(n, S.LABEL)) / 2, by, by + BOX, S.TEXT_DIM, S.LABEL)
-            val tx = x + BOX + 8
+            val icon = r.id?.let { ItemIcons.icon(it) }
+            icon?.let { c.item(it, x + BOX + 6, ry + (ROW_H - ICON) / 2, ICON, count = false) }
+            val tx = x + BOX + (if (icon != null) 6 + ICON + 4 else 8)
             if (r.name == null) {
                 c.text("Empty", tx, ry, ry + ROW_H, S.TEXT_FAINT, S.SMALL)
             } else {
@@ -277,6 +280,7 @@ class ForgeRowsNode(private val rows: List<ForgeRow>) : Node() {
         const val ROW_H = 20
         const val GAP = 2
         const val BOX = 14
+        const val ICON = 16
         val BOX_BG = 0xFF262626.toInt()
     }
 }

@@ -71,6 +71,10 @@ class RecipeIndex private constructor(
     val alternatives: Map<String, Int>,
     val updatedAt: Long?,
     val source: RecipeSource?,
+    /** [RecipeCatalogSnapshot.petHeads] as served. */
+    val petHeads: Map<String, String>,
+    /** [RecipeCatalogSnapshot.heads] as served. */
+    val heads: Map<String, String>,
 ) {
     /** Every output and input id of the forge recipes and the crafting recipes they use (icons are learned for these). */
     val ids: Set<String> by lazy {
@@ -90,7 +94,7 @@ class RecipeIndex private constructor(
                 if (r.output.isEmpty() || r.inputs.isEmpty()) continue
                 if (craft.putIfAbsent(r.output, r) != null) alternatives.merge(r.output, 1, Int::plus)
             }
-            return RecipeIndex(forge, craft, alternatives, snapshot.updatedAt, snapshot.source)
+            return RecipeIndex(forge, craft, alternatives, snapshot.updatedAt, snapshot.source, snapshot.petHeads, snapshot.heads)
         }
     }
 }

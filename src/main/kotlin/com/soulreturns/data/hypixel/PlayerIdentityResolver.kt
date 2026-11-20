@@ -25,14 +25,14 @@ data class PlayerIdentity(val uuidUndashed: String, val name: String)
  * `TokenManager::issueForPlayer` keeps that name current).
  *
  * **Mojang stays as a fallback**, for exactly one situation: the backend is unreachable, broken, rate
- * limited, or told us it could not reach Mojang itself (`502 upstream_unavailable`). Then `/spv`
+ * limited, or told us it could not reach Mojang itself (`502 upstream_unavailable`). Then `/sp`
  * still works.
  *
  * ### Deliberate deviation from the port document
  * The document said to fall back to Mojang "if it 404s **or** the backend is unreachable". We do
  * **not** fall back on a 404. The backend consults Mojang itself before answering 404, so a fallback
  * there is a second request for an answer we already have — and the lane's own acceptance criterion
- * requires `/spv <nonexistent>` to cost exactly **one** request. A 404 is therefore final.
+ * requires `/sp <nonexistent>` to cost exactly **one** request. A 404 is therefore final.
  */
 object PlayerIdentityResolver {
     private val logger = SoulLogger("Soul/Identity")
@@ -69,7 +69,7 @@ object PlayerIdentityResolver {
 
     /**
      * Canonical names resolved this session, most recently used first — the tab-completion source
-     * for `/spv`, so a name looked up once can be typed with two keystrokes afterwards.
+     * for `/sp`, so a name looked up once can be typed with two keystrokes afterwards.
      */
     fun cachedNames(): List<String> = synchronized(cache) { cache.values.map { it.name }.reversed() }
 

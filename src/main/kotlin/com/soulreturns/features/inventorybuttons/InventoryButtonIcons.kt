@@ -82,7 +82,8 @@ object InventoryButtonIcons {
         )
     }
 
-    private fun build(key: ItemLook): ItemStack {
+    /** A fresh, uncached stack for [key]; safe off the render thread. */
+    fun build(key: ItemLook): ItemStack {
         val stack = (item(key.item) ?: Items.BARRIER).defaultInstance.copy()
         if (key.skin.isNotEmpty()) {
             try {

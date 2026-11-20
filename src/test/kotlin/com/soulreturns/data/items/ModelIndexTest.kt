@@ -1,4 +1,4 @@
-package com.soulreturns.features.search.forge
+package com.soulreturns.data.items
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 /** Fixture `forge/item-models.json`: every SkyBlock id of the 2026-11-16 capture with its `item_model` (or none). */
-class ForgeModelsTest {
+class ModelIndexTest {
     private val fixture = Json.parseToJsonElement(javaClass.getResource("/forge/item-models.json")!!.readText()).jsonObject
     private val models = fixture["models"]!!.jsonArray.map { it.jsonObject }
     private val index = ModelIndex.of(models.map { it.str("model")!! })

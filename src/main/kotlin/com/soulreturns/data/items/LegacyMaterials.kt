@@ -6,23 +6,23 @@ import java.util.Locale
 
 /**
  * The modern item for a `/items` `material` (Hypixel's API still names Bukkit 1.8 materials: `SKULL_ITEM`,
- * `INK_SACK`, `GOLD_SWORD`). Only vanilla's own renames live here; a name that maps to nothing resolves to null
- * and callers keep their placeholder. [damage] is the legacy data value where an id carries one (`INK_SACK:4`).
+ * `INK_SACK`, `GOLD_SWORD`). Only vanilla's own renames live here (the 1.13 flattening); a name that maps to nothing
+ * resolves to null and callers keep their placeholder. [damage] is the legacy data value, from an id like
+ * `INK_SACK:4` or the catalog's `damage` (`MOONFLOWER` = `RED_ROSE` 1).
  */
 object LegacyMaterials {
     private val RENAMED = mapOf(
-        "SKULL_ITEM" to "player_head", "SKULL" to "skeleton_skull", "STAINED_CLAY" to "white_terracotta", "HARD_CLAY" to "terracotta",
-        "WOOL" to "white_wool", "CARPET" to "white_carpet", "STAINED_GLASS" to "white_stained_glass", "STAINED_GLASS_PANE" to "white_stained_glass_pane",
-        "THIN_GLASS" to "glass_pane", "RED_ROSE" to "poppy", "YELLOW_FLOWER" to "dandelion", "EMPTY_MAP" to "map", "SULPHUR" to "gunpowder",
-        "NETHER_STALK" to "nether_wart", "SEEDS" to "wheat_seeds", "LOG" to "oak_log", "LOG_2" to "acacia_log", "LEAVES" to "oak_leaves",
-        "LEAVES_2" to "acacia_leaves", "SAPLING" to "oak_sapling", "WOOD" to "oak_planks", "WATCH" to "clock", "CLAY_BRICK" to "brick",
+        "SKULL_ITEM" to "player_head", "SKULL" to "skeleton_skull", "HARD_CLAY" to "terracotta", "MYCEL" to "mycelium",
+        "THIN_GLASS" to "glass_pane", "YELLOW_FLOWER" to "dandelion", "EMPTY_MAP" to "map", "SULPHUR" to "gunpowder",
+        "NETHER_STALK" to "nether_wart", "SEEDS" to "wheat_seeds",
+        "WATCH" to "clock", "CLAY_BRICK" to "brick",
         "NETHER_BRICK_ITEM" to "nether_brick", "FIREWORK" to "firework_rocket", "FIREWORK_CHARGE" to "firework_star", "EXP_BOTTLE" to "experience_bottle",
         "BOOK_AND_QUILL" to "writable_book", "CARROT_ITEM" to "carrot", "POTATO_ITEM" to "potato", "RAW_BEEF" to "beef", "RAW_CHICKEN" to "chicken",
         "PORK" to "porkchop", "GRILLED_PORK" to "cooked_porkchop", "COOKED_FISH" to "cooked_cod", "SNOW_BALL" to "snowball", "ENDER_STONE" to "end_stone",
         "HUGE_MUSHROOM_1" to "brown_mushroom_block", "HUGE_MUSHROOM_2" to "red_mushroom_block", "MELON" to "melon_slice", "MELON_BLOCK" to "melon",
         "IRON_BARDING" to "iron_horse_armor", "GOLD_BARDING" to "golden_horse_armor", "DIAMOND_BARDING" to "diamond_horse_armor", "IRON_FENCE" to "iron_bars",
         "WEB" to "cobweb", "WORKBENCH" to "crafting_table", "ENCHANTMENT_TABLE" to "enchanting_table", "MOB_SPAWNER" to "spawner", "LONG_GRASS" to "short_grass",
-        "DOUBLE_PLANT" to "sunflower", "BED" to "red_bed", "SIGN" to "oak_sign", "BOAT" to "oak_boat", "SMOOTH_BRICK" to "stone_bricks", "FENCE" to "oak_fence",
+        "BED" to "red_bed", "SIGN" to "oak_sign", "BOAT" to "oak_boat", "SMOOTH_BRICK" to "stone_bricks", "FENCE" to "oak_fence",
         "WOOD_STEP" to "oak_slab", "STEP" to "stone_slab", "LEASH" to "lead", "COMMAND" to "command_block", "EYE_OF_ENDER" to "ender_eye",
         "ENDER_PORTAL_FRAME" to "end_portal_frame", "SPECKLED_MELON" to "glistering_melon_slice", "MUSHROOM_SOUP" to "mushroom_stew",
         "IRON_PLATE" to "heavy_weighted_pressure_plate", "GOLD_PLATE" to "light_weighted_pressure_plate", "STONE_PLATE" to "stone_pressure_plate",
@@ -35,14 +35,28 @@ object LegacyMaterials {
     private val DYES = listOf("ink_sac", "red_dye", "green_dye", "cocoa_beans", "lapis_lazuli", "purple_dye", "cyan_dye", "light_gray_dye",
         "gray_dye", "pink_dye", "lime_dye", "yellow_dye", "light_blue_dye", "magenta_dye", "orange_dye", "bone_meal")
     private val FISH = listOf("cod", "salmon", "tropical_fish", "pufferfish")
+    private val COLORS = listOf("white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan",
+        "purple", "blue", "brown", "green", "red", "black")
+    private val WOODS = listOf("oak", "spruce", "birch", "jungle", "acacia", "dark_oak")
+
+    /** Materials whose data value picks the modern item; index = data value, an unknown one falls back to the first. */
+    private val VARIANTS: Map<String, List<String>> = mapOf(
+        "INK_SACK" to DYES, "RAW_FISH" to FISH,
+        "LOG" to WOODS.take(4).map { "${it}_log" }, "LOG_2" to listOf("acacia_log", "dark_oak_log"),
+        "LEAVES" to WOODS.take(4).map { "${it}_leaves" }, "LEAVES_2" to listOf("acacia_leaves", "dark_oak_leaves"),
+        "WOOD" to WOODS.map { "${it}_planks" }, "SAPLING" to WOODS.map { "${it}_sapling" }, "SAND" to listOf("sand", "red_sand"),
+        "RED_ROSE" to listOf("poppy", "blue_orchid", "allium", "azure_bluet", "red_tulip", "orange_tulip", "white_tulip", "pink_tulip", "oxeye_daisy"),
+        "DOUBLE_PLANT" to listOf("sunflower", "lilac", "tall_grass", "large_fern", "rose_bush", "peony"),
+        "WOOL" to COLORS.map { "${it}_wool" }, "CARPET" to COLORS.map { "${it}_carpet" }, "STAINED_CLAY" to COLORS.map { "${it}_terracotta" },
+        "STAINED_GLASS" to COLORS.map { "${it}_stained_glass" }, "STAINED_GLASS_PANE" to COLORS.map { "${it}_stained_glass_pane" },
+    )
 
     /** `minecraft:…` registry id for [material], or null when it names no item. */
     fun itemId(material: String?, damage: Int = 0): String? {
         if (material.isNullOrEmpty()) return null
         val upper = material.uppercase(Locale.ROOT)
-        val name = if (upper == "INK_SACK") DYES.getOrNull(damage) ?: DYES[0]
-            else if (upper == "RAW_FISH") FISH.getOrNull(damage) ?: FISH[0]
-            else RENAMED[upper] ?: legacyTool(upper) ?: upper.lowercase(Locale.ROOT)
+        val name = VARIANTS[upper]?.let { it.getOrNull(damage) ?: it[0] }
+            ?: RENAMED[upper] ?: legacyTool(upper) ?: upper.lowercase(Locale.ROOT)
         val key = Identifier.tryParse("minecraft:$name") ?: return null
         return if (BuiltInRegistries.ITEM.containsKey(key)) key.toString() else null
     }

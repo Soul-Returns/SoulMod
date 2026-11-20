@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonObject
  * Everything goes through [BackendClient], which is what makes this endpoint safe to call from a
  * command: the backend limits it to **30 requests per minute per token** and answers with
  * `X-Backend-Expire-In: 60000`, so the shared response cache and single-flight absorb a user opening
- * `/spv` on every member of a dungeon roster. This is the one endpoint in the mod where that client
+ * `/sp` on every member of a dungeon roster. This is the one endpoint in the mod where that client
  * cache genuinely earns its keep.
  *
  * **Why via the backend at all:** Hypixel's endpoint needs an `API-Key` header. The backend holds one

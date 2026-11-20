@@ -1,4 +1,4 @@
-package com.soulreturns.features.search.forge
+package com.soulreturns.data.items
 
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader
 import net.minecraft.resources.Identifier
@@ -14,7 +14,7 @@ import java.util.Locale
  * [NAMESPACE] are listed (ids only, in memory; nothing is read, copied or written). No pack = empty index =
  * icons exactly as without it.
  */
-object ForgeModels {
+object PackModels {
     const val NAMESPACE = "hypixel_skyblock"
 
     @Volatile var index: ModelIndex = ModelIndex.EMPTY
@@ -41,8 +41,11 @@ object ForgeModels {
  * `magmafish_diamond`, `NEX_TITANUM` → `prime_huntaxe`) and keep the catalog material. Pets, heads, dyed
  * armor and vanilla-material items carry no model.
  */
-class ModelIndex private constructor(private val bySegment: Map<String, List<String>>) {
-    val size: Int get() = bySegment.values.sumOf { it.size }
+class ModelIndex private constructor(private val bySegment: Map<String, List<String>>, private val all: Set<String>) {
+    val size: Int get() = all.size
+
+    /** Whether the loaded pack defines [model] (a full id, `hypixel_skyblock:item/…`). */
+    operator fun contains(model: String): Boolean = model in all
 
     /**
      * The model for [id] (display name [name]), trying the lowercased id, then the display name as a path,
@@ -69,20 +72,22 @@ class ModelIndex private constructor(private val bySegment: Map<String, List<Str
     }
 
     companion object {
-        val EMPTY = ModelIndex(emptyMap())
+        val EMPTY = ModelIndex(emptyMap(), emptySet())
         private val CODE = Regex("§.")
         private val NON_WORD = Regex("[^a-z0-9]+")
 
         /** [ids] are model ids (`hypixel_skyblock:item/…`); only those under `item/` take part. */
         fun of(ids: Collection<String>): ModelIndex {
             val map = HashMap<String, MutableList<String>>()
+            val all = HashSet<String>()
             for (id in ids.toSet()) {
                 val path = id.substringAfter(':')
                 if (!path.startsWith("item/")) continue
                 map.getOrPut(path.substringAfterLast('/')) { ArrayList() } += id
+                all += id
             }
             for (list in map.values) list.sort()
-            return ModelIndex(map)
+            return ModelIndex(map, all)
         }
 
         /** "Divan's Drill" → `divans_drill`, "Titanium Drill DR-X655" → `titanium_drill_dr_x655`. */

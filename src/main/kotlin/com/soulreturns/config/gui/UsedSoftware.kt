@@ -93,7 +93,7 @@ object UsedSoftware {
             Kind.BUNDLED_DATA,
         ),
         Entry(
-            "NotEnoughUpdates REPO", "Pet level XP table; forge and crafting recipes of the Forge tab; the Heart of the Mountain tree layout, costs and tier XP of the Profile Viewer (served by the Soul backend)", "https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO", "MIT",
+            "NotEnoughUpdates REPO", "Pet level XP table; forge and crafting recipes of the Forge tab; pet, pet skin and item head textures of the Profile Viewer; the Heart of the Mountain tree layout, costs and tier XP of the Profile Viewer (served by the Soul backend)", "https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO", "MIT",
             Kind.BUNDLED_DATA, aliases = listOf("NEU"),
         ),
         Entry(

@@ -196,7 +196,7 @@ object OverviewSection : ProfileSection {
     /** Armor beside equipment with their names, the weapons row and the active pet (mock `ov-gear`). */
     private fun gearCard(ctx: ProfileContext, ui: Ui) {
         val pet = PetState.apiPets(ctx.member).filter { it.active }.takeIf { it.isNotEmpty() }
-            ?.let { PetsSection.rows(it, PetsSection.liveReader(ctx), PetsSection::heldName).firstOrNull() }
+            ?.let { PetsSection.rows(it, PetsSection.liveReader(ctx), PetsSection.headReader(ctx), heldName = PetsSection::heldName).firstOrNull() }
         if (ctx.member.apiAccessDisabled) {
             ui.card("Gear") {
                 empty("pv_lock", "Gear is hidden", "${ctx.possessive} Inventory API is off.")
@@ -391,8 +391,7 @@ private class PetLineNode(private val p: PetsSection.PetRow) : Node() {
         c.rule(x, y, w)
         val top = y + RULE_H
         val iy = top + (24 - S.SLOT) / 2
-        c.framed(x, iy, x + S.SLOT, iy + S.SLOT, S.SLOT_BG, S.SLOT_EDGE, Corner.SQUARE)
-        c.icon("pv_paw", x + 4, iy + 4, 12, p.color)
+        c.petTile(p, x, iy, S.SLOT)
         c.tooltip(x, iy, x + S.SLOT, iy + S.SLOT, petTooltipLines(p), "pet:${p.name}:${p.level}")
         val tx = x + S.SLOT + 8
         val tw = x + w - tx

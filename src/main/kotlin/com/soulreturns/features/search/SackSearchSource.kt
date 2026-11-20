@@ -9,7 +9,7 @@ import com.soulreturns.features.dungeons.DungeonCommandGuard
 import com.soulreturns.features.inventorybuttons.InventoryButtonIcons
 import com.soulreturns.features.islandchests.IslandChestLayout
 import com.soulreturns.features.islandchests.StoredChestItem
-import com.soulreturns.features.search.forge.ForgeModels
+import com.soulreturns.data.items.PackModels
 import com.soulreturns.features.sacks.SackCount
 import com.soulreturns.features.sacks.SackSource
 import com.soulreturns.features.sacks.SackState
@@ -63,7 +63,7 @@ internal object SackSearchSource : SearchSource {
         val counts = counts()
         val profile = SackState.profileKey()
         val nextCatalog = ItemCatalogClient.snapshot
-        val nextModels = ForgeModels.index
+        val nextModels = PackModels.index
         val nextTracked = cfg.sacks.tracked
         val nextNames = SackState.learnedNames()
         if (counts !== source || profile != sourceProfile || catalog !== nextCatalog ||
@@ -85,7 +85,7 @@ internal object SackSearchSource : SearchSource {
         val name = entry?.displayName?.takeIf { it.isNotEmpty() } ?: tracked?.name?.takeIf { it.isNotEmpty() } ?: learnedName(id)
         val material = LegacyMaterials.itemId(entry?.material, id.substringAfter(':', "").toIntOrNull() ?: 0) ?: "minecraft:paper"
         val look = tracked?.let { InventoryButtonIcons.ItemLook(it.item, it.skin, it.model, it.glint) }
-            ?: InventoryButtonIcons.ItemLook(material, model = ForgeModels.index.resolve(id, name).orEmpty(), glint = name?.startsWith("Enchanted ") == true)
+            ?: InventoryButtonIcons.ItemLook(material, model = PackModels.index.resolve(id, name).orEmpty(), glint = name?.startsWith("Enchanted ") == true)
         return SackItemInfo(name, look.item, look)
     }
 

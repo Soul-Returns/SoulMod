@@ -34,6 +34,10 @@ data class ItemCatalogEntry(
     val rarity: String? = null,
     val npcSellPrice: Long? = null,
     val auctionable: Boolean = true,
+    /** Head texture hash (`textures.minecraft.net/texture/<hash>`) of a skull item; absent on other rows and older backends. */
+    val skin: String? = null,
+    /** Legacy data value of [material] when Hypixel names one (`MOONFLOWER` = `RED_ROSE` 1); absent = 0 or an older backend. */
+    val damage: Int? = null,
 )
 
 /** The whole `GET /items` body, and the exact shape of the on-disk cache. */

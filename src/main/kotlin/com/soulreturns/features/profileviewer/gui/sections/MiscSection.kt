@@ -16,6 +16,7 @@ import com.soulreturns.data.hypixel.mythologicalKills
 import com.soulreturns.data.hypixel.personalBank
 import com.soulreturns.data.hypixel.purse
 import com.soulreturns.data.hypixel.soulflowAmount
+import com.soulreturns.data.items.ItemIcons
 import com.soulreturns.data.prices.PriceCache
 import com.soulreturns.data.prices.PriceSource
 import com.soulreturns.features.profileviewer.gui.ProfileContext
@@ -111,10 +112,12 @@ object MiscSection : ProfileSection {
         }
     }
 
-    // `.ess`: four equal columns 6 apart; each cell has a dim label over a bold value (padding 4 6).
+    // `.ess`: four equal columns 6 apart; each cell has a dim label over a bold value (padding 4 6), the essence's
+    // icon right of the value.
     private const val ESS_COLS = 4
     private const val ESS_GAP = 6
     private const val ESS_CELL_H = 34
+    private const val ESS_ICON = 12
 
     private fun essenceGrid(list: List<EssenceAmount>): Node =
         CustomNode({ _, _ ->
@@ -131,6 +134,7 @@ object MiscSection : ProfileSection {
                 c.rect(cx, cy, cx + cw, cy + ESS_CELL_H, S.TIER_BG, Corner.SMALL)
                 c.text(e.name, cx + 6, cy + 4, cy + 16, S.TEXT_DIM, S.TINY)
                 c.text(Format.short(e.amount), cx + 6, cy + 16, cy + 30, S.TEXT, S.BODY, true)
+                ItemIcons.icon("ESSENCE_${e.type}")?.let { c.item(it, cx + cw - 6 - ESS_ICON, cy + 16 + (14 - ESS_ICON) / 2, ESS_ICON, count = false) }
             }
         }
 }

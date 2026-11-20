@@ -1,6 +1,7 @@
 package com.soulreturns.features.profileviewer.gui.kit
 
 import com.soulreturns.features.profileviewer.gui.kit.KitStyle as S
+import net.minecraft.world.item.ItemStack
 import kotlin.math.max
 
 /**
@@ -21,7 +22,7 @@ class Col(
 
 /**
  * One table cell: text (with an optional smaller [suffix], `<b>32</b><small>/ 50</small>`), a bar, or
- * chips. [color] null = the row's color (dim rows grey out).
+ * chips. [color] null = the row's color (dim rows grey out). [icon] is an item drawn left of the text.
  */
 class Cell(
     val text: Rich? = null,
@@ -35,9 +36,11 @@ class Cell(
     val barMaxed: Boolean = false,
     val chips: List<Chip> = emptyList(),
     val tip: String? = null,
+    val icon: ItemStack? = null,
 ) {
     fun width(m: KitMeasure): Int {
         var w = text?.width(m, size, bold) ?: 0
+        if (icon != null) w += CELL_ICON + 4
         if (suffix != null) w += 3 + suffix.width(m, suffixSize)
         if (chips.isNotEmpty()) w += chips.sumOf { it.width(m) } + S.CHIP_GAP * (chips.size - 1)
         if (bar != null) w = max(w, 40)
@@ -45,8 +48,11 @@ class Cell(
     }
 
     companion object {
-        fun of(text: String, bold: Boolean = false, color: Int? = null, tip: String? = null) = Cell(Rich.of(text), bold, color = color, tip = tip)
+        fun of(text: String, bold: Boolean = false, color: Int? = null, tip: String? = null, icon: ItemStack? = null) = Cell(Rich.of(text), bold, color = color, tip = tip, icon = icon)
         val DASH = Cell(Rich.of("—"))
+
+        /** Item size of [icon]; fits the 21 px `.tbl` row. */
+        const val CELL_ICON = 16
     }
 }
 
@@ -155,10 +161,13 @@ class TableNode(
                         chx += chw + S.CHIP_GAP
                     }
                 } else if (cell.text != null) {
+                    val iconW = if (cell.icon != null) Cell.CELL_ICON + 4 else 0
                     val suffixW = if (cell.suffix != null) 3 + cell.suffix.width(c, cell.suffixSize) else 0
-                    val text = cell.text.ellipsize(c, cell.size, cw - suffixW, cell.bold)
-                    val tw = text.width(c, cell.size, cell.bold) + suffixW
-                    val tx = if (col.align > 0) cx + cw - tw else cx
+                    val text = cell.text.ellipsize(c, cell.size, cw - suffixW - iconW, cell.bold)
+                    val tw = text.width(c, cell.size, cell.bold) + suffixW + iconW
+                    val ix = if (col.align > 0) cx + cw - tw else cx
+                    cell.icon?.let { c.item(it, ix, y + (rowH - 1 - Cell.CELL_ICON) / 2, Cell.CELL_ICON, count = false) }
+                    val tx = ix + iconW
                     val end = text.draw(c, tx, y, bottom, cell.size, if (row.dim) S.TEXT_GHOST else cell.color ?: rowColor, cell.bold)
                     cell.suffix?.draw(c, end + 3, y, bottom, cell.suffixSize, if (row.dim) S.TEXT_GHOST else cell.suffixColor)
                 }

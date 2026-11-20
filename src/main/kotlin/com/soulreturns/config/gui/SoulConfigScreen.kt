@@ -117,7 +117,7 @@ class SoulConfigScreen(
                 Tip("Tip", "Arrow keys nudge the selected HUD in the Move GUI.", "Open Move GUI", "movegui"),
                 Tip("Tip", "Middle-click an item in a sack menu to track it, again to untrack.", "Go to", "f:sacks"),
                 Tip("Tip", "Right-click an inventory button to open the buttons editor.", "Open editor", "invbuttons"),
-                Tip("Did you know", "/spv <name> opens the Profile Viewer for any player.", "Go to", "s:profile:spv"),
+                Tip("Did you know", "/sp <name> opens the Profile Viewer for any player.", "Go to", "s:profile:spv"),
                 Tip("Tip", "Click \"Profile\" in the SkyBlock info beside your inventory to open your own profile.", "Go to", "f:sbinfo"),
                 Tip("Tip", "With price tooltips on, hold Shift on an item for its value and stack total.", "Go to", "f:prices"),
                 Tip("Did you know", "Esc while binding a key unbinds it.", "Go to", "s:shortcuts:cmdkeys"),

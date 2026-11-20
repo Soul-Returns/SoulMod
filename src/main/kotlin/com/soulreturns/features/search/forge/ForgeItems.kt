@@ -1,13 +1,14 @@
 package com.soulreturns.features.search.forge
 
 import com.soulreturns.data.items.ItemCatalogClient
-import com.soulreturns.data.items.LegacyMaterials
+import com.soulreturns.data.items.ItemIcons
+import com.soulreturns.data.items.ModelIndex
+import com.soulreturns.data.items.PackModels
 import com.soulreturns.data.prices.MarketItemKey
 import com.soulreturns.data.skyblock.SkyblockRarity
 import com.soulreturns.features.inventorybuttons.InventoryButtonIcons
 import com.soulreturns.features.islandchests.StoredChestItem
 import com.soulreturns.features.search.SearchItems
-import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.SkyblockItemUtils
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.world.item.ItemStack
@@ -18,13 +19,37 @@ object ForgeItems {
     class Info(val name: String, val color: Int, val look: InventoryButtonIcons.ItemLook)
 
     private val COIN_LOOK = InventoryButtonIcons.ItemLook("minecraft:gold_nugget")
-    private val PUA = Regex("^[\\uE000-\\uF8FF]\\s*")
+    private const val PAPER = "minecraft:paper"
     private val cache = HashMap<String, Info>()
     private var cacheBook: ForgeBookData? = null
     private var cacheCatalog: Any? = null
     private var cacheModels: ModelIndex? = null
     /** Looks / names of items the player owns (Search everywhere rows), by recipe id. */
     @Volatile private var owned: Map<String, StoredChestItem> = emptyMap()
+
+    /** The exact looks Forge has seen (menu entries, learned looks, owned items), for every other icon ([ItemIcons]). */
+    internal object Seen : ItemIcons.SeenLooks {
+        private var book: ForgeBookData? = null
+        private var ownedSeen: Map<String, StoredChestItem>? = null
+        private var current = Any()
+
+        override val stamp: Any
+            @Synchronized get() {
+                val b = ForgeStore.book()
+                val o = owned
+                if (b !== book || o !== ownedSeen) {
+                    book = b
+                    ownedSeen = o
+                    current = Any()
+                }
+                return current
+            }
+
+        override fun look(id: String): InventoryButtonIcons.ItemLook? {
+            val b = ForgeStore.book()
+            return b.recipes[id]?.look?.look() ?: b.looks[id]?.look() ?: owned[id]?.look
+        }
+    }
 
     /**
      * The recipe catalog's id for a stack (`/recipes` ids): `custom_data.id` as is (`INK_SACK:4`), pets as
@@ -43,7 +68,7 @@ object ForgeItems {
     fun info(id: String): Info {
         val book = ForgeStore.book()
         val catalog = ItemCatalogClient.snapshot
-        val models = ForgeModels.index
+        val models = PackModels.index
         if (book !== cacheBook || catalog !== cacheCatalog || models !== cacheModels || cache.size > 1024) {
             cache.clear()
             cacheBook = book
@@ -70,24 +95,13 @@ object ForgeItems {
         val entry = book.recipes[id]
         val catalog = ItemCatalogClient.byId(id)
         val stored = owned[id]
-        val name = entry?.name ?: catalog?.displayName?.let { MessageDetector.stripColorCodes(it).replace(PUA, "").trim() }?.takeIf { it.isNotEmpty() }
+        val name = entry?.name ?: ItemIcons.cleanName(catalog?.displayName)
             ?: stored?.let(SearchItems::name) ?: petName(id) ?: id
         val color = SkyblockRarity.forName(catalog?.rarity)?.color ?: stored?.let(SearchItems::color) ?: petColor(id) ?: 0xFFFFFFFF.toInt()
         // Exact stack seen anywhere > the loaded Hypixel pack's model for the id > catalog material > paper.
-        val look = entry?.look?.look() ?: book.looks[id]?.look() ?: stored?.look ?: catalogLook(id, catalog?.material, name)
+        val look = entry?.look?.look() ?: book.looks[id]?.look() ?: stored?.look
+            ?: ItemIcons.catalogLook(id, name) ?: InventoryButtonIcons.ItemLook(PAPER, glint = name.startsWith("Enchanted "))
         return Info(name, color, look)
-    }
-
-    /**
-     * The `/items` material as a modern item (`LegacyMaterials`; legacy data value from ids like `INK_SACK:4`),
-     * with the `item_model` of Hypixel's pack when it is loaded and names this id ([ForgeModels]), and the glint
-     * Hypixel gives `Enchanted …` items (the mock's rule). Paper only for ids the catalog lacks.
-     */
-    private fun catalogLook(id: String, material: String?, name: String): InventoryButtonIcons.ItemLook {
-        val damage = id.substringAfter(':', "").toIntOrNull() ?: 0
-        val item = LegacyMaterials.itemId(material, damage) ?: "minecraft:paper"
-        val model = ForgeModels.index.resolve(id, name).orEmpty()
-        return InventoryButtonIcons.ItemLook(item, model = model, glint = name.startsWith("Enchanted "))
     }
 
     /** `TYRANNOSAURUS;4` → `Tyrannosaurus` when no catalog row names the pet. */

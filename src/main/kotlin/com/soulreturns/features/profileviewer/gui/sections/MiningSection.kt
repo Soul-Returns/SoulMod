@@ -239,9 +239,9 @@ object MiningSection : ProfileSection {
         val slots = Forge.slots(ctx.nowMs, qf.fraction)
         if (slots.isEmpty()) return null
         return slots.mapIndexed { i, s ->
-            if (s is Forge.Busy) ForgeRow(i + 1, itemName(s.outputId), "${if (s.approx) "~" else ""}${Format.hm(s.secondsLeft(ctx.nowMs))}", false)
-            else if (s is Forge.Done) ForgeRow(i + 1, itemName(s.outputId), "Ready", true)
-            else if (s is Forge.Unknown) ForgeRow(i + 1, s.outputId?.let(::itemName) ?: "§8Not seen yet", null, false)
+            if (s is Forge.Busy) ForgeRow(i + 1, itemName(s.outputId), "${if (s.approx) "~" else ""}${Format.hm(s.secondsLeft(ctx.nowMs))}", false, s.outputId)
+            else if (s is Forge.Done) ForgeRow(i + 1, itemName(s.outputId), "Ready", true, s.outputId)
+            else if (s is Forge.Unknown) ForgeRow(i + 1, s.outputId?.let(::itemName) ?: "§8Not seen yet", null, false, s.outputId)
             else ForgeRow(i + 1, null, null, false)
         }
     }
@@ -255,10 +255,10 @@ object MiningSection : ProfileSection {
         return (1..count).map { n ->
             val proc = procs[n] ?: return@map ForgeRow(n, null, null, false)
             val base = recipes[proc.id]?.baseSeconds
-            if (base == null) return@map ForgeRow(n, itemName(proc.id), null, false)
+            if (base == null) return@map ForgeRow(n, itemName(proc.id), null, false, proc.id)
             val end = proc.startMs + ForgeEngine.shownSeconds(base, qf) * 1000
-            if (end <= ctx.nowMs) ForgeRow(n, itemName(proc.id), "Ready", true)
-            else ForgeRow(n, itemName(proc.id), Format.hm((end - ctx.nowMs + 999) / 1000), false)
+            if (end <= ctx.nowMs) ForgeRow(n, itemName(proc.id), "Ready", true, proc.id)
+            else ForgeRow(n, itemName(proc.id), Format.hm((end - ctx.nowMs + 999) / 1000), false, proc.id)
         }
     }
 

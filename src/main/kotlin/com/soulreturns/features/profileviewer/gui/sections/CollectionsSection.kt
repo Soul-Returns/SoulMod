@@ -6,6 +6,7 @@ import com.soulreturns.data.hypixel.collectionGroups
 import com.soulreturns.data.hypixel.craftedMinions
 import com.soulreturns.data.hypixel.hasCollections
 import com.soulreturns.data.hypixel.uniqueMinionCrafts
+import com.soulreturns.data.items.CollectionIcons
 import com.soulreturns.data.items.ItemCatalogClient
 import com.soulreturns.features.profileviewer.gui.ProfileContext
 import com.soulreturns.features.profileviewer.gui.ProfileSection
@@ -84,9 +85,18 @@ object CollectionsSection : ProfileSection {
         }
     }
 
-    /** `.cr` rows: name, count (short) and tier, a started-but-untiered or unstarted row greyed. */
+    /** Item icon size in a `.cr` row and its gap to the name. */
+    private const val ICON = 16
+    private const val ICON_GAP = 4
+
+    /**
+     * `.cr` rows: the collection item's icon, name, count (short) and tier, a started-but-untiered or unstarted row
+     * greyed. Names stay aligned: the icon column exists when any row of the card has an icon.
+     */
     private fun collectionRows(rows: List<CollectionProgress>): Node =
         CustomNode({ _, _ -> rows.size * ROW_H }) { c, x, y, w, _ ->
+            val icons = rows.map { CollectionIcons.collection(it.id, it.name) }
+            val nx = if (icons.any { it != null }) x + ICON + ICON_GAP else x
             for ((i, r) in rows.withIndex()) {
                 val top = y + i * ROW_H
                 if (top + ROW_H < c.viewTop || top > c.viewBottom) continue
@@ -97,19 +107,24 @@ object CollectionsSection : ProfileSection {
                 val count = if (r.count > 0) Format.short(r.count) else "—"
                 val cx = x + w - TIER_W - 8 - c.width(count, S.CAPTION)
                 c.text(count, cx, top, bottom, S.TEXT_DIM, S.CAPTION)
-                Rich.of(r.name).ellipsize(c, S.SMALL, cx - 8 - x).draw(c, x, top, bottom, S.SMALL, if (none) S.TEXT_GHOST else S.TEXT_SOFT)
+                icons[i]?.let { c.item(it, x, top + (ROW_H - 1 - ICON) / 2, ICON, count = false) }
+                Rich.of(r.name).ellipsize(c, S.SMALL, cx - 8 - nx).draw(c, nx, top, bottom, S.SMALL, if (none) S.TEXT_GHOST else S.TEXT_SOFT)
                 if (i < rows.lastIndex) c.rect(x, bottom, x + w, bottom + 1, S.TD_LINE, Corner.SQUARE)
             }
         }
 
-    // `.perk`: name, then the tier in a darker box; padding 2 4 2 8, 6 between, 4 between pills.
+    // `.perk`: the minion's head, name, then the tier in a darker box; padding 2 4 2 8, 6 between, 4 between pills.
     private const val PILL_H = 18
     private const val PILL_GAP = 4
+    private const val HEAD = 14
     private val PILL_BOX_BG = 0xFF1A1A1A.toInt()
 
     private fun tierBoxW(m: KitMeasure, p: MinionProgress) = m.width(Format.roman(p.tier), S.SMALL, true) + 8
 
-    private fun pillW(m: KitMeasure, p: MinionProgress) = 8 + m.width(p.name, S.SMALL) + 6 + tierBoxW(m, p) + 4
+    /** Left padding up to the name: 8, or the head (3 + 14 + 4) when one is known. */
+    private fun nameX(p: MinionProgress) = if (CollectionIcons.minion(p.id, p.tier) != null) 3 + HEAD + 4 else 8
+
+    private fun pillW(m: KitMeasure, p: MinionProgress) = nameX(p) + m.width(p.name, S.SMALL) + 6 + tierBoxW(m, p) + 4
 
     /** Where each pill goes: its left x and line, plus the line count, wrapping like `flex-wrap`. */
     private class PillFlow(val x: IntArray, val line: IntArray, val lines: Int) {
@@ -143,8 +158,10 @@ object CollectionsSection : ProfileSection {
                 if (py + PILL_H < c.viewTop || py > c.viewBottom) continue
                 val pw = pillW(c, p)
                 c.rect(px, py, px + pw, py + PILL_H, S.TIER_BG, Corner.SMALL)
-                c.text(p.name, px + 8, py, py + PILL_H, S.TEXT_MID, S.SMALL)
-                val bx = px + 8 + c.width(p.name, S.SMALL) + 6
+                CollectionIcons.minion(p.id, p.tier)?.let { c.item(it, px + 3, py + (PILL_H - HEAD) / 2, HEAD, count = false) }
+                val nx = px + nameX(p)
+                c.text(p.name, nx, py, py + PILL_H, S.TEXT_MID, S.SMALL)
+                val bx = nx + c.width(p.name, S.SMALL) + 6
                 val bw = tierBoxW(c, p)
                 c.rect(bx, py + 2, bx + bw, py + PILL_H - 2, PILL_BOX_BG, Corner.SMALL)
                 c.text(Format.roman(p.tier), bx + 4, py, py + PILL_H, if (p.tier >= MAX_MINION_TIER) S.MAXED else S.TEXT, S.SMALL, true)

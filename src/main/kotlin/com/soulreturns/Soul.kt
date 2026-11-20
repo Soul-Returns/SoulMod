@@ -194,6 +194,7 @@ object Soul : ClientModInitializer {
         SeaCreatureCatalogClient.init()
         DropCatalogClient.init()
         ItemCatalogClient.init()
+        com.soulreturns.data.items.PackModels.register()
         PriceCatalogClient.init()
         com.soulreturns.data.recipes.RecipeCatalogClient.init()
         com.soulreturns.data.hypixel.HotmTreeClient.init()
@@ -277,7 +278,7 @@ object Soul : ClientModInitializer {
         PetState.register()
         PetHud.register()
         com.soulreturns.features.pets.ActivePetMark.register()
-        // Repoints /spv from its chat summary onto the Profile Viewer screen.
+        // Repoints /sp from its chat summary onto the Profile Viewer screen.
         ProfileViewerScreen.register()
         DungeonRunState.register()
         DungeonMapItemScanner.register()

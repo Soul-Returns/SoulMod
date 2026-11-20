@@ -1260,8 +1260,11 @@ object ConfigRegistry {
                 "profile", "Profile Viewer", "user",
                 listOf(
                     SettingsSection(
-                        "spv", "Profile Viewer", "/spv <name> [profile] looks up any player's SkyBlock profile",
-                        listOf(ToggleOption("Enable /spv", "Turns /spv and /soul spv on or off", { cfg.profileViewer.enabled }, { v -> ConfigManager.update { copy(profileViewer = profileViewer.copy(enabled = v)) } }, d.profileViewer.enabled)),
+                        "spv", "Profile Viewer", "/sp <name> [profile] looks up any player's SkyBlock profile",
+                        listOf(
+                            ToggleOption("Enable /sp", "Turns /sp, /soul sp and Soul's optional /pv on or off", { cfg.profileViewer.enabled }, { v -> ConfigManager.update { copy(profileViewer = profileViewer.copy(enabled = v)) } }, d.profileViewer.enabled),
+                            ToggleOption("Use /pv", "Replaces other mods' /pv with Soul's Profile Viewer while on. Off returns /pv to other mods or the server immediately", { cfg.profileViewer.pvCommand }, { v -> ConfigManager.update { copy(profileViewer = profileViewer.copy(pvCommand = v)) } }, d.profileViewer.pvCommand),
+                        ),
                     ),
                     SettingsSection(
                         "sharing", "Sharing", "What other Soul users may see about you",
