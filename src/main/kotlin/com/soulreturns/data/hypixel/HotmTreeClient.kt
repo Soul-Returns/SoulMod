@@ -37,5 +37,13 @@ object HotmTreeClient {
 
     suspend fun refresh(): String = catalog.refresh()
 
+    /**
+     * Dev fixtures only (`SpvFixtures`, key `hotmTree`): show [snapshot] without a backend. The next catalog
+     * swap replaces it.
+     */
+    fun preview(snapshot: HotmTreeSnapshot) {
+        tree = HotmTree(snapshot)
+    }
+
     fun status(): CatalogStatus = catalog.status()
 }

@@ -20,6 +20,7 @@ import com.soulreturns.features.profileviewer.gui.kit.KitStyle as S
 import com.soulreturns.features.profileviewer.gui.kit.Ui
 import com.soulreturns.features.profileviewer.gui.kit.framed
 import com.soulreturns.features.profileviewer.gui.kit.slot
+import com.soulreturns.util.MessageDetector
 import com.soulreturns.util.toLegacyText
 import kotlinx.serialization.json.JsonObject
 import net.minecraft.core.component.DataComponents
@@ -100,7 +101,8 @@ object GearSection : ProfileSection {
     internal fun typeLine(stack: ItemStack): String =
         stack.get(DataComponents.LORE)?.lines()?.lastOrNull()?.toLegacyText()?.let(GearText::typeLine).orEmpty()
 
-    private fun plainName(stack: ItemStack): String = GearText.cleanName(stack.hoverName.toLegacyText())
+    /** The item's full name with its colors, without the star glyphs the font lacks. */
+    internal fun plainName(stack: ItemStack): String = GearText.cleanName(stack.hoverName.toLegacyText())
 
     private fun weapons(ctx: ProfileContext): Found {
         memo?.takeIf { it.raw === ctx.member.raw }?.let { return it.found }
@@ -167,9 +169,13 @@ object GearSection : ProfileSection {
 
     private fun Ui.unreadable() = text("Hypixel's item data for this part could not be read.", size = S.SMALL, color = S.TEXT_DIM)
 
+    /** `"Necron's set"` or `"mixed armor"` for helmet-to-boots [armor] (Overview and Equipped). */
+    internal fun setName(armor: List<ItemStack?>): String = GearText.setName(
+        armor.map { s -> s?.let { GearText.withoutReforge(MessageDetector.stripColorCodes(plainName(it)).trim(), modifier(it)) } },
+    )
+
     internal fun render(ui: Ui, v: View) {
-        val names = v.armor.map { s -> s?.let { GearText.withoutReforge(plainName(it), modifier(it)) } }
-        ui.card("Equipped", sub = if (v.equipped.ready) GearText.setName(names) else null) {
+        ui.card("Equipped", sub = if (v.equipped.ready) setName(v.armor) else null) {
             if (v.equipped.loading) {
                 skeleton(4)
             } else if (v.equipped.failed) {

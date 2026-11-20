@@ -13,6 +13,7 @@ import com.soulreturns.data.items.ItemCatalogClient
 import com.soulreturns.data.recipes.RecipeCatalogClient
 import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.features.mining.mineshaft.MineshaftStatsSection
+import com.soulreturns.features.profileviewer.gui.LocalSoulCards
 import com.soulreturns.features.profileviewer.gui.ProfileContext
 import com.soulreturns.features.profileviewer.gui.ProfileSection
 import com.soulreturns.features.profileviewer.gui.ProfileViewerState
@@ -62,11 +63,13 @@ object MiningSection : ProfileSection {
     private val GEM_COLORS = mapOf("jade" to 'a', "amber" to '6', "amethyst" to '5', "sapphire" to 'b', "topaz" to 'e')
 
     /**
-     * Cards built from this computer's `stats.json` (ONLY YOU), shown for yourself only, after the Crystal
-     * Nucleus card: the Crystal Nucleus runs and the Metal Detector. Phase 3 adds them here, each one
-     * function that appends a [CardNode.LOCAL] card and returns whether it had anything to show.
+     * Cards built from this computer's `stats.json` (ONLY YOU), yourself only, after the Crystal Nucleus
+     * card: the Crystal Nucleus runs and the Metal Detector, each only once its tracker recorded something.
      */
-    private val LOCAL_CARDS: List<(Ui, ProfileContext) -> Boolean> = emptyList()
+    private val LOCAL_CARDS: List<(Ui, ProfileContext) -> Boolean> = listOf(
+        { ui, ctx -> LocalSoulCards.nucleus(ui, ctx, empty = false) },
+        { ui, ctx -> LocalSoulCards.detector(ui, ctx, empty = false) },
+    )
 
     override fun badge(ctx: ProfileContext): String? {
         val tree = HotmTreeClient.tree

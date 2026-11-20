@@ -38,7 +38,7 @@ class ProfileViewerStateTest {
     fun `player-level failures replace the body and hide the rail`() {
         assertEquals(Shell(s.BODY_NOT_FOUND, s.BANNER_NONE, s.STATUS_NONE, false), shell(failure = ProfileLookupFailure.NOT_FOUND, hasView = false))
         assertEquals(s.BODY_NOT_FOUND, shell(failure = ProfileLookupFailure.INVALID_NAME).body)
-        assertEquals(Shell(s.BODY_NO_PROFILES, s.BANNER_NONE, s.STATUS_NONE, false), shell(failure = ProfileLookupFailure.NO_PROFILES))
+        assertEquals(Shell(s.BODY_NO_PROFILES, s.BANNER_NONE, s.STATUS_FRESH, false), shell(failure = ProfileLookupFailure.NO_PROFILES))
         assertEquals(s.BODY_ERROR, shell(failure = ProfileLookupFailure.OTHER, hasView = false).body)
     }
 

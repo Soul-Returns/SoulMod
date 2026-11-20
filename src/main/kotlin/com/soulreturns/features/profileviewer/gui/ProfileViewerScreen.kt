@@ -254,6 +254,7 @@ class ProfileViewerScreen private constructor(
         f.identity?.let { resolved = it }
         val now = System.currentTimeMillis()
         if (f.kind == ProfileLookupFailure.RATE_LIMITED) retryUntil = now + (f.retryAfterSeconds ?: St.DEFAULT_RETRY_S) * 1000
+        if (f.kind == ProfileLookupFailure.NO_PROFILES) loadedAt = now
         val fallback = f.kind == ProfileLookupFailure.RATE_LIMITED || f.kind == ProfileLookupFailure.OFFLINE
         if (fallback && view?.identity?.name?.equals(f.name, ignoreCase = true) == true) return
         val cached = if (fallback) synchronized(cache) { cache[f.name.lowercase()] } else null

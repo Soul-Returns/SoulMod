@@ -1,5 +1,7 @@
 package com.soulreturns.features.profileviewer.gui.kit
 
+import kotlin.math.max
+
 /**
  * A line of text in colored runs, parsed from Minecraft `§` codes (`§0`..`§f` colors, `§l` bold,
  * `§r` reset; other format codes are dropped). Item names, lore-like values and every Soul text that
@@ -9,7 +11,7 @@ package com.soulreturns.features.profileviewer.gui.kit
  */
 class Rich private constructor(val runs: List<Run>) {
     /** [color] null = the drawing node's default color. */
-    class Run(val text: String, val color: Int?, val bold: Boolean)
+    class Run(val text: String, val color: Int?, val bold: Boolean, val minW: Int = 0)
 
     val isEmpty: Boolean get() = runs.all { it.text.isEmpty() }
 
@@ -17,7 +19,7 @@ class Rich private constructor(val runs: List<Run>) {
     val plain: String get() = runs.joinToString("") { it.text }
 
     fun width(m: KitMeasure, size: Float, bold: Boolean = false): Int =
-        runs.sumOf { m.width(it.text, size, bold || it.bold) }
+        runs.sumOf { max(m.width(it.text, size, bold || it.bold), it.minW) }
 
     /** Draws on one line, vertically centered between [top] and [bottom]; returns the end x. */
     fun draw(c: KitCanvas, x: Int, top: Int, bottom: Int, size: Float, color: Int, bold: Boolean = false): Int {
@@ -25,7 +27,7 @@ class Rich private constructor(val runs: List<Run>) {
         for (r in runs) {
             if (r.text.isEmpty()) continue
             c.text(r.text, cx, top, bottom, r.color ?: color, size, bold || r.bold)
-            cx += c.width(r.text, size, bold || r.bold)
+            cx += max(c.width(r.text, size, bold || r.bold), r.minW)
         }
         return cx
     }
@@ -144,7 +146,7 @@ class Rich private constructor(val runs: List<Run>) {
         }
 
         /** One run in an explicit color (a Soul color that has no `§` code). */
-        fun colored(text: String, color: Int, bold: Boolean = false): Rich = Rich(listOf(Run(text, color, bold)))
+        fun colored(text: String, color: Int, bold: Boolean = false, minW: Int = 0): Rich = Rich(listOf(Run(text, color, bold, minW)))
 
         /** Runs side by side. */
         fun join(vararg parts: Rich): Rich = Rich(parts.flatMap { it.runs })

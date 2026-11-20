@@ -64,4 +64,23 @@ object RngMeterStore {
     fun known(): Boolean = rareKeys() != null
 
     fun isRare(item: ExpItem): Boolean = RareRewards.isRare(item, rareKeys(), selectedKeys())
+
+    /** A profile's selected drop as last read from the meter: its name, current odds and when it was read. */
+    data class SelectedDrop(val name: String, val odds: Double, val readAt: Long)
+
+    /**
+     * The selected drop stored for the profile [profileId] (any uuid form) or, when it was stored before
+     * the id was known, [profileName]; null when none is stored or its entry is not in the cached table.
+     */
+    fun selectedDrop(profileId: String, profileName: String): SelectedDrop? {
+        val cache = handle.read()
+        val id = profileId.replace("-", "").lowercase()
+        val sel = cache.selected.entries.firstOrNull { it.key.replace("-", "").lowercase() == id }?.value
+            ?: cache.selected[profileName]
+            ?: return null
+        val entry = cache.table.entries[sel.page.toString()]?.firstOrNull { it.keys == sel.keys }
+            ?: cache.table.entries.values.asSequence().flatten().firstOrNull { it.keys == sel.keys }
+            ?: return null
+        return SelectedDrop(entry.name, entry.odds, sel.readAt)
+    }
 }

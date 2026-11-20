@@ -4,6 +4,8 @@ import com.google.common.collect.ImmutableMultimap
 import com.mojang.authlib.GameProfile
 import com.mojang.authlib.properties.Property
 import com.mojang.authlib.properties.PropertyMap
+import com.soulreturns.data.hypixel.HotmTreeClient
+import com.soulreturns.data.hypixel.HotmTreeSnapshot
 import com.soulreturns.data.hypixel.PlayerIdentity
 import com.soulreturns.data.hypixel.SkillCapsClient
 import com.soulreturns.data.hypixel.SkillCapsEnvelope
@@ -46,11 +48,14 @@ import java.util.UUID
  *   "failure": { "kind": "not-found" | "no-profiles" | "rate-limited" | "offline" | "other", "retryAfter": 30 },
  *   "profiles": { …a Hypixel /skyblock/profiles body… }, "profile": "Banana",
  *   "soulStats": { "status": 200, "body": { "schemaVersion": 1, "shared": true, "namespaces": { … } } },
- *   "caps": { "schemaVersion": 2, "profiles": { "<profile id>": { "farming": 60 } } } }
+ *   "caps": { "schemaVersion": 2, "profiles": { "<profile id>": { "farming": 60 } } },
+ *   "hotmTree": { …a `GET /hotm/tree` body… } }
  * ```
  * `self: true` swaps in your own name and uuid (the fixture's `uuid` member becomes yours); `hold: true`
  * stops after resolving (the loading state). `skin` gives the player a skin texture inline (the test
- * client has no session server to resolve one by uuid); without it the skin lookup goes by uuid.
+ * client has no session server to resolve one by uuid); without it the skin lookup goes by uuid. `hotmTree`
+ * stands in for the backend's Heart of the Mountain catalog until its next refresh (the shared payload is
+ * `src/test/resources/profileviewer/fragments/hotm-tree.json`).
  */
 object SpvFixtures {
     private val json = Json { ignoreUnknownKeys = true }
@@ -83,6 +88,13 @@ object SpvFixtures {
             val uuid = MojangUuid.parse(identity.uuidUndashed) ?: UUID(0L, 0L)
             ProfileFigure.fixtureSkins[identity.uuidUndashed] =
                 GameProfile(uuid, identity.name, PropertyMap(ImmutableMultimap.of("textures", Property("textures", value))))
+        }
+        (root["hotmTree"] as? JsonObject)?.let { tree ->
+            try {
+                HotmTreeClient.preview(json.decodeFromJsonElement(HotmTreeSnapshot.serializer(), tree))
+            } catch (e: Exception) {
+                DevOutput.line("§cIgnoring §fhotmTree§c: ${e.message}")
+            }
         }
         DevOutput.line("§7Presenting §f${identity.name}§7 from §f$file")
         ProfileViewerService.onLookupStarted(identity.name)

@@ -5,6 +5,7 @@ import com.soulreturns.data.hypixel.TrophyFishEntry
 import com.soulreturns.data.hypixel.fishingCounts
 import com.soulreturns.data.hypixel.trophyFishing
 import com.soulreturns.data.skyblock.SkyblockRarity
+import com.soulreturns.features.profileviewer.gui.LocalSoulCards
 import com.soulreturns.features.profileviewer.gui.ProfileContext
 import com.soulreturns.features.profileviewer.gui.ProfileSection
 import com.soulreturns.features.profileviewer.gui.kit.Corner
@@ -56,7 +57,7 @@ object FishingSection : ProfileSection {
                     add(TrophyGridNode(trophies.fish, TIER_NAMES, TIER_COLORS))
                 }
             }
-            // Phase 3: the local Soul fishing tracker card (own profile only) goes here, after Trophy Fish.
+            LocalSoulCards.fishing(this, ctx, empty = false)
         }
     }
 

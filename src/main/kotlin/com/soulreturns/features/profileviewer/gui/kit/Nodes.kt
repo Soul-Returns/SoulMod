@@ -388,11 +388,21 @@ class ColumnsNode(val columns: List<List<Node>>, val basis: Int = S.COLUMN_BASIS
  * Two areas side by side with a fixed-width [left] (`.ov-top`: 118 px figure | 1fr), the left one
  * as tall as the right column (a single left child is painted at that full height, `grid-row: span 2`).
  */
-class SplitNode(val leftW: Int, val left: Node, val right: Node, val gap: Int = S.GAP) : Node() {
-    override fun measure(m: KitMeasure, w: Int): Int = max(left.height(m, leftW), right.height(m, w - leftW - gap))
+class SplitNode(val leftW: Int, val left: Node, val right: Node, val gap: Int = S.GAP, val minRightW: Int = 0) : Node() {
+    private fun stacked(w: Int) = minRightW > 0 && w - leftW - gap < minRightW
+    private val leftOnly get() = (left as? StackNode)?.children?.singleOrNull() ?: left
+
+    override fun measure(m: KitMeasure, w: Int): Int =
+        if (stacked(w)) left.height(m, w) + gap + right.height(m, w) else max(left.height(m, leftW), right.height(m, w - leftW - gap))
+
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
-        val only = (left as? StackNode)?.children?.singleOrNull()
-        if (only != null) only.paint(c, x, y, leftW, h) else left.paint(c, x, y, leftW, h)
+        if (stacked(w)) {
+            val lh = left.height(c, w)
+            left.paint(c, x, y, w, lh)
+            right.paint(c, x, y + lh + gap, w, right.height(c, w))
+            return
+        }
+        leftOnly.paint(c, x, y, leftW, h)
         right.paint(c, x + leftW + gap, y, w - leftW - gap, right.height(c, w - leftW - gap))
     }
 }

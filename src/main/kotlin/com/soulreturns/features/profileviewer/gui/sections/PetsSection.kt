@@ -113,12 +113,12 @@ object PetsSection : ProfileSection {
     }
 
     /** The Pet HUD's reading only counts for your own profile that is also the one you are playing. */
-    private fun liveReader(ctx: ProfileContext): (ApiPet) -> Double? {
+    internal fun liveReader(ctx: ProfileContext): (ApiPet) -> Double? {
         if (!ctx.isSelf || !ctx.profile.cuteName.equals(SkyblockProfileState.current, ignoreCase = true)) return { null }
         return { p -> p.uuid?.let { PetState.tracker.record(it) }?.takeIf { it.expLive }?.exp }
     }
 
-    private fun heldName(id: String): String {
+    internal fun heldName(id: String): String {
         val named = ItemCatalogClient.byId(id)?.displayName?.takeIf { it.isNotBlank() }?.let(MessageDetector::stripColorCodes)
         return named ?: PetItems.titleOf(id)
     }
@@ -158,7 +158,7 @@ object PetsSection : ProfileSection {
 }
 
 /** The tooltip lines of a pet, as the mock's `regPet` writes them (no pet category: the API does not carry it). */
-private fun tooltipLines(p: PetsSection.PetRow): List<String> {
+internal fun petTooltipLines(p: PetsSection.PetRow): List<String> {
     val code = rarityCode(p.rarity)
     val lines = ArrayList<String>()
     lines += "§7[Lvl ${p.level}] §$code${p.name}"
@@ -206,7 +206,7 @@ private class PetNode(private val p: PetsSection.PetRow, private val hero: Boole
         c.framed(ix, iy, ix + iconSize, iy + iconSize, S.SLOT_BG, S.SLOT_EDGE, Corner.SQUARE)
         val glyph = iconSize * 3 / 5
         c.icon("pv_paw", ix + (iconSize - glyph) / 2, iy + (iconSize - glyph) / 2, glyph, p.color)
-        c.tooltip(ix, iy, ix + iconSize, iy + iconSize, tooltipLines(p), "pet:${p.name}:${p.level}")
+        c.tooltip(ix, iy, ix + iconSize, iy + iconSize, petTooltipLines(p), "pet:${p.name}:${p.level}")
 
         val tx = ix + iconSize + gap
         val tw = x + w - padX - tx

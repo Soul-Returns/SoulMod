@@ -63,7 +63,7 @@ object ProfileViewerState {
             if (failureKind == ProfileLookupFailure.NOT_FOUND || failureKind == ProfileLookupFailure.INVALID_NAME) {
                 return Shell(BODY_NOT_FOUND, BANNER_NONE, STATUS_NONE, false)
             }
-            if (failureKind == ProfileLookupFailure.NO_PROFILES) return Shell(BODY_NO_PROFILES, BANNER_NONE, STATUS_NONE, false)
+            if (failureKind == ProfileLookupFailure.NO_PROFILES) return Shell(BODY_NO_PROFILES, BANNER_NONE, STATUS_FRESH, false)
             if (failureKind == ProfileLookupFailure.RATE_LIMITED) {
                 if (!hasView) return Shell(BODY_RATE_LIMITED_EMPTY, BANNER_NONE, if (limited) STATUS_RATE_LIMITED else STATUS_NONE, false)
                 return Shell(BODY_SECTION, if (limited) BANNER_RATE_LIMITED else BANNER_STALE, if (limited) STATUS_RATE_LIMITED else STATUS_STALE, true)

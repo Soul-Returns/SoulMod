@@ -92,7 +92,7 @@ object DungeonsSection : ProfileSection {
         val played = f.completions > 0
         val name = if (master) "M${f.tier}" else if (f.tier == 0) "Entrance" else "F${f.tier}"
         val (g, color) = grade(f.bestScore)
-        val score = if (played && f.bestScore > 0) Cell(Rich.join(Rich.colored(g, color, bold = true), Rich.of(" ${f.bestScore}"))) else Cell.DASH
+        val score = if (played && f.bestScore > 0) Cell(Rich.join(Rich.colored(g, color, bold = true, minW = 18), Rich.of(" ${f.bestScore}"))) else Cell.DASH
         return TableRow(
             listOf(
                 Cell.of(name, bold = true),

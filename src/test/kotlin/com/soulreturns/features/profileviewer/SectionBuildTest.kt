@@ -1,5 +1,7 @@
 package com.soulreturns.features.profileviewer
 
+import com.soulreturns.data.hypixel.HotmTreeClient
+import com.soulreturns.data.hypixel.HotmTreeSnapshot
 import com.soulreturns.data.hypixel.PlayerIdentity
 import com.soulreturns.data.hypixel.SkillCapsClient
 import com.soulreturns.data.hypixel.SkillCapsEnvelope
@@ -178,6 +180,23 @@ class SectionBuildTest {
         assertTrue("Mineshaft" in render("sam", "soul").first.all())
         assertTrue("Builder42 keeps their Soul stats private" in render("builder", "soul").first.all())
         assertTrue("Fisher_Joe doesn't use Soul" in render("joe", "soul").first.all())
+    }
+
+    @Test
+    fun `overview shows gear, the active pet, the market value block and the highlights`() {
+        HotmTreeClient.preview(json.decodeFromString(HotmTreeSnapshot.serializer(), javaClass.getResource("/profileviewer/fragments/hotm-tree.json")!!.readText()))
+        try {
+            val sam = render("sam", "overview").first.all()
+            for (want in listOf("Gear", "Weapons", "All gear", "Golden Dragon", "Holding", "Market value", "items at base price", "Heart of the Mountain", "Tier ", "Fairy souls")) {
+                assertTrue(want in sam, "missing '$want' in $sam")
+            }
+            val builder = render("builder", "overview").first.all()
+            for (want in listOf("Gear is hidden", "Builder42's Inventory API is off.", "Rabbit", "No pet item", "Banking API off")) {
+                assertTrue(want in builder, "missing '$want' in $builder")
+            }
+        } finally {
+            HotmTreeClient.preview(HotmTreeSnapshot())
+        }
     }
 
     @Test

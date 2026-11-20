@@ -36,6 +36,9 @@ val SkyblockProfileMember.magicalPower: Int?
 val SkyblockProfileMember.selectedPower: String?
     get() = raw.path("accessory_bag_storage")?.string("selected_power")
 
+/** `inventory.bag_contents.sacks_bag.data`: the sacks the player carries (priced as items by the Market value). */
+val SkyblockProfileMember.sacksBagBlob: String? get() = dataBlob("inventory", "bag_contents", "sacks_bag")
+
 /**
  * `nether_island_player_data.kuudra_completed_tiers`: completions per tier key (`none`, `hot`,
  * `burning`, `fiery`, `infernal`), only tiers with a count. `highest_wave_*` keys are dropped.

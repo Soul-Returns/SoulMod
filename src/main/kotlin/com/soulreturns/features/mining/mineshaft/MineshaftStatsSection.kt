@@ -28,8 +28,9 @@ object MineshaftStatsSection {
     private const val TYPES_SHOWN = 6
 
     /**
-     * @param full the Soul section's full breakdown ("Glacite Mineshafts", full width, both tables);
-     *   false = the Mining section's summary ("Mineshaft odds", two columns, corpse table only).
+     * @param full the Soul section's full breakdown ("Glacite Mineshafts", full width, both tables, plus
+     *   the Self-discovered / Warped in rows); false = the Mining section's summary ("Mineshaft odds",
+     *   the headline rows beside the corpse table).
      */
     fun card(ui: Ui, ctx: ProfileContext, payload: JsonObject, full: Boolean): Boolean {
         val total = MineshaftStats.from(payload) ?: return false
@@ -49,27 +50,32 @@ object MineshaftStatsSection {
                 empty("pv_pick", "No visits recorded", if (scope == "profile") "Nothing on ${ctx.profile.cuteName} yet. Switch to All profiles for the rest." else "")
                 return@card
             }
-            kvs(cols = 2) {
-                kv("Visits", Format.num(m.totalVisits))
-                kv("Time inside", Format.hm(m.totalDurationSec))
-                kv("Average visit", Format.hm(m.averageDurationSec.toLong()))
-                kv("Littlefoot", "${Format.num(m.littlefootFound)} §8(${Format.pct(m.littlefootFindRate)})", color = if (m.littlefootFound > 0) KitStyle.ACCENT_LIGHT else KitStyle.TEXT)
-                val found = m.bySource[VisitSource.DISCOVERED]?.visits ?: 0
-                val warped = m.bySource[VisitSource.WARPED]?.visits ?: 0
-                if (m.bySource.isNotEmpty()) {
-                    kv("Self-discovered", "${Format.num(found)} §8(${share(found, m.totalVisits)})", tip = "Only these describe your own odds: a mineshaft you were warped into was someone else's roll.")
-                    kv("Warped in", "${Format.num(warped)} §8(${share(warped, m.totalVisits)})")
+            val head: Ui.() -> Unit = {
+                kvs(cols = if (full) 2 else 1) {
+                    kv("Visits", Format.num(m.totalVisits))
+                    kv("Time inside", Format.hm(m.totalDurationSec))
+                    kv("Average visit", Format.hm(m.averageDurationSec.toLong()))
+                    kv("Littlefoot", "${Format.num(m.littlefootFound)} §8(${Format.pct(m.littlefootFindRate)})", color = if (m.littlefootFound > 0) KitStyle.ACCENT_LIGHT else KitStyle.TEXT)
+                    if (full && m.bySource.isNotEmpty()) {
+                        val found = m.bySource[VisitSource.DISCOVERED]?.visits ?: 0
+                        val warped = m.bySource[VisitSource.WARPED]?.visits ?: 0
+                        kv("Self-discovered", "${Format.num(found)} §8(${share(found, m.totalVisits)})", tip = "Only these describe your own odds: a mineshaft you were warped into was someone else's roll.")
+                        kv("Warped in", "${Format.num(warped)} §8(${share(warped, m.totalVisits)})")
+                    }
                 }
             }
-            grid(260) {
-                stack(0) { corpseTable(this, m) }
-                if (full) {
-                    stack(4) {
+            if (full) {
+                head()
+                columns {
+                    column { corpseTable(this, m) }
+                    column {
                         typeTable(this, m, if (flag("msAll")) Int.MAX_VALUE else TYPES_SHOWN)
                         val types = m.byType.size
                         if (types > TYPES_SHOWN) link(if (flag("msAll")) "Show fewer" else "Show all $types mineshaft types") { toggleFlag("msAll") }
                     }
                 }
+            } else {
+                split(150, head, { corpseTable(this, m) }, minRightW = 280)
             }
         }
         return true

@@ -361,6 +361,10 @@ class StatsHandle<T : Any> internal constructor(
 
     @Volatile private var cached: T? = null
 
+    private var peekedKey: String? = null
+
+    private var peeked: T? = null
+
     /** Which bucket reads and writes currently go to. */
     fun currentKey(): String = key().ifBlank { PersistentStats.LEGACY_KEY }
 
@@ -377,6 +381,21 @@ class StatsHandle<T : Any> internal constructor(
     }
 
     /**
+     * Bucket [k]'s payload (another profile's, for the Profile Viewer), or a fresh default. Read-only;
+     * the current bucket comes from [read]'s cache, one other bucket is kept decoded.
+     */
+    fun read(k: String): T {
+        if (k == currentKey()) return read()
+        synchronized(lock) {
+            peeked?.let { if (peekedKey == k) return it }
+            val value = decode(k)
+            peekedKey = k
+            peeked = value
+            return value
+        }
+    }
+
+    /**
      * Replace this bucket's payload with `block(current)` and mark the file dirty.
      *
      * [block] must be pure — it can run against a payload another thread just wrote, and it holds the
@@ -388,6 +407,10 @@ class StatsHandle<T : Any> internal constructor(
             val next = (cached?.takeIf { cachedKey == k } ?: decode(k)).block()
             cachedKey = k
             cached = next
+            if (peekedKey == k) {
+                peekedKey = null
+                peeked = null
+            }
             PersistentStats.writeRaw(namespaceId, k, json.encodeToJsonElement(serializer, next))
         }
     }
@@ -406,6 +429,8 @@ class StatsHandle<T : Any> internal constructor(
             }
             cachedKey = null
             cached = null
+            peekedKey = null
+            peeked = null
         }
     }
 
@@ -416,6 +441,8 @@ class StatsHandle<T : Any> internal constructor(
         synchronized(lock) {
             cachedKey = null
             cached = null
+            peekedKey = null
+            peeked = null
         }
     }
 
