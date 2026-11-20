@@ -17,6 +17,7 @@
     "LevelEventHandlerMixin",
     "GuiGraphicsExtractorMixin",
     "GuiInitialScreensMixin",
+    "GuiRendererMixin",
     "InventoryScreenMixin",
     "KeyMappingMixin",
     "KeyboardHandlerMixin",
