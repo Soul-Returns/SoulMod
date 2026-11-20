@@ -6,7 +6,12 @@ import com.soulreturns.config.DataBackups
 import com.soulreturns.config.cfg
 import com.soulreturns.core.events.Events
 import com.soulreturns.platform.concurrent.SoulScope
+import com.soulreturns.api.HypixelNetwork
+import com.soulreturns.features.dev.DevState
 import com.soulreturns.platform.http.BackendClient
+import com.soulreturns.platform.realtime.RealtimeClient
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.JsonPrimitive
 import com.soulreturns.platform.http.BackendResult
 import com.soulreturns.util.SoulLogger
 import kotlinx.coroutines.delay
@@ -103,6 +108,10 @@ object UpdateService {
         if (target is InstallTarget.Unsupported) logger.info("Updates are notify-only: ${(target as InstallTarget.Unsupported).reason}")
         recordStart()
         publish()
+        RealtimeClient.onRealtimeEvent("mod-release") { event ->
+            onReleaseHint((event.data["version"] as? JsonPrimitive)?.contentOrNull, (event.data["channel"] as? JsonPrimitive)?.contentOrNull)
+        }
+        DevState.register("updater_push") { pushDiagnostics() }
         // The first check starts during client init so its answer is there when the title screen
         // appears; after the scan, which may mark a version as blocked before it could be offered.
         SoulScope.io.launch {
@@ -113,6 +122,35 @@ object UpdateService {
             }
         }
     }
+
+    private val pushScheduler = PushCheckScheduler()
+
+    @Volatile private var lastPushEventAt: Long? = null
+
+    /**
+     * A `mod-release` hint arrived (realtime thread). Its content is never used: it only schedules
+     * the normal check, bypassing the response cache, after a random delay and at most once per
+     * five minutes ([PushCheckScheduler]). Realtime is closed on Alpha; the guard is belt and braces.
+     */
+    fun onReleaseHint(version: String?, channel: String?) {
+        if (!automatic || HypixelNetwork.isAlpha) return
+        if (!PushCheckScheduler.wellFormed(version, channel)) return
+        val now = System.currentTimeMillis()
+        lastPushEventAt = now
+        val wait = pushScheduler.onEvent(now) ?: return
+        SoulScope.io.launch {
+            delay(wait)
+            pushScheduler.started(System.currentTimeMillis())
+            check(manual = true)
+        }
+    }
+
+    /** For `/soul dev` and the dev bridge. */
+    fun pushDiagnostics(): Map<String, Any?> = linkedMapOf(
+        "lastPushEventAt" to lastPushEventAt?.let { java.time.Instant.ofEpochMilli(it).toString() },
+        "scheduledCheckAt" to pushScheduler.scheduledAt?.let { java.time.Instant.ofEpochMilli(it).toString() },
+        "lastPushCheckAt" to pushScheduler.lastRun?.let { java.time.Instant.ofEpochMilli(it).toString() },
+    )
 
     private fun locate(): InstallTarget {
         val loader = FabricLoader.getInstance()

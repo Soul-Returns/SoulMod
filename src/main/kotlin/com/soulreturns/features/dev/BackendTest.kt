@@ -505,6 +505,8 @@ object BackendTest {
         topicMismatch(status.topics)?.let { lines += it }
         status.jwtExpiresAt?.let { lines += "§8    jwt expires in §7${until(it)}" }
         status.lastError?.let { lines += "§8    last error: §e$it" }
+        val push = com.soulreturns.platform.updater.UpdateService.pushDiagnostics()
+        lines += "§8    update push: last event §7${push["lastPushEventAt"] ?: "never"}§8 · scheduled check §7${push["scheduledCheckAt"] ?: "none"}§8 · last push check §7${push["lastPushCheckAt"] ?: "never"}"
         return lines
     }
 
