@@ -1098,7 +1098,7 @@ data class MineshaftConfig(
      * mineshaft yourself or were warped in (and by whom), and the positions of the corpse stands you
      * saw (line of sight, `CorpseSightings`). Nothing else — no own coordinates, no inventory, no chat.
      *
-     * Defaults **on**: it is what makes `/soul mineshaft` and the Profile Viewer's Soul tab able to
+     * Defaults **on**: it is what makes `/soul mineshaft` and the Profile Viewer's Soul section able to
      * say anything at all, and none of it is information another player could not watch you do.
      */
     val logVisits: Boolean = true,

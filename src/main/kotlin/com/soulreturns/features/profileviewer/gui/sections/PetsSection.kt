@@ -147,12 +147,13 @@ object PetsSection : ProfileSection {
                 }
             }
         }
+        val shown = sorted(rows, sort, query)
         ui.row {
             seg("sort", "level", listOf("level" to "Level", "rarity" to "Rarity", "name" to "Name"))
-            search("query", "Filter pets")
+            search("query", "Filter pets", count = if (query.isNotEmpty()) "${shown.size}" else null)
         }
         ui.grid(210) {
-            for (r in sorted(rows, sort, query)) add(PetNode(r, hero = false))
+            for (r in shown) add(PetNode(r, hero = false))
         }
     }
 }

@@ -194,7 +194,7 @@ class ProfileViewerScreen private constructor(
 
     private fun startLoading(name: String) {
         val same = view?.identity?.name?.equals(name, ignoreCase = true) == true
-        lookupName = name
+        lookupName = St.displayName(name, knownNames())
         loading = true
         failure = null
         popover = null
@@ -216,6 +216,10 @@ class ProfileViewerScreen private constructor(
             figure = null
         }
     }
+
+    /** Names whose spelling is stored: yours, those resolved this session, the cached views and recent players. */
+    private fun knownNames(): List<String> =
+        listOf(selfName()) + PlayerIdentityResolver.cachedNames() + synchronized(cache) { cache.values.map { it.view.identity.name } } + RecentPlayers.list().map { it.name }
 
     private fun resolvedTo(identity: PlayerIdentity) {
         if (loading && identity.name.equals(lookupName, ignoreCase = true)) resolved = identity
@@ -254,6 +258,8 @@ class ProfileViewerScreen private constructor(
     private fun accept(f: ProfileLookupFailure) {
         loading = false
         failure = f
+        // Not found: no account has that name, so the header keeps exactly what was typed.
+        if (f.kind == ProfileLookupFailure.NOT_FOUND || f.kind == ProfileLookupFailure.INVALID_NAME) lookupName = f.name
         f.identity?.let { resolved = it }
         val now = System.currentTimeMillis()
         if (f.kind == ProfileLookupFailure.RATE_LIMITED) retryUntil = now + (f.retryAfterSeconds ?: St.DEFAULT_RETRY_S) * 1000
@@ -338,6 +344,7 @@ class ProfileViewerScreen private constructor(
     }
 
     private fun goSection(id: String) {
+        if (id != sectionId) viewState.blurFields()
         sectionId = id
         popover = null
     }
@@ -902,7 +909,7 @@ class ProfileViewerScreen private constructor(
             y += 22
         }
         if (showRecent) {
-            val recent = RecentPlayers.list().filterNot { it.name.equals(name, ignoreCase = true) }
+            val recent = RecentPlayers.without(RecentPlayers.list(), name, view?.identity?.name, selfName())
             if (recent.isNotEmpty()) {
                 y += 6 + 12
                 val chips = recent.map { it to tw(it.name, KitStyle.BODY, false) + 9 + 14 + 6 + 5 }
@@ -950,8 +957,8 @@ class ProfileViewerScreen private constructor(
         if (q.isNotEmpty()) rows += SearchRow(search.text.trim(), "Enter", null, you = false, enter = true, group = null)
         val me = selfName()
         if (match(me)) rows += SearchRow(me, "Ctrl M", selfUuid(), you = true, enter = false, group = "You")
-        for (r in RecentPlayers.list()) {
-            if (match(r.name) && !r.name.equals(me, ignoreCase = true)) rows += SearchRow(r.name, Format.ago(now - r.at), r.uuid, you = false, enter = false, group = "Recent")
+        for (r in RecentPlayers.without(RecentPlayers.list(), me, view?.identity?.name)) {
+            if (match(r.name)) rows += SearchRow(r.name, Format.ago(now - r.at), r.uuid, you = false, enter = false, group = "Recent")
         }
         val party = PartyManager.getPartyState()?.members?.values?.filterNot { it.name.equals(me, ignoreCase = true) }.orEmpty()
         for (p in party) if (match(p.name)) rows += SearchRow(p.name, "party", p.uuid?.let { MojangUuid.undashed(it) }, you = false, enter = false, group = "In your party")
@@ -1405,16 +1412,16 @@ class ProfileViewerScreen private constructor(
             search.keyPressed(event, minecraft?.keyboardHandler)
             return true
         }
-        viewState.focusedField()?.let {
-            it.keyPressed(event, minecraft?.keyboardHandler)
-            return true
-        }
         if (key == GLFW.GLFW_KEY_PAGE_DOWN || (key == GLFW.GLFW_KEY_DOWN && event.hasAltDown())) {
             stepSection(1)
             return true
         }
         if (key == GLFW.GLFW_KEY_PAGE_UP || (key == GLFW.GLFW_KEY_UP && event.hasAltDown())) {
             stepSection(-1)
+            return true
+        }
+        viewState.focusedField()?.let {
+            it.keyPressed(event, minecraft?.keyboardHandler)
             return true
         }
         if (key == GLFW.GLFW_KEY_F5) {

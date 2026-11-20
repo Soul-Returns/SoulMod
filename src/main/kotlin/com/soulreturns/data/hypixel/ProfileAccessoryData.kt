@@ -65,6 +65,12 @@ fun filterAccessorySlots(items: List<BlobItem?>, rarity: String, query: String):
     }.sortedBy { i -> order.indexOf(items[i]!!.rarity).let { if (it < 0) order.size else it } }
 }
 
+/** Every rarity [items] has, strongest first, unknown ones last in bag order: the bag card's filter choices. */
+fun accessoryRarities(items: List<BlobItem?>): List<String> {
+    val order = MagicalPower.PER_RARITY.keys.toList()
+    return items.mapNotNull { it?.rarity }.distinct().sortedBy { r -> order.indexOf(r).let { if (it < 0) order.size else it } }
+}
+
 /**
  * Magical Power of an accessory bag, the way the game adds it up: one value per accessory by its rarity,
  * the Hegemony Artifact counted twice, the Rift Prism and the Abiphone contacts. Per-rarity values are the

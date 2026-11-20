@@ -4045,5 +4045,155 @@
     }
    }
   ]
+ },
+ "localSoul": {
+  "nucleus": {
+   "runs": 486,
+   "runTimes": [
+    404647,
+    450685,
+    406434,
+    401095,
+    364198,
+    252000,
+    486715,
+    445448,
+    482212,
+    434934,
+    443686,
+    431119,
+    320036,
+    471315,
+    450383,
+    449929,
+    318518,
+    315366,
+    366623,
+    391908,
+    438326,
+    417245,
+    451258,
+    381465,
+    438522,
+    443649,
+    380331,
+    523051,
+    453396,
+    491820,
+    382780,
+    375629,
+    399357,
+    413614,
+    457924,
+    434905,
+    393158,
+    362585,
+    388764,
+    493255,
+    371523,
+    434685,
+    445591,
+    330615,
+    422908,
+    498374,
+    299138,
+    400704,
+    413631,
+    370964,
+    449843,
+    416263,
+    332120,
+    469670,
+    460160,
+    476750,
+    506435,
+    441734,
+    427156,
+    342049
+   ],
+   "lastRunMs": 342049,
+   "bestRunMs": 252000,
+   "timeMs": 206550000,
+   "loot": {
+    "Pickonimbus 2000": 211,
+    "Divan Fragment": 62,
+    "Flawless Jade Gemstone": 18,
+    "Jaderald": 3,
+    "Gemstone Powder": 1840000,
+    "Robotron Reflector": 40,
+    "Synthetic Heart": 44
+   }
+  },
+  "fishing": {
+   "catches": 18422,
+   "doubleHooks": 2214,
+   "cocoons": 37,
+   "fishingXp": 4200000.0,
+   "catchesByCreature": {
+    "Sea Walker": 3104,
+    "Night Squid": 2410,
+    "Sea Guardian": 1922,
+    "Water Hydra": 412,
+    "Thunder": 88,
+    "Sea Emperor": 41,
+    "Lord Jawbus": 11,
+    "Plhlegblast": 2
+   }
+  },
+  "dragons": {
+   "summoned": {
+    "kills": {
+     "SUPERIOR": 182,
+     "STRONG": 64,
+     "UNSTABLE": 66
+    },
+    "eyes": {
+     "SUPERIOR": 540,
+     "STRONG": 160,
+     "UNSTABLE": 174
+    },
+    "drops": {
+     "SUPERIOR": {
+      "SUPERIOR_FRAGMENT": 412,
+      "ASPECT_OF_THE_DRAGON": 9,
+      "DRAGON_CLAW": 61
+     },
+     "STRONG": {
+      "STRONG_FRAGMENT": 205
+     }
+    }
+   },
+   "lootshare": {
+    "kills": {
+     "SUPERIOR": 410,
+     "YOUNG": 300,
+     "OLD": 338
+    },
+    "eyes": {
+     "SUPERIOR": 330
+    },
+    "drops": {
+     "YOUNG": {
+      "YOUNG_FRAGMENT": 96
+     }
+    }
+   }
+  },
+  "detector": {
+   "treasures": 3812,
+   "tools": 1498,
+   "sets": 214,
+   "setTimeMs": 15408000,
+   "lastSetMs": 66000,
+   "found": {
+    "Divan's Alloy": 4
+   },
+   "amount": {}
+  },
+  "rng": {
+   "name": "Jaderald",
+   "odds": 0.0614,
+   "readAt": "now-1500000"
+  }
  }
 }

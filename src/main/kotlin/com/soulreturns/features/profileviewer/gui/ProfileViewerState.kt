@@ -110,4 +110,11 @@ object ProfileViewerState {
         if (answer.code == SoulStatsClient.CODE_NO_NAMESPACES) return SOUL_SHARED_EMPTY
         return SOUL_UNAVAILABLE
     }
+
+    /**
+     * The name to show for a lookup of [typed] before (or without) a fresh answer: the stored spelling
+     * among [known] (yourself, resolved names, recent players), else what was typed.
+     */
+    fun displayName(typed: String, known: Iterable<String?>): String =
+        known.firstOrNull { it != null && it.equals(typed, ignoreCase = true) } ?: typed
 }

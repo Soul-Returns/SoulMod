@@ -173,8 +173,9 @@ object LocalSoulCards {
             kvs(2) {
                 kv("Summoned", Format.num(d.summoned.kills.values.sum()))
                 kv("Lootshared", Format.num(d.lootshare.kills.values.sum()))
-                kv("Summoning Eyes placed", Format.num(d.summoned.eyes.values.sum() + d.lootshare.eyes.values.sum()))
             }
+            // Its own row: the label does not fit half a card's width.
+            kvs { kv("Summoning Eyes placed", Format.num(d.summoned.eyes.values.sum() + d.lootshare.eyes.values.sum())) }
             val amounts = HashMap<String, Long>()
             val sources = HashMap<String, String>()
             for (part in listOf(d.summoned, d.lootshare)) {

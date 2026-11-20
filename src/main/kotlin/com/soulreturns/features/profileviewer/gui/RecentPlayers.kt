@@ -41,4 +41,8 @@ object RecentPlayers {
     /** [name] moved (or added) to the front, a different-case duplicate dropped, capped at [MAX]. */
     fun push(players: List<Entry>, name: String, nowMs: Long, uuidUndashed: String? = null): List<Entry> =
         (listOf(Entry(name, nowMs, uuidUndashed)) + players.filterNot { it.name.equals(name, ignoreCase = true) }).take(MAX)
+
+    /** [players] without any of [names] (case-insensitive; nulls ignored): the viewed player, yourself, the name that was not found. */
+    fun without(players: List<Entry>, vararg names: String?): List<Entry> =
+        players.filterNot { e -> names.any { it != null && it.equals(e.name, ignoreCase = true) } }
 }

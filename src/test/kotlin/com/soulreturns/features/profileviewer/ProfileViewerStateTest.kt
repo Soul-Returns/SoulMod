@@ -81,6 +81,20 @@ class ProfileViewerStateTest {
     }
 
     @Test
+    fun `Recent leaves out the viewed player and yourself`() {
+        val list = listOf("Slayer_Sam", "Fisher_Joe", "SoulTester", "Builder42").mapIndexed { i, n -> RecentPlayers.Entry(n, i.toLong()) }
+        assertEquals(listOf("Fisher_Joe", "Builder42"), RecentPlayers.without(list, "slayer_sam", "SoulTester", null).map { it.name })
+        assertEquals(list, RecentPlayers.without(list, null))
+    }
+
+    @Test
+    fun `a lookup shows the stored spelling of a known name, else what was typed`() {
+        assertEquals("SoulTester", s.displayName("soultester", listOf("SoulTester", "Slayer_Sam")))
+        assertEquals("Slayer_Sam", s.displayName("SLAYER_SAM", listOf(null, "Slayer_Sam")))
+        assertEquals("nobody_here", s.displayName("nobody_here", listOf("SoulTester")))
+    }
+
+    @Test
     fun `formatting matches the mock`() {
         assertEquals("2,412,000,000", Format.num(2_412_000_000L))
         assertEquals("412.9M", Format.short(412_880_310L))

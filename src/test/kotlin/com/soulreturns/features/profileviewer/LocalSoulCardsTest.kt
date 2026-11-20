@@ -226,6 +226,21 @@ class LocalSoulCardsTest {
         assertEquals(null, LocalSoulCards.runHistogram(emptyList()))
     }
 
+    @Test
+    fun `the self fixture's localSoul seeds all five cards and a real lookup drops it`() {
+        val f = json.parseToJsonElement(javaClass.getResource("/profileviewer/fixtures/self.json")!!.readText()).jsonObject
+        SpvFixtures.seedLocal(SpvFixtures.resolveTimes(f["localSoul"]!!, NOW).jsonObject)
+        val s = LocalSoulCards.source
+        assertEquals(486L, s.nucleus("Banana").runs)
+        assertEquals(18_422L, s.fishing("Mango").catches)
+        assertFalse(s.dragons("Kiwi").isEmpty())
+        assertEquals(214L, s.detector("Banana").sets)
+        assertEquals("Jaderald", s.rngSelected("any", "Banana")?.name)
+        assertEquals(NOW - 1_500_000, s.rngSelected("any", "Banana")?.readAt)
+        SpvFixtures.seedLocal(null)
+        assertTrue(LocalSoulCards.source === LocalSoulCards.Stored)
+    }
+
     private companion object {
         const val NOW = 1_800_000_000_000L
     }

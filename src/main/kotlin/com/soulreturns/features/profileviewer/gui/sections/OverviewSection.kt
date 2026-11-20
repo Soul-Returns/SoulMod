@@ -93,7 +93,8 @@ object OverviewSection : ProfileSection {
             CustomNode({ _, _ -> 10 + 32 * U + 6 + 11 + 8 }) { c, x, y, w, h ->
                 c.gradient(x, y, x + w, y + h, 0xFF1E1E1E.toInt(), 0xFF171717.toInt())
                 val bodyBottom = y + h - 8 - 11 - 6
-                val state = c.playerModel(uuid, ctx.name, x, y + 10, x + w, bodyBottom, armor)
+                // The body keeps the mock's size at the bottom of the card; the split can make the card taller.
+                val state = c.playerModel(uuid, ctx.name, x, bodyBottom - 32 * U, x + w, bodyBottom, armor)
                 if (state != PlayerModel.READY) silhouette(c, uuid, x + w / 2, bodyBottom - 32 * U, state)
                 val caption = if (state == PlayerModel.LOADING) "Loading skin" else if (state != PlayerModel.READY) "No skin" else if (ctx.member.apiAccessDisabled) "Armor hidden" else ""
                 if (caption.isNotEmpty()) c.text(caption, x + (w - c.width(caption, KitStyle.TINY)) / 2, bodyBottom + 6, bodyBottom + 17, 0xFF666666.toInt(), KitStyle.TINY)

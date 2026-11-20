@@ -3,6 +3,7 @@ package com.soulreturns.features.profileviewer
 import com.soulreturns.data.hypixel.ItemBlobs
 import com.soulreturns.data.hypixel.accessoryBagBlob
 import com.soulreturns.data.hypixel.filterAccessorySlots
+import com.soulreturns.data.hypixel.accessoryRarities
 import com.soulreturns.features.profileviewer.gui.ProfileContext
 import com.soulreturns.features.profileviewer.gui.kit.ViewState
 import com.soulreturns.features.profileviewer.gui.sections.AccessoriesSection
@@ -60,6 +61,24 @@ class AccessoriesSectionTest {
     }
 
     @Test
+    fun `the rarity filter offers every rarity the bag has, strongest first`() {
+        val items = ItemBlobs.parse(sam().member.accessoryBagBlob!!)!!
+        val rarities = accessoryRarities(items)
+        assertEquals("MYTHIC", rarities.first())
+        assertEquals(items.mapNotNull { it?.rarity }.toSet(), rarities.toSet())
+        val text = render(sam()).first.all()
+        assertTrue("Mythic" in text.substringAfter("Accessory bag"), text)
+    }
+
+    @Test
+    fun `a difference to Hypixel's highest Magical Power is explained by its direction`() {
+        assertNull(AccessoriesSection.mismatchNote(399, 399))
+        assertNull(AccessoriesSection.mismatchNote(null, 120))
+        assertEquals("Hypixel reports 399: it counts only the best accessory of an upgrade family.", AccessoriesSection.mismatchNote(399, 420))
+        assertEquals("Hypixel reports the highest Magical Power reached (399); the bag shown adds up to 350.", AccessoriesSection.mismatchNote(399, 350))
+    }
+
+    @Test
     fun `the bag card has its title and a count line`() {
         val state = ViewState()
         state.set("accessories.rarity", "MYTHIC")
@@ -74,7 +93,8 @@ class AccessoriesSectionTest {
         assertTrue("Accessories 5 1 recombobulated · 1 repeated" in text, text)
         assertTrue("Power Bloody" in text, text)
         assertTrue("Tuning — points from Magical Power" in text, text)
-        assertTrue("Hypixel reports 36" in text, text)
+        assertTrue("Hypixel reports the highest Magical Power reached (36); the bag shown adds up to 28." in text, text)
+        assertTrue("upgrade family" !in text, "a smaller bag is not blamed on upgrade families")
         assertTrue("0 upgrades bought" in text)
     }
 

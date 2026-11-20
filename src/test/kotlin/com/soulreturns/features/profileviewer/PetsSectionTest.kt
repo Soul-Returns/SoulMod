@@ -158,6 +158,13 @@ class PetsSectionTest {
     }
 
     @Test
+    fun `the filter field shows its match count inside, only while filtering`() {
+        val text = render("sam", "pets-sam", query = "dragon").first.all()
+        assertTrue("Level Rarity Name 2 " in text, text)
+        assertFalse("Level Rarity Name 2 " in render("sam", "pets-sam").first.all())
+    }
+
+    @Test
     fun `the live chip appears on the hero only for a live reading`() {
         val member = SpvGearFixtures.context("joe", "pets-joe").member
         val live = PetsSection.rows(PetState.apiPets(member), { 9_500_000.0 }) { PetItems.titleOf(it) }

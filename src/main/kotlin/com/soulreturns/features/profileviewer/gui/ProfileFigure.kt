@@ -18,6 +18,7 @@ import java.util.Optional
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToInt
 
 /**
  * The Overview's full-body model of one viewed player: a client-side [RemotePlayer] that is never
@@ -51,8 +52,9 @@ class ProfileFigure(val uuidUndashed: String, private val name: String) {
     }
 
     /**
-     * Draws the model in the box (GUI px, not Soul px: the entity renders in its own pass that ignores
-     * the pose) when the skin is ready. [armor] is helmet to boots. Returns the [PlayerModel] state.
+     * Draws the model in the box (the body, head to feet, in GUI px, not Soul px: the entity renders in
+     * its own pass that ignores the pose) when the skin is ready. [armor] is helmet to boots. Returns the
+     * [PlayerModel] state.
      */
     fun draw(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, mouseX: Float, mouseY: Float, armor: List<ItemStack?>?): Int {
         val state = state()
@@ -64,8 +66,11 @@ class ProfileFigure(val uuidUndashed: String, private val name: String) {
             worn = armor
             for ((i, slot) in ARMOR_SLOTS.withIndex()) p.setItemSlot(slot, armor?.getOrNull(i) ?: ItemStack.EMPTY)
         }
-        val scale = ((y1 - y0) / 2.05f).toInt()
-        InventoryScreen.extractEntityInInventoryFollowsMouse(g, x0, y0, x1, y1, scale, 0.0625f, mouseX, mouseY, p)
+        // Fits the 1.875-block body plus a helmet in the box height; vanilla centers it in the box.
+        val scale = ((y1 - y0) / 2.05f).roundToInt().coerceAtLeast(1)
+        // Room for the head when it tilts toward the pointer; the box is what the model is clipped to.
+        val pad = (y1 - y0) / 20
+        InventoryScreen.extractEntityInInventoryFollowsMouse(g, x0, y0 - pad, x1, y1 + pad, scale, 0.0625f, mouseX, mouseY, p)
         return state
     }
 

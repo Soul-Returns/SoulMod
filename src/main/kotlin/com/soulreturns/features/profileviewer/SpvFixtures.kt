@@ -14,6 +14,12 @@ import com.soulreturns.data.hypixel.SoulStatsAnswer
 import com.soulreturns.data.hypixel.SoulStatsClient
 import com.soulreturns.data.hypixel.SoulStatsEnvelope
 import com.soulreturns.features.dev.DevOutput
+import com.soulreturns.features.experiments.RngMeterStore
+import com.soulreturns.features.fishing.FishingCounts
+import com.soulreturns.features.mining.metaldetector.DetectorLootCounts
+import com.soulreturns.features.mining.nucleus.NucleusCounts
+import com.soulreturns.features.profileviewer.gui.LocalSoulCards
+import com.soulreturns.features.profit.dragon.DragonProfitStats
 import com.soulreturns.features.profileviewer.gui.ProfileFigure
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.util.MojangUuid
@@ -25,6 +31,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
@@ -51,14 +58,19 @@ import java.util.UUID
  *   "profiles": { …a Hypixel /skyblock/profiles body… }, "profile": "Banana",
  *   "soulStats": { "status": 200, "body": { "schemaVersion": 1, "shared": true, "namespaces": { … } } },
  *   "caps": { "schemaVersion": 2, "profiles": { "<profile id>": { "farming": 60 } } },
- *   "hotmTree": { …a `GET /hotm/tree` body… } }
+ *   "hotmTree": { …a `GET /hotm/tree` body… },
+ *   "localSoul": { "nucleus": { …NucleusCounts… }, "fishing": { …FishingCounts… }, "dragons": { …DragonProfitStats… },
+ *                  "detector": { …DetectorLootCounts… }, "rng": { "name": "Jaderald", "odds": 0.5, "readAt": "now-600000" } } }
  * ```
  * `self: true` swaps in your own name and uuid (the fixture's `uuid` member becomes yours); `hold: true`
  * stops after resolving (the loading state). `skin` gives the player a skin texture inline (the test
  * client has no session server to resolve one by uuid); without it the skin lookup goes by uuid; `"loading"`
  * and `"none"` force the figure's "Loading skin" and "No skin" fallbacks. `hotmTree`
  * stands in for the backend's Heart of the Mountain catalog until its next refresh (the shared payload is
- * `src/test/resources/profileviewer/fragments/hotm-tree.json`).
+ * `src/test/resources/profileviewer/fragments/hotm-tree.json`). `localSoul` (with `self: true`) seeds the local
+ * Soul cards in memory, for every profile of the fixture, in place of this computer's `stats.json` buckets
+ * (each key optional; absent ones read the real stores); stats files are never written, and any real lookup
+ * drops the seed again.
  *
  * Times relative to the load: any string `"now"`, `"now-<ms>"` or `"now+<ms>"` becomes that epoch-ms number
  * ([resolveTimes]), so Forge start times and the like stay plausible whenever the fixture is played.
@@ -105,6 +117,7 @@ object SpvFixtures {
             }
         }
         DevOutput.line("§7Presenting §f${identity.name}§7 from §f$file")
+        seedLocal(if (self) root["localSoul"] as? JsonObject else null)
         ProfileViewerService.onLookupStarted(identity.name)
         SoulScope.io.launch {
             delay(root.num("resolveMs") ?: 0L)
@@ -146,6 +159,46 @@ object SpvFixtures {
                 ),
             )
         }
+    }
+
+    /** The `localSoul` seed in place of [LocalSoulCards.Stored] while [spec] is non-null; null restores the real stores. */
+    fun seedLocal(spec: JsonObject?) {
+        if (spec == null) {
+            if (LocalSoulCards.source is SeededLocal) LocalSoulCards.source = LocalSoulCards.Stored
+            return
+        }
+        LocalSoulCards.source = try {
+            SeededLocal(
+                (spec["nucleus"] as? JsonObject)?.let { json.decodeFromJsonElement(NucleusCounts.serializer(), it) },
+                (spec["fishing"] as? JsonObject)?.let { json.decodeFromJsonElement(FishingCounts.serializer(), it) },
+                (spec["dragons"] as? JsonObject)?.let { json.decodeFromJsonElement(DragonProfitStats.serializer(), it) },
+                (spec["detector"] as? JsonObject)?.let { json.decodeFromJsonElement(DetectorLootCounts.serializer(), it) },
+                (spec["rng"] as? JsonObject)?.let { RngMeterStore.SelectedDrop(it.str("name") ?: "?", (it["odds"] as? JsonPrimitive)?.doubleOrNull ?: 0.0, it.num("readAt") ?: 0L) },
+            )
+        } catch (e: Exception) {
+            DevOutput.line("§cIgnoring §flocalSoul§c: ${e.message}")
+            LocalSoulCards.Stored
+        }
+    }
+
+    private class SeededLocal(
+        val nucleus: NucleusCounts?,
+        val fishing: FishingCounts?,
+        val dragons: DragonProfitStats?,
+        val detector: DetectorLootCounts?,
+        val rng: RngMeterStore.SelectedDrop?,
+    ) : LocalSoulCards.Source by LocalSoulCards.Stored {
+        override fun nucleus(profile: String) = nucleus ?: LocalSoulCards.Stored.nucleus(profile)
+
+        override fun fishing(profile: String) = fishing ?: LocalSoulCards.Stored.fishing(profile)
+
+        override fun dragons(profile: String) = dragons ?: LocalSoulCards.Stored.dragons(profile)
+
+        override fun detector(profile: String) = detector ?: LocalSoulCards.Stored.detector(profile)
+
+        override fun rngRead() = rng != null || LocalSoulCards.Stored.rngRead()
+
+        override fun rngSelected(profileId: String, profileName: String) = rng ?: LocalSoulCards.Stored.rngSelected(profileId, profileName)
     }
 
     private val RELATIVE = Regex("now([+-]\\d+)?")

@@ -11,9 +11,11 @@ import com.soulreturns.data.hypixel.calc.LevelCalculator
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.platform.http.BackendResult
 import com.soulreturns.util.MessageDetector
+import com.soulreturns.util.MojangUuid
 import com.soulreturns.util.SoulLogger
 import com.soulreturns.util.soulChat
 import kotlinx.coroutines.launch
+import net.minecraft.client.Minecraft
 import java.util.Locale
 
 /**
@@ -76,6 +78,7 @@ object ProfileViewerService {
      * @param profileOverride a `cute_name` to show instead of the selected profile.
      */
     fun open(rawName: String, profileOverride: String? = null) {
+        SpvFixtures.seedLocal(null)
         onLookupStarted(rawName.trim())
         SoulScope.io.launch { load(rawName, profileOverride) }
     }
@@ -102,7 +105,8 @@ object ProfileViewerService {
 
         soulChat("§7Loading §f$name§7…")
 
-        val resolved = PlayerIdentityResolver.resolveDetailed(name)
+        val resolved = ownIdentity(name)?.let { PlayerIdentityResolver.ResolveOutcome(it, PlayerIdentityResolver.ResolveOutcome.CACHED, "your session") }
+            ?: PlayerIdentityResolver.resolveDetailed(name)
         val identity = resolved.identity
         if (identity == null) {
             return if (resolved.source == PlayerIdentityResolver.ResolveOutcome.UNKNOWN_PLAYER) {
@@ -219,6 +223,17 @@ object ProfileViewerService {
     } catch (_: Throwable) {
         // Config not ready — do not block the user over it.
         true
+    }
+
+    /**
+     * You, from the game session: your own lookup needs no name resolve, and the session spells your name
+     * the way it is stored (an offline session's name can belong to a different account at Mojang).
+     */
+    private fun ownIdentity(name: String): PlayerIdentity? = try {
+        val user = Minecraft.getInstance().user
+        if (user.name.equals(name, ignoreCase = true)) PlayerIdentity(MojangUuid.undashed(user.profileId), user.name) else null
+    } catch (_: Throwable) {
+        null
     }
 
     // ------------------------------------------------------------------ chat rendering

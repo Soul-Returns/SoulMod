@@ -103,7 +103,7 @@ interface KitCanvas : KitMeasure {
     fun layer() = Unit
 
     /**
-     * The player's full-body model in the box, wearing [armor] (helmet to boots; null or empty = none),
+     * The player's full-body model sized to the box (head to feet), wearing [armor] (helmet to boots; null or empty = none),
      * turning toward the pointer. Drawn only once the skin is ready; returns the [PlayerModel] state so
      * the caller draws its own fallback (head on a silhouette while loading, the silhouette on failure).
      */

@@ -19,7 +19,7 @@ object RiftSection : ProfileSection {
     /** Montezuma's cat parts. */
     private const val CATS = 9
 
-    /** Timecharms and Wither Cage eyes: totals seen on ONE real profile (the mock says 7 and 6); [INFERENCE], not a verified maximum. */
+    /** Timecharms and Wither Cage eyes: totals seen on ONE real profile; [INFERENCE], not a verified maximum. */
     private const val TIMECHARMS = 8
     private const val EYES = 7
 

@@ -1,5 +1,6 @@
 package com.soulreturns.features.profileviewer.gui.sections
 
+import com.soulreturns.data.hypixel.accessoryRarities
 import com.soulreturns.data.hypixel.filterAccessorySlots
 import com.soulreturns.data.hypixel.ItemBlobs
 import com.soulreturns.data.hypixel.MagicalPower
@@ -62,7 +63,7 @@ object AccessoriesSection : ProfileSection {
         val tuning = m.activeTuning
 
         ui.tiles {
-            tile("Magical Power", if (reported != null) Format.num(reported) else Format.num(breakdown.total), sub = if (reported != null) "as Hypixel reports it" else "counted from the bag", tip = "accessory_bag_storage.highest_magical_power")
+            tile("Magical Power", if (reported != null) Format.num(reported) else Format.num(breakdown.total), sub = if (reported != null) "as Hypixel reports it" else "counted from the bag", tip = if (reported != null) "The highest Magical Power reached (accessory_bag_storage.highest_magical_power)" else null)
             tile("Power", m.selectedPower?.takeIf { it.isNotBlank() }?.let(::powerDisplayName) ?: "—", sub = "selected at Maxwell")
             tile("Accessories", Format.num(items.size), sub = "$recombs recombobulated" + if (breakdown.duplicates > 0) " · ${breakdown.duplicates} repeated" else "")
             tile("Bag slots", Format.num(parsed.size), sub = if (upgrades != null) "$upgrades upgrades bought" else "upgrades not reported")
@@ -85,14 +86,12 @@ object AccessoriesSection : ProfileSection {
         ui.grid(290) {
             card("Magical Power", sub = "where it comes from") {
                 add(MpRowsNode(breakdown.rows, breakdown.total))
-                if (reported != null && reported != breakdown.total) {
-                    foot("Hypixel reports ${Format.num(reported)}: it counts only the best accessory of an upgrade family.")
-                }
+                mismatchNote(reported, breakdown.total)?.let { foot(it) }
             }
             card(
                 "Accessory bag", sub = "${shown.size} shown", span = 2,
                 tools = {
-                    seg("rarity", "ALL", listOf("ALL" to "All", "LEGENDARY" to "Legendary", "EPIC" to "Epic", "RARE" to "Rare", "UNCOMMON" to "Uncommon", "COMMON" to "Common"))
+                    seg("rarity", "ALL", listOf("ALL" to "All") + accessoryRarities(parsed).map { it to powerDisplayName(it) })
                     search("query", "Filter")
                 },
             ) {
@@ -106,6 +105,19 @@ object AccessoriesSection : ProfileSection {
                     slots(shown.map { decoded.stacks.getOrNull(it) }, cols = 0)
                 }
             }
+        }
+    }
+
+    /**
+     * Why the breakdown differs from Hypixel's number, or null when they agree. Hypixel's is the highest the
+     * player ever reached, so a smaller bag only says so; a larger one is upgrade families counted twice.
+     */
+    internal fun mismatchNote(reported: Int?, total: Int): String? {
+        if (reported == null || reported == total) return null
+        return if (total > reported) {
+            "Hypixel reports ${Format.num(reported)}: it counts only the best accessory of an upgrade family."
+        } else {
+            "Hypixel reports the highest Magical Power reached (${Format.num(reported)}); the bag shown adds up to ${Format.num(total)}."
         }
     }
 
