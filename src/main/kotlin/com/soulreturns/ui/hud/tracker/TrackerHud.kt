@@ -52,8 +52,8 @@ import kotlin.math.roundToInt
  * ### Two passes, and why the spec must be side-effect free
  * [contentSize] lays the panel out with drawing suppressed to measure it; [drawContent] lays it out
  * again for real. So [TrackerSpec.rowsProvider] and every format lambda run more than once per
- * frame and must be pure — the same rule [com.soulreturns.features.profileviewer.gui.ProfileCanvas]
- * carries, for the same reason.
+ * frame and must be pure — the same rule the Profile Viewer's sections
+ * ([com.soulreturns.features.profileviewer.gui.ProfileSection.build]) carry, for the same reason.
  */
 abstract class TrackerHud<T : Any>(
     id: String,

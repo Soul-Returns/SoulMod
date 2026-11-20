@@ -39,6 +39,7 @@ import com.soulreturns.features.mining.mineshaft.CorpseSpotsDebug
 import com.soulreturns.features.profit.dragon.DragonSummary
 import com.soulreturns.features.profit.dragon.gui.DragonSessionScreen
 import com.soulreturns.features.profileviewer.SpvCommand
+import com.soulreturns.features.profileviewer.SpvFixtures
 import com.soulreturns.features.sacks.SackDebug
 import com.soulreturns.features.qol.HideFoliage
 import com.soulreturns.platform.concurrent.SoulScope
@@ -490,6 +491,17 @@ object SoulCommand {
                                     ),
                             )
                             .then(
+                                ClientCommands.literal("spv").then(
+                                    ClientCommands.literal("fixture").then(
+                                        ClientCommands.argument("name", StringArgumentType.word())
+                                            .executes { ctx ->
+                                                SpvFixtures.present(StringArgumentType.getString(ctx, "name"))
+                                                1
+                                            },
+                                    ),
+                                ),
+                            )
+                            .then(
                                 ClientCommands.literal("output").executes {
                                     // Reopen the last capture. Closing the window used to mean losing
                                     // the dump, since nothing else keeps it.
@@ -826,8 +838,8 @@ object SoulCommand {
                 // and explaining it as "no namespaces" would send you looking in the wrong place.
                 if (SoulStatsClient.lastOutcomeCode == SoulStatsClient.CODE_NO_NAMESPACES) {
                     DevOutput.line("  §8the endpoint is live and we may see this player — no provider had anything for them")
-                } else if (SoulStatsClient.lastOutcomeCode == SoulStatsClient.CODE_UNAVAILABLE) {
-                    DevOutput.line("  §8404 here usually just means that player has never authenticated with the backend")
+                } else if (SoulStatsClient.lastOutcomeCode == SoulStatsClient.CODE_NOT_A_USER) {
+                    DevOutput.line("  §8404: that player has never authenticated with the backend (does not use Soul)")
                 }
                 return@launch
             }

@@ -79,27 +79,24 @@ object SkillCapsClient {
 
         val envelope = result.value
         val cached = if (result.fromCache) " (cached)" else ""
-
-        // v2: caps for every profile, keyed by profile id.
-        if (envelope.profiles.isNotEmpty()) {
-            val byProfile = envelope.profiles.mapValues { (_, caps) -> SkillCaps(clamp(caps)) }
-            lastOutcome = "ok: ${byProfile.size} profile(s) · " +
-                byProfile.entries.joinToString(" · ") { "${it.key.take(8)}=${it.value}" } + cached
-            return PlayerSkillCaps(byProfile, selectedOnly = null)
+        val parsed = fromEnvelope(envelope)
+        lastOutcome = when {
+            parsed == null -> "no caps published (schemaVersion=${envelope.schemaVersion})$cached"
+            envelope.profiles.isNotEmpty() -> "ok: ${envelope.profiles.size} profile(s) · $parsed$cached"
+            else -> "ok (v1 envelope, selected profile only): $parsed$cached"
         }
+        return parsed
+    }
 
-        // v1: one flat map, which the backend resolved to the SELECTED profile. Applying it to any
-        // other profile would be exactly the bug this contract grew a profile dimension to avoid — a
-        // bingo profile capped at 50 wearing a main profile's 60 — so it is held for that one profile
-        // only. Drops out once the backend ships v2.
-        if (envelope.skillCaps.isNotEmpty()) {
-            val caps = SkillCaps(clamp(envelope.skillCaps))
-            lastOutcome = "ok (v1 envelope, selected profile only): $caps$cached"
-            return PlayerSkillCaps(emptyMap(), selectedOnly = caps)
-        }
-
-        lastOutcome = "no caps published (schemaVersion=${envelope.schemaVersion})$cached"
-        return null
+    /**
+     * The caps an envelope speaks for, or null when it publishes none. v2 (per profile id) wins; a v1
+     * flat map belongs to the SELECTED profile only — applying it to any other profile would be the
+     * bug this contract grew a profile dimension to avoid (a bingo profile wearing a main profile's 60).
+     */
+    fun fromEnvelope(envelope: SkillCapsEnvelope): PlayerSkillCaps? = when {
+        envelope.profiles.isNotEmpty() -> PlayerSkillCaps(envelope.profiles.mapValues { (_, caps) -> SkillCaps(clamp(caps)) }, selectedOnly = null)
+        envelope.skillCaps.isNotEmpty() -> PlayerSkillCaps(emptyMap(), selectedOnly = SkillCaps(clamp(envelope.skillCaps)))
+        else -> null
     }
 
     private fun clamp(caps: Map<String, Int>): Map<String, Int> =

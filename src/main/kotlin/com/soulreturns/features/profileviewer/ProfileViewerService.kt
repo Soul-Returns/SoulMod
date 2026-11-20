@@ -55,6 +55,13 @@ object ProfileViewerService {
     var onLookupStarted: (String) -> Unit = {}
 
     /**
+     * Called once the name resolved to an account, before the profiles are fetched, so a renderer
+     * can show the player's face and exact name early. Runs on [SoulScope.io]. Default: nothing.
+     */
+    @Volatile
+    var onResolved: (PlayerIdentity) -> Unit = {}
+
+    /**
      * Where a lookup that produced no profile goes, **in addition to** the chat line it always
      * prints. Runs on whichever thread the failure happened on — usually [SoulScope.io], so a
      * renderer that touches Minecraft must hop to the client thread itself.
@@ -90,7 +97,7 @@ object ProfileViewerService {
         }
 
         if (!PlayerIdentityResolver.isValidName(name)) {
-            return fail(name, "§cNot a valid username: §f$rawName", "Not a valid username", rawName)
+            return fail(name, "§cNot a valid username: §f$rawName", "Not a valid username", rawName, ProfileLookupFailure.INVALID_NAME)
         }
 
         soulChat("§7Loading §f$name§7…")
@@ -99,15 +106,16 @@ object ProfileViewerService {
         val identity = resolved.identity
         if (identity == null) {
             return if (resolved.source == PlayerIdentityResolver.ResolveOutcome.UNKNOWN_PLAYER) {
-                fail(name, "§cUnknown player: §f$name", "Unknown player", "Mojang has no account called \"$name\".")
+                fail(name, "§cUnknown player: §f$name", "Unknown player", "Mojang has no account called \"$name\".", ProfileLookupFailure.NOT_FOUND)
             } else {
-                fail(name, "§cCould not look up §f$name§c — ${resolved.detail}.", "Could not look up $name", resolved.detail)
+                fail(name, "§cCould not look up §f$name§c — ${resolved.detail}.", "Could not look up $name", resolved.detail, ProfileLookupFailure.OFFLINE)
             }
         }
+        onResolved(identity)
 
         val fetch = HypixelProfileClient.profiles(identity.uuidUndashed, HypixelProfileClient.INTENT_LOOKUP)
         if (fetch !is BackendResult.Ok) {
-            return reportFetchFailure(identity.name, fetch as BackendResult.Failure)
+            return reportFetchFailure(identity, fetch as BackendResult.Failure)
         }
 
         val profiles = fetch.value
@@ -117,6 +125,8 @@ object ProfileViewerService {
                 "§cNo SkyBlock profiles found for §f${identity.name}§c.",
                 "No SkyBlock profiles",
                 "${identity.name} has never played SkyBlock.",
+                ProfileLookupFailure.NO_PROFILES,
+                identity,
             )
         }
 
@@ -129,6 +139,8 @@ object ProfileViewerService {
                     profiles.cuteNames().joinToString("§8, §7"),
                 "No profile called \"$profileOverride\"",
                 "Available: " + profiles.cuteNames().joinToString(", "),
+                ProfileLookupFailure.OTHER,
+                identity,
             )
         }
 
@@ -142,6 +154,8 @@ object ProfileViewerService {
                 "§c§f${identity.name}§c is not a member of profile §f${profile.cuteName}§c.",
                 "No data on that profile",
                 "Hypixel lists ${identity.name} on ${profile.cuteName} but sent no member data for them.",
+                ProfileLookupFailure.OTHER,
+                identity,
             )
         }
 
@@ -149,7 +163,8 @@ object ProfileViewerService {
         return true
     }
 
-    private fun reportFetchFailure(name: String, failure: BackendResult.Failure): Boolean {
+    private fun reportFetchFailure(identity: PlayerIdentity, failure: BackendResult.Failure): Boolean {
+        val name = identity.name
         val line = when (failure.status) {
             HypixelProfileClient.HYPIXEL_REFUSED -> "§cHypixel refused the lookup: §7${failure.message}"
             429 -> {
@@ -164,7 +179,20 @@ object ProfileViewerService {
             else -> "§cProfile lookup failed: §7${failure.message}"
         }
         logger.debug("Profile fetch for '$name' failed: ${failure.status} ${failure.message}")
-        return fail(name, line, "Could not load $name", MessageDetector.stripColorCodes(line))
+        val kind = when (failure.status) {
+            429 -> ProfileLookupFailure.RATE_LIMITED
+            BackendResult.Failure.NO_AUTH, BackendResult.Failure.TIMEOUT, BackendResult.Failure.TRANSPORT -> ProfileLookupFailure.OFFLINE
+            else -> ProfileLookupFailure.OTHER
+        }
+        return fail(
+            name,
+            line,
+            "Could not load $name",
+            MessageDetector.stripColorCodes(line),
+            kind,
+            identity,
+            failure.retryAfter?.seconds,
+        )
     }
 
     /**
@@ -172,9 +200,17 @@ object ProfileViewerService {
      * [presentFailure] for a renderer that chat cannot reach. Always returns false, so a failure exit
      * in [load] is one `return fail(...)`.
      */
-    private fun fail(name: String, chatLine: String, headline: String, detail: String? = null): Boolean {
+    private fun fail(
+        name: String,
+        chatLine: String,
+        headline: String,
+        detail: String? = null,
+        kind: String = ProfileLookupFailure.OTHER,
+        identity: PlayerIdentity? = null,
+        retryAfterSeconds: Long? = null,
+    ): Boolean {
         soulChat(chatLine)
-        presentFailure(ProfileLookupFailure(name, headline, detail))
+        presentFailure(ProfileLookupFailure(name, headline, detail, kind, identity, retryAfterSeconds))
         return false
     }
 
@@ -267,16 +303,37 @@ object ProfileViewerService {
  * A lookup that produced no profile, in the words a screen can show. [headline] is one short line;
  * [detail] is the optional second line with the specifics (the available profile names, the backend's
  * message). Both are plain text — no `§` codes, unlike the chat line that accompanies them.
+ *
+ * @property kind one of the constants below, so a screen picks its state without parsing text.
+ * @property identity the resolved account when the failure happened after resolving.
+ * @property retryAfterSeconds the backend's `Retry-After` for [RATE_LIMITED].
  */
 data class ProfileLookupFailure(
     val name: String,
     val headline: String,
     val detail: String? = null,
-)
+    val kind: String = OTHER,
+    val identity: PlayerIdentity? = null,
+    val retryAfterSeconds: Long? = null,
+) {
+    companion object {
+        const val INVALID_NAME = "invalid-name"
+        const val NOT_FOUND = "not-found"
+        const val NO_PROFILES = "no-profiles"
+        const val RATE_LIMITED = "rate-limited"
+
+        /** Soul's server could not be reached (or it could not reach Mojang): transport, timeout, no auth. */
+        const val OFFLINE = "offline"
+        const val OTHER = "other"
+    }
+}
 
 /**
  * Everything a renderer needs about one loaded profile: who it belongs to, every profile they have
  * (for the switcher), the chosen one, and that player's data inside it.
+ *
+ * @property preloaded side data that came with the view instead of from the network (dev fixtures);
+ *   null means the renderer fetches Soul stats and skill caps itself.
  */
 data class ProfileView(
     val identity: PlayerIdentity,
@@ -285,4 +342,15 @@ data class ProfileView(
     val member: SkyblockProfileMember,
     /** True when the response came from the client cache rather than the network. */
     val fromCache: Boolean,
+    val preloaded: PreloadedExtras? = null,
+)
+
+/**
+ * Soul stats and skill caps handed over with a [ProfileView] (`/soul dev spv fixture`), and how old
+ * the view should claim to be ([loadedAgoMs], for the stale state).
+ */
+data class PreloadedExtras(
+    val soulStats: com.soulreturns.data.hypixel.SoulStatsAnswer,
+    val caps: com.soulreturns.data.hypixel.PlayerSkillCaps?,
+    val loadedAgoMs: Long = 0,
 )

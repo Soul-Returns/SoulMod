@@ -47,8 +47,11 @@ object SoulStatsClient {
     /** The target has not opted in (403), or a body said so. */
     const val CODE_NOT_SHARED = "not-shared"
 
-    /** Unknown to the backend (404), rate limited, or unreachable. */
+    /** Rate limited or unreachable. */
     const val CODE_UNAVAILABLE = "unavailable"
+
+    /** 404: the backend has never seen this player, i.e. they do not use Soul. */
+    const val CODE_NOT_A_USER = "not-a-user"
 
     /** We never asked — the uuid was not usable. */
     const val CODE_BAD_REQUEST = "bad-request"
@@ -74,11 +77,16 @@ object SoulStatsClient {
      * @param ownProfile true when this is the local player looking at themselves. Only used to make
      *   [lastOutcome] readable — the *authorisation* decision is the backend's, always.
      */
-    suspend fun soulStats(uuidUndashed: String, ownProfile: Boolean = false): SoulStatsEnvelope? {
+    suspend fun soulStats(uuidUndashed: String, ownProfile: Boolean = false): SoulStatsEnvelope? =
+        fetch(uuidUndashed, ownProfile).envelope
+
+    /**
+     * [soulStats] with the reason when there is nothing to show, for a screen that words "keeps their
+     * stats private" (403) apart from "doesn't use Soul" (404). Never throws.
+     */
+    suspend fun fetch(uuidUndashed: String, ownProfile: Boolean = false): SoulStatsAnswer {
         if (!MojangUuid.isUndashed(uuidUndashed)) {
-            lastOutcome = "not attempted: '$uuidUndashed' is not a 32-hex uuid"
-            lastOutcomeCode = CODE_BAD_REQUEST
-            return null
+            return outcome(null, CODE_BAD_REQUEST, "not attempted: '$uuidUndashed' is not a 32-hex uuid")
         }
 
         val result = BackendClient.get(
@@ -88,39 +96,39 @@ object SoulStatsClient {
         )
         if (result !is BackendResult.Ok) {
             val failure = result as BackendResult.Failure
-            lastOutcome = when (failure.status) {
-                403 -> "hidden: that player has not opted in to sharing Soul stats"
-                404 -> "hidden: the backend has no Soul stats for that player"
-                429 -> "hidden: rate limited (${failure.retryAfter?.seconds ?: "?"}s)"
-                else -> "hidden: ${failure.message}"
+            return when (failure.status) {
+                403 -> outcome(null, CODE_NOT_SHARED, "hidden: that player has not opted in to sharing Soul stats")
+                404 -> outcome(null, CODE_NOT_A_USER, "hidden: the backend has no Soul stats for that player")
+                429 -> outcome(null, CODE_UNAVAILABLE, "hidden: rate limited (${failure.retryAfter?.seconds ?: "?"}s)")
+                else -> outcome(null, CODE_UNAVAILABLE, "hidden: ${failure.message}")
             }
-            lastOutcomeCode = if (failure.status == 403) CODE_NOT_SHARED else CODE_UNAVAILABLE
-            return null
         }
 
         val envelope = result.value
         if (!envelope.shared && !ownProfile) {
             // Belt and braces: the backend already enforces this, but a `shared: false` body that
             // still carried namespaces must not be rendered.
-            lastOutcome = "hidden: shared=false"
-            lastOutcomeCode = CODE_NOT_SHARED
-            return null
+            return outcome(null, CODE_NOT_SHARED, "hidden: shared=false")
         }
         // `shared` is reported even here: when the answer is "nothing to show", whether the target
         // opted in is the one thing that distinguishes "not shared" from "shared, but no feature has
         // registered a namespace yet" — and those want completely different follow-up.
+        val cached = if (result.fromCache) " (cached)" else ""
         if (envelope.namespaces.isEmpty()) {
-            lastOutcome = "no namespaces yet (schemaVersion=${envelope.schemaVersion}, " +
-                "shared=${envelope.shared})" + if (result.fromCache) " (cached)" else ""
-            lastOutcomeCode = CODE_NO_NAMESPACES
-            return null
+            return outcome(null, CODE_NO_NAMESPACES, "no namespaces yet (schemaVersion=${envelope.schemaVersion}, shared=${envelope.shared})$cached")
         }
-        lastOutcome = "ok: ${envelope.namespaces.keys.joinToString()} (shared=${envelope.shared})" +
-            if (result.fromCache) " (cached)" else ""
-        lastOutcomeCode = CODE_OK
-        return envelope
+        return outcome(envelope, CODE_OK, "ok: ${envelope.namespaces.keys.joinToString()} (shared=${envelope.shared})$cached")
+    }
+
+    private fun outcome(envelope: SoulStatsEnvelope?, code: String, text: String): SoulStatsAnswer {
+        lastOutcome = text
+        lastOutcomeCode = code
+        return SoulStatsAnswer(envelope, code)
     }
 }
+
+/** One soul-stats answer: the envelope, or null with [code] (`SoulStatsClient.CODE_*`) saying why. */
+data class SoulStatsAnswer(val envelope: SoulStatsEnvelope?, val code: String)
 
 /**
  * The `soul-stats` envelope.

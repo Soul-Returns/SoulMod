@@ -1,0 +1,446 @@
+{
+ "name": "Fisher_Joe",
+ "uuid": "2b7d41c09e8a4f61b3c55d0e7a9f1c22",
+ "profiles": {
+  "success": true,
+  "profiles": [
+   {
+    "profile_id": "4a2b3c4d5e6f40718293a4b5c6d7e8f9",
+    "cute_name": "Pear",
+    "selected": true,
+    "members": {
+     "2b7d41c09e8a4f61b3c55d0e7a9f1c22": {
+      "leveling": {
+       "experience": 18744
+      },
+      "currencies": {
+       "coin_purse": 31204118
+      },
+      "profile": {
+       "first_join": 1630000000000
+      },
+      "fairy_soul": {
+       "total_collected": 238
+      },
+      "bestiary": {
+       "milestone": {
+        "last_claimed_milestone": 212
+       }
+      },
+      "slayer": {
+       "slayer_bosses": {
+        "zombie": {
+         "xp": 220000,
+         "boss_kills_tier_0": 40,
+         "boss_kills_tier_1": 120,
+         "boss_kills_tier_2": 410,
+         "boss_kills_tier_3": 220
+        },
+        "spider": {
+         "xp": 52000,
+         "boss_kills_tier_0": 30,
+         "boss_kills_tier_1": 90,
+         "boss_kills_tier_2": 200,
+         "boss_kills_tier_3": 40
+        },
+        "wolf": {
+         "xp": 52000,
+         "boss_kills_tier_0": 60,
+         "boss_kills_tier_1": 110,
+         "boss_kills_tier_2": 300
+        },
+        "enderman": {
+         "xp": 2900,
+         "boss_kills_tier_0": 20,
+         "boss_kills_tier_1": 80
+        },
+        "blaze": {
+         "xp": 750,
+         "boss_kills_tier_0": 10,
+         "boss_kills_tier_1": 22
+        },
+        "vampire": {
+         "xp": 141,
+         "boss_kills_tier_0": 8,
+         "boss_kills_tier_1": 12
+        }
+       }
+      },
+      "player_data": {
+       "experience": {
+        "SKILL_FARMING": 22062425,
+        "SKILL_MINING": 17702425,
+        "SKILL_COMBAT": 29742425,
+        "SKILL_FORAGING": 4822425,
+        "SKILL_FISHING": 55172425,
+        "SKILL_ENCHANTING": 42522425,
+        "SKILL_ALCHEMY": 55172425,
+        "SKILL_TAMING": 35872425,
+        "SKILL_CARPENTRY": 12222425,
+        "SKILL_HUNTING": 5225,
+        "SKILL_RUNECRAFTING": 5260,
+        "SKILL_SOCIAL": 6150
+       }
+      },
+      "inventory": {
+       "inv_contents": {
+        "type": 0,
+        "data": ""
+       }
+      },
+      "accessory_bag_storage": {
+       "highest_magical_power": 880,
+       "selected_power": "bloody"
+      },
+      "collection": {
+       "WHEAT": 1000
+      },
+      "dungeons": {
+       "dungeon_types": {
+        "catacombs": {
+         "experience": 650640,
+         "tier_completions": {
+          "0": 4,
+          "1": 20,
+          "2": 24,
+          "3": 40,
+          "4": 28,
+          "5": 66,
+          "6": 30
+         },
+         "best_score": {
+          "0": 246,
+          "1": 241,
+          "2": 246,
+          "3": 291,
+          "4": 290,
+          "5": 309,
+          "6": 296
+         },
+         "fastest_time": {
+          "0": 160810,
+          "1": 222044,
+          "2": 273792,
+          "3": 307553,
+          "4": 348952,
+          "5": 354506,
+          "6": 393976
+         },
+         "fastest_time_s": {
+          "3": 333114,
+          "4": 386502,
+          "5": 365639,
+          "6": 419266
+         },
+         "fastest_time_s_plus": {
+          "5": 388329
+         },
+         "times_played": {
+          "0": 36,
+          "1": 41,
+          "2": 50,
+          "3": 44,
+          "4": 49,
+          "5": 103,
+          "6": 60
+         }
+        },
+        "master_catacombs": {
+         "experience": 125,
+         "tier_completions": {},
+         "best_score": {},
+         "fastest_time": {},
+         "fastest_time_s": {},
+         "fastest_time_s_plus": {},
+         "times_played": {}
+        }
+       },
+       "player_classes": {
+        "healer": {
+         "experience": 650640
+        },
+        "mage": {
+         "experience": 17960
+        },
+        "berserk": {
+         "experience": 3045
+        },
+        "archer": {
+         "experience": 6275
+        },
+        "tank": {
+         "experience": 955
+        }
+       },
+       "selected_dungeon_class": "healer",
+       "secrets": 6120,
+       "treasures": {
+        "runs": [
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}
+        ],
+        "chests": [
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}
+        ]
+       }
+      }
+     }
+    },
+    "game_mode": "ironman",
+    "banking": {
+     "balance": 186400000
+    }
+   }
+  ]
+ },
+ "soulStats": {
+  "status": 404
+ }
+}

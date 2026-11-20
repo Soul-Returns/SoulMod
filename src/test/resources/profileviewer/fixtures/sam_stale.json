@@ -1,0 +1,2016 @@
+{
+ "name": "Slayer_Sam",
+ "uuid": "6f1e9c2a3b4d4e5f8a9b0c1d2e3fb04d",
+ "resolveMs": 0,
+ "profilesMs": 0,
+ "profiles": {
+  "success": true,
+  "profiles": [
+   {
+    "profile_id": "1a2b3c4d5e6f40718293a4b5c6d7e8f9",
+    "cute_name": "Banana",
+    "selected": true,
+    "members": {
+     "6f1e9c2a3b4d4e5f8a9b0c1d2e3fb04d": {
+      "leveling": {
+       "experience": 41234
+      },
+      "currencies": {
+       "coin_purse": 412880310
+      },
+      "profile": {
+       "first_join": 1637539200000,
+       "bank_account": 34000000
+      },
+      "fairy_soul": {
+       "total_collected": 253
+      },
+      "bestiary": {
+       "milestone": {
+        "last_claimed_milestone": 318
+       }
+      },
+      "slayer": {
+       "slayer_bosses": {
+        "zombie": {
+         "xp": 1000000,
+         "boss_kills_tier_0": 312,
+         "boss_kills_tier_1": 840,
+         "boss_kills_tier_2": 1204,
+         "boss_kills_tier_3": 4120,
+         "boss_kills_tier_4": 2210
+        },
+        "spider": {
+         "xp": 1000000,
+         "boss_kills_tier_0": 120,
+         "boss_kills_tier_1": 404,
+         "boss_kills_tier_2": 880,
+         "boss_kills_tier_3": 2010,
+         "boss_kills_tier_4": 640
+        },
+        "wolf": {
+         "xp": 1000000,
+         "boss_kills_tier_0": 220,
+         "boss_kills_tier_1": 610,
+         "boss_kills_tier_2": 1880,
+         "boss_kills_tier_3": 3120
+        },
+        "enderman": {
+         "xp": 1000000,
+         "boss_kills_tier_0": 90,
+         "boss_kills_tier_1": 240,
+         "boss_kills_tier_2": 1460,
+         "boss_kills_tier_3": 3880
+        },
+        "blaze": {
+         "xp": 220000,
+         "boss_kills_tier_0": 60,
+         "boss_kills_tier_1": 180,
+         "boss_kills_tier_2": 712,
+         "boss_kills_tier_3": 1040
+        },
+        "vampire": {
+         "xp": 2400,
+         "boss_kills_tier_0": 12,
+         "boss_kills_tier_1": 40,
+         "boss_kills_tier_2": 88,
+         "boss_kills_tier_3": 140,
+         "boss_kills_tier_4": 212
+        }
+       }
+      },
+      "player_data": {
+       "experience": {
+        "SKILL_FARMING": 114072425,
+        "SKILL_MINING": 114072425,
+        "SKILL_COMBAT": 114072425,
+        "SKILL_FORAGING": 75822425,
+        "SKILL_FISHING": 55172425,
+        "SKILL_ENCHANTING": 114072425,
+        "SKILL_ALCHEMY": 55172425,
+        "SKILL_TAMING": 114072425,
+        "SKILL_CARPENTRY": 55172425,
+        "SKILL_HUNTING": 10302425,
+        "SKILL_RUNECRAFTING": 94450,
+        "SKILL_SOCIAL": 129800
+       }
+      },
+      "inventory": {
+       "inv_contents": {
+        "type": 0,
+        "data": ""
+       }
+      },
+      "accessory_bag_storage": {
+       "highest_magical_power": 1642,
+       "selected_power": "sighted"
+      },
+      "collection": {
+       "WHEAT": 1000
+      },
+      "dungeons": {
+       "dungeon_types": {
+        "catacombs": {
+         "experience": 729809639,
+         "tier_completions": {
+          "0": 12,
+          "1": 40,
+          "2": 38,
+          "3": 62,
+          "4": 41,
+          "5": 120,
+          "6": 240,
+          "7": 1810
+         },
+         "best_score": {
+          "0": 229,
+          "1": 236,
+          "2": 250,
+          "3": 259,
+          "4": 281,
+          "5": 306,
+          "6": 317,
+          "7": 317
+         },
+         "fastest_time": {
+          "0": 175875,
+          "1": 243823,
+          "2": 253965,
+          "3": 329618,
+          "4": 312457,
+          "5": 354578,
+          "6": 393873,
+          "7": 468207
+         },
+         "fastest_time_s": {
+          "4": 323089,
+          "5": 375350,
+          "6": 406986,
+          "7": 477261
+         },
+         "fastest_time_s_plus": {
+          "5": 386294,
+          "6": 426616,
+          "7": 508257
+         },
+         "times_played": {
+          "0": 32,
+          "1": 43,
+          "2": 72,
+          "3": 99,
+          "4": 73,
+          "5": 147,
+          "6": 275,
+          "7": 1850
+         }
+        },
+        "master_catacombs": {
+         "experience": 125,
+         "tier_completions": {
+          "1": 30,
+          "2": 24,
+          "3": 60,
+          "4": 120,
+          "5": 410,
+          "6": 620,
+          "7": 1340
+         },
+         "best_score": {
+          "1": 246,
+          "2": 252,
+          "3": 265,
+          "4": 304,
+          "5": 316,
+          "6": 317,
+          "7": 317
+         },
+         "fastest_time": {
+          "1": 273052,
+          "2": 328979,
+          "3": 385434,
+          "4": 410216,
+          "5": 471871,
+          "6": 516668,
+          "7": 542533
+         },
+         "fastest_time_s": {
+          "4": 427060,
+          "5": 489183,
+          "6": 525782,
+          "7": 582379
+         },
+         "fastest_time_s_plus": {
+          "4": 438813,
+          "5": 518588,
+          "6": 534688,
+          "7": 615401
+         },
+         "times_played": {
+          "1": 33,
+          "2": 59,
+          "3": 86,
+          "4": 127,
+          "5": 447,
+          "6": 626,
+          "7": 1379
+         }
+        }
+       },
+       "player_classes": {
+        "healer": {
+         "experience": 99959640
+        },
+        "mage": {
+         "experience": 569809640
+        },
+        "berserk": {
+         "experience": 300559640
+        },
+        "archer": {
+         "experience": 569809640
+        },
+        "tank": {
+         "experience": 173759640
+        }
+       },
+       "selected_dungeon_class": "archer",
+       "secrets": 112408,
+       "treasures": {
+        "runs": [
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}
+        ],
+        "chests": [
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}
+        ]
+       }
+      },
+      "nether_island_player_data": {
+       "kuudra_completed_tiers": {
+        "none": 120,
+        "hot": 240,
+        "burning": 410,
+        "fiery": 612,
+        "infernal": 1488
+       }
+      }
+     },
+     "7c7c7c7c7c7c47c7a7c7c7c7c7c7c7c7": {
+      "leveling": {
+       "experience": 12000
+      },
+      "profile": {
+       "first_join": 1640000000000
+      }
+     }
+    },
+    "banking": {
+     "balance": 2412000000
+    }
+   },
+   {
+    "profile_id": "2a2b3c4d5e6f40718293a4b5c6d7e8f9",
+    "cute_name": "Mango",
+    "selected": false,
+    "members": {
+     "6f1e9c2a3b4d4e5f8a9b0c1d2e3fb04d": {
+      "leveling": {
+       "experience": 9612
+      },
+      "currencies": {
+       "coin_purse": 8412090
+      },
+      "profile": {
+       "first_join": 1660000000000
+      },
+      "fairy_soul": {
+       "total_collected": 238
+      },
+      "bestiary": {
+       "milestone": {
+        "last_claimed_milestone": 212
+       }
+      },
+      "slayer": {
+       "slayer_bosses": {
+        "zombie": {
+         "xp": 52000
+        },
+        "spider": {
+         "xp": 11000
+        },
+        "wolf": {
+         "xp": 2900
+        },
+        "enderman": {
+         "xp": 118
+        },
+        "blaze": {
+         "xp": 0
+        },
+        "vampire": {
+         "xp": 0
+        }
+       }
+      },
+      "player_data": {
+       "experience": {
+        "SKILL_FARMING": 21222425,
+        "SKILL_MINING": 12862425,
+        "SKILL_COMBAT": 17702425,
+        "SKILL_FORAGING": 552425,
+        "SKILL_FISHING": 1472425,
+        "SKILL_ENCHANTING": 8022425,
+        "SKILL_ALCHEMY": 2322425,
+        "SKILL_TAMING": 5722425,
+        "SKILL_CARPENTRY": 222425,
+        "SKILL_HUNTING": 675,
+        "SKILL_RUNECRAFTING": 1600,
+        "SKILL_SOCIAL": 1800
+       }
+      },
+      "inventory": {
+       "inv_contents": {
+        "type": 0,
+        "data": ""
+       }
+      },
+      "accessory_bag_storage": {
+       "highest_magical_power": 420,
+       "selected_power": null
+      },
+      "collection": {
+       "WHEAT": 1000
+      },
+      "dungeons": {
+       "dungeon_types": {
+        "catacombs": {
+         "experience": 298440,
+         "tier_completions": {
+          "1": 8,
+          "2": 10,
+          "3": 22,
+          "4": 6,
+          "5": 3
+         },
+         "best_score": {
+          "1": 261,
+          "2": 267,
+          "3": 267,
+          "4": 273,
+          "5": 211
+         },
+         "fastest_time": {
+          "1": 228375,
+          "2": 249645,
+          "3": 315809,
+          "4": 347645,
+          "5": 407353
+         },
+         "fastest_time_s": {
+          "4": 372322
+         },
+         "fastest_time_s_plus": {},
+         "times_played": {
+          "1": 28,
+          "2": 39,
+          "3": 37,
+          "4": 21,
+          "5": 36
+         }
+        },
+        "master_catacombs": {
+         "experience": 125,
+         "tier_completions": {},
+         "best_score": {},
+         "fastest_time": {},
+         "fastest_time_s": {},
+         "fastest_time_s_plus": {},
+         "times_played": {}
+        }
+       },
+       "player_classes": {
+        "healer": {
+         "experience": 8940
+        },
+        "mage": {
+         "experience": 259640
+        },
+        "berserk": {
+         "experience": 4385
+        },
+        "archer": {
+         "experience": 2095
+        },
+        "tank": {
+         "experience": 625
+        }
+       },
+       "selected_dungeon_class": "mage",
+       "treasures": {
+        "runs": [
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}
+        ],
+        "chests": [
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}
+        ]
+       }
+      }
+     }
+    },
+    "banking": {
+     "balance": 140000000
+    }
+   },
+   {
+    "profile_id": "3a2b3c4d5e6f40718293a4b5c6d7e8f9",
+    "cute_name": "Kiwi",
+    "selected": false,
+    "members": {
+     "6f1e9c2a3b4d4e5f8a9b0c1d2e3fb04d": {
+      "leveling": {
+       "experience": 1490
+      },
+      "currencies": {
+       "coin_purse": 412090
+      },
+      "profile": {
+       "first_join": 1700000000000
+      },
+      "fairy_soul": {
+       "total_collected": 238
+      },
+      "bestiary": {
+       "milestone": {
+        "last_claimed_milestone": 212
+       }
+      },
+      "slayer": {
+       "slayer_bosses": {
+        "zombie": {
+         "xp": 89
+        },
+        "spider": {
+         "xp": 0
+        },
+        "wolf": {
+         "xp": 0
+        },
+        "enderman": {
+         "xp": 0
+        },
+        "blaze": {
+         "xp": 0
+        },
+        "vampire": {
+         "xp": 0
+        }
+       }
+      },
+      "player_data": {
+       "experience": {
+        "SKILL_FARMING": 22425,
+        "SKILL_MINING": 47425,
+        "SKILL_COMBAT": 67425,
+        "SKILL_FORAGING": 4425,
+        "SKILL_FISHING": 1925,
+        "SKILL_ENCHANTING": 9925,
+        "SKILL_ALCHEMY": 1175,
+        "SKILL_TAMING": 2925,
+        "SKILL_CARPENTRY": 675,
+        "SKILL_HUNTING": 50,
+        "SKILL_RUNECRAFTING": 50,
+        "SKILL_SOCIAL": 150
+       }
+      },
+      "inventory": {
+       "inv_contents": {
+        "type": 0,
+        "data": ""
+       }
+      },
+      "accessory_bag_storage": {
+       "highest_magical_power": 80,
+       "selected_power": null
+      },
+      "collection": {
+       "WHEAT": 1000
+      },
+      "dungeons": {
+       "dungeon_types": {
+        "catacombs": {
+         "experience": 441,
+         "tier_completions": {
+          "0": 3,
+          "1": 4
+         },
+         "best_score": {
+          "0": 208,
+          "1": 236
+         },
+         "fastest_time": {
+          "0": 168870,
+          "1": 197737
+         },
+         "fastest_time_s": {},
+         "fastest_time_s_plus": {},
+         "times_played": {
+          "0": 24,
+          "1": 42
+         }
+        },
+        "master_catacombs": {
+         "experience": 125,
+         "tier_completions": {},
+         "best_score": {},
+         "fastest_time": {},
+         "fastest_time_s": {},
+         "fastest_time_s_plus": {},
+         "times_played": {}
+        }
+       },
+       "player_classes": {
+        "healer": {
+         "experience": 50
+        },
+        "mage": {
+         "experience": 395
+        },
+        "berserk": {
+         "experience": 125
+        },
+        "archer": {
+         "experience": 0
+        },
+        "tank": {
+         "experience": 0
+        }
+       },
+       "selected_dungeon_class": "mage",
+       "treasures": {
+        "runs": [
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}
+        ],
+        "chests": [
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {},
+         {}
+        ]
+       }
+      }
+     }
+    },
+    "game_mode": "ironman",
+    "banking": {
+     "balance": 0
+    }
+   }
+  ]
+ },
+ "soulStats": {
+  "status": 200,
+  "body": {
+   "schemaVersion": 1,
+   "shared": true,
+   "namespaces": {
+    "mineshaft": {
+     "totalVisits": 1840,
+     "totalDurationSec": 758080,
+     "averageDurationSec": 412.0,
+     "littlefootFound": 22,
+     "littlefootFindRate": 0.011956521739130435,
+     "byType": {
+      "TOPAZ_1": {
+       "visits": 404,
+       "durationSec": 166448,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 4,
+       "littlefootRate": 0.009900990099009901,
+       "corpses": {
+        "VANGUARD": {
+         "found": 20,
+         "looted": 20,
+         "lootRate": 1.0,
+         "spawnedIn": 20,
+         "spawnRate": 0.04950495049504951,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "SAPPHIRE_1": {
+       "visits": 331,
+       "durationSec": 136372,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 3,
+       "littlefootRate": 0.00906344410876133,
+       "corpses": {
+        "VANGUARD": {
+         "found": 16,
+         "looted": 16,
+         "lootRate": 1.0,
+         "spawnedIn": 16,
+         "spawnRate": 0.04833836858006042,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "AMETHYST_1": {
+       "visits": 257,
+       "durationSec": 105884,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 3,
+       "littlefootRate": 0.011673151750972763,
+       "corpses": {
+        "VANGUARD": {
+         "found": 12,
+         "looted": 12,
+         "lootRate": 1.0,
+         "spawnedIn": 12,
+         "spawnRate": 0.04669260700389105,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "AMBER_1": {
+       "visits": 220,
+       "durationSec": 90640,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 2,
+       "littlefootRate": 0.00909090909090909,
+       "corpses": {
+        "VANGUARD": {
+         "found": 11,
+         "looted": 11,
+         "lootRate": 1.0,
+         "spawnedIn": 11,
+         "spawnRate": 0.05,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "JADE_1": {
+       "visits": 184,
+       "durationSec": 75808,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 2,
+       "littlefootRate": 0.010869565217391304,
+       "corpses": {
+        "VANGUARD": {
+         "found": 9,
+         "looted": 9,
+         "lootRate": 1.0,
+         "spawnedIn": 9,
+         "spawnRate": 0.04891304347826087,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "RUBY_1": {
+       "visits": 147,
+       "durationSec": 60564,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 1,
+       "littlefootRate": 0.006802721088435374,
+       "corpses": {
+        "VANGUARD": {
+         "found": 7,
+         "looted": 7,
+         "lootRate": 1.0,
+         "spawnedIn": 7,
+         "spawnRate": 0.047619047619047616,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "ONYX_1": {
+       "visits": 110,
+       "durationSec": 45320,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 1,
+       "littlefootRate": 0.00909090909090909,
+       "corpses": {
+        "VANGUARD": {
+         "found": 5,
+         "looted": 5,
+         "lootRate": 1.0,
+         "spawnedIn": 5,
+         "spawnRate": 0.045454545454545456,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "AQUAMARINE_1": {
+       "visits": 92,
+       "durationSec": 37904,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 1,
+       "littlefootRate": 0.010869565217391304,
+       "corpses": {
+        "VANGUARD": {
+         "found": 4,
+         "looted": 4,
+         "lootRate": 1.0,
+         "spawnedIn": 4,
+         "spawnRate": 0.043478260869565216,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "CITRINE_2": {
+       "visits": 55,
+       "durationSec": 22660,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 0,
+       "littlefootRate": 0.0,
+       "corpses": {
+        "VANGUARD": {
+         "found": 2,
+         "looted": 2,
+         "lootRate": 1.0,
+         "spawnedIn": 2,
+         "spawnRate": 0.03636363636363636,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      },
+      "PERIDOT_2": {
+       "visits": 36,
+       "durationSec": 14832,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 0,
+       "littlefootRate": 0.0,
+       "corpses": {
+        "VANGUARD": {
+         "found": 1,
+         "looted": 1,
+         "lootRate": 1.0,
+         "spawnedIn": 1,
+         "spawnRate": 0.027777777777777776,
+         "avgFoundWhenSpawned": 1.0
+        }
+       }
+      }
+     },
+     "byCorpse": {
+      "LAPIS": {
+       "found": 2024,
+       "looted": 1840,
+       "lootRate": 0.9090909090909091,
+       "spawnedIn": 1472,
+       "spawnRate": 0.8,
+       "avgFoundWhenSpawned": 1.375
+      },
+      "UMBER": {
+       "found": 1104,
+       "looted": 920,
+       "lootRate": 0.8333333333333334,
+       "spawnedIn": 772,
+       "spawnRate": 0.41956521739130437,
+       "avgFoundWhenSpawned": 1.4300518134715026
+      },
+      "TUNGSTEN": {
+       "found": 1012,
+       "looted": 901,
+       "lootRate": 0.8903162055335968,
+       "spawnedIn": 699,
+       "spawnRate": 0.3798913043478261,
+       "avgFoundWhenSpawned": 1.447782546494993
+      },
+      "VANGUARD": {
+       "found": 93,
+       "looted": 92,
+       "lootRate": 0.989247311827957,
+       "spawnedIn": 93,
+       "spawnRate": 0.050543478260869565,
+       "avgFoundWhenSpawned": 1.0
+      }
+     },
+     "bySource": {
+      "discovered": {
+       "visits": 1288,
+       "littlefootFound": 15
+      },
+      "warped": {
+       "visits": 515,
+       "littlefootFound": 6
+      },
+      "unknown": {
+       "visits": 37
+      }
+     },
+     "profiles": {
+      "1a2b3c4d5e6f40718293a4b5c6d7e8f9": {
+       "totalVisits": 1612,
+       "totalDurationSec": 664144,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 20,
+       "littlefootFindRate": 0.01240694789081886,
+       "byType": {
+        "TOPAZ_1": {
+         "visits": 354,
+         "durationSec": 145848,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 4,
+         "littlefootRate": 0.011299435028248588,
+         "corpses": {
+          "VANGUARD": {
+           "found": 17,
+           "looted": 17,
+           "lootRate": 1.0,
+           "spawnedIn": 17,
+           "spawnRate": 0.0480225988700565,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "SAPPHIRE_1": {
+         "visits": 290,
+         "durationSec": 119480,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 3,
+         "littlefootRate": 0.010344827586206896,
+         "corpses": {
+          "VANGUARD": {
+           "found": 14,
+           "looted": 14,
+           "lootRate": 1.0,
+           "spawnedIn": 14,
+           "spawnRate": 0.04827586206896552,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "AMETHYST_1": {
+         "visits": 225,
+         "durationSec": 92700,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 2,
+         "littlefootRate": 0.008888888888888889,
+         "corpses": {
+          "VANGUARD": {
+           "found": 11,
+           "looted": 11,
+           "lootRate": 1.0,
+           "spawnedIn": 11,
+           "spawnRate": 0.04888888888888889,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "AMBER_1": {
+         "visits": 193,
+         "durationSec": 79516,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 2,
+         "littlefootRate": 0.010362694300518135,
+         "corpses": {
+          "VANGUARD": {
+           "found": 9,
+           "looted": 9,
+           "lootRate": 1.0,
+           "spawnedIn": 9,
+           "spawnRate": 0.046632124352331605,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "JADE_1": {
+         "visits": 161,
+         "durationSec": 66332,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 2,
+         "littlefootRate": 0.012422360248447204,
+         "corpses": {
+          "VANGUARD": {
+           "found": 8,
+           "looted": 8,
+           "lootRate": 1.0,
+           "spawnedIn": 8,
+           "spawnRate": 0.049689440993788817,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "RUBY_1": {
+         "visits": 128,
+         "durationSec": 52736,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 1,
+         "littlefootRate": 0.0078125,
+         "corpses": {
+          "VANGUARD": {
+           "found": 6,
+           "looted": 6,
+           "lootRate": 1.0,
+           "spawnedIn": 6,
+           "spawnRate": 0.046875,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "ONYX_1": {
+         "visits": 96,
+         "durationSec": 39552,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 1,
+         "littlefootRate": 0.010416666666666666,
+         "corpses": {
+          "VANGUARD": {
+           "found": 4,
+           "looted": 4,
+           "lootRate": 1.0,
+           "spawnedIn": 4,
+           "spawnRate": 0.041666666666666664,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "AQUAMARINE_1": {
+         "visits": 80,
+         "durationSec": 32960,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 1,
+         "littlefootRate": 0.0125,
+         "corpses": {
+          "VANGUARD": {
+           "found": 4,
+           "looted": 4,
+           "lootRate": 1.0,
+           "spawnedIn": 4,
+           "spawnRate": 0.05,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "CITRINE_2": {
+         "visits": 48,
+         "durationSec": 19776,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 2,
+           "looted": 2,
+           "lootRate": 1.0,
+           "spawnedIn": 2,
+           "spawnRate": 0.041666666666666664,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "PERIDOT_2": {
+         "visits": 32,
+         "durationSec": 13184,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 1,
+           "looted": 1,
+           "lootRate": 1.0,
+           "spawnedIn": 1,
+           "spawnRate": 0.03125,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        }
+       },
+       "byCorpse": {
+        "LAPIS": {
+         "found": 1773,
+         "looted": 1612,
+         "lootRate": 0.9091934574168077,
+         "spawnedIn": 1289,
+         "spawnRate": 0.7996277915632755,
+         "avgFoundWhenSpawned": 1.3754848719937935
+        },
+        "UMBER": {
+         "found": 967,
+         "looted": 806,
+         "lootRate": 0.8335056876938987,
+         "spawnedIn": 677,
+         "spawnRate": 0.41997518610421836,
+         "avgFoundWhenSpawned": 1.4283604135893648
+        },
+        "TUNGSTEN": {
+         "found": 886,
+         "looted": 789,
+         "lootRate": 0.8905191873589164,
+         "spawnedIn": 612,
+         "spawnRate": 0.37965260545905705,
+         "avgFoundWhenSpawned": 1.4477124183006536
+        },
+        "VANGUARD": {
+         "found": 82,
+         "looted": 81,
+         "lootRate": 0.9878048780487805,
+         "spawnedIn": 82,
+         "spawnRate": 0.05086848635235732,
+         "avgFoundWhenSpawned": 1.0
+        }
+       },
+       "bySource": {
+        "discovered": {
+         "visits": 1128,
+         "littlefootFound": 14
+        },
+        "warped": {
+         "visits": 451,
+         "littlefootFound": 6
+        },
+        "unknown": {
+         "visits": 33
+        }
+       },
+       "profileName": "Banana"
+      },
+      "2a2b3c4d5e6f40718293a4b5c6d7e8f9": {
+       "totalVisits": 228,
+       "totalDurationSec": 93936,
+       "averageDurationSec": 412.0,
+       "littlefootFound": 2,
+       "littlefootFindRate": 0.008771929824561403,
+       "byType": {
+        "TOPAZ_1": {
+         "visits": 50,
+         "durationSec": 20600,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 2,
+           "looted": 2,
+           "lootRate": 1.0,
+           "spawnedIn": 2,
+           "spawnRate": 0.04,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "SAPPHIRE_1": {
+         "visits": 41,
+         "durationSec": 16892,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 2,
+           "looted": 2,
+           "lootRate": 1.0,
+           "spawnedIn": 2,
+           "spawnRate": 0.04878048780487805,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "AMETHYST_1": {
+         "visits": 31,
+         "durationSec": 12772,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 1,
+           "looted": 1,
+           "lootRate": 1.0,
+           "spawnedIn": 1,
+           "spawnRate": 0.03225806451612903,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "AMBER_1": {
+         "visits": 27,
+         "durationSec": 11124,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 1,
+           "looted": 1,
+           "lootRate": 1.0,
+           "spawnedIn": 1,
+           "spawnRate": 0.037037037037037035,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "JADE_1": {
+         "visits": 22,
+         "durationSec": 9064,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 1,
+           "looted": 1,
+           "lootRate": 1.0,
+           "spawnedIn": 1,
+           "spawnRate": 0.045454545454545456,
+           "avgFoundWhenSpawned": 1.0
+          }
+         }
+        },
+        "RUBY_1": {
+         "visits": 18,
+         "durationSec": 7416,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 0,
+           "looted": 0,
+           "lootRate": 0.0,
+           "spawnedIn": 0,
+           "spawnRate": 0.0,
+           "avgFoundWhenSpawned": 0.0
+          }
+         }
+        },
+        "ONYX_1": {
+         "visits": 13,
+         "durationSec": 5356,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 0,
+           "looted": 0,
+           "lootRate": 0.0,
+           "spawnedIn": 0,
+           "spawnRate": 0.0,
+           "avgFoundWhenSpawned": 0.0
+          }
+         }
+        },
+        "AQUAMARINE_1": {
+         "visits": 11,
+         "durationSec": 4532,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 0,
+           "looted": 0,
+           "lootRate": 0.0,
+           "spawnedIn": 0,
+           "spawnRate": 0.0,
+           "avgFoundWhenSpawned": 0.0
+          }
+         }
+        },
+        "CITRINE_2": {
+         "visits": 6,
+         "durationSec": 2472,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 0,
+           "looted": 0,
+           "lootRate": 0.0,
+           "spawnedIn": 0,
+           "spawnRate": 0.0,
+           "avgFoundWhenSpawned": 0.0
+          }
+         }
+        },
+        "PERIDOT_2": {
+         "visits": 4,
+         "durationSec": 1648,
+         "averageDurationSec": 412.0,
+         "littlefootFound": 0,
+         "littlefootRate": 0.0,
+         "corpses": {
+          "VANGUARD": {
+           "found": 0,
+           "looted": 0,
+           "lootRate": 0.0,
+           "spawnedIn": 0,
+           "spawnRate": 0.0,
+           "avgFoundWhenSpawned": 0.0
+          }
+         }
+        }
+       },
+       "byCorpse": {
+        "LAPIS": {
+         "found": 250,
+         "looted": 228,
+         "lootRate": 0.912,
+         "spawnedIn": 182,
+         "spawnRate": 0.7982456140350878,
+         "avgFoundWhenSpawned": 1.3736263736263736
+        },
+        "UMBER": {
+         "found": 136,
+         "looted": 114,
+         "lootRate": 0.8382352941176471,
+         "spawnedIn": 95,
+         "spawnRate": 0.4166666666666667,
+         "avgFoundWhenSpawned": 1.431578947368421
+        },
+        "TUNGSTEN": {
+         "found": 125,
+         "looted": 111,
+         "lootRate": 0.888,
+         "spawnedIn": 86,
+         "spawnRate": 0.37719298245614036,
+         "avgFoundWhenSpawned": 1.4534883720930232
+        },
+        "VANGUARD": {
+         "found": 11,
+         "looted": 10,
+         "lootRate": 0.9090909090909091,
+         "spawnedIn": 11,
+         "spawnRate": 0.04824561403508772,
+         "avgFoundWhenSpawned": 1.0
+        }
+       },
+       "bySource": {
+        "discovered": {
+         "visits": 159,
+         "littlefootFound": 1
+        },
+        "warped": {
+         "visits": 63,
+         "littlefootFound": 0
+        },
+        "unknown": {
+         "visits": 6
+        }
+       },
+       "profileName": "Mango"
+      }
+     }
+    }
+   }
+  }
+ },
+ "caps": {
+  "schemaVersion": 2,
+  "profiles": {
+   "1a2b3c4d5e6f40718293a4b5c6d7e8f9": {
+    "farming": 60,
+    "taming": 60
+   },
+   "2a2b3c4d5e6f40718293a4b5c6d7e8f9": {
+    "farming": 52,
+    "taming": 54
+   }
+  }
+ },
+ "loadedAgoMs": 840000
+}

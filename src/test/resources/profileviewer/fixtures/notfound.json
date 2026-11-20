@@ -1,0 +1,8 @@
+{
+ "name": "Notch_Jr",
+ "uuid": "00000000000000000000000000000000",
+ "failure": {
+  "kind": "not-found",
+  "headline": "Unknown player"
+ }
+}

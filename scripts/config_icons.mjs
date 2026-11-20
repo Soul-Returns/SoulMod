@@ -50,6 +50,16 @@ Object.assign(I, {
   locChat: S16('<path d="M2.5 3.5h11v7.2H7.2L4.4 13v-2.3H2.5z"/>'),
   locMap: S16('<path d="M8 14.5s4.6-4.4 4.6-7.6A4.6 4.6 0 0 0 3.4 6.9c0 3.2 4.6 7.6 4.6 7.6z"/><circle cx="8" cy="6.9" r="1.6" fill="currentColor" stroke="none"/>'),
 });
+// Profile Viewer (mocks/profile-viewer/sections.js I): rail, header and state icons, prefixed `pv` (pv_home, pv_lock, …)
+// so they never collide with the config menu's names.
+{
+  const pv = readFileSync('mocks/profile-viewer/sections.js', 'utf8');
+  const from = pv.indexOf('const P = ');
+  const to = pv.indexOf('// ------------------------------------------------------------------ formatting');
+  if (from < 0 || to < 0) throw new Error('icon block not found in mocks/profile-viewer/sections.js');
+  const PV = new Function(`${pv.slice(from, to).replace('export const I', 'const I')}; return I;`)();
+  for (const [name, svg] of Object.entries(PV)) I[`pv${name[0].toUpperCase()}${name.slice(1)}`] = svg;
+}
 
 const out = 'src/main/resources/assets/soul/textures/gui/icons';
 rmSync(out, { recursive: true, force: true });
