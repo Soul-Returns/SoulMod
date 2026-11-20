@@ -3,6 +3,9 @@ package com.soulreturns.features.profileviewer
 import com.soulreturns.features.profileviewer.gui.kit.KitLayout
 import com.soulreturns.features.profileviewer.gui.kit.KitLayout.Cell
 import com.soulreturns.features.profileviewer.gui.kit.Node
+import com.soulreturns.features.profileviewer.gui.kit.CustomNode
+import com.soulreturns.features.profileviewer.gui.kit.SplitNode
+import com.soulreturns.features.profileviewer.gui.kit.StackNode
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -97,5 +100,22 @@ class KitLayoutTest {
         // A fixed column keeps its width.
         val f = KitLayout.tableWidths(intArrayOf(96, 50, 50), booleanArrayOf(true, false, false), 296)
         assertContentEquals(intArrayOf(96, 100, 100), f)
+    }
+
+    @Test
+    fun `split stretches its left child only up to maxStretch`() {
+        var painted = 0
+        fun split(rightH: Int, maxStretch: Float) = SplitNode(
+            118,
+            StackNode(listOf(CustomNode({ _, _ -> 100 }) { _, _, _, _, h -> painted = h })),
+            CustomNode({ _, _ -> rightH }) { _, _, _, _, _ -> },
+            maxStretch = maxStretch,
+        )
+        val c = SpvGearFixtures.Recorder()
+        for ((rightH, maxStretch, expected) in listOf(Triple(120, 1.3f, 120), Triple(200, 1.3f, 100), Triple(200, Float.POSITIVE_INFINITY, 200))) {
+            val node = split(rightH, maxStretch)
+            node.paint(c, 0, 0, 600, node.height(c, 600))
+            assertEquals(expected, painted, "right $rightH, max $maxStretch")
+        }
     }
 }

@@ -98,9 +98,9 @@ class Ui(val sectionId: String, val state: ViewState) {
         nodes += StackNode(collect(block), gap, span)
     }
 
-    /** A fixed-width column beside the rest (`.ov-top`'s figure). */
-    fun split(leftW: Int, left: Ui.() -> Unit, right: Ui.() -> Unit, minRightW: Int = 0) {
-        nodes += SplitNode(leftW, StackNode(collect(left)), StackNode(collect(right)), minRightW = minRightW)
+    /** A fixed-width column beside the rest (`.ov-top`'s figure); see [SplitNode.maxStretch]. */
+    fun split(leftW: Int, left: Ui.() -> Unit, right: Ui.() -> Unit, minRightW: Int = 0, maxStretch: Float = Float.POSITIVE_INFINITY) {
+        nodes += SplitNode(leftW, StackNode(collect(left)), StackNode(collect(right)), minRightW = minRightW, maxStretch = maxStretch)
     }
 
     fun space(h: Int) {

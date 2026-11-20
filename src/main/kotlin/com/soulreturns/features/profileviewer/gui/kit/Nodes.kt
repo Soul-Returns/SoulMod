@@ -387,8 +387,10 @@ class ColumnsNode(val columns: List<List<Node>>, val basis: Int = S.COLUMN_BASIS
 /**
  * Two areas side by side with a fixed-width [left] (`.ov-top`: 118 px figure | 1fr), the left one
  * as tall as the right column (a single left child is painted at that full height, `grid-row: span 2`).
+ * When the right column is more than [maxStretch] times the left child's own height, the left child keeps
+ * its own height at the top instead of becoming a tall, mostly empty box.
  */
-class SplitNode(val leftW: Int, val left: Node, val right: Node, val gap: Int = S.GAP, val minRightW: Int = 0) : Node() {
+class SplitNode(val leftW: Int, val left: Node, val right: Node, val gap: Int = S.GAP, val minRightW: Int = 0, val maxStretch: Float = Float.POSITIVE_INFINITY) : Node() {
     private fun stacked(w: Int) = minRightW > 0 && w - leftW - gap < minRightW
     private val leftOnly get() = (left as? StackNode)?.children?.singleOrNull() ?: left
 
@@ -402,7 +404,8 @@ class SplitNode(val leftW: Int, val left: Node, val right: Node, val gap: Int = 
             right.paint(c, x, y + lh + gap, w, right.height(c, w))
             return
         }
-        leftOnly.paint(c, x, y, leftW, h)
+        val natural = if (maxStretch.isFinite()) leftOnly.height(c, leftW) else 0
+        leftOnly.paint(c, x, y, leftW, if (maxStretch.isFinite() && h > natural * maxStretch) natural else h)
         right.paint(c, x + leftW + gap, y, w - leftW - gap, right.height(c, w - leftW - gap))
     }
 }

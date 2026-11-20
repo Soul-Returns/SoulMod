@@ -64,12 +64,13 @@ object OverviewSection : ProfileSection {
     private const val U = 4
 
     override fun build(ctx: ProfileContext, ui: Ui) {
+        // Narrow widths wrap the tiles; past 1.3x its own height the figure card stays short and top-aligned.
         ui.split(FIGURE_W, { figure(ctx, this) }, {
             stack(8) {
                 identity(ctx, this)
                 headlineTiles(ctx, this)
             }
-        })
+        }, maxStretch = 1.3f)
         ui.columns {
             column { gearCard(ctx, this) }
             column { skillsCard(ctx, this) }
