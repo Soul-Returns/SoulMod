@@ -1,0 +1,49 @@
+{
+  "member": {
+    "collection": {
+      "WHEAT": 2417533, "CARROT_ITEM": 912040, "POTATO_ITEM": 355120, "INK_SACK:3": 188410, "SUGAR_CANE": 1204331,
+      "COBBLESTONE": 5120441, "COAL": 1230990, "DIAMOND": 402114, "ENDER_STONE": 2210450, "MITHRIL_ORE": 980201,
+      "GLACITE": 120450, "BLAZE_ROD": 98211, "ENDER_PEARL": 145001, "LOG": 612300, "LOG_2:1": 90412,
+      "RAW_FISH:1": 41220, "MAGMA_FISH": 7810, "DOUBLE_PLANT": 22140, "ENCHANTED_DIAMOND": 5200
+    },
+    "player_data": {
+      "unlocked_coll_tiers": [
+        "WHEAT_1", "WHEAT_2", "WHEAT_9", "WHEAT_-1", "CARROT_ITEM_1", "CARROT_ITEM_7", "POTATO_ITEM_5", "INK_SACK:3_9",
+        "SUGAR_CANE_9", "COBBLESTONE_1", "COBBLESTONE_9", "COAL_9", "DIAMOND_8", "ENDER_STONE_7", "MITHRIL_ORE_9",
+        "GLACITE_12", "BLAZE_ROD_6", "ENDER_PEARL_7", "LOG_8", "LOG_2:1_4", "RAW_FISH:1_5", "MAGMA_FISH_-1", "DOUBLE_PLANT_3"
+      ],
+      "crafted_generators": [
+        "COBBLESTONE_1", "COBBLESTONE_2", "COBBLESTONE_12", "COAL_1", "COAL_11", "DIAMOND_9", "ENDER_STONE_5", "CAVESPIDER_4",
+        "COCOA_8", "NETHER_WARTS_3", "OAK_6", "SUNFLOWER_2", "SUGAR_CANE_11"
+      ]
+    },
+    "bestiary": {
+      "kills": {
+        "zealot_55": 48210, "enderman_45": 20311, "crypt_ghoul_30": 9120, "old_wolf_10": 880, "pond_squid_1": 6120,
+        "lapis_zombie_7": 2400, "lapis_zombie_9": 600, "water_hydra_110": 4410, "last_killed_mob": "zealot_55"
+      },
+      "deaths": { "zealot_55": 61, "water_hydra_110": 9, "lapis_zombie_7": 4 }
+    },
+    "currencies": {
+      "essence": {
+        "WITHER": { "current": 41230 }, "DRAGON": { "current": 12044 }, "SPIDER": { "current": 3310 },
+        "UNDEAD": { "current": 18900 }, "DIAMOND": { "current": 9200 }, "GOLD": { "current": 7100 },
+        "ICE": { "current": 25400 }, "CRIMSON": { "current": 14040 }
+      }
+    },
+    "player_stats": {
+      "kills": { "total": 1412330 },
+      "deaths": { "total": 3980 },
+      "highest_critical_damage": 148320411.5,
+      "mythos": { "kills": 40212 },
+      "auctions": { "won": 812, "created": 1204, "gold_spent": 2410000000, "gold_earned": 3120000000, "bids": 1500 },
+      "gifts": { "total_given": 212, "total_received": 148 }
+    },
+    "experimentation": {
+      "pairings": { "claims_2": 9, "best_score_2": 4, "claims_5": 31, "best_score_5": 7 },
+      "simon": { "attempts_1": 4, "best_score_1": 11, "claims_5": 60, "best_score_5": 24 },
+      "numbers": { "best_score_1": 12, "best_score_4": 17, "claims_4": 12 }
+    },
+    "item_data": { "soulflow": 48212 }
+  }
+}

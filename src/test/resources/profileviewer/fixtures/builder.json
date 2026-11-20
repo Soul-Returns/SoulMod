@@ -11,10 +11,19 @@
     "members": {
      "9a0c3e5f7b1d4c2e8f6a0b2c4d6e8f10": {
       "leveling": {
-       "experience": 3412
+       "experience": 3412,
+       "highest_pet_score": 8
       },
       "currencies": {
-       "coin_purse": 640210
+       "coin_purse": 640210,
+       "essence": {
+        "UNDEAD": {
+         "current": 640
+        },
+        "WITHER": {
+         "current": 90
+        }
+       }
       },
       "profile": {
        "first_join": 1710000000000
@@ -25,6 +34,13 @@
       "bestiary": {
        "milestone": {
         "last_claimed_milestone": 212
+       },
+       "kills": {
+        "graveyard_zombie_1": 120,
+        "crypt_ghoul_30": 12
+       },
+       "deaths": {
+        "graveyard_zombie_1": 2
        }
       },
       "slayer": {
@@ -345,6 +361,75 @@
          {},
          {}
         ]
+       }
+      },
+      "player_data": {
+       "crafted_generators": [
+        "WHEAT_1",
+        "WHEAT_2"
+       ]
+      },
+      "player_stats": {
+       "kills": {
+        "total": 900
+       },
+       "deaths": {
+        "total": 31
+       },
+       "highest_critical_damage": 5100.0,
+       "auctions": {
+        "won": 2,
+        "created": 5,
+        "gold_spent": 41000,
+        "gold_earned": 96000
+       },
+       "items_fished": {
+        "total": 300
+       }
+      },
+      "experimentation": {
+       "simon": {
+        "best_score_0": 9,
+        "claims_0": 3
+       }
+      },
+      "pets_data": {
+       "pets": [
+        {
+         "uuid": "c0000000-0000-4000-8000-000000000001",
+         "type": "RABBIT",
+         "exp": 900.0,
+         "active": true,
+         "tier": "UNCOMMON",
+         "candyUsed": 0
+        }
+       ]
+      },
+      "nether_island_player_data": {
+       "kuudra_completed_tiers": {
+        "none": 4
+       }
+      },
+      "rift": {
+       "access": {
+        "consumed_prism": false
+       },
+       "enigma": {
+        "found_souls": [
+         "rift_house_a"
+        ]
+       }
+      },
+      "mining_core": {
+       "powder_mithril": 12040,
+       "powder_spent_mithril": 3100
+      },
+      "inventory": {
+       "sacks_counts": {
+        "ENCHANTED_COAL": 0,
+        "COBBLESTONE": 9120,
+        "WHEAT": 4500,
+        "RAW_FISH": 12
        }
       }
      }

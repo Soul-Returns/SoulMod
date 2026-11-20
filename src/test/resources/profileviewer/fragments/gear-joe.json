@@ -1,0 +1,25 @@
+{
+ "inventory": {
+  "inv_armor": {
+   "type": 0,
+   "data": "H4sIAAAAAAAC/5XOwWqDQBCA4dHY1ngpDUlDbp6bFtJToTdjFw2sGqI9hy1ZzILGoBNon8j38MlqSFNkQdDr8M/MZwAMQREGAGgqqGKnvChwY2enAyoq3H6wlMUcwIABstiAu50ojgn70UHzWcphXJWMsqMoTCtPs9xcZhkWQ9BolnO9vjmAUVW+uZwluH8363j+uljU8/NeVSafvh14XuCbyyCIwvrLPfnGnFmIufg6IS/0MwkeqLVehVtr4wWb7SUFuGif+2inkpbyOBaHuAt4KoEpcZyV77Sbx03zf31lz/uwZxLb3vMC6wB5B/hMgtsuCaM1tSLSSn9s0hv9Ff/UBz+R8C5PUo4d4BMJ7hLqkagVPWqi/1oA+AUDW10F4AIAAA=="
+  },
+  "equipment_contents": {
+   "type": 0,
+   "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBgYGEAAQCp5xppEQAAAA=="
+  },
+  "wardrobe_contents": {
+   "type": 0,
+   "data": "H4sIAAAAAAAC/52RX2uCUBiHX6tt5c1Y9HcReL022C7GYHdmooJpZLHLOKODCZrhObHtE/k9/GQzapsdbKkHrw7v63l+v4cHqAHn8ACglqDkLLk7Di4kf7umXAkuR8hDNgbgoUyRzcPV0iEbF31VoWIgD0M3Cp+tFVr6H4JICCLEWQsqdj1Ma1DR/QBX4x+XoR6FLypGLl29ClGIBk+Pj/H9bjkKXXmiScJobiiyaQiqrI/lWfzetfxJAyRSGjjvW4pJdQcHLUsVR+bbQrSs+NOMxWEeoAB8M0bR0cYhghh4fpAdfLcYg88NyRyPz0PXdXGiWQtxOjanf8CHs+ce5OHup5QurTCh8RDFGfj7KcVLqmzNJro4k0/muGXLT+wUCtJlBOQK0WUkZAjQSoo4gj+ScZ8nQy9Fho5t21nbJEOKXooKXVYUzVCskzk6rIjfjUIR2oyGHPhtRsJZ9EZSQQL7SMBDHvpOioCh79Ms+J2U9oemOTvN32Sr348XIm8wvWelbjCl/098k2z8hzbP+QaAUcquIwYAAA=="
+  },
+  "wardrobe_equipped_slot": 2,
+  "inv_contents": {
+   "type": 0,
+   "data": "H4sIAAAAAAAC/5WSzU7CQBSFL39awF9CjJqYzMKdm2qiRneFDgWsLWmp6KopdCijlJJ2KvpEfY8+mUNQwoYIk8xmcs8538ncEkARMrQEAJdZyFI3U85AoR7EE5bJwo7s+I5HAEqQY45Xgl2XRtOx8y1AXnN8AqdpctejbERC4iKVflIXyY7nkbAIeTUIicB9c1BJk/uF0yNKk8HVtSjy9wuuTZOxihWsyZLxhmRLU7CuIbOnGzKPPMRfLHQkxkLajxmJhDkf7Kmtl5Zsy5KiYEMAwQ9cOqQkBGH2C8K9F1UK21Q5T5Nbc0pDymJnjNrxe4zMURCyfjDboMwBV/MyuNOqo5reW0u/37balm02daPLx1bxi9Ff+JL/ZBv+M07QGBPCUIcOPoIJ9ftxhG5EUdwAv7KCz++T9IrXVijPB3St9VyzzNUCheE8fQlf3Qa+miYPUjQlA4aCIeLfiPDE3YD7iOs4tyEZ+J+1OZbMDq53bb1hd5vY5isHG5wfm5YVxx8DAAA="
+  },
+  "ender_chest_contents": {
+   "type": 0,
+   "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBg0GUgCQAA4gDYkzoAAAA="
+  }
+ }
+}

@@ -58,11 +58,11 @@ object SkillsSection : ProfileSection {
             tile("Total skill XP", Format.short(skills.sumOf { it.experience }), sub = "all skills")
         }
         ui.card("Skills", span = Node.FULL) {
-            table(COLUMNS, main.map { row(ctx, it) }, rowH = ROW_H, gap = COL_GAP)
+            table(COLUMNS, main.map { row(ctx, it) }, rowH = ROW_H, gap = COL_GAP, padRight = 0)
             if (cosmetic.isNotEmpty()) {
                 space(4)
                 label("Cosmetic, not in the average")
-                table(COLUMNS, cosmetic.map { row(ctx, it) }, rowH = ROW_H, gap = COL_GAP)
+                table(COLUMNS, cosmetic.map { row(ctx, it) }, rowH = ROW_H, gap = COL_GAP, padRight = 0)
             }
         }
     }

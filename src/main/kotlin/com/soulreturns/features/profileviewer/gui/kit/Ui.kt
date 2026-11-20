@@ -118,6 +118,7 @@ class Ui(val sectionId: String, val state: ViewState) {
      * A card. [kind] is one of [CardNode.PLAIN] / `SHARED` / `MINE` / `LOCAL` / `EMPTY` / `GENERIC` /
      * `LATER`; the Soul kinds add their chips. [span]: grid columns, or [Node.FULL]. [tools]: inline
      * controls at the header's right (a [seg], a [search]). [meta]: a link or a dim note before them.
+     * [padX] / [padTop] / [padBottom] override `.c`'s padding for cards the mock pads differently (`.hero`).
      */
     fun card(
         title: String?,
@@ -129,6 +130,9 @@ class Ui(val sectionId: String, val state: ViewState) {
         meta: (Ui.() -> Unit)? = null,
         tools: (Ui.() -> Unit)? = null,
         gap: Int = 6,
+        padX: Int = S.CARD_PAD_X,
+        padTop: Int = S.CARD_PAD_TOP,
+        padBottom: Int = S.CARD_PAD_BOTTOM,
         body: Ui.() -> Unit,
     ) {
         nodes += CardNode(
@@ -142,6 +146,9 @@ class Ui(val sectionId: String, val state: ViewState) {
             titleTip = tip,
             bodyGap = gap,
             span = span,
+            padX = padX,
+            padTop = padTop,
+            padBottom = padBottom,
         )
     }
 
@@ -225,8 +232,9 @@ class Ui(val sectionId: String, val state: ViewState) {
         nodes += MiniGridNode(items, cols)
     }
 
-    fun table(cols: List<Col>, rows: List<TableRow>, rowH: Int = S.TD_H, gap: Int = 0, separators: Boolean = true) {
-        nodes += TableNode(cols, rows, rowH = rowH, gap = gap, separators = separators)
+    /** `.tbl`; [padRight] is the cell padding (`.tbl td` 6, 0 for header-less grid rows like `.sk`). */
+    fun table(cols: List<Col>, rows: List<TableRow>, rowH: Int = S.TD_H, gap: Int = 0, separators: Boolean = true, padRight: Int = S.TD_PAD_R) {
+        nodes += TableNode(cols, rows, rowH = rowH, gap = gap, padRight = padRight, separators = separators)
     }
 
     /** `.bars`; [twoColumns] for `.bars.two`. */

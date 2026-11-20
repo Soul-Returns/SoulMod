@@ -1,0 +1,51 @@
+{
+ "player_stats": {
+  "items_fished": {
+   "total": 5120,
+   "normal": 5000,
+   "treasure": 60,
+   "large_treasure": 10
+  },
+  "pets": {
+   "milestone": {
+    "sea_creatures_killed": 1360
+   }
+  }
+ },
+ "trophy_fish": {
+  "total_caught": 3,
+  "blobfish": 3,
+  "blobfish_bronze": 3
+ },
+ "jacobs_contest": {
+  "medals_inv": {
+   "gold": 0,
+   "silver": 1,
+   "bronze": 4
+  },
+  "perks": {
+   "double_drops": 2,
+   "farming_level_cap": 1
+  },
+  "unique_brackets": {
+   "bronze": [
+    "WHEAT"
+   ],
+   "silver": [
+    "CARROT_ITEM"
+   ]
+  },
+  "contests": {
+   "110:3_4:WHEAT": {
+    "collected": 21000
+   }
+  },
+  "personal_bests": {
+   "WHEAT": 21000,
+   "CARROT_ITEM": 33000
+  }
+ },
+ "garden_player_data": {
+  "copper": 150
+ }
+}

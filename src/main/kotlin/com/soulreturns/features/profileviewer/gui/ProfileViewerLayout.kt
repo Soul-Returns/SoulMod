@@ -38,14 +38,14 @@ object ProfileViewerLayout {
     const val RAIL_PAD_X_MINI = 5
     const val RAIL_GAP = 1
     const val RAIL_ITEM_H = 26
-    const val RAIL_GROUP_H = 23
+    const val RAIL_GROUP_H = 26
     const val RAIL_SEP_H = 13
-    const val RAIL_LEGEND_H = 32
+    const val RAIL_LEGEND_H = 33
 
     // .sec-h / .pv-scroll / .banner
     const val SEC_HEAD_PAD_TOP = 12
     const val SEC_HEAD_PAD_BOTTOM = 8
-    const val SEC_HEAD_H = 18
+    const val SEC_HEAD_H = 14
     const val BODY_PAD_X = 16
     const val BODY_PAD_TOP = 2
     const val BODY_PAD_BOTTOM = 16
@@ -90,7 +90,7 @@ object ProfileViewerLayout {
      * Rail rows top to bottom from content y 0 (`rail()` in mock.js): a group label where the group
      * changes (a separator in the mini rail), a separator before the Soul group, 1 px between rows.
      * [sections] are (id, group) in rail order. Returns the rows and the content height including
-     * the bottom padding (the legend is pinned separately).
+     * the bottom padding, without the legend (the screen puts it after the rows).
      */
     fun railRows(sections: List<Pair<String, String>>, mini: Boolean): Pair<List<RailRow>, Int> {
         val rows = ArrayList<RailRow>()

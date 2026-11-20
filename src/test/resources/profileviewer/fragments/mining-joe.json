@@ -1,0 +1,53 @@
+{
+  "skill_tree": {
+    "nodes": {
+      "mining": {
+        "mining_speed": 50,
+        "mining_fortune": 38,
+        "titanium_insanium": 12,
+        "pickobulus": 1,
+        "quick_forge": 9,
+        "efficient_miner": 64,
+        "mole": 40,
+        "professional": 55,
+        "gem_lover": 6,
+        "seasoned_mineman": 30,
+        "keep_it_cool": 1,
+        "core_of_the_mountain": 3,
+        "toggle_mining_speed": true,
+        "toggle_professional": false
+      }
+    },
+    "selected_ability": {
+      "mining": "pickobulus"
+    },
+    "experience": {
+      "mining": 250000.0
+    },
+    "tokens_spent": {
+      "mountain": 11
+    }
+  },
+  "mining_core": {
+    "powder_mithril": 88210,
+    "powder_spent_mithril": 902300,
+    "powder_gemstone": 15020,
+    "powder_spent_gemstone": 410900,
+    "crystals": {
+      "jade_crystal": {"state": "FOUND", "total_found": 2, "total_placed": 1},
+      "amber_crystal": {"state": "NOT_FOUND", "total_found": 1, "total_placed": 1},
+      "amethyst_crystal": {"state": "NOT_FOUND"},
+      "sapphire_crystal": {},
+      "topaz_crystal": {"state": "FOUND", "total_found": 1}
+    }
+  },
+  "glacite_player_data": {
+    "mineshafts_entered": 4,
+    "corpses_looted": {"lapis": 6}
+  },
+  "forge": {
+    "forge_processes": {
+      "forge_1": {}
+    }
+  }
+}

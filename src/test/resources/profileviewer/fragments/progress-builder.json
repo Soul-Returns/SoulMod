@@ -1,0 +1,18 @@
+{
+  "member": {
+    "player_data": { "crafted_generators": ["WHEAT_1", "WHEAT_2"] },
+    "bestiary": {
+      "kills": { "graveyard_zombie_1": 120, "crypt_ghoul_30": 12 },
+      "deaths": { "graveyard_zombie_1": 2 }
+    },
+    "currencies": { "essence": { "UNDEAD": { "current": 640 }, "WITHER": { "current": 90 } } },
+    "player_stats": {
+      "kills": { "total": 900 },
+      "deaths": { "total": 31 },
+      "highest_critical_damage": 5100.0,
+      "auctions": { "won": 2, "created": 5, "gold_spent": 41000, "gold_earned": 96000 }
+    },
+    "experimentation": { "simon": { "best_score_0": 9, "claims_0": 3 } }
+  },
+  "profile": {}
+}

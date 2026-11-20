@@ -1,6 +1,8 @@
 {
  "name": "Fisher_Joe",
  "uuid": "2b7d41c09e8a4f61b3c55d0e7a9f1c22",
+ "skin": "3b60a1f6d562f52aaebbf1434f1de147933a3affe0e764fa49ea057536623cd3",
+ "slim": true,
  "profiles": {
   "success": true,
   "profiles": [
@@ -11,10 +13,16 @@
     "members": {
      "2b7d41c09e8a4f61b3c55d0e7a9f1c22": {
       "leveling": {
-       "experience": 18744
+       "experience": 18744,
+       "highest_pet_score": 210
       },
       "currencies": {
-       "coin_purse": 31204118
+       "coin_purse": 31204118,
+       "essence": {
+        "WITHER": {
+         "current": 210
+        }
+       }
       },
       "profile": {
        "first_join": 1630000000000
@@ -25,6 +33,11 @@
       "bestiary": {
        "milestone": {
         "last_claimed_milestone": 212
+       },
+       "kills": {
+        "pond_squid_1": 940,
+        "sea_walker_4": 322,
+        "night_squid_6": 80
        }
       },
       "slayer": {
@@ -80,20 +93,79 @@
         "SKILL_HUNTING": 5225,
         "SKILL_RUNECRAFTING": 5260,
         "SKILL_SOCIAL": 6150
-       }
+       },
+       "unlocked_coll_tiers": [
+        "COBBLESTONE_1",
+        "COBBLESTONE_7",
+        "COAL_5",
+        "RAW_FISH_9",
+        "SPONGE_-1"
+       ],
+       "crafted_generators": [
+        "COBBLESTONE_1",
+        "FISHING_3",
+        "FISHING_4"
+       ]
       },
       "inventory": {
        "inv_contents": {
         "type": 0,
-        "data": ""
+        "data": "H4sIAAAAAAAC/43OQUvDMBQH8H+76bocFGV6juDNyzyJ3kKbUsGlklZ2LLGNa2FrR5uhfqJ+j34yI2PgRVh4eZf33p8fAaZwKgLg1sGJ3+xq47g4DdRGrTTgwq0KZ0YwMmpFMCmqbrtW3x7GQm00ZkP/yLqtzg1tPqgpNeV1McX4pWm1ZzNHuBr6B1v7vCc69Pnd/XxuR9f2dOjX+y6Z5DRZxjIAwTn/Mq1ixrTV+87ozvs14IIlr9xPszjM0ohnXAQ25EC+OZ5sQYrXealqowsq1ScNq678Y3btP7NLlvUm/HixiMW/qEsu/IiJlAeZZMssfE4iHPV+ANNjtb14AQAA"
+       },
+       "inv_armor": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/5XOwWqDQBCA4dHY1ngpDUlDbp6bFtJToTdjFw2sGqI9hy1ZzILGoBNon8j38MlqSFNkQdDr8M/MZwAMQREGAGgqqGKnvChwY2enAyoq3H6wlMUcwIABstiAu50ojgn70UHzWcphXJWMsqMoTCtPs9xcZhkWQ9BolnO9vjmAUVW+uZwluH8363j+uljU8/NeVSafvh14XuCbyyCIwvrLPfnGnFmIufg6IS/0MwkeqLVehVtr4wWb7SUFuGif+2inkpbyOBaHuAt4KoEpcZyV77Sbx03zf31lz/uwZxLb3vMC6wB5B/hMgtsuCaM1tSLSSn9s0hv9Ff/UBz+R8C5PUo4d4BMJ7hLqkagVPWqi/1oA+AUDW10F4AIAAA=="
+       },
+       "equipment_contents": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBgYGEAAQCp5xppEQAAAA=="
+       },
+       "wardrobe_contents": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/52RX2uCUBiHX6tt5c1Y9HcReL022C7GYHdmooJpZLHLOKODCZrhObHtE/k9/GQzapsdbKkHrw7v63l+v4cHqAHn8ACglqDkLLk7Di4kf7umXAkuR8hDNgbgoUyRzcPV0iEbF31VoWIgD0M3Cp+tFVr6H4JICCLEWQsqdj1Ma1DR/QBX4x+XoR6FLypGLl29ClGIBk+Pj/H9bjkKXXmiScJobiiyaQiqrI/lWfzetfxJAyRSGjjvW4pJdQcHLUsVR+bbQrSs+NOMxWEeoAB8M0bR0cYhghh4fpAdfLcYg88NyRyPz0PXdXGiWQtxOjanf8CHs+ce5OHup5QurTCh8RDFGfj7KcVLqmzNJro4k0/muGXLT+wUCtJlBOQK0WUkZAjQSoo4gj+ScZ8nQy9Fho5t21nbJEOKXooKXVYUzVCskzk6rIjfjUIR2oyGHPhtRsJZ9EZSQQL7SMBDHvpOioCh79Ms+J2U9oemOTvN32Sr348XIm8wvWelbjCl/098k2z8hzbP+QaAUcquIwYAAA=="
+       },
+       "wardrobe_equipped_slot": 2,
+       "ender_chest_contents": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/5WNzQ2CQBQGPxAV9oAxsQAbsAfJsokHWC56Ng93g5vwY+CRaEX0QWVKCc55JiOACJ4TAE4e1rIbWz772KTUUGUBH74z3kFgxVQJbI0bXjV9QgSaGov9PJFqH09q2Zqj7KiOEGRdb0MsLRD/hHmqb1oWeV5oCOzUm3tKmHtXjmyHcDkgVlpeEn1V6V0WSYY/+QI0peVpxwAAAA=="
+       },
+       "bag_contents": {
+        "potion_bag": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBg0GUgCQAA4gDYkzoAAAA="
+        },
+        "fishing_bag": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/5WMQQrCMBQFX2LV9IO48QBewAO4DBpwEVy04Fa+NNRAaiVNRU/Ue/Rk2iM422GGgBzCE4CdwPzQ9o8kJBZHbrh2gIT0ldgQZolrwrLy3TPwRyE7c+OwGoe95Rdvy7sLIUdm2+gUpg6gnxyHUOjCgLA27xRZpxT9rU+uU9MZZPVFX8uTsRZ/8gW5FEnluwAAAA=="
+        },
+        "quiver": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBg0GUgCQAA4gDYkzoAAAA="
+        },
+        "talisman_bag": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/72TzU6DQBDHh35oS6JVo5733quNH7ctpUrSAlnw0BOZyhY3UmiWJbEP4XPwHjyZW/XkqaHGuUxmdvLP/5eZNQH6YAgTdDaga+VlpowWHE1wjQkHaEFLxMaHCW2FiQnHsSg2KW570HFxzeGiru7HqIjPZZFnhIks6UNnlkve04pdOKur2yeOqXp9IHWFwxvdvdK9uroLFKqCoORkmWdloR8utVhdpYwym1DLsoPAYwswYWC/K4lUKSmWpeJFb+cJBmMaRr7NAs+NmOM+aoEGAOd1tQo2nMckxFQUa8ya+7/WWtq/5c3nnrsHwWng2/YkCunMCebUbQyAfwUw1BMaoK7edJLku3p2fwOR3cC+VG0YSJRCbaNyk0iMefHF2YhVw6ymQhv+/12dTB1mH76qkYVZvCVUKrHCF3XQXxlp/7bvWPtcmkXdySKiLHSm1ArhJz4BT0o7gP0DAAA="
+        }
+       },
+       "sacks_counts": {
+        "RAW_FISH": 410,
+        "ENCHANTED_RAW_FISH": 33
        }
       },
       "accessory_bag_storage": {
-       "highest_magical_power": 880,
-       "selected_power": "bloody"
+       "highest_magical_power": 36,
+       "selected_power": "bloody",
+       "bag_upgrades_purchased": 0,
+       "tuning": {
+        "highest_unlocked_slot": 0
+       }
       },
       "collection": {
-       "WHEAT": 1000
+       "WHEAT": 1000,
+       "COBBLESTONE": 312000,
+       "COAL": 40120,
+       "RAW_FISH": 91400,
+       "SPONGE": 880
       },
       "dungeons": {
        "dungeon_types": {
@@ -429,6 +501,152 @@
          {},
          {}
         ]
+       }
+      },
+      "player_stats": {
+       "kills": {
+        "total": 14022
+       },
+       "deaths": {
+        "total": 190
+       },
+       "highest_critical_damage": 8420.25,
+       "gifts": {
+        "total_given": 3,
+        "total_received": 1
+       },
+       "items_fished": {
+        "total": 5120,
+        "normal": 5000,
+        "treasure": 60,
+        "large_treasure": 10
+       },
+       "pets": {
+        "milestone": {
+         "sea_creatures_killed": 1360
+        }
+       }
+      },
+      "pets_data": {
+       "pets": [
+        {
+         "uuid": "b0000000-0000-4000-8000-000000000001",
+         "type": "ENDER_DRAGON",
+         "exp": 9000000.0,
+         "active": true,
+         "tier": "EPIC",
+         "candyUsed": 0
+        },
+        {
+         "uuid": "b0000000-0000-4000-8000-000000000002",
+         "type": "RABBIT",
+         "exp": 52000.0,
+         "active": false,
+         "tier": "UNCOMMON",
+         "candyUsed": 0
+        }
+       ]
+      },
+      "trophy_fish": {
+       "total_caught": 3,
+       "blobfish": 3,
+       "blobfish_bronze": 3
+      },
+      "jacobs_contest": {
+       "medals_inv": {
+        "gold": 0,
+        "silver": 1,
+        "bronze": 4
+       },
+       "perks": {
+        "double_drops": 2,
+        "farming_level_cap": 1
+       },
+       "unique_brackets": {
+        "bronze": [
+         "WHEAT"
+        ],
+        "silver": [
+         "CARROT_ITEM"
+        ]
+       },
+       "contests": {
+        "110:3_4:WHEAT": {
+         "collected": 21000
+        }
+       },
+       "personal_bests": {
+        "WHEAT": 21000,
+        "CARROT_ITEM": 33000
+       }
+      },
+      "garden_player_data": {
+       "copper": 150
+      },
+      "skill_tree": {
+       "nodes": {
+        "mining": {
+         "mining_speed": 50,
+         "mining_fortune": 38,
+         "titanium_insanium": 12,
+         "pickobulus": 1,
+         "quick_forge": 9,
+         "efficient_miner": 64,
+         "mole": 40,
+         "professional": 55,
+         "gem_lover": 6,
+         "seasoned_mineman": 30,
+         "keep_it_cool": 1,
+         "core_of_the_mountain": 3,
+         "toggle_mining_speed": true,
+         "toggle_professional": false
+        }
+       },
+       "selected_ability": {
+        "mining": "pickobulus"
+       },
+       "experience": {
+        "mining": 250000.0
+       },
+       "tokens_spent": {
+        "mountain": 11
+       }
+      },
+      "mining_core": {
+       "powder_mithril": 88210,
+       "powder_spent_mithril": 902300,
+       "powder_gemstone": 15020,
+       "powder_spent_gemstone": 410900,
+       "crystals": {
+        "jade_crystal": {
+         "state": "FOUND",
+         "total_found": 2,
+         "total_placed": 1
+        },
+        "amber_crystal": {
+         "state": "NOT_FOUND",
+         "total_found": 1,
+         "total_placed": 1
+        },
+        "amethyst_crystal": {
+         "state": "NOT_FOUND"
+        },
+        "sapphire_crystal": {},
+        "topaz_crystal": {
+         "state": "FOUND",
+         "total_found": 1
+        }
+       }
+      },
+      "glacite_player_data": {
+       "mineshafts_entered": 4,
+       "corpses_looted": {
+        "lapis": 6
+       }
+      },
+      "forge": {
+       "forge_processes": {
+        "forge_1": {}
        }
       }
      }

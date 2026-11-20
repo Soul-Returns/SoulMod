@@ -1,0 +1,19 @@
+{
+  "member": {
+    "collection": { "COBBLESTONE": 312000, "COAL": 40120, "RAW_FISH": 91400, "SPONGE": 880 },
+    "player_data": {
+      "unlocked_coll_tiers": ["COBBLESTONE_1", "COBBLESTONE_7", "COAL_5", "RAW_FISH_9", "SPONGE_-1"],
+      "crafted_generators": ["COBBLESTONE_1", "FISHING_3", "FISHING_4"]
+    },
+    "bestiary": {
+      "kills": { "pond_squid_1": 940, "sea_walker_4": 322, "night_squid_6": 80 }
+    },
+    "currencies": { "essence": { "WITHER": { "current": 210 } } },
+    "player_stats": {
+      "kills": { "total": 14022 },
+      "deaths": { "total": 190 },
+      "highest_critical_damage": 8420.25,
+      "gifts": { "total_given": 3, "total_received": 1 }
+    }
+  }
+}

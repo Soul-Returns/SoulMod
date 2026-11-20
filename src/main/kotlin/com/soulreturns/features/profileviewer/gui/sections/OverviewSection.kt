@@ -3,6 +3,7 @@ package com.soulreturns.features.profileviewer.gui.sections
 import com.soulreturns.data.hypixel.KUUDRA_TIERS
 import com.soulreturns.data.hypixel.KUUDRA_TIER_NAMES
 import com.soulreturns.data.hypixel.activeMemberCount
+import com.soulreturns.data.hypixel.armorBlob
 import com.soulreturns.data.hypixel.bankBalance
 import com.soulreturns.data.hypixel.bestiaryMilestone
 import com.soulreturns.data.hypixel.fairySouls
@@ -21,18 +22,21 @@ import com.soulreturns.features.profileviewer.gui.kit.Chip
 import com.soulreturns.features.profileviewer.gui.kit.Corner
 import com.soulreturns.features.profileviewer.gui.kit.CustomNode
 import com.soulreturns.features.profileviewer.gui.kit.Format
+import com.soulreturns.features.profileviewer.gui.kit.KitCanvas
 import com.soulreturns.features.profileviewer.gui.kit.KitStyle
 import com.soulreturns.features.profileviewer.gui.kit.Mini
+import com.soulreturns.features.profileviewer.gui.kit.PlayerModel
 import com.soulreturns.features.profileviewer.gui.kit.Rich
 import com.soulreturns.features.profileviewer.gui.kit.Ui
+import net.minecraft.world.item.ItemStack
 import java.util.Locale
 
 /**
  * Who this player is at a glance (mock `overview`): the figure column, the identity card, five
  * headline tiles, then three columns of cards — gear, skills, Soul + highlights.
  *
- * Phase 3 fills [figure] (the full-body model), the market value in [identity], [gearCard] and the
- * Soul local-tracker rows in [soulCard]; every slot is already in place, so none of them moves the rest.
+ * Phase 3 fills the market value in [identity], [gearCard] and the Soul local-tracker rows in
+ * [soulCard]; every slot is already in place, so none of them moves the rest.
  */
 object OverviewSection : ProfileSection {
     override val id = "overview"
@@ -42,7 +46,9 @@ object OverviewSection : ProfileSection {
 
     /** `.ov-top`: the figure column's width. */
     private const val FIGURE_W = 118
-    private const val HEAD = 48
+
+    /** `.figure`'s `--u`: one skin pixel. The body is 16 × 32 of them. */
+    private const val U = 4
 
     override fun build(ctx: ProfileContext, ui: Ui) {
         ui.split(FIGURE_W, { figure(ctx, this) }, {
@@ -61,19 +67,46 @@ object OverviewSection : ProfileSection {
         }
     }
 
-    /** The figure column. Phase 1: the face (the head fallback of the full-body model). */
+    /**
+     * `.figure`: the full-body model in the armor they wear, as tall as the identity card and the
+     * tiles. While the skin loads, the head on a pulsing silhouette; if it fails, the silhouette alone.
+     */
     private fun figure(ctx: ProfileContext, ui: Ui) {
+        val uuid = ctx.identity.uuidUndashed
+        val blob = ctx.member.armorBlob?.let { ctx.items.get(it) }
+        // Hypixel lists boots first; the model wants helmet to boots. Still decoding: no armor yet.
+        val armor: List<ItemStack?>? = if (blob == null) null else if (blob.ready) blob.stacks.reversed() else emptyList()
         ui.add(
-            CustomNode({ _, _ -> HEAD + 20 }) { c, x, y, w, h ->
-                c.rect(x, y, x + w, y + h, KitStyle.CARD_BG, Corner.MEDIUM)
-                c.face(ctx.identity.uuidUndashed, x + (w - HEAD) / 2, y + (h - HEAD) / 2, HEAD)
+            CustomNode({ _, _ -> 10 + 32 * U + 6 + 11 + 8 }) { c, x, y, w, h ->
+                c.gradient(x, y, x + w, y + h, 0xFF1E1E1E.toInt(), 0xFF171717.toInt())
+                val bodyBottom = y + h - 8 - 11 - 6
+                val state = c.playerModel(uuid, ctx.name, x, y + 10, x + w, bodyBottom, armor)
+                if (state != PlayerModel.READY) silhouette(c, uuid, x + w / 2, bodyBottom - 32 * U, state)
+                val caption = if (state == PlayerModel.LOADING) "Loading skin" else if (state != PlayerModel.READY) "No skin" else if (ctx.member.apiAccessDisabled) "Armor hidden" else ""
+                if (caption.isNotEmpty()) c.text(caption, x + (w - c.width(caption, KitStyle.TINY)) / 2, bodyBottom + 6, bodyBottom + 17, 0xFF666666.toInt(), KitStyle.TINY)
+                val tip = if (state == PlayerModel.READY) "Their player model in the armor they wear now. It turns toward your mouse." else if (state == PlayerModel.LOADING) "Loading the skin…" else "The skin couldn't be loaded."
+                c.tooltip(x, y, x + w, y + h, listOf(tip), "figure")
             },
         )
     }
 
+    /** The fallback body (`.bd` without `.ready`): head 8, arms and legs 4 × 12, torso 8 × 12 skin pixels. */
+    private fun silhouette(c: KitCanvas, uuid: String, cx: Int, top: Int, state: Int) {
+        val gray = 0x2A2A2A
+        val loading = state == PlayerModel.LOADING
+        val t = (c.nowMs % 2400) / 1200f
+        val k = if (t > 1f) 2f - t else t
+        val body = if (loading) ((0.45f + 0.55f * k) * 255).toInt() shl 24 or gray else 0xFF shl 24 or gray
+        c.rect(cx - 4 * U, top, cx + 4 * U, top + 8 * U, 0xFF shl 24 or gray, Corner.SMALL)
+        if (state != PlayerModel.FAILED) c.face(uuid, cx - 4 * U, top, 8 * U)
+        val mid = top + 8 * U
+        c.rect(cx - 8 * U, mid, cx + 8 * U, mid + 12 * U, body, Corner.SQUARE)
+        c.rect(cx - 4 * U, mid + 12 * U, cx + 4 * U, mid + 24 * U, body, Corner.SQUARE)
+    }
+
     private fun identity(ctx: ProfileContext, ui: Ui) {
         val member = ctx.member
-        ui.card(null) {
+        ui.card(null, gap = 3, padX = 14, padTop = 12, padBottom = 12) {
             row(0) {
                 text(ctx.name, KitStyle.TITLE, bold = true, wrap = false)
                 if (ctx.isSelf) chips(Chip.you())

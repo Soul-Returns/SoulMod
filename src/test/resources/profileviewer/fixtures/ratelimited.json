@@ -1,0 +1,8 @@
+{
+ "name": "Busy_Bea",
+ "uuid": "5e2c9a7b1d3f4e6a8b0c2d4e6f8a0b1c",
+ "failure": {
+  "kind": "rate-limited",
+  "retryAfter": 40
+ }
+}

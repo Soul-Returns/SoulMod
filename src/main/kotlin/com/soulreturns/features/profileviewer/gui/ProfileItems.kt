@@ -28,22 +28,30 @@ object ProfileItems {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Blob>?): Boolean = size > MAX_BLOBS
     }
 
-    /** The decoded slots of [base64], or a loading/failed marker. Never blocks. */
+    /** Tests decode on the calling thread, so a section's first build already sees its items. */
+    @Volatile
+    var synchronous = false
+
+    /** The decoded slots of [base64], or a loading/failed marker. Never blocks (unless [synchronous]). */
     fun get(base64: String): Blob {
         synchronized(cache) {
             cache[base64]?.let { return it }
             cache[base64] = LOADING
         }
-        SoulScope.io.launch {
-            val decoded = try {
-                LegacyItemDecoder.decodeSlots(base64)
-            } catch (_: Throwable) {
-                null
-            }
-            val blob = if (decoded == null) FAILED else Blob(loading = false, failed = false, stacks = decoded)
-            synchronized(cache) { cache[base64] = blob }
-        }
+        if (synchronous) return decode(base64)
+        SoulScope.io.launch { decode(base64) }
         return LOADING
+    }
+
+    private fun decode(base64: String): Blob {
+        val decoded = try {
+            LegacyItemDecoder.decodeSlots(base64)
+        } catch (_: Throwable) {
+            null
+        }
+        val blob = if (decoded == null) FAILED else Blob(loading = false, failed = false, stacks = decoded)
+        synchronized(cache) { cache[base64] = blob }
+        return blob
     }
 
     /** Test seam and memory relief on close: forget every decoded blob. */

@@ -19,7 +19,18 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.soulreturns.features.profileviewer.gui.ProfileItems
+import com.soulreturns.features.profileviewer.gui.kit.ItemLineNode
+import com.soulreturns.features.profileviewer.gui.kit.Rich
+import com.soulreturns.features.profileviewer.gui.kit.SlotGridNode
+import com.soulreturns.features.profileviewer.gui.kit.SlotNode
+import net.minecraft.SharedConstants
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.data.registries.VanillaRegistries
+import net.minecraft.server.Bootstrap
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.Items
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -33,9 +44,30 @@ import kotlin.test.assertTrue
 class SectionBuildTest {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * Sections build real vanilla [ItemStack]s (decoded items, node icons): the registries must exist, and
+     * item default components bound (a real game binds them on the data pack load; a bare bootstrap does not).
+     */
+    @BeforeTest
+    fun boot() {
+        SharedConstants.tryDetectVersion()
+        Bootstrap.bootStrap()
+        bindItemComponents
+        ProfileItems.synchronous = true
+    }
+
+    private companion object {
+        val bindItemComponents: Unit by lazy {
+            BuiltInRegistries.DATA_COMPONENT_INITIALIZERS.build(VanillaRegistries.createLookup()).forEach { it.apply() }
+        }
+    }
+
     /** Deterministic text metrics: 5 px per character (6 bold), so layout numbers are stable. */
     private class Recorder(override val state: ViewState = ViewState()) : KitCanvas {
         val texts = ArrayList<String>()
+        val items = ArrayList<ItemStack>()
+        val itemTooltips = ArrayList<ItemStack>()
+        var hoverAll = false
         override val viewTop = 0
         override val viewBottom = Int.MAX_VALUE
         override val nowMs = 1_800_000_000_000L
@@ -49,12 +81,16 @@ class SectionBuildTest {
             texts += text
         }
         override fun icon(name: String, x: Int, y: Int, size: Int, color: Int) {}
-        override fun item(stack: ItemStack, x: Int, y: Int, size: Int, count: Boolean) {}
+        override fun item(stack: ItemStack, x: Int, y: Int, size: Int, count: Boolean) {
+            items += stack
+        }
         override fun face(uuidUndashed: String, x: Int, y: Int, size: Int) {}
-        override fun hovered(x0: Int, y0: Int, x1: Int, y1: Int) = false
+        override fun hovered(x0: Int, y0: Int, x1: Int, y1: Int) = hoverAll
         override fun onClick(x0: Int, y0: Int, x1: Int, y1: Int, action: () -> Unit) {}
         override fun tooltip(x0: Int, y0: Int, x1: Int, y1: Int, lines: List<String>, key: String?) {}
-        override fun itemTooltip(stack: ItemStack) {}
+        override fun itemTooltip(stack: ItemStack) {
+            itemTooltips += stack
+        }
         override fun field(key: String, x0: Int, y0: Int, x1: Int, y1: Int, placeholder: String) {}
         override fun openSection(id: String) {}
 
@@ -151,5 +187,24 @@ class SectionBuildTest {
         val (_, narrow) = render("sam", "slayers", 476)
         assertEquals(wide, again)
         assertTrue(narrow > wide, "narrow $narrow should exceed wide $wide")
+    }
+
+    @Test
+    fun `slot nodes paint real item stacks and offer their tooltip`() {
+        val sword = ItemStack(Items.DIAMOND_SWORD)
+        val pick = ItemStack(Items.IRON_PICKAXE, 3)
+        val c = Recorder()
+        c.hoverAll = true
+        val nodes = listOf(
+            SlotNode(sword),
+            SlotGridNode(listOf(pick, null, ItemStack.EMPTY, sword), cols = 9),
+            ItemLineNode(pick, Rich.of("§6Iron Pickaxe"), sub = Rich.of("Mining")),
+        )
+        val root = StackNode(nodes, KitStyle.GAP)
+        val h = root.height(c, 300)
+        root.paint(c, 0, 0, 300, h)
+        assertEquals(listOf(sword, pick, sword, pick), c.items)
+        assertEquals(c.items, c.itemTooltips)
+        assertTrue("Iron Pickaxe" in c.all())
     }
 }

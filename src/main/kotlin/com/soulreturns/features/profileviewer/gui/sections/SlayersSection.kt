@@ -39,13 +39,12 @@ object SlayersSection : ProfileSection {
         }
         ui.grid(250) {
             for (s in slayers) {
-                card(s.def.bossName) {
+                card(s.def.bossName, gap = 9) {
                     val l = s.level
                     bigStat(
                         "${l.level}", l.progress.toFloat(), l.maxed,
                         if (l.maxed) "${Format.num(s.experience)} XP · max level" else "${Format.num(s.experience)} / ${Format.num(l.nextLevelXp)} XP",
                     )
-                    space(3)
                     boxes(
                         s.bossKills.take(TIERS[s.def.key] ?: 5).mapIndexed { i, kills ->
                             Box(Format.roman(i + 1), if (kills > 0) Format.short(kills.toLong()) else "—", dim = kills == 0)

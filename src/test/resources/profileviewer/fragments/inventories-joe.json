@@ -1,0 +1,30 @@
+{
+ "inventory": {
+  "inv_contents": {
+   "type": 0,
+   "data": "H4sIAAAAAAAC/43OQUvDMBQH8H+76bocFGV6juDNyzyJ3kKbUsGlklZ2LLGNa2FrR5uhfqJ+j34yI2PgRVh4eZf33p8fAaZwKgLg1sGJ3+xq47g4DdRGrTTgwq0KZ0YwMmpFMCmqbrtW3x7GQm00ZkP/yLqtzg1tPqgpNeV1McX4pWm1ZzNHuBr6B1v7vCc69Pnd/XxuR9f2dOjX+y6Z5DRZxjIAwTn/Mq1ixrTV+87ozvs14IIlr9xPszjM0ohnXAQ25EC+OZ5sQYrXealqowsq1ScNq678Y3btP7NLlvUm/HixiMW/qEsu/IiJlAeZZMssfE4iHPV+ANNjtb14AQAA"
+  },
+  "ender_chest_contents": {
+   "type": 0,
+   "data": "H4sIAAAAAAAC/5WNzQ2CQBQGPxAV9oAxsQAbsAfJsokHWC56Ng93g5vwY+CRaEX0QWVKCc55JiOACJ4TAE4e1rIbWz772KTUUGUBH74z3kFgxVQJbI0bXjV9QgSaGov9PJFqH09q2Zqj7KiOEGRdb0MsLRD/hHmqb1oWeV5oCOzUm3tKmHtXjmyHcDkgVlpeEn1V6V0WSYY/+QI0peVpxwAAAA=="
+  },
+  "bag_contents": {
+   "potion_bag": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBg0GUgCQAA4gDYkzoAAAA="
+   },
+   "fishing_bag": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/5WMQQrCMBQFX2LV9IO48QBewAO4DBpwEVy04Fa+NNRAaiVNRU/Ue/Rk2iM422GGgBzCE4CdwPzQ9o8kJBZHbrh2gIT0ldgQZolrwrLy3TPwRyE7c+OwGoe95Rdvy7sLIUdm2+gUpg6gnxyHUOjCgLA27xRZpxT9rU+uU9MZZPVFX8uTsRZ/8gW5FEnluwAAAA=="
+   },
+   "quiver": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBg0GUgCQAA4gDYkzoAAAA="
+   }
+  },
+  "sacks_counts": {
+   "RAW_FISH": 410,
+   "ENCHANTED_RAW_FISH": 33
+  }
+ }
+}

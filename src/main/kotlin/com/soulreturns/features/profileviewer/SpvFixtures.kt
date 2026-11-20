@@ -1,5 +1,9 @@
 package com.soulreturns.features.profileviewer
 
+import com.google.common.collect.ImmutableMultimap
+import com.mojang.authlib.GameProfile
+import com.mojang.authlib.properties.Property
+import com.mojang.authlib.properties.PropertyMap
 import com.soulreturns.data.hypixel.PlayerIdentity
 import com.soulreturns.data.hypixel.SkillCapsClient
 import com.soulreturns.data.hypixel.SkillCapsEnvelope
@@ -8,6 +12,7 @@ import com.soulreturns.data.hypixel.SoulStatsAnswer
 import com.soulreturns.data.hypixel.SoulStatsClient
 import com.soulreturns.data.hypixel.SoulStatsEnvelope
 import com.soulreturns.features.dev.DevOutput
+import com.soulreturns.features.profileviewer.gui.ProfileFigure
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.util.MojangUuid
 import kotlinx.coroutines.delay
@@ -23,6 +28,8 @@ import kotlinx.serialization.json.longOrNull
 import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.client.Minecraft
 import java.nio.file.Files
+import java.util.Base64
+import java.util.UUID
 
 /**
  * `/soul dev spv fixture <name>`: plays `<gameDir>/soul-dev/spv/<name>.json` through
@@ -34,13 +41,16 @@ import java.nio.file.Files
  * File shape (every key but `name` and `uuid` optional):
  * ```
  * { "name": "Slayer_Sam", "uuid": "<32 hex>", "self": false,
+ *   "skin": "<textures.minecraft.net hash>", "slim": false,
  *   "resolveMs": 400, "profilesMs": 900, "hold": false,
  *   "failure": { "kind": "not-found" | "no-profiles" | "rate-limited" | "offline" | "other", "retryAfter": 30 },
  *   "profiles": { …a Hypixel /skyblock/profiles body… }, "profile": "Banana",
  *   "soulStats": { "status": 200, "body": { "schemaVersion": 1, "shared": true, "namespaces": { … } } },
  *   "caps": { "schemaVersion": 2, "profiles": { "<profile id>": { "farming": 60 } } } }
  * ```
- * `self: true` swaps in your own name and uuid; `hold: true` stops after resolving (the loading state).
+ * `self: true` swaps in your own name and uuid (the fixture's `uuid` member becomes yours); `hold: true`
+ * stops after resolving (the loading state). `skin` gives the player a skin texture inline (the test
+ * client has no session server to resolve one by uuid); without it the skin lookup goes by uuid.
  */
 object SpvFixtures {
     private val json = Json { ignoreUnknownKeys = true }
@@ -65,6 +75,15 @@ object SpvFixtures {
         } else {
             PlayerIdentity(root.str("uuid") ?: "00000000000000000000000000000000", root.str("name") ?: name)
         }
+        val skin = root.str("skin")
+        if (!self && skin != null) {
+            val model = if (root.bool("slim")) ""","metadata":{"model":"slim"}""" else ""
+            val textures = """{"textures":{"SKIN":{"url":"http://textures.minecraft.net/texture/$skin"$model}}}"""
+            val value = Base64.getEncoder().encodeToString(textures.toByteArray())
+            val uuid = MojangUuid.parse(identity.uuidUndashed) ?: UUID(0L, 0L)
+            ProfileFigure.fixtureSkins[identity.uuidUndashed] =
+                GameProfile(uuid, identity.name, PropertyMap(ImmutableMultimap.of("textures", Property("textures", value))))
+        }
         DevOutput.line("§7Presenting §f${identity.name}§7 from §f$file")
         ProfileViewerService.onLookupStarted(identity.name)
         SoulScope.io.launch {
@@ -88,7 +107,10 @@ object SpvFixtures {
             ProfileViewerService.onResolved(identity)
             if (root.bool("hold")) return@launch
             delay(root.num("profilesMs") ?: 0L)
-            val profiles = SkyblockProfiles.from(root["profiles"] as? JsonObject ?: JsonObject(emptyMap()))
+            var body = root["profiles"] as? JsonObject ?: JsonObject(emptyMap())
+            val fixtureUuid = root.str("uuid")
+            if (self && fixtureUuid != null) body = json.parseToJsonElement(body.toString().replace(fixtureUuid, identity.uuidUndashed)).jsonObject
+            val profiles = SkyblockProfiles.from(body)
             val profile = profiles.pick(root.str("profile"))
             val member = profile?.member(identity.uuidUndashed)
             if (profile == null || member == null) {

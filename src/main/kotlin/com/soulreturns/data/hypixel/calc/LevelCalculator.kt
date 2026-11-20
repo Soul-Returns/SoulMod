@@ -103,7 +103,7 @@ fun masterFloorName(tier: Int): String = "M$tier"
 
 /**
  * The five dungeon classes, in the order Hypixel's own class-level display uses. Keys are the
- * `member.dungeons.player_classes` keys — note `berserk` on the wire, "Berserker" to a player.
+ * `member.dungeons.player_classes` keys (`berserk` on the wire); names as Hypixel's class menu shows them.
  */
 object DungeonClassNames {
     val ORDER = listOf("healer", "mage", "berserk", "archer", "tank")
@@ -113,7 +113,7 @@ object DungeonClassNames {
         when (key) {
             "healer" -> "Healer"
             "mage" -> "Mage"
-            "berserk" -> "Berserker"
+            "berserk" -> "Berserk"
             "archer" -> "Archer"
             "tank" -> "Tank"
             else -> key.replaceFirstChar { it.uppercase(Locale.ROOT) }

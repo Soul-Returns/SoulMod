@@ -28,6 +28,7 @@ import com.soulreturns.features.profileviewer.gui.kit.Format
 import com.soulreturns.features.profileviewer.gui.kit.KitCanvas
 import com.soulreturns.features.profileviewer.gui.kit.KitStyle
 import com.soulreturns.features.profileviewer.gui.kit.Rich
+import com.soulreturns.features.profileviewer.gui.kit.PlayerModel
 import com.soulreturns.features.profileviewer.gui.kit.StackNode
 import com.soulreturns.features.profileviewer.gui.kit.Ui
 import com.soulreturns.features.profileviewer.gui.kit.ViewState
@@ -95,9 +96,10 @@ class ProfileViewerScreen private constructor(
         private const val SEARCH_POP_W = 250
         private const val PROFILE_POP_W = 316
         private const val KEYS_POP_W = 240
-        private const val SEARCH_ROW_H = 24
-        private const val PROFILE_ROW_H = 36
-        private const val KEYS_ROW_H = 18
+        private const val SEARCH_ROW_H = 28
+        private const val SEARCH_GROUP_H = 22
+        private const val PROFILE_ROW_H = 48
+        private const val KEYS_ROW_H = 20
 
         /** Views fetched this session, by lower-case name: what offline and rate-limited fall back to. */
         private const val CACHED_VIEWS = 8
@@ -208,6 +210,7 @@ class ProfileViewerScreen private constructor(
             capsLoaded = false
             viewState.clear()
             scrolls.clear()
+            figure = null
         }
     }
 
@@ -228,7 +231,7 @@ class ProfileViewerScreen private constructor(
         loadedAt = System.currentTimeMillis() - (v.preloaded?.loadedAgoMs ?: 0L)
         failure = null
         loading = false
-        if (!isSelfView) RecentPlayers.remember(v.identity.name)
+        if (!isSelfView) RecentPlayers.remember(v.identity.name, v.identity.uuidUndashed)
         val pre = v.preloaded
         if (pre != null) {
             soulAnswer = pre.soulStats
@@ -369,6 +372,9 @@ class ProfileViewerScreen private constructor(
     private var profileAnchor = IntArray(4)
     private var keysAnchor = IntArray(4)
     private val faces = HashMap<String, ResolvableProfile>()
+    private var figure: ProfileFigure? = null
+    private var rawMouseX = 0f
+    private var rawMouseY = 0f
 
     override fun extractRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
         regions.clear()
@@ -381,6 +387,8 @@ class ProfileViewerScreen private constructor(
         val uiH = height / s
         mx = (mouseX / s).toInt()
         my = (mouseY / s).toInt()
+        rawMouseX = mouseX.toFloat()
+        rawMouseY = mouseY.toFloat()
         g.pose().pushMatrix()
         g.pose().scale(s, s)
 
@@ -441,7 +449,7 @@ class ProfileViewerScreen private constructor(
             rect(bx + 1, top + 1, bx + w - 1, bottom - 1, if (hover) Theme.PANEL_HOVER else Theme.TOP_NAV, Corner.SMALL)
             selfUuid()?.let { face(g, it, bx + 8, top + 6, 14) }
             if (label.isNotEmpty()) txt(label, bx + 8 + 14 + 5, top, bottom, if (hover) Theme.TEXT else KitStyle.TEXT_MID, KitStyle.BODY, true)
-            tooltip(bx, top, bx + w, bottom, listOf("Your profile (Ctrl+M)"))
+            if (hover) tooltip(bx, top, bx + w, bottom, listOf("Your profile (Ctrl+M)"))
             region(bx, top, bx + w, bottom) { lookup(selfName()) }
         }
         val searchOpen = popover == POP_SEARCH || search.focused
@@ -495,7 +503,8 @@ class ProfileViewerScreen private constructor(
         if (ctx != null && shell.body == St.BODY_SECTION) {
             drawProfileButton(g, ctx, lx, top, bottom, rightEdge)
         } else if (known && loading) {
-            skeleton(lx, top, lx + 120, bottom)
+            val cy = (top + bottom) / 2
+            skeleton(lx, cy - 4, lx + 120, cy + 4)
         }
     }
 
@@ -515,7 +524,7 @@ class ProfileViewerScreen private constructor(
             val hover = hit(x0, top, x1, bottom)
             rect(x0, top, x1, bottom, if (hover || open) Theme.ACCENT else Theme.FIELD_BORDER, Corner.SMALL)
             rect(x0 + 1, top + 1, x1 - 1, bottom - 1, 0xFF202020.toInt(), Corner.SMALL)
-            tooltip(x0, top, x1, bottom, listOf("Switch profile (Ctrl+P)"))
+            if (hover) tooltip(x0, top, x1, bottom, listOf("Switch profile (Ctrl+P)"))
             region(x0, top, x1, bottom) { popover = if (open) null else POP_PROFILE }
         }
         var cx = x0 + 10
@@ -534,11 +543,14 @@ class ProfileViewerScreen private constructor(
         }
     }
 
+    /** `.status`: a 6 px dot plus its 2 px margin, or the 10 px spinner while loading. */
+    private fun statusLead(shell: St.Shell): Int = if (shell.status == St.STATUS_LOADING) 10 else 8
+
     private fun statusWidth(shell: St.Shell, narrow: Boolean): Int {
         if (shell.status == St.STATUS_NONE) return 0
         val text = if (narrow) "" else statusText(shell)
-        val textW = if (text.isEmpty()) 0 else tw(text, KitStyle.CAPTION, false) + 4
-        return 8 + textW + (if (shell.status == St.STATUS_LOADING) 0 else 4 + 18)
+        val textW = if (text.isEmpty()) 0 else 4 + tw(text, KitStyle.CAPTION, false)
+        return statusLead(shell) + textW + (if (shell.status == St.STATUS_LOADING) 0 else 4 + 18)
     }
 
     private fun statusText(shell: St.Shell): String = when (shell.status) {
@@ -558,18 +570,13 @@ class ProfileViewerScreen private constructor(
             else -> 0xFF3FAE5C.toInt()
         }
         val cy = (top + bottom) / 2
-        if (shell.status == St.STATUS_LOADING) {
-            val t = (now % 800) / 800f
-            val r = 2 + (if (t < 0.5f) t * 4 else (1 - t) * 4).roundToInt()
-            rect(x0 + 3 - r, cy - r, x0 + 3 + r, cy + r, color, Corner.PILL)
-        } else {
-            rect(x0, cy - 3, x0 + 6, cy + 3, color, Corner.PILL)
-        }
+        if (shell.status == St.STATUS_LOADING) spinner(g, x0, cy - 5) else rect(x0, cy - 3, x0 + 6, cy + 3, color, Corner.PILL)
         val text = if (narrow) "" else statusText(shell)
-        var x = x0 + 8
+        var x = x0 + statusLead(shell)
         if (text.isNotEmpty()) {
+            x += 4
             txt(text, x, top, bottom, if (shell.status == St.STATUS_FRESH || shell.status == St.STATUS_LOADING) Theme.TEXT_DIM else color, KitStyle.CAPTION)
-            x += tw(text, KitStyle.CAPTION, false) + 4
+            x += tw(text, KitStyle.CAPTION, false)
         }
         val tip = when (shell.status) {
             St.STATUS_FRESH -> "Loaded from Hypixel ${Format.ago(now - loadedAt)}. Press R to refresh."
@@ -578,15 +585,30 @@ class ProfileViewerScreen private constructor(
             St.STATUS_OFFLINE -> "Can't reach Soul's server. Showing data from ${Format.ago(now - loadedAt)}."
             else -> null
         }
-        if (tip != null) tooltip(x0, top, x, bottom, listOf(tip), "status")
+        if (tip != null && hit(x0, top, x, bottom)) tooltip(x0, top, x, bottom, listOf(tip), "status")
         if (shell.status != St.STATUS_LOADING) {
             val disabled = shell.status == St.STATUS_RATE_LIMITED
             val by = cy - 9
             val hover = !disabled && hit(x + 4, by, x + 22, by + 18)
             if (hover) rect(x + 4, by, x + 22, by + 18, Theme.PANEL_HOVER, Corner.SMALL)
-            drawIcon(g, "pv_refresh", x + 4 + 4, by + 4, 10, if (disabled) 0x59AAAAAA else if (hover) Theme.TEXT else KitStyle.TEXT_MID)
+            drawIcon(g, "pv_refresh", x + 4 + 4, by + 4, 11, if (disabled) 0x59AAAAAA else if (hover) Theme.TEXT else KitStyle.TEXT_MID)
             if (!disabled) region(x + 4, by, x + 22, by + 18) { refresh() }
         }
+    }
+
+    /**
+     * `.spin`: a 10 px ring with a blue quarter turning once per 0.8 s. The render layer has no conic
+     * fill, so the quarter is the ring clipped to one quadrant, stepping a quadrant every 0.2 s.
+     */
+    private fun spinner(g: GuiGraphicsExtractor, x: Int, y: Int) {
+        rect(x, y, x + 10, y + 10, 0xFF2A2A2A.toInt(), Corner.PILL)
+        val q = ((now % 800) / 200).toInt()
+        val qx = if (q == 1 || q == 2) x + 5 else x
+        val qy = if (q >= 2) y + 5 else y
+        g.enableScissor(qx, qy, qx + 5, qy + 5)
+        rect(x, y, x + 10, y + 10, Theme.ACCENT, Corner.PILL)
+        g.disableScissor()
+        rect(x + 3, y + 3, x + 7, y + 7, Theme.TOP_NAV, Corner.PILL)
     }
 
     // ------------------------------------------------------------------ rail
@@ -598,22 +620,22 @@ class ProfileViewerScreen private constructor(
         val y1 = card.y1
         roundRect(g, x0, y0, x1, y1, Theme.SIDEBAR, SoulRenderPipelines.ROUND_BL)
         val sections = visibleSections(ctx)
-        val (rows, contentH) = L.railRows(sections.map { it.id to it.group }, card.miniRail)
-        val legendH = if (card.miniRail) 0 else L.RAIL_LEGEND_H
-        val viewBottom = y1 - legendH
-        railScroll.view = viewBottom - y0
-        railScroll.content = contentH
+        val (rows, rowsH) = L.railRows(sections.map { it.id to it.group }, card.miniRail)
+        // `.legend` is the last thing in the rail's scroll content, pushed to the bottom when there is room.
+        val legendY = if (card.miniRail) -1 else max(rowsH - L.RAIL_PAD_Y + L.RAIL_GAP, y1 - y0 - L.RAIL_LEGEND_H - L.RAIL_PAD_Y)
+        railScroll.view = y1 - y0
+        railScroll.content = if (legendY < 0) rowsH else legendY + L.RAIL_LEGEND_H + L.RAIL_PAD_Y
         railScroll.clamp()
         val pad = if (card.miniRail) L.RAIL_PAD_X_MINI else L.RAIL_PAD_X
-        val vp = intArrayOf(x0, y0, x1, viewBottom)
-        beginClip(g, x0, y0, x1, viewBottom)
+        val vp = intArrayOf(x0, y0, x1, y1)
+        beginClip(g, x0, y0, x1, y1)
         val off = y0 - railScroll.pos.roundToInt()
         for (row in rows) {
             val ry = off + row.y
             if (row.kind == L.ROW_GROUP) {
                 val label = row.label!!.uppercase()
                 val lw = trackedW(label, KitStyle.LABEL, KitStyle.CHIP_TRACKING)
-                tracked(g, label, x0 + pad + 8 + lw / 2, ry + 9 + 6, Theme.TEXT_FAINT, KitStyle.LABEL, KitStyle.CHIP_TRACKING)
+                tracked(g, label, x0 + pad + 8 + lw / 2, ry + 16, Theme.TEXT_FAINT, KitStyle.LABEL, KitStyle.CHIP_TRACKING)
                 continue
             }
             if (row.kind == L.ROW_SEP) {
@@ -624,7 +646,7 @@ class ProfileViewerScreen private constructor(
             val ix0 = x0 + pad
             val ix1 = x1 - pad
             val on = s.id == sectionId
-            val hover = hit(ix0, ry, ix1, ry + row.h) && my in y0 until viewBottom
+            val hover = hit(ix0, ry, ix1, ry + row.h) && my in y0 until y1
             val soul = s.group == ProfileSection.GROUP_SOUL
             val muted = ctx != null && safe(false) { s.muted(ctx) }
             if (on) rect(ix0, ry, ix1, ry + row.h, Theme.ACCENT, Corner.SMALL) else if (hover) rect(ix0, ry, ix1, ry + row.h, Theme.PANEL_HOVER, Corner.SMALL)
@@ -649,17 +671,18 @@ class ProfileViewerScreen private constructor(
             }
             clippedRegion(ix0, ry, ix1, ry + row.h, vp) { goSection(s.id) }
         }
-        endClip(g)
-        drawScrollbar(g, mx, my, railScroll, x0, y0, x1, viewBottom)
-        if (!card.miniRail) {
-            g.fill(x0 + pad, viewBottom, x1 - pad, viewBottom + 1, 0xFF222222.toInt())
+        if (legendY >= 0) {
+            val ly = off + legendY
+            g.fill(x0 + pad, ly, x1 - pad, ly + 1, 0xFF222222.toInt())
             val chip = Chip.soul()
             val cx = x0 + pad + 6
-            chip.paint(canvas, cx, viewBottom + 8 + 6)
+            chip.paint(canvas, cx, ly + 9 + 6)
             val tx = cx + chip.width(canvas) + 6
-            txt("recorded by Soul,", tx, viewBottom + 8, viewBottom + 19, Theme.TEXT_FAINT, KitStyle.TINY)
-            txt("not by Hypixel", tx, viewBottom + 19, viewBottom + 30, Theme.TEXT_FAINT, KitStyle.TINY)
+            txt("recorded by Soul,", tx, ly + 9, ly + 20, Theme.TEXT_FAINT, KitStyle.TINY)
+            txt("not by Hypixel", tx, ly + 20, ly + 31, Theme.TEXT_FAINT, KitStyle.TINY)
         }
+        endClip(g)
+        drawScrollbar(g, mx, my, railScroll, x0, y0, x1, y1)
     }
 
     // ------------------------------------------------------------------ main area
@@ -668,16 +691,15 @@ class ProfileViewerScreen private constructor(
         val x1 = card.x1
         val y0 = card.y0 + L.HEAD_H
         val y1 = card.y1
-        if (shell.rail) g.fillGradient(x0, y0, x0 + 1, y1, 0x30000000, 0x30000000)
         if (shell.body == St.BODY_SECTION && ctx != null) {
             drawSection(g, x0, y0, x1, y1, ctx, shell)
-            return
-        }
-        if (shell.body == St.BODY_LOADING || shell.body == St.BODY_RESOLVING) {
+        } else if (shell.body == St.BODY_LOADING || shell.body == St.BODY_RESOLVING) {
             drawSkeleton(x0 + L.BODY_PAD_X, y0 + L.SEC_HEAD_PAD_TOP, x1 - L.BODY_PAD_X, y1 - L.BODY_PAD_BOTTOM)
-            return
+        } else {
+            drawCenterState(g, x0, y0, x1, y1, shell)
         }
-        drawCenterState(g, x0, y0, x1, y1, shell)
+        // `.pv-main::before`: the rail's 6 px shadow over the main area, rgba(0,0,0,.25) to transparent.
+        if (shell.rail) for (i in 0 until 6) g.fill(x0 + i, y0, x0 + i + 1, y1, (0x40 * (6 - i) / 6) shl 24)
     }
 
     private fun drawSection(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, ctx: ProfileContext, shell: St.Shell) {
@@ -689,7 +711,7 @@ class ProfileViewerScreen private constructor(
         val hTop = y0 + L.SEC_HEAD_PAD_TOP
         val hBottom = hTop + L.SEC_HEAD_H
         var hx = x0 + L.BODY_PAD_X
-        drawIcon(g, section.icon, hx, hTop + 2, 14, if (soul) Theme.ACCENT_LIGHT else Theme.TEXT_DIM)
+        drawIcon(g, section.icon, hx, hTop, 14, if (soul) Theme.ACCENT_LIGHT else Theme.TEXT_DIM)
         hx += 14 + 8
         txt(section.title, hx, hTop, hBottom, if (soul) Theme.ACCENT_LIGHT else Theme.TEXT, KitStyle.HEADING, true)
         hx += tw(section.title, KitStyle.HEADING, true) + 8
@@ -757,7 +779,7 @@ class ProfileViewerScreen private constructor(
         }
         rect(x0, y0, x1, y1, bg, Corner.MEDIUM)
         g.fill(x0, y0 + 2, x0 + 2, y1 - 2, edge)
-        drawIcon(g, icon, x0 + 10, y0 + 8, 12, if (edge == Theme.TEXT_DIM) KitStyle.TEXT_SOFT else edge)
+        drawIcon(g, icon, x0 + 10, (y0 + y1) / 2 - 7, 14, if (edge == Theme.TEXT_DIM) KitStyle.TEXT_SOFT else edge)
         var right = x1 - 10
         if (button != null) {
             val bw = tw(button, KitStyle.BODY, false) + 18
@@ -768,7 +790,7 @@ class ProfileViewerScreen private constructor(
             region(bx, y0 + 5, right, y1 - 5) { refresh() }
             right = bx - 8
         }
-        Rich.of(text).ellipsize(canvas, KitStyle.BODY, right - (x0 + 30)).draw(canvas, x0 + 30, y0, y1, KitStyle.BODY, KitStyle.TEXT_SOFT)
+        Rich.of(text).ellipsize(canvas, KitStyle.BODY, right - (x0 + 32)).draw(canvas, x0 + 32, y0, y1, KitStyle.BODY, KitStyle.TEXT_SOFT)
     }
 
     /** `skeleton()` in mock.js: identity card, five tiles, four cards, all pulsing. */
@@ -801,6 +823,7 @@ class ProfileViewerScreen private constructor(
             skeleton(cx + 12, y + 12, cx + 12 + cw * 3 / 10, y + 20)
             skeleton(cx + 12, y + 27, cx + cw - 12, y + 35)
             skeleton(cx + 12, y + 42, cx + cw - 12, y + 50)
+            skeleton(cx + 12, y + 57, cx + 12 + cw * 7 / 10, y + 65)
             i++
             if (i % gc == 0) y += 158
         }
@@ -818,7 +841,7 @@ class ProfileViewerScreen private constructor(
         var faceUuid: String? = null
         var icon = "pv_search"
         if (shell.body == St.BODY_NOT_FOUND) {
-            title = "No Minecraft account is called “$lookupName”"
+            title = "No Minecraft account is called \"$lookupName\""
             text = "Check the spelling. Names are 3 to 16 letters, numbers or underscores."
             showRecent = true
         } else if (shell.body == St.BODY_NO_PROFILES) {
@@ -860,7 +883,7 @@ class ProfileViewerScreen private constructor(
             y += 14
         }
         if (button != null) {
-            y += 10
+            y += 6 + 10
             val bw = tw(button, KitStyle.BODY, false) + 24
             val bx = cx - bw / 2
             val hover = hit(bx, y, bx + bw, y + 22)
@@ -873,10 +896,10 @@ class ProfileViewerScreen private constructor(
             val recent = RecentPlayers.list().filterNot { it.name.equals(name, ignoreCase = true) }
             if (recent.isNotEmpty()) {
                 y += 6 + 12
-                val chips = recent.map { it.name to tw(it.name, KitStyle.BODY, false) + 9 + 14 + 6 + 5 }
+                val chips = recent.map { it to tw(it.name, KitStyle.BODY, false) + 9 + 14 + 6 + 5 }
                 val rowW = x1 - x0 - 40
-                var line = ArrayList<Pair<String, Int>>()
-                val lines = ArrayList<List<Pair<String, Int>>>()
+                var line = ArrayList<Pair<RecentPlayers.Entry, Int>>()
+                val lines = ArrayList<List<Pair<RecentPlayers.Entry, Int>>>()
                 var used = 0
                 for (c in chips) {
                     if (line.isNotEmpty() && used + 6 + c.second > rowW) {
@@ -890,11 +913,12 @@ class ProfileViewerScreen private constructor(
                 if (line.isNotEmpty()) lines += line
                 for (l in lines) {
                     var px = cx - (l.sumOf { it.second } + 6 * (l.size - 1)) / 2
-                    for ((n, w) in l) {
+                    for ((entry, w) in l) {
+                        val n = entry.name
                         val hover = hit(px, y, px + w, y + 22)
                         rect(px, y, px + w, y + 22, if (hover) Theme.ACCENT else Theme.FIELD_BORDER, Corner.SMALL)
                         rect(px + 1, y + 1, px + w - 1, y + 21, 0xFF202020.toInt(), Corner.SMALL)
-                        drawIcon(g, "pv_user", px + 5, y + 4, 14, Theme.TEXT_DIM)
+                        if (entry.uuid != null) face(g, entry.uuid, px + 5, y + 4, 14) else drawIcon(g, "pv_user", px + 5, y + 4, 14, Theme.TEXT_DIM)
                         txt(n, px + 5 + 14 + 6, y, y + 22, if (hover) 0xFFFFFFFF.toInt() else KitStyle.TEXT_SOFT, KitStyle.BODY)
                         region(px, y, px + w, y + 22) { lookup(n) }
                         px += w + 6
@@ -918,7 +942,7 @@ class ProfileViewerScreen private constructor(
         val me = selfName()
         if (match(me)) rows += SearchRow(me, "Ctrl M", selfUuid(), you = true, enter = false, group = "You")
         for (r in RecentPlayers.list()) {
-            if (match(r.name) && !r.name.equals(me, ignoreCase = true)) rows += SearchRow(r.name, Format.ago(now - r.at), null, you = false, enter = false, group = "Recent")
+            if (match(r.name) && !r.name.equals(me, ignoreCase = true)) rows += SearchRow(r.name, Format.ago(now - r.at), r.uuid, you = false, enter = false, group = "Recent")
         }
         val party = PartyManager.getPartyState()?.members?.values?.filterNot { it.name.equals(me, ignoreCase = true) }.orEmpty()
         for (p in party) if (match(p.name)) rows += SearchRow(p.name, "party", p.uuid?.let { MojangUuid.undashed(it) }, you = false, enter = false, group = "In your party")
@@ -937,7 +961,7 @@ class ProfileViewerScreen private constructor(
 
     private fun popGroupLabel(label: String, x: Int, y: Int) {
         val u = label.uppercase()
-        tracked(frame!!, u, x + 6 + trackedW(u, KitStyle.LABEL, KitStyle.CHIP_TRACKING) / 2, y + 10, Theme.TEXT_FAINT, KitStyle.LABEL, KitStyle.CHIP_TRACKING)
+        tracked(frame!!, u, x + 6 + trackedW(u, KitStyle.LABEL, KitStyle.CHIP_TRACKING) / 2, y + 12, Theme.TEXT_FAINT, KitStyle.LABEL, KitStyle.CHIP_TRACKING)
     }
 
     private fun drawSearchPop(g: GuiGraphicsExtractor, card: L.Card) {
@@ -948,7 +972,7 @@ class ProfileViewerScreen private constructor(
         for (r in rows) {
             if (r.group != last) {
                 if (last != "-") h += 9
-                if (r.group != null) h += 17
+                if (r.group != null) h += SEARCH_GROUP_H
                 last = r.group
             }
             h += SEARCH_ROW_H
@@ -968,7 +992,7 @@ class ProfileViewerScreen private constructor(
                 }
                 if (r.group != null) {
                     popGroupLabel(r.group, x + POP_PAD, y)
-                    y += 17
+                    y += SEARCH_GROUP_H
                 }
                 last = r.group
             }
@@ -976,7 +1000,7 @@ class ProfileViewerScreen private constructor(
             val rx1 = x + w - POP_PAD
             val hover = hit(rx0, y, rx1, y + SEARCH_ROW_H)
             if (hover || i == searchHl) rect(rx0, y, rx1, y + SEARCH_ROW_H, Theme.PALETTE_SELECTED, Corner.SMALL)
-            if (r.uuid != null) face(g, r.uuid, rx0 + 6, y + 4, 16) else drawIcon(g, "pv_user", rx0 + 6, y + 4, 16, Theme.TEXT_DIM)
+            if (r.uuid != null) face(g, r.uuid, rx0 + 6, y + 6, 16) else drawIcon(g, "pv_user", rx0 + 6, y + 6, 16, Theme.TEXT_DIM)
             txt(r.name, rx0 + 6 + 16 + 7, y, y + SEARCH_ROW_H, Theme.TEXT, KitStyle.BODY)
             var nx = rx0 + 6 + 16 + 7 + tw(r.name, KitStyle.BODY, false)
             if (r.you) nx += 5 + Chip.you().paint(canvas, nx + 5, y + SEARCH_ROW_H / 2)
@@ -990,13 +1014,24 @@ class ProfileViewerScreen private constructor(
             y += 26
         }
         g.fill(x + POP_PAD, y + 4, x + w - POP_PAD, y + 5, Theme.SEPARATOR)
-        txt("Enter looks up · Up/Down choose · Esc closes", x + POP_PAD + 6, y + 6, y + 20, Theme.TEXT_FAINT, KitStyle.TINY)
+        var fx = x + POP_PAD + 6
+        for (part in listOf("Enter looks up · ", "↑↓", " choose · Esc closes")) {
+            if (part == "↑↓") {
+                // The UI font has no arrows: the mock's ↑↓ as icons.
+                drawIcon(g, "arrow_up", fx, y + 9, 8, Theme.TEXT_FAINT)
+                drawIcon(g, "arrow_down", fx + 7, y + 9, 8, Theme.TEXT_FAINT)
+                fx += 15
+            } else {
+                txt(part, fx, y + 6, y + 20, Theme.TEXT_FAINT, KitStyle.TINY)
+                fx += tw(part, KitStyle.TINY, false)
+            }
+        }
     }
 
     private fun drawProfilePop(g: GuiGraphicsExtractor, card: L.Card, ctx: ProfileContext) {
         val list = ctx.profiles.profiles
         val w = PROFILE_POP_W
-        val h = POP_PAD * 2 + list.size * PROFILE_ROW_H + 22
+        val h = POP_PAD * 2 + list.size * PROFILE_ROW_H + 25
         val x = L.popoverX(profileAnchor[0], profileAnchor[2], w, card.x0, card.w, alignLeft = true)
         val y0 = profileAnchor[3] + 4
         popBox(x, y0, w, h)
@@ -1014,17 +1049,17 @@ class ProfileViewerScreen private constructor(
                 rect(rx0, y, rx1, y + PROFILE_ROW_H, Theme.PALETTE_SELECTED, Corner.SMALL)
             }
             var nx = rx0 + 8
-            txt(p.cuteName, nx, y + 4, y + 18, Theme.TEXT, KitStyle.BODY, true)
+            txt(p.cuteName, nx, y + 6, y + 24, Theme.TEXT, KitStyle.BODY, true)
             nx += tw(p.cuteName, KitStyle.BODY, true)
-            Chip.gameMode(p.gameMode)?.let { nx += 5 + it.paint(canvas, nx + 5, y + 11) }
-            if (p.selected) txt("· playing", nx + 5, y + 4, y + 18, Theme.TEXT_FAINT, KitStyle.CAPTION)
+            Chip.gameMode(p.gameMode)?.let { nx += 5 + it.paint(canvas, nx + 5, y + 15) }
+            if (p.selected) txt("· playing", nx + 5, y + 6, y + 24, Theme.TEXT_FAINT, KitStyle.CAPTION)
             if (m != null) {
                 val members = p.activeMemberCount
                 val avg = m.skillAverageCapped(playerCaps?.forProfile(p.profileId, p.selected))
                 val line = (if (members > 1) "Co-op · $members members" else "Solo") +
                     (avg?.let { " · Skill avg ${String.format(java.util.Locale.ROOT, "%.1f", it)}" } ?: "") +
                     " · Cata ${m.catacombsLevel.level}"
-                txt(line, rx0 + 8, y + 19, y + 32, Theme.TEXT_DIM, KitStyle.CAPTION)
+                txt(line, rx0 + 8, y + 25, y + 41, Theme.TEXT_DIM, KitStyle.CAPTION)
                 m.skyblockLevel?.let {
                     val lv = "${it.level}"
                     txt(lv, rx1 - 8 - tw(lv, KitStyle.HEADING, true), y, y + PROFILE_ROW_H, Format.levelColor(it.level), KitStyle.HEADING, true)
@@ -1034,7 +1069,7 @@ class ProfileViewerScreen private constructor(
             y += PROFILE_ROW_H
         }
         g.fill(x + POP_PAD, y + 4, x + w - POP_PAD, y + 5, Theme.SEPARATOR)
-        txt("All profiles came in one request; switching is instant.", x + POP_PAD + 6, y + 6, y + 20, Theme.TEXT_FAINT, KitStyle.TINY)
+        txt("All profiles came in one request; switching is instant.", x + POP_PAD + 6, y + 9, y + 23, Theme.TEXT_FAINT, KitStyle.TINY)
     }
 
     private val keys = listOf(
@@ -1050,18 +1085,28 @@ class ProfileViewerScreen private constructor(
 
     private fun drawKeysPop(card: L.Card) {
         val w = KEYS_POP_W
-        val h = 16 + keys.size * KEYS_ROW_H
+        val kw = 82
+        val labelW = w - 10 - kw - 8 - 10
+        // A label wider than the row wraps, and its row grows (`.kr` with a two-line span).
+        val wrapped = keys.map { (k, label) -> k to Rich.of(label).wrap(canvas, KitStyle.BODY, labelW) }
+        val rowH = wrapped.map { KEYS_ROW_H + 14 * (it.second.size - 1) }
+        val h = 16 + rowH.sum()
         val x = L.popoverX(keysAnchor[0], keysAnchor[2], w, card.x0, card.w, alignLeft = false)
         val y0 = keysAnchor[3] + 4
         popBox(x, y0, w, h)
         var y = y0 + 8
-        for ((k, label) in keys) {
-            val kw = 82
-            rect(x + 10, y + 3, x + 10 + kw, y + 15, Theme.FIELD_BORDER, Corner.SMALL)
-            rect(x + 11, y + 4, x + 9 + kw, y + 14, 0xFF1A1A1A.toInt(), Corner.SMALL)
-            txt(k, x + 10 + (kw - tw(k, KitStyle.LABEL, false)) / 2, y + 3, y + 15, 0xFF999999.toInt(), KitStyle.LABEL)
-            txt(label, x + 10 + kw + 8, y, y + KEYS_ROW_H, KitStyle.TEXT_SOFT, KitStyle.BODY)
-            y += KEYS_ROW_H
+        for ((i, entry) in wrapped.withIndex()) {
+            val (k, lines) = entry
+            val cy = y + rowH[i] / 2
+            rect(x + 10, cy - 6, x + 10 + kw, cy + 6, Theme.FIELD_BORDER, Corner.SMALL)
+            rect(x + 11, cy - 5, x + 9 + kw, cy + 5, 0xFF1A1A1A.toInt(), Corner.SMALL)
+            txt(k, x + 10 + (kw - tw(k, KitStyle.LABEL, false)) / 2, cy - 6, cy + 6, 0xFF999999.toInt(), KitStyle.LABEL)
+            var ly = y + 3
+            for (line in lines) {
+                line.draw(canvas, x + 10 + kw + 8, ly, ly + 14, KitStyle.BODY, KitStyle.TEXT_SOFT)
+                ly += 14
+            }
+            y += rowH[i]
         }
     }
 
@@ -1115,7 +1160,7 @@ class ProfileViewerScreen private constructor(
         val hover = hit(x, y, x + size, y + size)
         if (hover && danger) rect(x, y, x + size, y + size, 0xFFB03030.toInt(), Corner.SMALL) else if (hover || active) rect(x, y, x + size, y + size, Theme.PANEL_HOVER, Corner.SMALL)
         drawIcon(g, icon, x + (size - 14) / 2, y + (size - 14) / 2, 14, if (hover || active) Theme.TEXT else KitStyle.TEXT_MID)
-        tooltip(x, y, x + size, y + size, listOf(tip))
+        if (hover) tooltip(x, y, x + size, y + size, listOf(tip))
         region(x, y, x + size, y + size, onClick)
     }
 
@@ -1127,10 +1172,7 @@ class ProfileViewerScreen private constructor(
     }
 
     private fun face(g: GuiGraphicsExtractor, uuidUndashed: String, x: Int, y: Int, size: Int) {
-        val profile = faces.getOrPut(uuidUndashed) {
-            val id = MojangUuid.parse(uuidUndashed) ?: UUID(0L, 0L)
-            ResolvableProfile.createUnresolved(id)
-        }
+        val profile = faces.getOrPut(uuidUndashed) { ProfileFigure.profile(uuidUndashed) }
         PlayerFaceExtractor.extractRenderState(g, profile, x, y, size)
     }
 
@@ -1198,6 +1240,27 @@ class ProfileViewerScreen private constructor(
         }
 
         override fun openSection(id: String) = goSection(id)
+
+        override fun gradient(x0: Int, y0: Int, x1: Int, y1: Int, top: Int, bottom: Int, corner: Int) {
+            val g = frame ?: return
+            val p = pipeline(corner)
+            if (p == null) {
+                g.fillGradient(x0, y0, x1, y1, top, bottom)
+                return
+            }
+            // Rounded ends in the end colors, the vertical gradient between them.
+            val r = min(6, (y1 - y0) / 2)
+            roundRect(g, x0, y0, x1, y0 + 2 * r, top, p)
+            roundRect(g, x0, y1 - 2 * r, x1, y1, bottom, p)
+            g.fillGradient(x0, y0 + r, x1, y1 - r, top, bottom)
+        }
+
+        override fun playerModel(uuidUndashed: String, name: String, x0: Int, y0: Int, x1: Int, y1: Int, armor: List<ItemStack?>?): Int {
+            val g = frame ?: return PlayerModel.UNAVAILABLE
+            val f = figure?.takeIf { it.uuidUndashed == uuidUndashed } ?: ProfileFigure(uuidUndashed, name).also { figure = it }
+            val s = SoulUi.factor()
+            return f.draw(g, (x0 * s).roundToInt(), (y0 * s).roundToInt(), (x1 * s).roundToInt(), (y1 * s).roundToInt(), rawMouseX, rawMouseY, armor)
+        }
     }
 
     // ------------------------------------------------------------------ input
@@ -1342,5 +1405,10 @@ class ProfileViewerScreen private constructor(
     override fun onClose() {
         val target = parent
         if (target != null) minecraft?.setScreenAndShow(target) else super.onClose()
+    }
+
+    override fun removed() {
+        figure = null
+        super.removed()
     }
 }

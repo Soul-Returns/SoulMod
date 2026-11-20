@@ -1,0 +1,89 @@
+{
+  "skill_tree": {
+    "nodes": {
+      "mining": {
+        "mining_speed": 50,
+        "mining_fortune": 50,
+        "titanium_insanium": 50,
+        "pickobulus": 1,
+        "quick_forge": 20,
+        "seasoned_mineman": 100,
+        "efficient_miner": 100,
+        "mole": 182,
+        "professional": 140,
+        "gem_lover": 20,
+        "keep_it_cool": 50,
+        "powder_buff": 50,
+        "lonesome_miner": 45,
+        "great_explorer": 20,
+        "fortunate_mineman": 50,
+        "steady_hand": 100,
+        "strong_arm": 100,
+        "warm_heart": 50,
+        "surveyor": 20,
+        "no_stone_unturned": 50,
+        "rags_to_riches": 50,
+        "eager_adventurer": 100,
+        "mining_master": 10,
+        "vanguard_seeker": 50,
+        "dead_mans_chest": 50,
+        "core_of_the_mountain": 10,
+        "toggle_mining_speed": true,
+        "toggle_mole": true,
+        "toggle_warm_heart": false,
+        "toggle_core_of_the_mountain": true
+      },
+      "foraging": {
+        "fortunate_axe": 4
+      }
+    },
+    "selected_ability": {
+      "mining": "pickobulus",
+      "foraging": "damage_boost"
+    },
+    "experience": {
+      "mining": 1402550.5,
+      "foraging": 38000.0
+    },
+    "tokens_spent": {
+      "mountain": 25,
+      "forest": 3
+    },
+    "last_reset": 0,
+    "refund_ability_free": false
+  },
+  "mining_core": {
+    "powder_mithril": 431207,
+    "powder_spent_mithril": 11840330,
+    "powder_mithril_total": 9120000,
+    "powder_gemstone": 702118,
+    "powder_spent_gemstone": 20413900,
+    "powder_gemstone_total": 15530000,
+    "powder_glacite": 98450,
+    "powder_spent_glacite": 13972600,
+    "powder_glacite_total": 11870000,
+    "crystals": {
+      "jade_crystal": {"state": "PLACED", "total_found": 45, "total_placed": 41},
+      "amber_crystal": {"state": "FOUND", "total_found": 44, "total_placed": 40},
+      "amethyst_crystal": {"state": "PLACED", "total_found": 46, "total_placed": 41},
+      "sapphire_crystal": {"state": "NOT_FOUND", "total_found": 43, "total_placed": 40},
+      "topaz_crystal": {"state": "PLACED", "total_found": 47, "total_placed": 41},
+      "jasper_crystal": {"state": "FOUND", "total_found": 3},
+      "ruby_crystal": {"state": "NOT_FOUND", "total_found": 1}
+    }
+  },
+  "glacite_player_data": {
+    "mineshafts_entered": 412,
+    "corpses_looted": {"umber": 211, "lapis": 380, "vanguard": 9, "tungsten": 198},
+    "fossils_donated": ["CLAW", "SPINE", "FOOTPRINT"],
+    "fossil_dust": 23410.5
+  },
+  "forge": {
+    "forge_processes": {
+      "forge_1": {
+        "1": {"type": "FORGING", "id": "REFINED_MITHRIL", "startTime": 1799996400000, "slot": 1, "notified": false, "oldItem": null},
+        "3": {"type": "FORGING", "id": "MITHRIL_PLATE", "startTime": 1799928000000, "slot": 3, "notified": false, "oldItem": null}
+      }
+    }
+  }
+}

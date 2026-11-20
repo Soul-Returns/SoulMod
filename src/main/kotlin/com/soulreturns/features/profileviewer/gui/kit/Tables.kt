@@ -4,9 +4,10 @@ import com.soulreturns.features.profileviewer.gui.kit.KitStyle as S
 import kotlin.math.max
 
 /**
- * A table column. [width] > 0 fixes it; [grow] columns share what the fixed and content-sized ones
- * leave (clamped to [min]..[max]); any other column is as wide as its widest cell (`.tbl` auto layout).
- * [align] -1 left, 1 right.
+ * A table column. [width] > 0 fixes it; any other non-[grow] column is as wide as its widest cell
+ * (`.tbl` auto layout). [grow] columns take what the others leave, as CSS grid tracks do: a grow
+ * column with a finite [max] (`minmax(min, max)`) is filled up to its max first, then the unbounded
+ * ones (`minmax(min, 1fr)`) share the rest equally, never below [min]. [align] -1 left, 1 right.
  */
 class Col(
     val header: String? = null,
@@ -87,9 +88,18 @@ class TableNode(
         if (cols.any { it.grow }) {
             out = content.copyOf()
             val growIdx = cols.indices.filter { cols[it].grow }
-            for (i in growIdx) out[i] = 0
-            val left = inner - out.sum()
-            for (i in growIdx) out[i] = (left / growIdx.size).coerceIn(cols[i].min, cols[i].max)
+            for (i in growIdx) out[i] = cols[i].min
+            var left = inner - out.sum()
+            for (i in growIdx) {
+                if (cols[i].max == Int.MAX_VALUE) continue
+                val add = left.coerceIn(0, cols[i].max - cols[i].min)
+                out[i] += add
+                left -= add
+            }
+            val flex = growIdx.filter { cols[it].max == Int.MAX_VALUE }
+            if (flex.isNotEmpty() && left > 0) {
+                for ((k, i) in flex.withIndex()) out[i] += left / flex.size + if (k < left % flex.size) 1 else 0
+            }
         } else {
             out = KitLayout.tableWidths(content, fixed, inner)
         }
@@ -110,7 +120,7 @@ class TableNode(
                 if (label != null) {
                     val lw = c.trackedWidth(label, S.LABEL, S.TH_TRACKING)
                     val lx = if (col.align > 0) cx + ws[i] - padRight - lw else cx
-                    c.tracked(label, lx + lw / 2, cy + 7, S.TEXT_FAINT, S.LABEL, S.TH_TRACKING)
+                    c.tracked(label, lx + lw / 2, cy + 9, S.TEXT_FAINT, S.LABEL, S.TH_TRACKING)
                     if (col.tip != null) c.tooltip(lx, cy, lx + lw, cy + S.TH_H, listOf(col.tip), "th:${col.header}")
                 }
                 cx += ws[i] + gap

@@ -194,31 +194,32 @@ class CustomNode(
 
 // ------------------------------------------------------------------ containers
 
-/** Children top to bottom, [gap] apart. */
+/** Children top to bottom, [gap] apart; consecutive [LevelRowNode]s (`.cl`) stack flush, as in the mock. */
 open class StackNode(val children: List<Node>, val gap: Int = S.GAP, override val span: Int = 1) : Node() {
+    private fun gapBefore(prev: Node?, ch: Node): Int = if (prev == null) 0 else if (prev is LevelRowNode && ch is LevelRowNode) 0 else gap
+
     override fun measure(m: KitMeasure, w: Int): Int {
         var h = 0
-        var n = 0
+        var prev: Node? = null
         for (ch in children) {
             val chH = ch.height(m, w)
             if (chH == 0 && ch is SpaceNode) continue
-            if (n > 0) h += gap
-            h += chH
-            n++
+            h += gapBefore(prev, ch) + chH
+            prev = ch
         }
         return h
     }
 
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
         var cy = y
-        var n = 0
+        var prev: Node? = null
         for (ch in children) {
             val chH = ch.height(c, w)
             if (chH == 0 && ch is SpaceNode) continue
-            if (n > 0) cy += gap
+            cy += gapBefore(prev, ch)
             if (cy + chH >= c.viewTop && cy <= c.viewBottom) ch.paint(c, x, cy, w, chH)
             cy += chH
-            n++
+            prev = ch
         }
     }
 }
@@ -385,12 +386,13 @@ class ColumnsNode(val columns: List<List<Node>>, val basis: Int = S.COLUMN_BASIS
 
 /**
  * Two areas side by side with a fixed-width [left] (`.ov-top`: 118 px figure | 1fr), the left one
- * as tall as the right column.
+ * as tall as the right column (a single left child is painted at that full height, `grid-row: span 2`).
  */
 class SplitNode(val leftW: Int, val left: Node, val right: Node, val gap: Int = S.GAP) : Node() {
     override fun measure(m: KitMeasure, w: Int): Int = max(left.height(m, leftW), right.height(m, w - leftW - gap))
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
-        left.paint(c, x, y, leftW, h)
+        val only = (left as? StackNode)?.children?.singleOrNull()
+        if (only != null) only.paint(c, x, y, leftW, h) else left.paint(c, x, y, leftW, h)
         right.paint(c, x + leftW + gap, y, w - leftW - gap, right.height(c, w - leftW - gap))
     }
 }
@@ -656,10 +658,10 @@ class LevelRowNode(
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
         val top = y + 4
         val vw = c.width(value, S.HEADING, true)
-        c.text(value, x + w - vw, top, top + 16, valueColor ?: if (maxed) S.MAXED else S.TEXT, S.HEADING, true)
-        val end = label.ellipsize(c, S.BODY, w - vw - 8).draw(c, x, top, top + 16, S.BODY, if (selected) S.TEXT else S.TEXT_MID)
-        chip?.paint(c, end + S.CHIP_GAP, top + 8)
-        c.bar(x, top + 18, w, fraction, maxed)
+        c.text(value, x + w - vw, top, top + 14, valueColor ?: if (maxed) S.MAXED else S.TEXT, S.HEADING, true)
+        val end = label.ellipsize(c, S.BODY, w - vw - 8).draw(c, x, top, top + 14, S.BODY, if (selected) S.TEXT else S.TEXT_MID)
+        chip?.paint(c, end + S.CHIP_GAP, top + 7)
+        c.bar(x, top + 16, w, fraction, maxed)
         if (tip != null) c.tooltip(x, y, x + w, y + h, listOf(tip), "cl:${label.plain}")
     }
 }

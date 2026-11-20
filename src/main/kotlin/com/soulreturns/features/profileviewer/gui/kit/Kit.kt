@@ -31,6 +31,15 @@ object Corner {
     const val PILL = 4
 }
 
+/** States of [KitCanvas.playerModel]. */
+object PlayerModel {
+    /** This canvas cannot draw models (tests); draw the fallback. */
+    const val UNAVAILABLE = 0
+    const val LOADING = 1
+    const val READY = 2
+    const val FAILED = 3
+}
+
 /**
  * The surface nodes paint on, implemented by the screen. Soul-logical px. Hover, clicks and tooltips
  * are already clipped to the scrolled body: a node simply asks.
@@ -80,6 +89,16 @@ interface KitCanvas : KitMeasure {
 
     /** Switches the viewer to another section (`ctx.open` from inside a click). */
     fun openSection(id: String)
+
+    /** A vertical gradient fill ([top] to [bottom] color) with [corner]; a plain [top] fill where gradients are not drawn. */
+    fun gradient(x0: Int, y0: Int, x1: Int, y1: Int, top: Int, bottom: Int, corner: Int = Corner.MEDIUM) = rect(x0, y0, x1, y1, top, corner)
+
+    /**
+     * The player's full-body model in the box, wearing [armor] (helmet to boots; null or empty = none),
+     * turning toward the pointer. Drawn only once the skin is ready; returns the [PlayerModel] state so
+     * the caller draws its own fallback (head on a silhouette while loading, the silhouette on failure).
+     */
+    fun playerModel(uuidUndashed: String, name: String, x0: Int, y0: Int, x1: Int, y1: Int, armor: List<ItemStack?>?): Int = PlayerModel.UNAVAILABLE
 }
 
 /**

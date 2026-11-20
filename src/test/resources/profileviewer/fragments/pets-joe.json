@@ -1,0 +1,25 @@
+{
+ "leveling": {
+  "highest_pet_score": 210
+ },
+ "pets_data": {
+  "pets": [
+   {
+    "uuid": "b0000000-0000-4000-8000-000000000001",
+    "type": "ENDER_DRAGON",
+    "exp": 9000000.0,
+    "active": true,
+    "tier": "EPIC",
+    "candyUsed": 0
+   },
+   {
+    "uuid": "b0000000-0000-4000-8000-000000000002",
+    "type": "RABBIT",
+    "exp": 52000.0,
+    "active": false,
+    "tier": "UNCOMMON",
+    "candyUsed": 0
+   }
+  ]
+ }
+}

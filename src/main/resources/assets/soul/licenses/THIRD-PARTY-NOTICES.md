@@ -89,7 +89,11 @@ the table is kept here with credit to the authors above by the maintainer's deci
 - NotEnoughUpdates REPO, https://github.com/NotEnoughUpdates/NotEnoughUpdates-REPO, Copyright (c)
   2020 Moulberry: the pet level XP table (`PetLevels`, `constants/pets.json`), and the forge and
   crafting recipes of the Search everywhere Forge tab (`items/*.json`), normalized and served by the
-  Soul backend as `/recipes` and cached on disk by the mod (`recipe_catalog.json`).
+  Soul backend as `/recipes` and cached on disk by the mod (`recipe_catalog.json`). It also
+  provides the Heart of the Mountain tree of the Profile Viewer (`constants/hotmlayout.json`,
+  `constants/leveling.json`: layout, maxima, cost formulas, HOTM XP and rewards), corrected by
+  Soul's in-game captures, served by the Soul backend as `/hotm/tree` and cached on disk by the
+  mod (`hotm_tree.json`).
 - SkyHelper-Networth, https://github.com/Altpapier/SkyHelper-Networth, Copyright (c) 2022 Altpapier:
   the same pet table as published there, and the Catacombs class XP deltas. Its inventory API
   field layout was consulted for storage previews; no parser code was copied.

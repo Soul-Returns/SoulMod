@@ -66,13 +66,13 @@ class ProfileViewerLayoutTest {
         // Overview at the top, no label for the top group.
         assertEquals(RailRow(ProfileViewerLayout.ROW_ITEM, 8, 26, "overview", null), rows[0])
         // "Items" label after 1 px, then Gear.
-        assertEquals(RailRow(ProfileViewerLayout.ROW_GROUP, 35, 23, null, "Items"), rows[1])
-        assertEquals(RailRow(ProfileViewerLayout.ROW_ITEM, 59, 26, "gear", null), rows[2])
+        assertEquals(RailRow(ProfileViewerLayout.ROW_GROUP, 35, 26, null, "Items"), rows[1])
+        assertEquals(RailRow(ProfileViewerLayout.ROW_ITEM, 62, 26, "gear", null), rows[2])
         // Soul after a separator, last.
         assertEquals(ProfileViewerLayout.ROW_SEP, rows[rows.size - 2].kind)
         assertEquals("soul", rows.last().sectionId)
         // 17 items, 4 labels, 1 separator, 21 gaps, 8 + 8 padding.
-        assertEquals(8 + 17 * 26 + 4 * 23 + 13 + 21 + 8, h)
+        assertEquals(8 + 17 * 26 + 4 * 26 + 13 + 21 + 8, h)
         assertEquals(17, rows.count { it.kind == ProfileViewerLayout.ROW_ITEM })
     }
 
@@ -96,7 +96,7 @@ class ProfileViewerLayoutTest {
 
     @Test
     fun `body starts under the section header and the banner`() {
-        assertEquals(36 + 52 + 12 + 18 + 8, ProfileViewerLayout.bodyTop(36, banner = false))
-        assertEquals(36 + 52 + 12 + 18 + 8 + 28 + 8, ProfileViewerLayout.bodyTop(36, banner = true))
+        assertEquals(36 + 52 + 12 + 14 + 8, ProfileViewerLayout.bodyTop(36, banner = false))
+        assertEquals(36 + 52 + 12 + 14 + 8 + 28 + 8, ProfileViewerLayout.bodyTop(36, banner = true))
     }
 }

@@ -1,0 +1,56 @@
+{
+ "inventory": {
+  "bag_contents": {
+   "talisman_bag": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/8VZ3XLaRhhdO0lr42CI3SZtr3TXi/bCMy1O6d0iVkip/mYlTMmNZg0r0ERIjLS44SH6HHoPPVk/hUkuOpMZ0DLCl3iRztnvfGfPt7QQukRnUQsh9NsZeqGmm0ScnaNvhmzFFhyhc3Qezc/+baFngi1a6Nt5lK9jtr1Az2224ui7srjX+YKv0mSr4ExEIZuJS/TcTDN+Ac98gbpl8VbnLBbLP5WyYL/8Dp9+D5+VxR+eYCJXWMaVxzTZ5PCPH+FxZRGbZETsIaZTBasq8TyHTlELdchHkTEsRBY9bgTPLypo6JUOiy3HngaY+oaGVR+eU4PJa3j1gAnF5VmeJkfg8uuOS1l8YGWRKV9lplQrvkrvdoD9wCXUc+wvBJ+hTsaySGyDzXqRsTnPP1GuRbsqoJ9xlm8A+mkK6FOCvTElkgV8VRY9ksx5dgQasCs9oEFcQ92DwTVwJVQS/g28chKJ5QnwdyaGr0sTqBroM3IlDRU1TUSWxo1q6fYzhcDRAtWxfeqY9di8LIv+gEVCoVGykCpEHzhQTMke8C8H2PADatijeqABRs9nGUvEJmaKz+IoX7GkKRnd+Jhi2x+bOPCxaXgWtuvRaEPhKWdraAUne2xUQC3wInDbwKGDetivoeBDtlXUbJsLFjelnKshngYqnXqw8/WAA7i+HS2WomnobdsY6b4c+J/KInTT2QcuFJKvM57nqWKx2TJKeH0aYGgh0FAdC+LFHkTeuI76F/ED4rm0WhpYWNUNm9Q2oN4kjUN5AzqghS8njqlJGBCof747gymPo5nU3s8BtjX19b2AX+2OYEpMQ60H/RY2Sl1yLtiycefsqjohPtYlfRMSUN9bcz4/ToI4oIevPZeQoWSAqKxTh69U6mnw0L3Sx7Zfaae26gFcqEUAQF43h3pOWzMgOMvJBpTf1zg7XvQ8YPO7GsFHyJ5AIXxgsxn4/QmK0H2ANWD0knWAuMImaQrdG4ZRAuPdEaj8ACuAytjem8zrieNAJ2uaYRv+VD7J9TWWrWST3GGiammYWjIhrgOvqyyoGmPM9Ik3Bfxl5UHV6GI6D6R2ErrfXWGwGEaw1RqaOc2Ut3d3d40G6Te7OwtswhhmudDYDg0qEPUnAncT51zyZKgzEbhj0yNypwN7t0kWMdyvrDYxF012c/vd2B6ZcLVijU1Sf7DvkY8wjUU8mfHGbyduyd+gJYPYKpEPGPcqS+Zb2XRaQ0ZXKraHU8mAykYZezrVwdAdUfwgfyTcfAqp0fwEYaPjucZRLur679PVY8SbJ/DesQaGbBtUhmSyJ3YSFbVN/CB7P1TlbTWNklPkbdUx7CPkbS/dxGGc/qPATw4w8Gwby9ueMzY105kE8LsCTD3T2pPmvbfkyc85WOkCqsAaNdO2pxPbAzMdQSFw/Wiqs1zwRofNlo49/0ua+P/ff7h9Cf+NGwAA"
+   }
+  }
+ },
+ "accessory_bag_storage": {
+  "highest_magical_power": 399,
+  "selected_power": "bubbly",
+  "bag_upgrades_purchased": 12,
+  "unlocked_powers": [
+   "bubbly",
+   "sighted",
+   "bloody"
+  ],
+  "tuning": {
+   "highest_unlocked_slot": 3,
+   "slot_0": {
+    "health": 0,
+    "defense": 0,
+    "walk_speed": 0,
+    "strength": 12,
+    "critical_damage": 20,
+    "critical_chance": 0,
+    "attack_speed": 0,
+    "intelligence": 8
+   }
+  }
+ },
+ "rift": {
+  "access": {
+   "consumed_prism": true
+  }
+ },
+ "nether_island_player_data": {
+  "abiphone": {
+   "active_contacts": [
+    "Elle",
+    "Marigold",
+    "Dante",
+    "Ron",
+    "Sirius",
+    "Jotraeline",
+    "Seraphine",
+    "Vex",
+    "Odawa",
+    "Jacquelle",
+    "Cletus",
+    "Ernie"
+   ]
+  }
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "leveling": {
+  "highest_pet_score": 8
+ },
+ "pets_data": {
+  "pets": [
+   {
+    "uuid": "c0000000-0000-4000-8000-000000000001",
+    "type": "RABBIT",
+    "exp": 900.0,
+    "active": true,
+    "tier": "UNCOMMON",
+    "candyUsed": 0
+   }
+  ]
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "inventory": {
+  "bag_contents": {
+   "talisman_bag": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/72TzU6DQBDHh35oS6JVo5733quNH7ctpUrSAlnw0BOZyhY3UmiWJbEP4XPwHjyZW/XkqaHGuUxmdvLP/5eZNQH6YAgTdDaga+VlpowWHE1wjQkHaEFLxMaHCW2FiQnHsSg2KW570HFxzeGiru7HqIjPZZFnhIks6UNnlkve04pdOKur2yeOqXp9IHWFwxvdvdK9uroLFKqCoORkmWdloR8utVhdpYwym1DLsoPAYwswYWC/K4lUKSmWpeJFb+cJBmMaRr7NAs+NmOM+aoEGAOd1tQo2nMckxFQUa8ya+7/WWtq/5c3nnrsHwWng2/YkCunMCebUbQyAfwUw1BMaoK7edJLku3p2fwOR3cC+VG0YSJRCbaNyk0iMefHF2YhVw6ymQhv+/12dTB1mH76qkYVZvCVUKrHCF3XQXxlp/7bvWPtcmkXdySKiLHSm1ArhJz4BT0o7gP0DAAA="
+   }
+  }
+ },
+ "accessory_bag_storage": {
+  "highest_magical_power": 36,
+  "selected_power": "bloody",
+  "bag_upgrades_purchased": 0,
+  "tuning": {
+   "highest_unlocked_slot": 0
+  }
+ }
+}

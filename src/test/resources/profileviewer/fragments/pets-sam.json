@@ -1,0 +1,90 @@
+{
+ "leveling": {
+  "highest_pet_score": 1534
+ },
+ "pets_data": {
+  "pets": [
+   {
+    "uuid": "a0000000-0000-4000-8000-000000000001",
+    "type": "GOLDEN_DRAGON",
+    "exp": 210255385.0,
+    "active": true,
+    "tier": "LEGENDARY",
+    "heldItem": "MINOS_RELIC",
+    "candyUsed": 0,
+    "skin": "DRAGON_GOLDEN_NEON"
+   },
+   {
+    "uuid": "a0000000-0000-4000-8000-000000000002",
+    "type": "ENDER_DRAGON",
+    "exp": 26000000.0,
+    "active": false,
+    "tier": "LEGENDARY",
+    "heldItem": "PET_ITEM_LUCKY_CLOVER",
+    "candyUsed": 0
+   },
+   {
+    "uuid": "a0000000-0000-4000-8000-000000000003",
+    "type": "BLACK_CAT",
+    "exp": 25353230.0,
+    "active": false,
+    "tier": "LEGENDARY",
+    "candyUsed": 0
+   },
+   {
+    "uuid": "a0000000-0000-4000-8000-000000000004",
+    "type": "GRIFFIN",
+    "exp": 3000000.0,
+    "active": false,
+    "tier": "EPIC",
+    "heldItem": "PET_ITEM_TIER_BOOST",
+    "candyUsed": 0
+   },
+   {
+    "uuid": "a0000000-0000-4000-8000-000000000005",
+    "type": "RABBIT",
+    "exp": 1200.0,
+    "active": false,
+    "tier": "COMMON",
+    "candyUsed": 0
+   },
+   {
+    "uuid": "a0000000-0000-4000-8000-000000000006",
+    "type": "SILVERFISH",
+    "exp": 640000.0,
+    "active": false,
+    "tier": "RARE",
+    "candyUsed": 0
+   }
+  ],
+  "pet_care": {
+   "pet_types_sacrificed": [
+    "RABBIT",
+    "BEE",
+    "TIGER",
+    "LION",
+    "ENDERMAN",
+    "JELLYFISH",
+    "BLUE_WHALE"
+   ]
+  },
+  "autopet": {
+   "rules_limit": 4,
+   "migrated": true,
+   "rules": [
+    {
+     "uuid": "r-1",
+     "name": "Fishing"
+    },
+    {
+     "uuid": "r-2",
+     "name": "Mining"
+    },
+    {
+     "uuid": "r-3",
+     "name": "Dungeons"
+    }
+   ]
+  }
+ }
+}

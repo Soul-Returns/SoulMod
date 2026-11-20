@@ -81,8 +81,9 @@ object KitStyle {
     const val KV_COLS_GAP = 14
 
     // .tbl
-    const val TH_H = 16
-    const val TD_H = 17
+    // th: 2 + 14 + 4 padding/line + the 1 px rule; td: 3 + 14 + 3 + the 1 px rule.
+    const val TH_H = 21
+    const val TD_H = 21
     const val TD_PAD_R = 6
     val TH_LINE = 0xFF2A2A2A.toInt()
     val TD_LINE = 0xFF232323.toInt()
@@ -145,6 +146,7 @@ object KitStyle {
     const val HIST_H = 34
 
     // .cl (level rows), .tier
-    const val CL_H = 30
+    // .cl: 4 + 14 label line + 2 + 4 bar + 4; consecutive rows stack flush.
+    const val CL_H = 28
     val TIER_BG = 0xFF252525.toInt()
 }

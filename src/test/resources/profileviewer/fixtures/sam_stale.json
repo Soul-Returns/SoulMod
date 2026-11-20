@@ -1,6 +1,7 @@
 {
  "name": "Slayer_Sam",
  "uuid": "6f1e9c2a3b4d4e5f8a9b0c1d2e3fb04d",
+ "skin": "1a4af718455d4aab528e7a61f86fa25e6a369d1768dcb13f7df319a713eb810b",
  "resolveMs": 0,
  "profilesMs": 0,
  "profiles": {
@@ -13,10 +14,38 @@
     "members": {
      "6f1e9c2a3b4d4e5f8a9b0c1d2e3fb04d": {
       "leveling": {
-       "experience": 41234
+       "experience": 41234,
+       "highest_pet_score": 1534
       },
       "currencies": {
-       "coin_purse": 412880310
+       "coin_purse": 412880310,
+       "essence": {
+        "WITHER": {
+         "current": 41230
+        },
+        "DRAGON": {
+         "current": 12044
+        },
+        "SPIDER": {
+         "current": 3310
+        },
+        "UNDEAD": {
+         "current": 18900
+        },
+        "DIAMOND": {
+         "current": 9200
+        },
+        "GOLD": {
+         "current": 7100
+        },
+        "ICE": {
+         "current": 25400
+        },
+        "CRIMSON": {
+         "current": 14040
+        }
+       },
+       "motes_purse": 48213.0
       },
       "profile": {
        "first_join": 1637539200000,
@@ -28,6 +57,22 @@
       "bestiary": {
        "milestone": {
         "last_claimed_milestone": 318
+       },
+       "kills": {
+        "zealot_55": 48210,
+        "enderman_45": 20311,
+        "crypt_ghoul_30": 9120,
+        "old_wolf_10": 880,
+        "pond_squid_1": 6120,
+        "lapis_zombie_7": 2400,
+        "lapis_zombie_9": 600,
+        "water_hydra_110": 4410,
+        "last_killed_mob": "zealot_55"
+       },
+       "deaths": {
+        "zealot_55": 61,
+        "water_hydra_110": 9,
+        "lapis_zombie_7": 4
        }
       },
       "slayer": {
@@ -93,20 +138,186 @@
         "SKILL_HUNTING": 10302425,
         "SKILL_RUNECRAFTING": 94450,
         "SKILL_SOCIAL": 129800
-       }
+       },
+       "unlocked_coll_tiers": [
+        "WHEAT_1",
+        "WHEAT_2",
+        "WHEAT_9",
+        "WHEAT_-1",
+        "CARROT_ITEM_1",
+        "CARROT_ITEM_7",
+        "POTATO_ITEM_5",
+        "INK_SACK:3_9",
+        "SUGAR_CANE_9",
+        "COBBLESTONE_1",
+        "COBBLESTONE_9",
+        "COAL_9",
+        "DIAMOND_8",
+        "ENDER_STONE_7",
+        "MITHRIL_ORE_9",
+        "GLACITE_12",
+        "BLAZE_ROD_6",
+        "ENDER_PEARL_7",
+        "LOG_8",
+        "LOG_2:1_4",
+        "RAW_FISH:1_5",
+        "MAGMA_FISH_-1",
+        "DOUBLE_PLANT_3"
+       ],
+       "crafted_generators": [
+        "COBBLESTONE_1",
+        "COBBLESTONE_2",
+        "COBBLESTONE_12",
+        "COAL_1",
+        "COAL_11",
+        "DIAMOND_9",
+        "ENDER_STONE_5",
+        "CAVESPIDER_4",
+        "COCOA_8",
+        "NETHER_WARTS_3",
+        "OAK_6",
+        "SUNFLOWER_2",
+        "SUGAR_CANE_11"
+       ]
       },
       "inventory": {
        "inv_contents": {
         "type": 0,
-        "data": ""
+        "data": "H4sIAAAAAAAC/52VW2/TMBTHvQtQymUwDTQEEn4ACQkhwRBD44ms8ZJsaVIl7aC8BK/1UrMsjhxH0E/U79FPxnGz0QZWtDZqjlTlxPmd2//UEbqNVngdIfRiBd1oiCJVK6vopknPacwQWkWrvL+yVUdrisZ1dKvP8yyhwxpa9+g5Q4/Gow9GnrGewuIUqwHDx4L3b6N1V0hWg0PXtMtH+JUHfsLjUe/1u5238OgxvDseJaUlLaeBwy9+YKI62iC/lKSGUpKfFIrlNQ2BNo2wRRrtyD+I2jaJjn3HhFOWgH4AnzwsfhQ4HAipTsTPCu/Wv7x7GnfrH9x9/8tc2HuHncNOFNp+0NZuS3Fuw7eaXA0kT7AJJsHh1zfBzs5uhfdpydvkKU9jHGaM9TU1ff3+/dVZNgPHdeeCb5uO0fQ9MwLXI+MricKj7r7rN46Wi2FjPNoLxJAmuMVjJtIK+ssSvc0SlkElcqwEHopC4oTmCieiRxUXKbhCD+1NgtA2MAKCnTZpzo3hbuB3DRcisIjvLcf9EDJoSZplic6qLcRZhfx5Sd4qkiTXyED+k8o+plhRGTMFTk/ghAmzth2v4Tchrf/nvm8FRqvlOp4V2b4/m/HPi5GTtDegqWJ9bIlkdhxX4b5fRZpPQ7yGbXhtYkaW7+pZ+4ODr4+zVcExOT0XaVUgNiGRnZxhnuKepKcKEr4A5cMp5UXnLlfwO+PRrj3MmOR/NekV+rWzqyfrFbwxKfAZgEpc/nOJRTzTCLqlmGH9dC57ze62SOD43hrakFRyNYyKLJa0z/JJENNA7l4/kE09ceyUp5DuC/X4qwHq0zmai7YRkAPHg6Q2nbYNgjHD8n2h4u9Ni788zUyRpzx/gNauD3RPj7U4gaHGJI4rdQah/GhT1RuwHMelS8ZUvkAr1i1/H4Y3IpaFZvluLLaawuIcZkTLDhmyCuIzQDwoWIJPhZwsW1PSWKSYJqA6ZSovVX7+Ygo7OgitMaRLZjFrC22mmbq6NOM53ge9Pluits+mtXWNlhOC/dZxnehy6Vxx/QY3H+iQtQgAAA=="
+       },
+       "inv_armor": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/53PzUrDQBAH8EkbbZqLUBFPSvAi2Bbbi4K3NF2SQkxKGymeZG3HdCEfJdmCvov3go/RR/FJXA2ihW6hgYWFmf8w89MB6qAwHQDUClTYTGkrcGCly4QrFTjs05iGCKBDldNQh9qM5YuIvmmgejRGaK1XN2YyZZhww8NpliaXudFLU54bovP5/vH/1UF10ww1sasKjfXq1kEa8fmdiNJmt9MR9TMxtV5FLrGJ1zdHj0b/wbOJ7xk93w/G4owj8sozanKeseclx1z7vhkaQ39CRk+TQeCI7yergRanM/bCMIMaLU4UCwpjax/j9Taji2HIkrAk05AxRcUeeLZcerIh/Y3vxDb3wXa3Ya055lykOJbjXsi4lkPGwdA1AyIFn26A/wZ2kq/2Ibe3kR2MYuTluOcyrkPcexJIqccb1CIsYcIXT16XbbgDAAA="
+       },
+       "equipment_contents": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/53SzU7CQBAH8OFDBUwgxuBH4mHPclGTYuJtKWtpKFu0hcRTs8JaGrYt0iXRh/A5+h59MhcJRkyIwevOf2Z/mUwFoAy5oAIAxTzkg3HuIwd7eryIZC4P+20WMp8DVKAgmV+Bg3GQzAR7L0GRspDDRZZqQxa9LoJkwseox/yQIcpHU8FGvAxFK57zkppdgOMsvXXknEe+nNyhLB01rq9UQT1rWSpI39QRJXrXwjpRv9XIm5wzLOU8eF5InpSWNDgfYvowMJ0OaXs9bPSw990C8A99NUubxoQlEukiZtMN75HydjgTKy1rNJfaumpQWosYhLbx4xPSLRt3t3oPjQ52XG8VWgvpLkKl0MxwJuIkiCPU4kJuIE8V0owkFyLweTTiK6q2pNZ+LLZFLHcrsmr2+pbtmDb1vnJr5+UuzrPlJpkKCy5R/IL0OFI5Zf7jBm40VTj5vVXDsofE2SquG3hAXYu4nn3v6TZ1saH0ahB8Aq6EbzzOAgAA"
+       },
+       "wardrobe_contents": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/7XWXW/SUBjA8Qf21qHxBR2bLjONFy4TFrcbTbzr6LFFsSyjSrwyZ/SM1UBr2jOj38V7Ej8GH8VP4hkVV+hz2A6mhISkHOjzS/5tTwlgHQp+CQDsIhR9r/C8ACv18CLghSKsmnRAewygBEuc9kqw5vnx1z79ocGyQwcM9kfDl0bQ9VnAdYd1ozDYjXWb9QeM6+Kr3z9/pd/rsNwMI6aJky1BeTR8ZTPa5+evxVJaPTw4EMefiF+Nhv0msYhjGiefdPODY5GWo9uk+Z64YpC75DuPqMF55J9ecBZrl1PDg+NWh5x87jRcW3wkizXQBqHnn/ksgjWaTClOsQBzV0w15nG/q7d5GA1wZo7AcqfRJnKfFvwdbzHgIzHVG/E/XaZbYd8Lo3++PEmu4byTk1bPxgPB5JWwqiqsQyzP+jmLuVjF2WKJPpVx6zZpu8dNwyVS8uZUplc/mJuqErmKpSoh54ytpJPFrdlslbA7SLZX1rx56XxxHp5wTYX4Aku4yXo9P+jFiwWsy9DiiNVwrLaUvDGV72T53HiVsHtYvCg2V+bDdLiYMputEnMbyXaizBeWThaD4cHuq+BqWLBHYcgXrHVHpj1qtVw5tTyV6njt3E6VjM+wTrPG/HT304VmcNk8lXRbSJ5jXI6edJgZD16l0gZnU8z1lnrM003/Gw1UtjeVWdI125rbZuOj4SAbmpUvlwMA/M+OZjvjUHrePZ613OA5dy/x4E84iammuvmcNincDLdmRdfeBO8kHuz2J9EoXT2VjOam187GLGX+NXMrcWSulgwC/gCK5Wrt5Q0AAA=="
+       },
+       "wardrobe_equipped_slot": 1,
+       "ender_chest_contents": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/+2VXUvCUBiAXz8qHaQYCl3uKoRuiqCgK+c8mDTPZE6iKznqYQ33IWdnkL+gn7L/sV/WVEINolxFBmecm3E+9pz345kEUISMLQHASwYOVD/0eD0Lhy3iEosCZCFrTzJVCXKcWBIcTexg5pB5AfKYuBQqcUSQN34iHqcTWfWJU4S85jNagMVegFKyII6cAVb1blfHIEEZPXNGFM6ZPQo5DQqLL0AJYfVOwSZqDVVd0WD5vAE10gJ1mO99H6hjJOs2eTJf5zmOo2uTMtf2CPfZBksOanF0k4zVQbdyHI3Pry4vkqmzZE+CGEfThJTJqzcNtRFuKcaj3NQf5MXch+iSiYxuByumbuSgzAiz+XwYzixGJjRYXmN9lR1yffou16ORQwPuezRlhGubKW82NdQ3dYxSZ/5kC68fWoSlBCuvwfqDtmJsI+0QseoWUi90Z1M7bT1W1lC9Qbd338E/1CO/1bT1PWnaNBH6i1Kv71+pN/az1MX/6bNSF1YXVhdWF1YXVhdWF1YXVhdWF1YXVhdW/99WfwVAvdnyrBQAAA=="
+       },
+       "backpack_contents": {
+        "0": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/83UzUrDQBQF4JNYNR2wlaIbfyCivoN1F5IpCZhpmSguw2iGZqBJJZmiPlHeI09mujAVQXA5+3u5H/fAIcAQliIAzgEL+/56U+pjGweBKMRSAjZslVknBHtaLAkOM1W/rcSngwEThcRp2whavuai1DJzuXh3Z6rOhxg8rCvpYLsPjLqhtlk9MX8ex3MGgjH90JXwtK7Uy0bL2tlewYQyP/TYIw1S7j2nsygJu+2edfR/1mXbTHesRaXqQlSqlG6Siyr7xSPdcMfjHqd/0s52tAWPktjjEaNpEno8+CG8NetxveveKNe36sLYPHvi2NBAbwx1Tc1sjonxzTEyNNBrI5vjyvzmuDMr0C9KnBYo6QcAAA=="
+        },
+        "1": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/83Uz0rDQBAG8EmsNtmDBakHxdYcfAH/XDwuyZYEzLZsFI9hNUuz0KSy2aI+Ud4jT2Z6sBXBi6e5zzA/5oOPAPjgaAIAV+DAYbje1Ja4cBTJSi4VgAuuLpwxgQMrlwSGhW7eVvLTgwGXlYLTrpWsfi1lbVURCPkezHRT+jB4WBvlwXYf4Lgf6trVEw/naTrnQGDEPqyR1FqjXzZWNd72CpwwHsaUP7IoF/Q5nyVZ3G//hzXp2vs9a2F0U0mjaxVkpTTFLx7ph3ueoIL9STvf0xYiyVIqEs7yLKYi+iG8xPW4nesOletbdYY2zx3RRxroFKnrFmdzjNA3h4c00AnK5pjib44bpIEOkboucDbHGH1zXCML9AuhRfPlUgoAAA=="
+        },
+        "3": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/83UT0vDMBjH8ad1ateDylw9DMQeBP/hC/AwNbQZLdhupIrHEm1YA2snaYb6ivo++srsDnUiCB6fnBPygR98bYA+GNIGgGsDtr3lqtSGCTs+L/hcAJhgyswY2rCl+dyG3UxWbwv+aUEv5oUAp6k5LV9zXmqRuYy/uxNZ5X3oPSyVsGD9HmCvvdTUi6fYm0bRNAYb9umHVpxoreTLSovKWv8CAxp7AYkfqZ8y8pxOwiSA9elcR7hcHevg/6zjpr7ZsGZKVgVXshRuknOV/eLZ7eWWxwijf9JGG9qMhUlEWBjTNAkI838Ir5AOeo/K1alO0O75TXSQDnqJ1HWHsxwO+nIMkQ56gbIcp/jLcYt00EOkrnOc5RihL8cY6aADlOUw8JfjDNmg8AVlpBXsuwwAAA=="
+        }
+       },
+       "backpack_icons": {
+        "0": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/y2NTQ6CMBhEp4AKXfgTL8AtXAMSFgoYo2vzIQ1pBCGlJHoIz8E9OJk1cfE2M3kzHPDAJAfAGGZROzw1szDfU0OVACxYsmQfDltTxbEoZd/V9HbhZNQIbKeREiVIC+WHdH90Bg/OsVXCNZM2NtO4C/xCVn7xr028NNY01tcsytM0z8Cxil9aUaC1ksWgRe/+brFOznFwic+3MIgOJ4Nx8QU28s9DsgAAAA=="
+        },
+        "1": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/y2NSw6CMBiEp4AKXfi4AbdwDUhcyMMYXZsfaZpGEAIl0UN4Du7BySyJi9nMl2+GAx6Y4gAYwyJqhpdmFpYHqkkKwIKlSvblsDVJjlWp+raijwsno1pgN42UUCeFH9Lj2Zp4cJKmE64ZtGe8D/xCSb/4Y1OvjTON1S2L8jTNM3Bs4rfuKNC6U8WgRe/Op9geL3FwjS/3MIhOZxPj4gceKx9hsAAAAA=="
+        },
+        "3": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/y2NTQ6CMBhEp4AKXfhzA27huiAxUQFjdG0+pCGNIARKoofwHNyDk1kSF7OZlzfDAQ9McQCMYRbW/UszC/MdVVRIwIKlcvblsDUVHItcdU1JHxdOQpXEZhzo0FdZ7Qf0eDYmHpxT3UrXDNoT3go/U4Wf/bGpl8YZh/KWhGkcpwk4VtFbtyS0blXWa9m50ynW+0skrtHlHojweDYxLn5W9C9MsAAAAA=="
+        }
+       },
+       "personal_vault_contents": {
+        "type": 0,
+        "data": "H4sIAAAAAAAC/53QwWrCMBzH8V87dTUXZQjCdvElPHisTeaKNR1ld8ls1GCbjBphe6K+R59s9SBVdCDL+Z///8OXAF04igB4cdAOzEHbvosOFbnYSMCFq1JnQPBgxYbgMVX7r0z8eGhxkUs8V+WE6dVWaCvTEVUiNzodTTOz2nXRikwhPRyXAKSerMos8RMGgh77toXwrS3U58HKvXc8gyHjwZvPPxhd0tBfxJwup1EczOvvOOHc+3FPVTlO5FrphnaNGtco9h4Gf6J6CXsNeUPCuaZ9v2Z4kWpmsv93GjSdZnF0Funm+wUbhSHk4wEAAA=="
+       },
+       "bag_contents": {
+        "potion_bag": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/5XQTUvDQBAG4HfTWtPFL0TvuYdCRaR4LLGHgE1KP8Tr1qxxIU3Kdgr2F+V/5Jc5seTgQWj2ODPv7MNIoA9hJICBwFlQ7HMSDnovaqNSDThwTCLuJDqkUonzxOy2mTq46EZqo3FblZ+LrdaJNyvIFLn3FvbRfS2sdnljB5dVOTr2/cfhkEsXHKjKLIin0ziCxPXkm6waE1mz3pPeufV/6M3iZch9oDE5p5vuq1IF1pD5UNk/LGaP6hHvuNLzn2rbFQfZtopa60Qr3fOCrM5T+mp04fsf3U19tGbEf/i9m+QY2+bj+eQEV4v3A4sLSkABAgAA"
+        },
+        "fishing_bag": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/5XQz0rDQBAG8C+x2nTVFsQHyAt49NDjkqZ/cJOULHgNo1nTxaQpyVb0ifIeeTK3B0GUQjungZlv+DEMGMHRDMCDg8ug3m+N6+JqRhUVCnDh6ty5Z7gwVDAMc93uSvryMIipUrjru8eIiop8UTe5P9ftZoSB7ZWHQxhgdqPvynC9CsAwCT9NQ9yYRr/sjWq9w3lMIr6IeCaSdJbNV3JpYz+W8emWcd+9yV29LZSf1q/vfxw3dmodQRJFSXxUci3XSbwIszQJnn4pnNMVt303FfRBvtyosvz/jKlFpDwNjxKY4M88k8tQCJxV3wxNFVvLAQAA"
+        },
+        "quiver": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/5XPsW7CQAwG4D8BSjghUAVi5gU6sxIoTJAgqqqzgWtkkdxVF0ctT5T3yJP1OjAgMVCv9m9/VkAPASsALwE6S1sZmYd4eqWCMg2ECPkUjBVaQplC98TlV06XCO2ECo1BU3+uczYyjZ2z3z20N9bpyG9rYdTUswWVfJxSUVSGha3xjb6PNHW+TLfbNIHCcPUjjmIRx4dKdBn9XUQn3u/TDz9+RfUfRz03Nb2dda7FmjuuiXftWLsjm+yW5r8hT3tPHsX9p34B2TaNk2oBAAA="
+        },
+        "talisman_bag": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/8VZ3XLaRhhdO0lr42CI3SZtr3TXi/bCMy1O6d0iVkip/mYlTMmNZg0r0ERIjLS44SH6HHoPPVk/hUkuOpMZ0DLCl3iRztnvfGfPt7QQukRnUQsh9NsZeqGmm0ScnaNvhmzFFhyhc3Qezc/+baFngi1a6Nt5lK9jtr1Az2224ui7srjX+YKv0mSr4ExEIZuJS/TcTDN+Ac98gbpl8VbnLBbLP5WyYL/8Dp9+D5+VxR+eYCJXWMaVxzTZ5PCPH+FxZRGbZETsIaZTBasq8TyHTlELdchHkTEsRBY9bgTPLypo6JUOiy3HngaY+oaGVR+eU4PJa3j1gAnF5VmeJkfg8uuOS1l8YGWRKV9lplQrvkrvdoD9wCXUc+wvBJ+hTsaySGyDzXqRsTnPP1GuRbsqoJ9xlm8A+mkK6FOCvTElkgV8VRY9ksx5dgQasCs9oEFcQ92DwTVwJVQS/g28chKJ5QnwdyaGr0sTqBroM3IlDRU1TUSWxo1q6fYzhcDRAtWxfeqY9di8LIv+gEVCoVGykCpEHzhQTMke8C8H2PADatijeqABRs9nGUvEJmaKz+IoX7GkKRnd+Jhi2x+bOPCxaXgWtuvRaEPhKWdraAUne2xUQC3wInDbwKGDetivoeBDtlXUbJsLFjelnKshngYqnXqw8/WAA7i+HS2WomnobdsY6b4c+J/KInTT2QcuFJKvM57nqWKx2TJKeH0aYGgh0FAdC+LFHkTeuI76F/ED4rm0WhpYWNUNm9Q2oN4kjUN5AzqghS8njqlJGBCof747gymPo5nU3s8BtjX19b2AX+2OYEpMQ60H/RY2Sl1yLtiycefsqjohPtYlfRMSUN9bcz4/ToI4oIevPZeQoWSAqKxTh69U6mnw0L3Sx7Zfaae26gFcqEUAQF43h3pOWzMgOMvJBpTf1zg7XvQ8YPO7GsFHyJ5AIXxgsxn4/QmK0H2ANWD0knWAuMImaQrdG4ZRAuPdEaj8ACuAytjem8zrieNAJ2uaYRv+VD7J9TWWrWST3GGiammYWjIhrgOvqyyoGmPM9Ik3Bfxl5UHV6GI6D6R2ErrfXWGwGEaw1RqaOc2Ut3d3d40G6Te7OwtswhhmudDYDg0qEPUnAncT51zyZKgzEbhj0yNypwN7t0kWMdyvrDYxF012c/vd2B6ZcLVijU1Sf7DvkY8wjUU8mfHGbyduyd+gJYPYKpEPGPcqS+Zb2XRaQ0ZXKraHU8mAykYZezrVwdAdUfwgfyTcfAqp0fwEYaPjucZRLur679PVY8SbJ/DesQaGbBtUhmSyJ3YSFbVN/CB7P1TlbTWNklPkbdUx7CPkbS/dxGGc/qPATw4w8Gwby9ueMzY105kE8LsCTD3T2pPmvbfkyc85WOkCqsAaNdO2pxPbAzMdQSFw/Wiqs1zwRofNlo49/0ua+P/ff7h9Cf+NGwAA"
+        }
+       },
+       "sacks_counts": {
+        "RAW_FISH": 8120,
+        "ENCHANTED_RAW_FISH": 640,
+        "PRISMARINE_SHARD": 1500,
+        "MITHRIL_ORE": 22000,
+        "ENCHANTED_MITHRIL": 1280,
+        "TITANIUM_ORE": 3400,
+        "COBBLESTONE": 55020,
+        "ENCHANTED_COAL": 96,
+        "WHEAT": 0,
+        "ENCHANTED_HAY_BLOCK": 210,
+        "SPONGE": 410,
+        "MAGMA_CREAM": 0,
+        "ROTTEN_FLESH": 1800,
+        "BONE": 930,
+        "ENDER_PEARL": 120,
+        "SUMMONING_EYE": 3,
+        "NETHERRACK": 18000,
+        "GLOWSTONE_DUST": 4600,
+        "HARD_STONE": 9100,
+        "GEMSTONE_DUST": 0
        }
       },
       "accessory_bag_storage": {
-       "highest_magical_power": 1642,
-       "selected_power": "sighted"
+       "highest_magical_power": 399,
+       "selected_power": "bubbly",
+       "bag_upgrades_purchased": 12,
+       "unlocked_powers": [
+        "bubbly",
+        "sighted",
+        "bloody"
+       ],
+       "tuning": {
+        "highest_unlocked_slot": 3,
+        "slot_0": {
+         "health": 0,
+         "defense": 0,
+         "walk_speed": 0,
+         "strength": 12,
+         "critical_damage": 20,
+         "critical_chance": 0,
+         "attack_speed": 0,
+         "intelligence": 8
+        }
+       }
       },
       "collection": {
-       "WHEAT": 1000
+       "WHEAT": 2417533,
+       "CARROT_ITEM": 912040,
+       "POTATO_ITEM": 355120,
+       "INK_SACK:3": 188410,
+       "SUGAR_CANE": 1204331,
+       "COBBLESTONE": 5120441,
+       "COAL": 1230990,
+       "DIAMOND": 402114,
+       "ENDER_STONE": 2210450,
+       "MITHRIL_ORE": 980201,
+       "GLACITE": 120450,
+       "BLAZE_ROD": 98211,
+       "ENDER_PEARL": 145001,
+       "LOG": 612300,
+       "LOG_2:1": 90412,
+       "RAW_FISH:1": 41220,
+       "MAGMA_FISH": 7810,
+       "DOUBLE_PLANT": 22140,
+       "ENCHANTED_DIAMOND": 5200
       },
       "dungeons": {
        "dungeon_types": {
@@ -495,10 +706,519 @@
       "nether_island_player_data": {
        "kuudra_completed_tiers": {
         "none": 120,
-        "hot": 240,
-        "burning": 410,
-        "fiery": 612,
-        "infernal": 1488
+        "hot": 96,
+        "burning": 54,
+        "fiery": 31,
+        "infernal": 18,
+        "highest_wave_none": 5,
+        "highest_wave_hot": 5
+       },
+       "selected_faction": "mages",
+       "mages_reputation": 8120,
+       "mages_reputation_highest": 8120,
+       "barbarians_reputation": -1250,
+       "barbarians_reputation_highest": 40,
+       "matriarch": {
+        "pearls_collected": 742,
+        "last_attempt": 1795000000000,
+        "recent_refreshes": []
+       },
+       "dojo": {
+        "dojo_points_mob_kb": 1000,
+        "dojo_points_wall_jump": 740,
+        "dojo_points_archer": 880,
+        "dojo_points_sword_swap": 1000,
+        "dojo_points_snake": 615,
+        "dojo_points_lock_head": 420,
+        "dojo_points_fireball": 560
+       },
+       "abiphone": {
+        "active_contacts": [
+         "Elle",
+         "Marigold",
+         "Dante",
+         "Ron",
+         "Sirius",
+         "Jotraeline",
+         "Seraphine",
+         "Vex",
+         "Odawa",
+         "Jacquelle",
+         "Cletus",
+         "Ernie"
+        ],
+        "contact_data": {
+         "dean": {},
+         "elle": {
+          "talked_to": true
+         }
+        }
+       }
+      },
+      "player_stats": {
+       "kills": {
+        "total": 1412330
+       },
+       "deaths": {
+        "total": 3980
+       },
+       "highest_critical_damage": 148320411.5,
+       "mythos": {
+        "kills": 40212
+       },
+       "auctions": {
+        "won": 812,
+        "created": 1204,
+        "gold_spent": 2410000000,
+        "gold_earned": 3120000000,
+        "bids": 1500
+       },
+       "gifts": {
+        "total_given": 212,
+        "total_received": 148
+       },
+       "items_fished": {
+        "total": 86420,
+        "normal": 81300,
+        "treasure": 1840,
+        "large_treasure": 212,
+        "trophy_fish": 3100,
+        "outstanding": 12
+       },
+       "pets": {
+        "milestone": {
+         "ores_mined": 250000,
+         "sea_creatures_killed": 31870
+        },
+        "total_exp_gained": 9500000.0
+       },
+       "rift": {
+        "lifetime_motes_earned": 1530000,
+        "visits": 41
+       }
+      },
+      "experimentation": {
+       "pairings": {
+        "claims_2": 9,
+        "best_score_2": 4,
+        "claims_5": 31,
+        "best_score_5": 7
+       },
+       "simon": {
+        "attempts_1": 4,
+        "best_score_1": 11,
+        "claims_5": 60,
+        "best_score_5": 24
+       },
+       "numbers": {
+        "best_score_1": 12,
+        "best_score_4": 17,
+        "claims_4": 12
+       }
+      },
+      "item_data": {
+       "soulflow": 48212
+      },
+      "pets_data": {
+       "pets": [
+        {
+         "uuid": "a0000000-0000-4000-8000-000000000001",
+         "type": "GOLDEN_DRAGON",
+         "exp": 210255385.0,
+         "active": true,
+         "tier": "LEGENDARY",
+         "heldItem": "MINOS_RELIC",
+         "candyUsed": 0,
+         "skin": "DRAGON_GOLDEN_NEON"
+        },
+        {
+         "uuid": "a0000000-0000-4000-8000-000000000002",
+         "type": "ENDER_DRAGON",
+         "exp": 26000000.0,
+         "active": false,
+         "tier": "LEGENDARY",
+         "heldItem": "PET_ITEM_LUCKY_CLOVER",
+         "candyUsed": 0
+        },
+        {
+         "uuid": "a0000000-0000-4000-8000-000000000003",
+         "type": "BLACK_CAT",
+         "exp": 25353230.0,
+         "active": false,
+         "tier": "LEGENDARY",
+         "candyUsed": 0
+        },
+        {
+         "uuid": "a0000000-0000-4000-8000-000000000004",
+         "type": "GRIFFIN",
+         "exp": 3000000.0,
+         "active": false,
+         "tier": "EPIC",
+         "heldItem": "PET_ITEM_TIER_BOOST",
+         "candyUsed": 0
+        },
+        {
+         "uuid": "a0000000-0000-4000-8000-000000000005",
+         "type": "RABBIT",
+         "exp": 1200.0,
+         "active": false,
+         "tier": "COMMON",
+         "candyUsed": 0
+        },
+        {
+         "uuid": "a0000000-0000-4000-8000-000000000006",
+         "type": "SILVERFISH",
+         "exp": 640000.0,
+         "active": false,
+         "tier": "RARE",
+         "candyUsed": 0
+        }
+       ],
+       "pet_care": {
+        "pet_types_sacrificed": [
+         "RABBIT",
+         "BEE",
+         "TIGER",
+         "LION",
+         "ENDERMAN",
+         "JELLYFISH",
+         "BLUE_WHALE"
+        ]
+       },
+       "autopet": {
+        "rules_limit": 4,
+        "migrated": true,
+        "rules": [
+         {
+          "uuid": "r-1",
+          "name": "Fishing"
+         },
+         {
+          "uuid": "r-2",
+          "name": "Mining"
+         },
+         {
+          "uuid": "r-3",
+          "name": "Dungeons"
+         }
+        ]
+       }
+      },
+      "trophy_fish": {
+       "total_caught": 3100,
+       "rewards": [
+        1,
+        2,
+        3
+       ],
+       "last_caught": "karate_fish",
+       "blobfish": 480,
+       "blobfish_bronze": 400,
+       "blobfish_silver": 70,
+       "blobfish_gold": 9,
+       "blobfish_diamond": 1,
+       "karate_fish": 120,
+       "karate_fish_bronze": 61,
+       "karate_fish_silver": 40,
+       "karate_fish_gold": 16,
+       "karate_fish_diamond": 3,
+       "golden_fish": 14,
+       "golden_fish_bronze": 9,
+       "golden_fish_silver": 4,
+       "golden_fish_gold": 1,
+       "obfuscated_fish_1": 52,
+       "obfuscated_fish_1_bronze": 50,
+       "obfuscated_fish_1_silver": 2,
+       "steaming_hot_flounder": 8,
+       "steaming_hot_flounder_bronze": 8,
+       "volcanic_stonefish": 1204,
+       "volcanic_stonefish_bronze": 900,
+       "volcanic_stonefish_silver": 250,
+       "volcanic_stonefish_gold": 50,
+       "volcanic_stonefish_diamond": 4,
+       "moldfin": 33,
+       "moldfin_bronze": 30,
+       "moldfin_silver": 3
+      },
+      "jacobs_contest": {
+       "medals_inv": {
+        "gold": 74,
+        "silver": 31,
+        "bronze": 12
+       },
+       "perks": {
+        "double_drops": 15,
+        "farming_level_cap": 10,
+        "personal_bests": true
+       },
+       "unique_brackets": {
+        "bronze": [
+         "MOONFLOWER"
+        ],
+        "silver": [
+         "MUSHROOM_COLLECTION"
+        ],
+        "gold": [
+         "WHEAT",
+         "CARROT_ITEM",
+         "MELON",
+         "PUMPKIN",
+         "SUGAR_CANE",
+         "CACTUS",
+         "INK_SACK:3"
+        ],
+        "platinum": [
+         "POTATO_ITEM"
+        ],
+        "diamond": [
+         "NETHER_STALK",
+         "DOUBLE_PLANT"
+        ]
+       },
+       "contests": {
+        "412:12_24:NETHER_STALK": {
+         "collected": 152000
+        },
+        "413:8_10:INK_SACK:3": {
+         "collected": 98500
+        },
+        "413:12_3:CARROT_ITEM": {
+         "collected": 210400
+        },
+        "414:3_1:MELON": {
+         "collected": 301000
+        }
+       },
+       "personal_bests": {
+        "WHEAT": 1450000,
+        "CARROT_ITEM": 2210000,
+        "POTATO_ITEM": 2380000,
+        "PUMPKIN": 1100000,
+        "MELON": 3650000,
+        "SUGAR_CANE": 1900000,
+        "CACTUS": 2040000,
+        "INK_SACK:3": 2790000,
+        "MUSHROOM_COLLECTION": 610000,
+        "NETHER_STALK": 2950000,
+        "DOUBLE_PLANT": 820000,
+        "MOONFLOWER": 240000
+       },
+       "talked": true
+      },
+      "garden_player_data": {
+       "copper": 9340,
+       "larva_consumed": 6
+      },
+      "rift": {
+       "access": {
+        "consumed_prism": true,
+        "last_free": 1794000000000
+       },
+       "dead_cats": {
+        "found_cats": [
+         "first",
+         "second",
+         "third",
+         "fourth",
+         "fifth",
+         "sixth",
+         "seventh"
+        ],
+        "unlocked_pet": true
+       },
+       "enigma": {
+        "found_souls": [
+         "rift_house_a",
+         "rift_lagoon_b",
+         "rift_plaza_c",
+         "rift_castle_d",
+         "rift_woods_e"
+        ]
+       },
+       "gallery": {
+        "secured_trophies": [
+         {
+          "type": "mirrored",
+          "timestamp": 1790000000000,
+          "visits": 3
+         },
+         {
+          "type": "citizen",
+          "timestamp": 1790000100000,
+          "visits": 2
+         },
+         {
+          "type": "slime",
+          "timestamp": 1790000200000,
+          "visits": 1
+         },
+         {
+          "type": "slime",
+          "timestamp": 1790000300000,
+          "visits": 4
+         }
+        ]
+       },
+       "wither_cage": {
+        "killed_eyes": [
+         "wizard_tower",
+         "plaza",
+         "castle"
+        ]
+       },
+       "inventory": {
+        "inv_contents": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBgUGFiYMpMYRRhZGB1zi/NK2FkYmBzScxNTE9lYOBiYC5JTOdiYE/JLC7ISazkYGDxS8xNZeA9tNw0KDOtRCG4PL8oBaiM37WipCjRsaSkKDOptCS1mANkJgNXkKdbSHxwuH+QCwMCQOxLgNnHTIR9QoeWp4Vk5qYmZyQW5SoEA0nclrIGezii2IcFAADM/fw+/wAAAA=="
+        },
+        "inv_armor": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBgYAFiJgamzBRGLUYGVuf80rwSRiYGNpfE3MT0VAYGLgbmksR0Lgb2lMzigpzESg4GFr/E3FQGvkPLzYIy00oUPFJzclNLgOr4XStKihIdS0qKMpNKS1KLOUCGMnAHebqFxHu4+vi6hgBtYgAAzLjcIHoAAAA="
+        },
+        "equipment_contents": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBgYGFgYmDKTGHsZWRgdc4vzSthZGJgc0nMTUxPZWDmYmAuSUznYmBPySwuyEms5GBg8UvMTWXgPbTcNCgzrUTBOSc/MZuBi4HftaKkKNGxpKQoM6m0JLWYA2QmA1eQp1tIvLOPv6M3AxgAACdLf9J4AAAA"
+        },
+        "ender_chest_contents": {
+         "type": 0,
+         "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBg0GViYMpMYeRgZGB1zi/NKxFgYmBzScxNTE9lYOBiYC5JTOdiYE/JLC7ISazkYGDxS8xNZeA/tDzNN78kVcG5qLK4JDEHqJDftaKkKNGxpKQoM6m0JLWYA2QqA4+vf4hrvHNQZHCIow8DiQAAa410MaUAAAA="
+        }
+       }
+      },
+      "skill_tree": {
+       "nodes": {
+        "mining": {
+         "mining_speed": 50,
+         "mining_fortune": 50,
+         "titanium_insanium": 50,
+         "pickobulus": 1,
+         "quick_forge": 20,
+         "seasoned_mineman": 100,
+         "efficient_miner": 100,
+         "mole": 182,
+         "professional": 140,
+         "gem_lover": 20,
+         "keep_it_cool": 50,
+         "powder_buff": 50,
+         "lonesome_miner": 45,
+         "great_explorer": 20,
+         "fortunate_mineman": 50,
+         "steady_hand": 100,
+         "strong_arm": 100,
+         "warm_heart": 50,
+         "surveyor": 20,
+         "no_stone_unturned": 50,
+         "rags_to_riches": 50,
+         "eager_adventurer": 100,
+         "mining_master": 10,
+         "vanguard_seeker": 50,
+         "dead_mans_chest": 50,
+         "core_of_the_mountain": 10,
+         "toggle_mining_speed": true,
+         "toggle_mole": true,
+         "toggle_warm_heart": false,
+         "toggle_core_of_the_mountain": true
+        },
+        "foraging": {
+         "fortunate_axe": 4
+        }
+       },
+       "selected_ability": {
+        "mining": "pickobulus",
+        "foraging": "damage_boost"
+       },
+       "experience": {
+        "mining": 1402550.5,
+        "foraging": 38000.0
+       },
+       "tokens_spent": {
+        "mountain": 25,
+        "forest": 3
+       },
+       "last_reset": 0,
+       "refund_ability_free": false
+      },
+      "mining_core": {
+       "powder_mithril": 431207,
+       "powder_spent_mithril": 11840330,
+       "powder_mithril_total": 9120000,
+       "powder_gemstone": 702118,
+       "powder_spent_gemstone": 20413900,
+       "powder_gemstone_total": 15530000,
+       "powder_glacite": 98450,
+       "powder_spent_glacite": 13972600,
+       "powder_glacite_total": 11870000,
+       "crystals": {
+        "jade_crystal": {
+         "state": "PLACED",
+         "total_found": 45,
+         "total_placed": 41
+        },
+        "amber_crystal": {
+         "state": "FOUND",
+         "total_found": 44,
+         "total_placed": 40
+        },
+        "amethyst_crystal": {
+         "state": "PLACED",
+         "total_found": 46,
+         "total_placed": 41
+        },
+        "sapphire_crystal": {
+         "state": "NOT_FOUND",
+         "total_found": 43,
+         "total_placed": 40
+        },
+        "topaz_crystal": {
+         "state": "PLACED",
+         "total_found": 47,
+         "total_placed": 41
+        },
+        "jasper_crystal": {
+         "state": "FOUND",
+         "total_found": 3
+        },
+        "ruby_crystal": {
+         "state": "NOT_FOUND",
+         "total_found": 1
+        }
+       }
+      },
+      "glacite_player_data": {
+       "mineshafts_entered": 412,
+       "corpses_looted": {
+        "umber": 211,
+        "lapis": 380,
+        "vanguard": 9,
+        "tungsten": 198
+       },
+       "fossils_donated": [
+        "CLAW",
+        "SPINE",
+        "FOOTPRINT"
+       ],
+       "fossil_dust": 23410.5
+      },
+      "forge": {
+       "forge_processes": {
+        "forge_1": {
+         "1": {
+          "type": "FORGING",
+          "id": "REFINED_MITHRIL",
+          "startTime": 1799996400000,
+          "slot": 1,
+          "notified": false,
+          "oldItem": null
+         },
+         "3": {
+          "type": "FORGING",
+          "id": "MITHRIL_PLATE",
+          "startTime": 1799928000000,
+          "slot": 3,
+          "notified": false,
+          "oldItem": null
+         }
+        }
        }
       }
      },

@@ -1,0 +1,22 @@
+{
+ "player_stats": {
+  "items_fished": {
+   "total": 300
+  }
+ },
+ "nether_island_player_data": {
+  "kuudra_completed_tiers": {
+   "none": 4
+  }
+ },
+ "rift": {
+  "access": {
+   "consumed_prism": false
+  },
+  "enigma": {
+   "found_souls": [
+    "rift_house_a"
+   ]
+  }
+ }
+}

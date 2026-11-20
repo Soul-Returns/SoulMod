@@ -1,0 +1,253 @@
+{
+ "currencies": {
+  "motes_purse": 48213.0
+ },
+ "player_stats": {
+  "items_fished": {
+   "total": 86420,
+   "normal": 81300,
+   "treasure": 1840,
+   "large_treasure": 212,
+   "trophy_fish": 3100,
+   "outstanding": 12
+  },
+  "pets": {
+   "milestone": {
+    "ores_mined": 250000,
+    "sea_creatures_killed": 31870
+   },
+   "total_exp_gained": 9500000.0
+  },
+  "rift": {
+   "lifetime_motes_earned": 1530000,
+   "visits": 41
+  }
+ },
+ "trophy_fish": {
+  "total_caught": 3100,
+  "rewards": [
+   1,
+   2,
+   3
+  ],
+  "last_caught": "karate_fish",
+  "blobfish": 480,
+  "blobfish_bronze": 400,
+  "blobfish_silver": 70,
+  "blobfish_gold": 9,
+  "blobfish_diamond": 1,
+  "karate_fish": 120,
+  "karate_fish_bronze": 61,
+  "karate_fish_silver": 40,
+  "karate_fish_gold": 16,
+  "karate_fish_diamond": 3,
+  "golden_fish": 14,
+  "golden_fish_bronze": 9,
+  "golden_fish_silver": 4,
+  "golden_fish_gold": 1,
+  "obfuscated_fish_1": 52,
+  "obfuscated_fish_1_bronze": 50,
+  "obfuscated_fish_1_silver": 2,
+  "steaming_hot_flounder": 8,
+  "steaming_hot_flounder_bronze": 8,
+  "volcanic_stonefish": 1204,
+  "volcanic_stonefish_bronze": 900,
+  "volcanic_stonefish_silver": 250,
+  "volcanic_stonefish_gold": 50,
+  "volcanic_stonefish_diamond": 4,
+  "moldfin": 33,
+  "moldfin_bronze": 30,
+  "moldfin_silver": 3
+ },
+ "jacobs_contest": {
+  "medals_inv": {
+   "gold": 74,
+   "silver": 31,
+   "bronze": 12
+  },
+  "perks": {
+   "double_drops": 15,
+   "farming_level_cap": 10,
+   "personal_bests": true
+  },
+  "unique_brackets": {
+   "bronze": [
+    "MOONFLOWER"
+   ],
+   "silver": [
+    "MUSHROOM_COLLECTION"
+   ],
+   "gold": [
+    "WHEAT",
+    "CARROT_ITEM",
+    "MELON",
+    "PUMPKIN",
+    "SUGAR_CANE",
+    "CACTUS",
+    "INK_SACK:3"
+   ],
+   "platinum": [
+    "POTATO_ITEM"
+   ],
+   "diamond": [
+    "NETHER_STALK",
+    "DOUBLE_PLANT"
+   ]
+  },
+  "contests": {
+   "412:12_24:NETHER_STALK": {
+    "collected": 152000
+   },
+   "413:8_10:INK_SACK:3": {
+    "collected": 98500
+   },
+   "413:12_3:CARROT_ITEM": {
+    "collected": 210400
+   },
+   "414:3_1:MELON": {
+    "collected": 301000
+   }
+  },
+  "personal_bests": {
+   "WHEAT": 1450000,
+   "CARROT_ITEM": 2210000,
+   "POTATO_ITEM": 2380000,
+   "PUMPKIN": 1100000,
+   "MELON": 3650000,
+   "SUGAR_CANE": 1900000,
+   "CACTUS": 2040000,
+   "INK_SACK:3": 2790000,
+   "MUSHROOM_COLLECTION": 610000,
+   "NETHER_STALK": 2950000,
+   "DOUBLE_PLANT": 820000,
+   "MOONFLOWER": 240000
+  },
+  "talked": true
+ },
+ "garden_player_data": {
+  "copper": 9340,
+  "larva_consumed": 6
+ },
+ "nether_island_player_data": {
+  "selected_faction": "mages",
+  "mages_reputation": 8120,
+  "mages_reputation_highest": 8120,
+  "barbarians_reputation": -1250,
+  "barbarians_reputation_highest": 40,
+  "matriarch": {
+   "pearls_collected": 742,
+   "last_attempt": 1795000000000,
+   "recent_refreshes": []
+  },
+  "kuudra_completed_tiers": {
+   "none": 120,
+   "highest_wave_none": 5,
+   "hot": 96,
+   "highest_wave_hot": 5,
+   "burning": 54,
+   "fiery": 31,
+   "infernal": 18
+  },
+  "dojo": {
+   "dojo_points_mob_kb": 1000,
+   "dojo_points_wall_jump": 740,
+   "dojo_points_archer": 880,
+   "dojo_points_sword_swap": 1000,
+   "dojo_points_snake": 615,
+   "dojo_points_lock_head": 420,
+   "dojo_points_fireball": 560
+  },
+  "abiphone": {
+   "active_contacts": [
+    "dean",
+    "elle",
+    "queen",
+    "oringo",
+    "blacksmith",
+    "trevor"
+   ],
+   "contact_data": {
+    "dean": {},
+    "elle": {
+     "talked_to": true
+    }
+   }
+  }
+ },
+ "rift": {
+  "access": {
+   "consumed_prism": true,
+   "last_free": 1794000000000
+  },
+  "dead_cats": {
+   "found_cats": [
+    "first",
+    "second",
+    "third",
+    "fourth",
+    "fifth",
+    "sixth",
+    "seventh"
+   ],
+   "unlocked_pet": true
+  },
+  "enigma": {
+   "found_souls": [
+    "rift_house_a",
+    "rift_lagoon_b",
+    "rift_plaza_c",
+    "rift_castle_d",
+    "rift_woods_e"
+   ]
+  },
+  "gallery": {
+   "secured_trophies": [
+    {
+     "type": "mirrored",
+     "timestamp": 1790000000000,
+     "visits": 3
+    },
+    {
+     "type": "citizen",
+     "timestamp": 1790000100000,
+     "visits": 2
+    },
+    {
+     "type": "slime",
+     "timestamp": 1790000200000,
+     "visits": 1
+    },
+    {
+     "type": "slime",
+     "timestamp": 1790000300000,
+     "visits": 4
+    }
+   ]
+  },
+  "wither_cage": {
+   "killed_eyes": [
+    "wizard_tower",
+    "plaza",
+    "castle"
+   ]
+  },
+  "inventory": {
+   "inv_contents": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBgUGFiYMpMYRRhZGB1zi/NK2FkYmBzScxNTE9lYOBiYC5JTOdiYE/JLC7ISazkYGDxS8xNZeA9tNw0KDOtRCG4PL8oBaiM37WipCjRsaSkKDOptCS1mANkJgNXkKdbSHxwuH+QCwMCQOxLgNnHTIR9QoeWp4Vk5qYmZyQW5SoEA0nclrIGezii2IcFAADM/fw+/wAAAA=="
+   },
+   "inv_armor": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBgYAFiJgamzBRGLUYGVuf80rwSRiYGNpfE3MT0VAYGLgbmksR0Lgb2lMzigpzESg4GFr/E3FQGvkPLzYIy00oUPFJzclNLgOr4XStKihIdS0qKMpNKS1KLOUCGMnAHebqFxHu4+vi6hgBtYgAAzLjcIHoAAAA="
+   },
+   "equipment_contents": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBgYGFgYmDKTGHsZWRgdc4vzSthZGJgc0nMTUxPZWDmYmAuSUznYmBPySwuyEms5GBg8UvMTWXgPbTcNCgzrUTBOSc/MZuBi4HftaKkKNGxpKQoM6m0JLWYA2QmA1eQp1tIvLOPv6M3AxgAACdLf9J4AAAA"
+   },
+   "ender_chest_contents": {
+    "type": 0,
+    "data": "H4sIAAAAAAAC/+NiYOBkYMzkYmBg0GViYMpMYeRgZGB1zi/NKxFgYmBzScxNTE9lYOBiYC5JTOdiYE/JLC7ISazkYGDxS8xNZeA/tDzNN78kVcG5qLK4JDEHqJDftaKkKNGxpKQoM6m0JLWYA2QqA4+vf4hrvHNQZHCIow8DiQAAa410MaUAAAA="
+   }
+  }
+ }
+}
