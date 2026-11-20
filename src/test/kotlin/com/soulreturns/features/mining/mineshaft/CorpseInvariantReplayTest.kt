@@ -71,7 +71,7 @@ class CorpseInvariantReplayTest {
                     val fit = st.ding(e.ix, e.iy, e.iz, n, e.tick.toLong())
                     audible[0]++
                     if (fit == null || !fit.explained) audible[1]++
-                    if (!CorpseLocatorSolver.mutes(mode, queued = false, locatorOn = true, muteOn = true)) audible[2]++
+                    if (!CorpseLocatorSolver.mutes(mode, queued = false, fitsOnlySeen = st.fitsOnlySeen(fit), locatorOn = true, muteOn = true)) audible[2]++
                 }
                 is Loot -> history.lastOrNull()?.second?.let { st.loot(it[0], it[1], it[2], e.type) }
                 is Tab -> {
@@ -133,16 +133,19 @@ class CorpseInvariantReplayTest {
         assertTrue(counts.all { it.second <= 20 }, "a stay logged more than 20 trace lines")
     }
 
-    /** The full mute: no own ding audible where the layout's spots are known; a layout without data keeps every one. */
+    /** No own ding audible where the layout's spots are known; without data only dings that may point at an unseen corpse play. */
     @Test
-    fun theFullMuteSilencesEveryDingWhereTheSpotsAreKnown() {
+    fun theMuteSilencesEveryDingWhereTheSpotsAreKnownAndOnlySeenCorpsesElsewhere() {
         val rows = stays.map { stay ->
             val a = IntArray(3)
             replay(stay, guarded = true, audible = a)
             Triple(stay, a, data.spots(stay.layout) != null)
         }
-        for ((stay, a, _) in rows) println("audible dings ${stay.layout} ${stay.source}: ${a[0]} own, ${a[1]} audible before, ${a[2]} after")
-        println("audible dings over ${rows.size} stays: ${rows.sumOf { it.second[0] }} own, ${rows.sumOf { it.second[1] }} audible before, ${rows.sumOf { it.second[2] }} after")
-        for ((stay, a, listed) in rows) assertEquals(if (listed) 0 else a[0], a[2], "${stay.layout} ${stay.source}")
+        for ((stay, a, _) in rows) println("audible dings ${stay.layout} ${stay.source}: ${a[0]} own, ${a[1]} audible on beta.3, ${a[2]} now")
+        println("audible dings over ${rows.size} stays: ${rows.sumOf { it.second[0] }} own, ${rows.sumOf { it.second[1] }} audible on beta.3, ${rows.sumOf { it.second[2] }} now")
+        for ((stay, a, listed) in rows) {
+            if (listed) assertEquals(0, a[2], "${stay.layout} ${stay.source}")
+            else assertTrue(a[2] in 1 until a[0], "${stay.layout} ${stay.source}: dings fitting only seen corpses are muted, the rest play")
+        }
     }
 }

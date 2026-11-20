@@ -73,6 +73,9 @@ class CorpseStay(val solver: CorpseLocatorSolver, private val log: (String) -> U
         }
     }
 
+    /** The ding fits at least one corpse and only corpses the player saw (it points at nothing unseen). */
+    fun fitsOnlySeen(fit: DingFit?): Boolean = fit != null && fit.fitting.isNotEmpty() && fit.fitting.all { it in seen }
+
     /** A withdrawn corpse: not the player's to share, and its type by elimination no longer holds. */
     private fun forget(spot: CorpseSpot) {
         own -= spot

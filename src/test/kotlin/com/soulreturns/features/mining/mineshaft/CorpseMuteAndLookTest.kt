@@ -2,6 +2,8 @@ package com.soulreturns.features.mining.mineshaft
 
 import com.soulreturns.config.MineshaftConfig
 import com.soulreturns.util.MobSpotter
+import kotlin.math.floor
+import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -9,13 +11,14 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CorpseMuteAndLookTest {
-    private fun mutes(mode: String, queued: Boolean = false, locatorOn: Boolean = true, muteOn: Boolean = true) =
-        CorpseLocatorSolver.mutes(mode, queued, locatorOn, muteOn)
+    private fun mutes(mode: String, queued: Boolean = false, fitsOnlySeen: Boolean = false, locatorOn: Boolean = true, muteOn: Boolean = true) =
+        CorpseLocatorSolver.mutes(mode, queued, fitsOnlySeen, locatorOn, muteOn)
 
     @Test
     fun everyDingIsMutedWhereTheSpotsAreKnown() {
         assertTrue(mutes("listed"))
         assertTrue(mutes("crystal"))
+        assertTrue(mutes("listed", fitsOnlySeen = true))
     }
 
     @Test
@@ -25,16 +28,37 @@ class CorpseMuteAndLookTest {
     }
 
     @Test
-    fun whereDingsPlaceNothingTheDingStaysTheCue() {
-        assertFalse(mutes("sight-only"))
-        assertFalse(mutes("learned"))
+    fun whereDingsPlaceNothingTheDingPlaysUntilItsCorpseWasSeen() {
+        for (mode in listOf("sight-only", "learned")) {
+            assertFalse(mutes(mode), "$mode: the ding may point at an unseen corpse")
+            assertTrue(mutes(mode, fitsOnlySeen = true), "$mode: it fits only corpses the player saw")
+        }
+        assertFalse(mutes("waiting", queued = false, fitsOnlySeen = true), "a full queue plays")
+    }
+
+    @Test
+    fun aDingFitsOnlySeenCorpsesOnceEveryCorpseItFitsWasSeen() {
+        val stand = doubleArrayOf(-139.5, 12.2, -169.5)
+        val st = CorpseStay(CorpseLocatorSolver(emptyList(), learned = listOf(stand)))
+        val key = CorpseSpot(-140, 12, -170)
+        val player = doubleArrayOf(-139.5, 12.0, -160.0)
+        fun dingFrom(corpse: DoubleArray): DingFit? {
+            val d = sqrt((0..2).sumOf { (player[it] - corpse[it]) * (player[it] - corpse[it]) })
+            return st.ding(floor(player[0] * 8).toInt(), floor(player[1] * 8).toInt(), floor(player[2] * 8).toInt(), CorpseLocatorSolver.byteFor(d)!!, 0)
+        }
+        val unseen = dingFrom(stand)
+        assertEquals(listOf(key), unseen?.fitting)
+        assertFalse(st.fitsOnlySeen(unseen), "the learned spot is not seen yet")
+        st.see(stand[0], stand[1], stand[2], "Lapis")
+        assertTrue(st.fitsOnlySeen(dingFrom(stand)), "now it is")
+        assertFalse(st.fitsOnlySeen(dingFrom(doubleArrayOf(-139.5, 12.2, -178.0))), "a ding fitting nothing may point at an unseen corpse")
     }
 
     @Test
     fun locatorOrMuteOffIsAlwaysAudible() {
         for (mode in listOf("listed", "crystal", "waiting", "sight-only", "learned")) {
-            assertFalse(mutes(mode, queued = true, locatorOn = false), mode)
-            assertFalse(mutes(mode, queued = true, muteOn = false), mode)
+            assertFalse(mutes(mode, queued = true, fitsOnlySeen = true, locatorOn = false), mode)
+            assertFalse(mutes(mode, queued = true, fitsOnlySeen = true, muteOn = false), mode)
         }
     }
 

@@ -603,11 +603,15 @@ class CorpseLocatorSolver(val spots: List<CorpseSpot>, fixed: Boolean = false, l
         /**
          * Whether to cancel an own talisman ding's playback (rule://mineshaft): with the mute on, every
          * one while the layout's spots are known ([mode] `listed` / `crystal`) or while it waits in the
-         * short startup queue ([queued], layout not read yet). Audible where dings place nothing
-         * (`learned`, `sight-only`, the queue full): there the ding is the player's only cue.
+         * short startup queue ([queued], layout not read yet). Where dings place nothing (`learned`,
+         * `sight-only`) the ding is the player's cue to an unseen corpse, so only one whose every fitting
+         * corpse the player saw ([fitsOnlySeen]) is canceled; with the queue full, none.
          */
-        fun mutes(mode: String, queued: Boolean, locatorOn: Boolean, muteOn: Boolean): Boolean =
-            locatorOn && muteOn && (mode == "listed" || mode == "crystal" || (mode == "waiting" && queued))
+        fun mutes(mode: String, queued: Boolean, fitsOnlySeen: Boolean, locatorOn: Boolean, muteOn: Boolean): Boolean =
+            locatorOn && muteOn && (
+                mode == "listed" || mode == "crystal" || (mode == "waiting" && queued) ||
+                    ((mode == "sight-only" || mode == "learned") && fitsOnlySeen)
+                )
 
         /** `round(pitch * 63)` when the pitch is a talisman byte (n / 63 within float error), else null. */
         fun pitchByte(pitch: Float): Int? {

@@ -135,8 +135,8 @@ object CorpseLocator {
         val st = stay
         val queued = st == null && pending.size < PENDING_MAX
         if (queued) pending += intArrayOf(ix, iy, iz, n, ticks)
-        st?.ding(ix, iy, iz, n, ticks.toLong())
-        val mute = CorpseLocatorSolver.mutes(mode, queued, active(), cfg.mining.mineshaft.corpseLocatorMute)
+        val fit = st?.ding(ix, iy, iz, n, ticks.toLong())
+        val mute = CorpseLocatorSolver.mutes(mode, queued, st?.fitsOnlySeen(fit) == true, active(), cfg.mining.mineshaft.corpseLocatorMute)
         if (mute) muted++
         return mute
     }
