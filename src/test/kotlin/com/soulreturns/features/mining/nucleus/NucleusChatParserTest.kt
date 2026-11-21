@@ -101,6 +101,33 @@ class NucleusChatParserTest {
     }
 
     @Test
+    fun otherModsAndPlayerLinesAreNotLoot() {
+        for (profit in listOf("938k", "-183k")) {
+            val sky = "§r§e[SkyHanni] §r§eProfit for Crystal Nucleus Run: §r§a$profit"
+            val events = feedAll(
+                listOf(
+                    aquaBar,
+                    "§r  §r§5§lCRYSTAL NUCLEUS LOOT BUNDLE ",
+                    "",
+                    "§r  §r§a§lREWARDS",
+                    "§r    §r§6Helix Fossil",
+                    "§r§b[MVP§r§c+§r§b] Someone§r§f: Profit x3",
+                    "§r    §r§2Mithril Powder §r§8x6,327",
+                    "[Skytils] Run: 5",
+                    "§r§e[Soul] §r§7Rare drop x2",
+                    sky,
+                    aquaBar,
+                    "§r§7Pick it up near the §r§5Nucleus Vault§r§7!",
+                    sky,
+                ),
+            )
+            assertEquals(1, events.size)
+            val bundle = events[0] as NucleusEvent.LootBundle
+            assertEquals(listOf(NucleusLoot("Helix Fossil", 1), NucleusLoot("Mithril Powder", 6327)), bundle.items)
+        }
+    }
+
+    @Test
     fun lootLineShapes() {
         assertEquals(NucleusLoot("Enchanted Book (Lapidary I)", 1), NucleusLines.lootLine(NucleusLines.clean("§r    §r§fEnchanted Book (Lapidary I§r§f)")))
         assertEquals(NucleusLoot("Bob-omb", 20), NucleusLines.lootLine(NucleusLines.clean("§r    §r§9Bob-omb §r§8x20")))

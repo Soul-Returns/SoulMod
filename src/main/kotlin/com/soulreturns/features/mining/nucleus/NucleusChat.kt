@@ -104,6 +104,15 @@ object NucleusLines {
         val amount = m.groupValues[2].takeIf { it.isNotEmpty() }?.replace(",", "")?.toLongOrNull() ?: 1L
         return NucleusLoot(m.groupValues[1].trim(), amount)
     }
+
+    /**
+     * Hypixel's reward line indent: exactly four spaces, then the item (`§r    §r§6Helix Fossil` raw,
+     * `    Helix Fossil` as a Component's plain text). The header has two, other mods' and players' lines none.
+     */
+    private val LOOT_INDENT = Regex("""^(?:§r)? {4}(?:§r§[0-9a-fk-or])?[^\s§]""")
+
+    /** [lootLine] for a raw or plain chat line, only when it has Hypixel's indent; any other line is null. */
+    fun lootLineRaw(raw: String): NucleusLoot? = if (LOOT_INDENT.containsMatchIn(raw)) lootLine(clean(raw)) else null
 }
 
 /**
@@ -125,7 +134,7 @@ class NucleusChatParser {
                 loot = null
                 return NucleusEvent.LootBundle(items)
             }
-            NucleusLines.lootLine(line)?.let { items += it }
+            NucleusLines.lootLineRaw(raw)?.let { items += it }
             // A bundle is ~20 lines; anything far longer lost its closing bar.
             if (items.size > MAX_LOOT_LINES) loot = null
             return null

@@ -109,10 +109,7 @@ object NucleusChatCompactor {
 
     /** `✦ Nucleus loot 3.8M in 2:01 · Divan Fragment x2, Jaderald` (rare items by the panel threshold). */
     private fun lootLine(lines: List<Component>): String {
-        val items = lines.mapNotNull { c ->
-            val clean = NucleusLines.clean(c.string)
-            if (NucleusLines.isBar(clean) || clean == NucleusLines.LOOT_HEADER) null else NucleusLines.lootLine(clean)
-        }
+        val items = lines.mapNotNull { c -> NucleusLines.lootLineRaw(c.string) }
         val mode = NucleusHudSettings.priceMode
         val threshold = NucleusRuns.rareThreshold()
         val valued = items.map { it to NucleusItems.unitValue(it.name, mode) * it.amount }
