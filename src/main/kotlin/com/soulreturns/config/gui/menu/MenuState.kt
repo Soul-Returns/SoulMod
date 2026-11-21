@@ -16,6 +16,11 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.2-beta.5" to
+                listOf(
+                    ReleaseNote("Profile Viewer rebuilt: 17 sections, player model, market value and the HOTM tree; opens with /sp", listOf("s:profile")),
+                    ReleaseNote("Use /pv: let /pv open Soul's Profile Viewer ahead of other mods", listOf("s:profile")),
+                ),
             "0.3.2-beta.4" to
                 listOf(
                     ReleaseNote("Vanguard guild call: tells your guild about a Vanguard mineshaft and invites whoever answers \"me\"", listOf("f:vanguardguild")),
