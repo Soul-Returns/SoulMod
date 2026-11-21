@@ -176,13 +176,22 @@ object ContestHud : TrackerHud<ContestHud.Row>("contest_hud", "Contest", "genera
         val me = v.me
         val spect = v.isSpectator || me == null
         val idx = if (spect) 0 else ranked.indexOf(me)
-        var rows = if (expanded()) ranked else if (spect) ranked.take(3) else ranked.subList(maxOf(0, idx - 1), minOf(ranked.size, idx + 2))
-        if (!spect && !expanded() && idx > 1) rows = listOf(ranked[0]) + rows
+        val rows = if (expanded()) ranked else if (spect) ranked.take(3) else compactWindow(ranked.size, idx).map { ranked[it] }
         return rows.mapIndexed { i, r ->
             val mine = v.isMe(r.uuid)
             val color = if (mine) COLOR_ME else if (r.units >= v.goal) COLOR_DONE else Theme.TEXT
             Row(r.uuid, "${r.rank ?: "-"}. ${if (mine) "You" else r.name}", r.units, v.goal, r.total, color, i)
         }
+    }
+
+    /**
+     * Compact rows for the player at [idx] of [n]: the leader plus three rows around you, and everyone
+     * when at most four play, so a small contest never hides a player.
+     */
+    internal fun compactWindow(n: Int, idx: Int): List<Int> {
+        if (n <= 4) return (0 until n).toList()
+        val start = (idx - 1).coerceIn(1, n - 3)
+        return listOf(0) + (start..start + 2)
     }
 
     private fun headerLines(): List<TrackerSegments> {
