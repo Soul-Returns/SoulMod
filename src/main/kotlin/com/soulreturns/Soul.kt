@@ -266,6 +266,10 @@ object Soul : ClientModInitializer {
         PresenceService.register()
         // Also after SkyblockStateReader: it fetches on the ProfileChanged that reader publishes.
         SkyblockSelfProfile.register()
+        // Friends & Contests: after RealtimeClient (event handlers) and NucleusRuns (run capture source).
+        com.soulreturns.features.contests.ContestsSync.register()
+        com.soulreturns.features.contests.ContestCaptures.register()
+        com.soulreturns.features.contests.gui.ContestsUi.register()
         // Sack tracker: counts from the self profile, sack menus and the [Sacks] chat summary.
         SackState.register()
         SackMenus.register()

@@ -229,6 +229,7 @@ object NucleusRuns {
         if (!inHollows()) return
         val event = parser.feed(raw) ?: return
         BalState.on(event)
+        captureRun(event)
         if (event is NucleusEvent.LootBundle) lastBundleRunMs = null
         if (!runOn()) return
         val now = TrackerSessions.clock()
@@ -246,6 +247,25 @@ object NucleusRuns {
         } else if (event is NucleusEvent.KitUsed && trackerOn()) {
             // Which egg kind went to King Yolkar is only known from the inventory a few ticks later.
             if (event.name == NucleusLines.GOBLIN_EGG_ANY) GoblinEggs.onEggLine() else addKit(event.name)
+        }
+    }
+
+    /** Capture-only run clock (contests); never touches [handle]. */
+    private val captureClock = NucleusRunClock()
+
+    /** Wall-clock start of the run in progress for contests (null = unknown), and whether it is untimed. Independent of the tracker toggles. */
+    fun contestRunStart(): Long? = captureClock.startedAt
+
+    fun contestRunPartial(): Boolean = captureClock.partial
+
+    /** Publishes [NucleusRunFinished] for every bundle, independent of the tracker toggles. */
+    private fun captureRun(event: NucleusEvent) {
+        val now = System.currentTimeMillis()
+        if (event is NucleusEvent.CrystalFound) {
+            captureClock.onFound(event.index, now)
+        } else if (event is NucleusEvent.LootBundle) {
+            val timing = captureClock.onBundle(now)
+            Events.publish(NucleusRunCapture.build(event.items, now, timing, SkyblockProfileState.profileId, NucleusItems::idFor))
         }
     }
 
@@ -331,6 +351,7 @@ object NucleusRuns {
         if (name == lastServer) return
         lastServer = name
         tabRestore.onServerChange(System.currentTimeMillis())
+        captureClock.onServerChange()
         if (handle.read().run.let { it.startClock != null || it.crystals.isNotEmpty() }) {
             handle.update { copy(run = run.afterServerChange()) }
         }
@@ -339,6 +360,7 @@ object NucleusRuns {
     /** Leaving the Hollows between runs makes the next start unknown (time away is not run time). */
     private fun onAreaChanged(e: AreaChanged) {
         if (e.previous != AREA || e.current == AREA) return
+        captureClock.onLeftHollows()
         flushTime()
         val run = handle.read().run
         if (run.crystals.isEmpty() && run.startClock != null) handle.update { copy(run = NucleusRun()) }

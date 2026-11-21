@@ -197,6 +197,9 @@ object RealtimeClient {
         }
         onRealtimeEvent("notification") { event ->
             val message = event.data["message"]?.jsonPrimitive?.content
+            // Contest and friend notices are for mods without their own UI (contests contract 6).
+            val source = event.data["source"]?.jsonPrimitive?.content
+            if (source == "contests" || source == "friends") return@onRealtimeEvent
             if (message.isNullOrBlank()) {
                 logger.warn("notification with no message: ${event.data}")
             } else {

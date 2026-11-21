@@ -14,6 +14,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class KeyboardHandlerMixin {
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
     private void soul$consumeSoulKeybind(long window, int action, KeyEvent event, CallbackInfo ci) {
+        if (action == org.lwjgl.glfw.GLFW.GLFW_PRESS && com.soulreturns.features.contests.hud.ContestEndReveal.INSTANCE.handleKey(event)) {
+            ci.cancel();
+            return;
+        }
         if (action == org.lwjgl.glfw.GLFW.GLFW_PRESS && SearchEverywhere.INSTANCE.handleKey(event)) {
             ci.cancel();
             return;

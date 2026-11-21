@@ -26,6 +26,7 @@ import com.soulreturns.features.profileviewer.gui.kit.Chip
 import com.soulreturns.features.profileviewer.gui.kit.Corner
 import com.soulreturns.features.profileviewer.gui.kit.Format
 import com.soulreturns.features.profileviewer.gui.kit.KitCanvas
+import com.soulreturns.features.profileviewer.gui.kit.KitScreen
 import com.soulreturns.features.profileviewer.gui.kit.KitStyle
 import com.soulreturns.features.profileviewer.gui.kit.Rich
 import com.soulreturns.features.profileviewer.gui.kit.PlayerModel
@@ -75,7 +76,7 @@ import kotlin.math.roundToInt
  */
 class ProfileViewerScreen private constructor(
     private val parent: Screen?,
-) : SoulScreenBase(Component.literal("Soul Profile Viewer")) {
+) : KitScreen(Component.literal("Soul Profile Viewer")) {
 
     companion object {
         private val logger = SoulLogger("Soul/ProfileViewer")
@@ -185,7 +186,6 @@ class ProfileViewerScreen private constructor(
     private var sectionId = OverviewSection.id
     private val scrolls = HashMap<String, ScrollState>()
     private val railScroll = ScrollState()
-    private val viewState = ViewState()
     private val search = SoulTextField()
     private var popover: String? = null
     private var searchHl = -1
@@ -373,33 +373,32 @@ class ProfileViewerScreen private constructor(
 
     // ------------------------------------------------------------------ frame
 
-    private var frame: GuiGraphicsExtractor? = null
-    private var mx = 0
-    private var my = 0
-    private var now = 0L
-    private val bodyRect = IntArray(4)
-    private var pendingItem: ItemStack? = null
     private var searchAnchor = IntArray(4)
     private var profileAnchor = IntArray(4)
     private var keysAnchor = IntArray(4)
-    private val faces = HashMap<String, ResolvableProfile>()
     private var figure: ProfileFigure? = null
-    private var rawMouseX = 0f
-    private var rawMouseY = 0f
+
+    override fun kitBlocked(): Boolean = popover != null
+
+    override fun onKitFieldFocus() {
+        search.focused = false
+        popover = null
+    }
+
+    override fun kitOpenSection(id: String) = goSection(id)
+
+    override fun kitPlayerModel(uuidUndashed: String, name: String, x0: Int, y0: Int, x1: Int, y1: Int, armor: List<ItemStack?>?): Int {
+        val g = frame ?: return PlayerModel.UNAVAILABLE
+        val f = figure?.takeIf { it.uuidUndashed == uuidUndashed } ?: ProfileFigure(uuidUndashed, name).also { figure = it }
+        val s = SoulUi.factor()
+        return f.draw(g, (x0 * s).roundToInt(), (y0 * s).roundToInt(), (x1 * s).roundToInt(), (y1 * s).roundToInt(), rawMouseX, rawMouseY, armor)
+    }
 
     override fun extractRenderState(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, partialTick: Float) {
-        regions.clear()
-        scrollTargets.clear()
-        frame = g
-        pendingItem = null
-        now = System.currentTimeMillis()
+        beginFrame(g, mouseX, mouseY)
         val s = SoulUi.factor()
         val uiW = width / s
         val uiH = height / s
-        mx = (mouseX / s).toInt()
-        my = (mouseY / s).toInt()
-        rawMouseX = mouseX.toFloat()
-        rawMouseY = mouseY.toFloat()
         g.pose().pushMatrix()
         g.pose().scale(s, s)
 
@@ -423,8 +422,7 @@ class ProfileViewerScreen private constructor(
         }
         drawTooltip(g, uiW.toInt(), uiH.toInt())
         g.pose().popMatrix()
-        pendingItem?.let { if (popover == null) g.setTooltipForNextFrame(Minecraft.getInstance().font, it, mouseX, mouseY) }
-        frame = null
+        endFrame(g, mouseX, mouseY)
     }
 
     // ------------------------------------------------------------------ header
@@ -1128,40 +1126,6 @@ class ProfileViewerScreen private constructor(
 
     // ------------------------------------------------------------------ drawing helpers
 
-    private fun hit(x0: Int, y0: Int, x1: Int, y1: Int): Boolean = mx in x0 until x1 && my in y0 until y1
-
-    private fun pipeline(corner: Int): RenderPipeline? = when (corner) {
-        Corner.SMALL -> SoulRenderPipelines.ROUND_SMALL
-        Corner.MEDIUM -> SoulRenderPipelines.ROUND_MEDIUM
-        Corner.LARGE -> SoulRenderPipelines.ROUND_LARGE
-        Corner.PILL -> SoulRenderPipelines.ROUND_PILL
-        else -> null
-    }
-
-    private fun rect(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, corner: Int) {
-        val g = frame ?: return
-        if (x1 <= x0 || y1 <= y0 || color ushr 24 == 0) return
-        val p = pipeline(corner)
-        if (p == null) g.fill(x0, y0, x1, y1, color) else roundRect(g, x0, y0, x1, y1, color, p)
-    }
-
-    private fun weight(bold: Boolean): MsdfFont = if (bold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular
-
-    private fun txt(s: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean = false) {
-        val g = frame ?: return
-        if (s.isNotEmpty()) drawTextV(g, s, x, top, bottom, color, size, weight(bold))
-    }
-
-    private fun tw(s: String, size: Float, bold: Boolean): Int = textWidth(s, size, weight(bold))
-
-    private fun trackingPx(size: Float, tracking: Float): Float = tracking * size / MsdfFont.LEGACY_EM
-
-    private fun trackedW(s: String, size: Float, tracking: Float, bold: Boolean = true): Int =
-        SoulText.widthTracked(s, size, weight(bold), trackingPx(size, tracking)).roundToInt()
-
-    private fun tracked(g: GuiGraphicsExtractor, s: String, cx: Int, cy: Int, color: Int, size: Float, tracking: Float, bold: Boolean = true) =
-        SoulText.drawCenteredTracked(g, s, cx, cy, size, color, weight(bold), trackingPx(size, tracking), scissor = currentClip)
-
     /** `.kbd`: a small key cap; returns its width. [x] is its right edge when [alignRight]. */
     private fun kbd(g: GuiGraphicsExtractor, label: String, x: Int, cy: Int, alignRight: Boolean): Int {
         val w = tw(label, KitStyle.LABEL, false) + 6
@@ -1185,119 +1149,6 @@ class ProfileViewerScreen private constructor(
         val k = if (t > 1f) 2f - t else t
         val shade = 0x26 + (k * 10).toInt()
         rect(x0, y0, x1, y1, (0xFF shl 24) or (shade shl 16) or (shade shl 8) or shade, Corner.SMALL)
-    }
-
-    private fun face(g: GuiGraphicsExtractor, uuidUndashed: String, x: Int, y: Int, size: Int) {
-        val profile = faces.getOrPut(uuidUndashed) { ProfileFigure.profile(uuidUndashed) }
-        PlayerFaceExtractor.extractRenderState(g, profile, x, y, size)
-    }
-
-    // ------------------------------------------------------------------ the kit's canvas
-
-    private val canvas = object : KitCanvas {
-        override var viewTop = 0
-        override var viewBottom = 0
-        override val nowMs: Long get() = now
-        override val state: ViewState get() = viewState
-
-        /**
-         * While the body paints, a draw entirely outside the visible band is dropped: the scissor would
-         * discard it anyway, and every submitted element costs vanilla a scan of its layer.
-         */
-        var culling = false
-
-        private fun outside(y0: Int, y1: Int): Boolean = culling && (y1 <= viewTop || y0 >= viewBottom)
-
-        override fun width(text: String, size: Float, bold: Boolean): Int = tw(text, size, bold)
-
-        override fun trackedWidth(text: String, size: Float, tracking: Float, bold: Boolean): Int = trackedW(text, size, tracking, bold)
-
-        override fun rect(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, corner: Int) {
-            if (!outside(y0, y1)) this@ProfileViewerScreen.rect(x0, y0, x1, y1, color, corner)
-        }
-
-        override fun text(text: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean) {
-            if (!outside(top, bottom)) txt(text, x, top, bottom, color, size, bold)
-        }
-
-        override fun tracked(text: String, cx: Int, cy: Int, color: Int, size: Float, tracking: Float, bold: Boolean) {
-            if (outside(cy - size.toInt(), cy + size.toInt())) return
-            frame?.let { tracked(it, text, cx, cy, color, size, tracking, bold) }
-        }
-
-        override fun icon(name: String, x: Int, y: Int, size: Int, color: Int) {
-            if (outside(y, y + size)) return
-            frame?.let { drawIcon(it, name, x, y, size, color) }
-        }
-
-        override fun item(stack: ItemStack, x: Int, y: Int, size: Int, count: Boolean) {
-            if (outside(y, y + size)) return
-            val g = frame ?: return
-            g.pose().pushMatrix()
-            g.pose().translate(x.toFloat(), y.toFloat())
-            g.pose().scale(size / 16f, size / 16f)
-            g.fakeItem(stack, 0, 0)
-            if (count) g.itemDecorations(Minecraft.getInstance().font, stack, 0, 0)
-            g.pose().popMatrix()
-        }
-
-        override fun layer() {
-            frame?.nextStratum()
-        }
-
-        override fun face(uuidUndashed: String, x: Int, y: Int, size: Int) {
-            frame?.let { face(it, uuidUndashed, x, y, size) }
-        }
-
-        override fun hovered(x0: Int, y0: Int, x1: Int, y1: Int): Boolean =
-            popover == null && hit(x0, y0, x1, y1) && my >= bodyRect[1] && my < bodyRect[3] && mx >= bodyRect[0] && mx < bodyRect[2]
-
-        override fun onClick(x0: Int, y0: Int, x1: Int, y1: Int, action: () -> Unit) = clippedRegion(x0, y0, x1, y1, bodyRect, action)
-
-        override fun tooltip(x0: Int, y0: Int, x1: Int, y1: Int, lines: List<String>, key: String?) {
-            if (hovered(x0, y0, x1, y1)) this@ProfileViewerScreen.tooltip(x0, y0, x1, y1, lines, key)
-        }
-
-        override fun itemTooltip(stack: ItemStack) {
-            if (popover == null) pendingItem = stack
-        }
-
-        override fun field(key: String, x0: Int, y0: Int, x1: Int, y1: Int, placeholder: String) = field(key, x0, y0, x1, y1, placeholder, 0)
-
-        override fun field(key: String, x0: Int, y0: Int, x1: Int, y1: Int, placeholder: String, trailing: Int) {
-            val g = frame ?: return
-            val f = viewState.field(key)
-            drawTextField(g, x0, y0, x1, y1, f, placeholder, viewport = bodyRect, inset = 20, background = KitStyle.FIELD_BG, border = KitStyle.FIELD_EDGE, trailing = trailing) {
-                search.focused = false
-                popover = null
-                viewState.blurFields()
-                f.focused = true
-            }
-            drawIcon(g, "pv_search", x0 + 6, y0 + (y1 - y0 - 11) / 2, 11, if (f.focused) Theme.TEXT else Theme.TEXT_DIM)
-        }
-
-        override fun openSection(id: String) = goSection(id)
-
-        override fun gradient(x0: Int, y0: Int, x1: Int, y1: Int, top: Int, bottom: Int, corner: Int) {
-            val g = frame ?: return
-            val p = pipeline(corner)
-            if (p == null) {
-                g.fillGradient(x0, y0, x1, y1, top, bottom)
-                return
-            }
-            // Rounded ends in the end colors, the vertical gradient between them.
-            val r = min(6, (y1 - y0) / 2)
-            roundRect(g, x0, y0, x1, y0 + 2 * r, top, p)
-            roundRect(g, x0, y1 - 2 * r, x1, y1, bottom, p)
-            g.fillGradient(x0, y0 + r, x1, y1 - r, top, bottom)
-        }
-
-        override fun playerModel(uuidUndashed: String, name: String, x0: Int, y0: Int, x1: Int, y1: Int, armor: List<ItemStack?>?): Int {
-            val g = frame ?: return PlayerModel.UNAVAILABLE
-            val f = figure?.takeIf { it.uuidUndashed == uuidUndashed } ?: ProfileFigure(uuidUndashed, name).also { figure = it }
-            val s = SoulUi.factor()
-            return f.draw(g, (x0 * s).roundToInt(), (y0 * s).roundToInt(), (x1 * s).roundToInt(), (y1 * s).roundToInt(), rawMouseX, rawMouseY, armor)
-        }
     }
 
     // ------------------------------------------------------------------ input

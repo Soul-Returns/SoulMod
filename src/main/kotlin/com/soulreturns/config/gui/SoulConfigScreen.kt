@@ -1784,6 +1784,9 @@ class SoulConfigScreen(
         } else if (id == "openSearchEverywhere") {
             MenuState.markSeen("f:searcheverywhere")
             open(com.soulreturns.features.search.SearchEverywhere.screen(this))
+        } else if (id == "openContests") {
+            MenuState.markSeen("f:contests")
+            com.soulreturns.features.contests.ContestsNav.openHome()
         } else if (id == "openInventoryInfo") {
             open(InventoryInfoScreen(this))
         } else if (id == "openSoundLibrary") {

@@ -188,6 +188,8 @@ object ConfigRegistry {
 
     private fun nucleus(block: NucleusConfig.() -> NucleusConfig) = ConfigManager.update { copy(mining = mining.copy(nucleus = mining.nucleus.block())) }
 
+    private fun contests(block: com.soulreturns.config.ContestsConfig.() -> com.soulreturns.config.ContestsConfig) = ConfigManager.update { copy(contests = contests.block()) }
+
     private fun commissions(block: CommissionsConfig.() -> CommissionsConfig) = ConfigManager.update { copy(mining = mining.copy(commissions = mining.commissions.block())) }
 
     private fun fishing(block: FishingConfig.() -> FishingConfig) = ConfigManager.update { copy(fishing = fishing.block()) }
@@ -986,6 +988,33 @@ object ConfigRegistry {
                         { cfg.sacks.hudBackgroundColor }, { v -> ConfigManager.update { copy(sacks = sacks.copy(hudBackgroundColor = v)) } }, d.sacks.hudBackgroundColor),
                     contexts = listOf(Detector.SACK_MENU), hud = true,
                     synonyms = listOf("sacks", "gemstones", "rate", "per hour", "tracker"),
+                )
+            },
+            // Everyday › HUD: Friends & Contests (no master: it does nothing until you add a friend or join a contest)
+            card("contests") {
+                val anims = listOf("full", "small", "off")
+                val variants = listOf("podium", "rollup")
+                FeatureCard(
+                    "contests", "Friends & Contests", "Soul friends, and contests like most Nucleus profit in 50 runs", "everyday", "hud", "trophy",
+                    "Add Soul friends by name and compete in contests: the server prices every run with prices frozen at the start and keeps the leaderboard. Soul records runs only while you play in a running contest, on the profile you joined with. /soul contests, /soul friends, /soul friends add <name>.",
+                    master = null, openAction = "openContests",
+                    simple = listOf(
+                        toggle("Contest HUD", "Only in the Crystal Hollows, while you are in a running contest", { cfg.contests.hud }, { v -> contests { copy(hud = v) } }, d.contests.hud),
+                        toggle("Toasts", "Someone passes you, someone finishes", { cfg.contests.toasts }, { v -> contests { copy(toasts = v) } }, d.contests.toasts),
+                        cycle("Contest end animation", "Full results reveal, a compact banner, or a chat line and a toast",
+                            { anims.indexOf(cfg.contests.endAnimation).coerceAtLeast(0) }, { i -> contests { copy(endAnimation = anims[i]) } },
+                            listOf("Full", "Small", "Off"), anims.indexOf(d.contests.endAnimation)),
+                        toggle("Friends can see where I am", "Area and spot from Soul; off shows them only that you are online", { cfg.contests.shareArea },
+                            { v -> com.soulreturns.features.contests.ContestsStore.setShareArea(v) }, d.contests.shareArea),
+                        position("the contest HUD"),
+                    ),
+                    advanced = listOf(
+                        cycle("Full animation", "The reveal the Full setting plays", { variants.indexOf(cfg.contests.fullVariant).coerceAtLeast(0) },
+                            { i -> contests { copy(fullVariant = variants[i]) } }, listOf("Podium", "Roll-up"), variants.indexOf(d.contests.fullVariant)),
+                        toggle("Expanded HUD", "Every player instead of the ones around you", { cfg.contests.hudExpanded }, { v -> contests { copy(hudExpanded = v) } }, d.contests.hudExpanded),
+                    ),
+                    hud = true,
+                    synonyms = listOf("contests", "friends", "contest", "competition", "leaderboard", "nucleus", "compete"),
                 )
             },
             // Everyday › HUD

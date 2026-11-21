@@ -442,7 +442,7 @@ abstract class TrackerHud<T : Any>(
 
     private fun header(ctx: Ctx) {
         val g = ctx.g
-        val title = spec.title
+        val title = spec.titleText?.invoke() ?: spec.title
         if (g != null) {
             SoulText.drawCentered(
                 g, title, spec.width / 2, ctx.y, SIZE_HEADING, Theme.TEXT,
@@ -482,7 +482,7 @@ abstract class TrackerHud<T : Any>(
         if (ctx.inventory) {
             tabs(ctx, cy)
         } else if (ctx.g != null) {
-            val label = settings.tab.name
+            val label = spec.tabLabel(settings.tab)
             val w = SoulText.width(label, SIZE_BODY, bodyFont(), fontChoice = fontChoiceIndex())
             SoulText.drawVCentered(
                 ctx.g, label, ctx.right - w, cy, SIZE_BODY, Theme.TEXT_DIM,
@@ -511,7 +511,7 @@ abstract class TrackerHud<T : Any>(
             settings.markDirty()
         }
         val widths = available.map {
-            SoulText.width(it.name, SIZE_BODY, bodyFont(), fontChoice = fontChoiceIndex()) + CONTROL_PAD_H * 2
+            SoulText.width(spec.tabLabel(it), SIZE_BODY, bodyFont(), fontChoice = fontChoiceIndex()) + CONTROL_PAD_H * 2
         }
         val total = widths.sum() + TAB_GAP * (available.size - 1).coerceAtLeast(0)
         var x = ctx.right - total
@@ -535,7 +535,7 @@ abstract class TrackerHud<T : Any>(
                 if (bg != 0) roundRect(ctx.g, x, y0, x + w, y1, bg, SoulRenderPipelines.ROUND_SMALL)
                 val color = if (selected) 0xFFFFFFFF.toInt() else if (hovered) Theme.TEXT else Theme.TEXT_DIM
                 SoulText.drawCenteredOn(
-                    ctx.g, tab.name, x + w / 2, cy, SIZE_BODY, color,
+                    ctx.g, spec.tabLabel(tab), x + w / 2, cy, SIZE_BODY, color,
                     font = bodyFont(), shadow = textShadow(), fontChoice = fontChoiceIndex(),
                 )
             }

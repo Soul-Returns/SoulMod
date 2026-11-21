@@ -1,0 +1,176 @@
+{
+  "_note": "The JSON examples of the contests wire contract v1 (2026-11-21), placeholders (<ms>, ..., {Presence}) filled with concrete values.",
+  "descriptor": {
+    "id": "nucleus-profit",
+    "title": "Nucleus profit",
+    "description": "Most loot value from Crystal Nucleus runs.",
+    "area": "Crystal Hollows",
+    "enabled": true,
+    "metric": { "label": "Loot value", "format": "coins", "higherIsBetter": true },
+    "unit": { "singular": "run", "plural": "runs" },
+    "goalKinds": [ { "kind": "units", "label": "Same number of runs each", "min": 1, "max": 200, "default": 50 } ],
+    "runFields": { "duration": true, "items": true, "powder": true, "partial": true },
+    "notableUnitValue": 100000,
+    "rules": [
+      "A run is one Crystal Nucleus loot bundle.",
+      "It counts the loot bundle's value only; nothing is subtracted.",
+      "Prices are frozen when the contest starts.",
+      "Powder has no value.",
+      "Items without a price count 0 coins and are listed as items without a price."
+    ],
+    "verification": "The server checks the number of runs against Hypixel's placed-crystal counters. It can confirm that runs happened, never what dropped."
+  },
+  "playerRef": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" },
+  "goal": { "kind": "units", "units": 50, "label": "50 runs each" },
+  "presence": { "online": true, "inGame": true, "lastOnlineAt": 1795000000000, "areaHidden": false, "area": "Crystal Hollows", "subLocation": "Jungle Temple" },
+  "standingRow": {
+    "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One", "role": "participant", "status": "joined",
+    "rank": 1, "shared": false, "rankBefore": 2,
+    "units": 32, "goal": 50, "total": 18450000, "best": 2100000, "avg": 576562,
+    "lastRunAt": 1795000000000, "lastValue": 410000,
+    "unpriced": 3, "voided": 1, "extra": 0,
+    "checks": { "verified": 28, "pending": 3, "flagged": 1 },
+    "medianDurationMs": 191000, "untimed": 2,
+    "goalReachedAt": null, "dqReason": null
+  },
+  "member": {
+    "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One", "role": "manager", "status": "joined", "ready": true,
+    "invitedBy": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "invitedAt": 1795000000000, "joinedAt": 1795000000000,
+    "profileLocked": true, "request": null, "dqReason": null,
+    "presence": { "online": true, "inGame": true, "lastOnlineAt": 1795000000000, "areaHidden": false, "area": "Crystal Hollows", "subLocation": "Jungle Temple" }
+  },
+  "run": {
+    "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "seq": 12, "n": 12, "counted": true,
+    "finishedAt": 1795000000000, "startedAt": 1794999800000, "receivedAt": 1795000004000,
+    "durationMs": 196000, "partial": false, "late": false,
+    "value": 742300,
+    "items": [ { "name": "Helix Fossil", "id": "HELIX", "count": 1, "unitPrice": 52000, "value": 52000 },
+               { "name": "Dwarven O's Gemstone Grahams", "id": null, "count": 1, "unitPrice": null, "value": 0 } ],
+    "unpriced": 1,
+    "powder": { "mithril": 6327, "gemstone": 4761, "glacite": 0 },
+    "check": { "state": "flagged", "reason": "too_fast", "at": 1795000300000 },
+    "voided": null
+  },
+  "feed": [
+    { "seq": 1, "at": 1795000000000, "kind": "created", "player": null, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": {} },
+    { "seq": 2, "at": 1795000000001, "kind": "invite", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": { "role": "participant" } },
+    { "seq": 3, "at": 1795000000002, "kind": "join", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": null, "data": { "role": "participant" } },
+    { "seq": 4, "at": 1795000000003, "kind": "decline", "player": { "uuid": "11111111111111111111111111111111", "name": "Example_Two" }, "actor": null, "data": {} },
+    { "seq": 5, "at": 1795000000004, "kind": "request", "player": { "uuid": "11111111111111111111111111111111", "name": "Example_Two" }, "actor": null, "data": { "role": "participant" } },
+    { "seq": 6, "at": 1795000000005, "kind": "approve", "player": { "uuid": "11111111111111111111111111111111", "name": "Example_Two" }, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": {} },
+    { "seq": 7, "at": 1795000000006, "kind": "role", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": { "role": "manager" } },
+    { "seq": 8, "at": 1795000000007, "kind": "dq", "player": { "uuid": "11111111111111111111111111111111", "name": "Example_Two" }, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": { "reason": "Wrong profile" } },
+    { "seq": 9, "at": 1795000000008, "kind": "edit", "player": null, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": {} },
+    { "seq": 10, "at": 1795000000009, "kind": "start", "player": null, "actor": null, "data": {} },
+    { "seq": 11, "at": 1795000000010, "kind": "run", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": null, "data": { "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "n": 12, "value": 742300, "durationMs": 196000, "unpriced": 1, "late": false } },
+    { "seq": 12, "at": 1795000000011, "kind": "drop", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": null, "data": { "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "name": "Jaderald", "id": "JADERALD", "count": 1, "value": 1450000 } },
+    { "seq": 13, "at": 1795000000012, "kind": "pass", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": null, "data": { "passed": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "rank": 2 } },
+    { "seq": 14, "at": 1795000000013, "kind": "goal", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": null, "data": { "units": 50, "total": 28100000 } },
+    { "seq": 15, "at": 1795000000014, "kind": "flag", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": null, "data": { "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "reason": "too_fast" } },
+    { "seq": 16, "at": 1795000000015, "kind": "void", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": { "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "reason": "Duplicate" } },
+    { "seq": 17, "at": 1795000000016, "kind": "restore", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": { "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "reason": null } },
+    { "seq": 18, "at": 1795000000017, "kind": "end", "player": null, "actor": null, "data": { "reason": "deadline" } },
+    { "seq": 19, "at": 1795000000018, "kind": "cancel", "player": null, "actor": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "data": { "reason": "Not today" } }
+  ],
+  "friends": {
+    "me": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One", "shareArea": true },
+    "friends": [ { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner", "since": 1794000000000,
+                   "presence": { "online": true, "inGame": true, "lastOnlineAt": 1795000000000, "areaHidden": false, "area": "Crystal Hollows", "subLocation": "Jungle Temple" },
+                   "contests": [ { "id": 7, "name": "Nucleus Night", "state": "running", "role": "participant" } ] } ],
+    "incoming": [ { "uuid": "11111111111111111111111111111111", "name": "Example_Two", "at": 1795000000000 } ],
+    "outgoing": [ { "uuid": "22222222222222222222222222222222", "name": "Example_Three", "at": 1795000000000 } ],
+    "blocked": [ { "uuid": "33333333333333333333333333333333", "name": "Example_Four", "at": 1795000000000 } ]
+  },
+  "friendRequestReply": {
+    "me": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One", "shareArea": true },
+    "friends": [], "incoming": [], "outgoing": [ { "uuid": "22222222222222222222222222222222", "name": "Example_Three", "at": 1795000000000 } ], "blocked": [],
+    "result": "sent"
+  },
+  "contests": {
+    "schemaVersion": 1, "serverTime": 1795000000000,
+    "active": [ {
+      "id": 7, "type": "nucleus-profit", "typeTitle": "Nucleus profit", "name": "Nucleus Night", "state": "running", "rev": 133,
+      "owner": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "goal": { "kind": "units", "units": 50, "label": "50 runs each" },
+      "startsAt": null, "startedAt": 1794990000000, "endsAt": 1795050000000, "endedAt": null, "endReason": null,
+      "players": 5, "spectators": 1,
+      "me": { "role": "participant", "status": "joined", "rank": 2, "shared": false, "units": 31, "total": 17200000 },
+      "top": [ { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner", "rank": 1, "shared": false, "units": 32, "total": 18450000 } ],
+      "invitedBy": null, "invitedAt": null
+    } ],
+    "invitations": [ {
+      "id": 8, "type": "nucleus-profit", "typeTitle": "Nucleus profit", "name": "Rematch", "state": "lobby", "rev": 2,
+      "owner": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "goal": { "kind": "units", "units": 20, "label": "20 runs each" },
+      "startsAt": null, "startedAt": null, "endsAt": null, "endedAt": null, "endReason": null,
+      "players": 2, "spectators": 0,
+      "me": { "role": "participant", "status": "invited", "rank": null, "shared": false, "units": 0, "total": 0 },
+      "top": [],
+      "invitedBy": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "invitedAt": 1795000000000
+    } ],
+    "history": []
+  },
+  "history": { "contests": [], "next": null },
+  "snapshot": {
+    "schemaVersion": 1, "serverTime": 1795000000000, "rev": 133,
+    "contest": {
+      "id": 7, "type": "nucleus-profit", "name": "Nucleus Night", "state": "running",
+      "owner": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "goal": { "kind": "units", "units": 50, "label": "50 runs each" }, "allowLateJoin": false, "maxPlayers": 10,
+      "createdAt": 1794980000000, "startsAt": null, "startedAt": 1794990000000, "endsAt": 1795050000000, "endedAt": null,
+      "endReason": null, "canceledAt": null, "canceledReason": null, "canceledBy": null,
+      "pricesFrozenAt": 1794990000000, "lateUploadsUntil": null
+    },
+    "type": { "id": "nucleus-profit", "title": "Nucleus profit", "description": "Most loot value from Crystal Nucleus runs.", "area": "Crystal Hollows", "enabled": true,
+              "metric": { "label": "Loot value", "format": "coins", "higherIsBetter": true }, "unit": { "singular": "run", "plural": "runs" },
+              "goalKinds": [ { "kind": "units", "label": "Same number of runs each", "min": 1, "max": 200, "default": 50 } ],
+              "runFields": { "duration": true, "items": true, "powder": true, "partial": true }, "notableUnitValue": 100000, "rules": [], "verification": "" },
+    "me": { "role": "participant", "status": "joined", "ready": true, "profileId": "99999999999999999999999999999999", "plays": true, "can": ["upload", "leave"] },
+    "members": [],
+    "standings": [
+      { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner", "role": "owner", "status": "joined", "rank": 1, "shared": false, "rankBefore": 1, "units": 32, "goal": 50, "total": 18450000, "best": 2100000, "avg": 576562, "lastRunAt": 1795000000000, "lastValue": 410000, "unpriced": 0, "voided": 0, "extra": 0, "checks": { "verified": 32, "pending": 0, "flagged": 0 }, "medianDurationMs": 191000, "untimed": 0, "goalReachedAt": null, "dqReason": null },
+      { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One", "role": "participant", "status": "joined", "rank": 2, "shared": false, "rankBefore": 2, "units": 31, "goal": 50, "total": 17200000, "best": 1900000, "avg": 554838, "lastRunAt": 1795000000000, "lastValue": 300000, "unpriced": 1, "voided": 0, "extra": 0, "checks": { "verified": 30, "pending": 1, "flagged": 0 }, "medianDurationMs": 195000, "untimed": 1, "goalReachedAt": null, "dqReason": null }
+    ],
+    "feed": [ { "seq": 41, "at": 1795000000000, "kind": "run", "player": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "actor": null, "data": { "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "n": 32, "value": 410000, "durationMs": 196000, "unpriced": 0, "late": false } } ],
+    "feedMore": true
+  },
+  "feedPage": { "feed": [], "more": true },
+  "memberRuns": { "rev": 133, "standing": null, "runs": [] },
+  "createRequest": {
+    "type": "nucleus-profit",
+    "name": "Nucleus Night",
+    "goal": { "kind": "units", "units": 50 },
+    "startsAt": null,
+    "endsAt": 1795050000000,
+    "allowLateJoin": false,
+    "draft": false,
+    "profileId": "99999999999999999999999999999999",
+    "invites": [ { "uuid": "0123456789abcdef0123456789abcdef", "role": "participant" } ]
+  },
+  "runUpload": {
+    "schemaVersion": 1,
+    "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee",
+    "seq": 12,
+    "profileId": "99999999999999999999999999999999",
+    "finishedAt": 1795000000000,
+    "startedAt": 1794999804000,
+    "durationMs": 196000,
+    "partial": false,
+    "items": [ { "name": "Helix Fossil", "id": "HELIX", "count": 1 },
+               { "name": "Dwarven O's Gemstone Grahams", "id": null, "count": 1 } ],
+    "powder": { "mithril": 6327, "gemstone": 4761, "glacite": 0 }
+  },
+  "runUploadResponse": {
+    "run": { "runId": "aaaaaaaabbbbccccddddeeeeeeeeeeee", "seq": 12, "n": 12, "counted": true, "finishedAt": 1795000000000, "startedAt": 1794999800000, "receivedAt": 1795000004000, "durationMs": 196000, "partial": false, "late": false, "value": 742300, "items": [], "unpriced": 0, "powder": {}, "check": { "state": "pending", "reason": "waiting", "at": null }, "voided": null },
+    "rev": 134,
+    "standing": null
+  },
+  "contestUpdate": {
+    "contestId": 7, "rev": 134, "kind": "run", "state": "running",
+    "standing": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One", "role": "participant", "status": "joined", "rank": 1, "shared": false, "rankBefore": 2, "units": 32, "goal": 50, "total": 19000000, "best": 1900000, "avg": 593750, "lastRunAt": 1795000100000, "lastValue": 1800000, "unpriced": 1, "voided": 0, "extra": 0, "checks": { "verified": 30, "pending": 2, "flagged": 0 }, "medianDurationMs": 195000, "untimed": 1, "goalReachedAt": null, "dqReason": null },
+    "ranks": [ { "uuid": "0123456789abcdef0123456789abcdef", "rank": 1, "shared": false }, { "uuid": "fedcba9876543210fedcba9876543210", "rank": 2, "shared": false } ],
+    "feed": [ { "seq": 42, "at": 1795000100000, "kind": "run", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": null, "data": { "runId": "bbbbbbbbbbbbccccddddeeeeeeeeeeee", "n": 32, "value": 1800000, "durationMs": 190000, "unpriced": 0, "late": false } },
+              { "seq": 43, "at": 1795000100000, "kind": "pass", "player": { "uuid": "0123456789abcdef0123456789abcdef", "name": "Example_One" }, "actor": null, "data": { "passed": { "uuid": "fedcba9876543210fedcba9876543210", "name": "Example_Owner" }, "rank": 1 } } ],
+    "run": null
+  },
+  "friendUpdate": { "kind": "request", "uuid": "11111111111111111111111111111111", "name": "Example_Two" },
+  "notification": { "message": "Example_Owner invited you to the Soul contest \"Nucleus Night\" (Nucleus profit). Update Soul to join it.", "severity": "info", "source": "contests", "contestId": 7 },
+  "error": { "error": "profile_mismatch", "message": "This run is from another profile.", "lockedProfileId": "99999999999999999999999999999999" }
+}

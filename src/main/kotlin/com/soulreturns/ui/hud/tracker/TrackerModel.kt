@@ -186,6 +186,10 @@ data class TrackerSpec<T : Any>(
     val sorts: List<TrackerSort<T>>,
     /** Tabs in the header strip, in display order. */
     val tabs: List<TrackerTab> = listOf(TrackerTab.Session, TrackerTab.Total),
+    /** The tab's label in the strip and the header (the contest HUD's single tab reads "Live"). */
+    val tabLabel: (TrackerTab) -> String = { it.name },
+    /** A title that changes while the client runs (the contest HUD's "Name · 2nd"); null = [title]. */
+    val titleText: (() -> String)? = null,
     /**
      * Rows for the active tab. Called every frame **and once more per frame for measurement**, so it
      * must be cheap and free of side effects: read pre-aggregated maps, never walk Minecraft state.

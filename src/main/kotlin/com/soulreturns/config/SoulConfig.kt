@@ -154,9 +154,33 @@ data class SoulConfig(
     val sounds: SoundsConfig = SoundsConfig(),
     /** The auto updater ([com.soulreturns.platform.updater.UpdateService]). */
     val updates: UpdatesConfig = UpdatesConfig(),
+    /** Friends & Contests ([com.soulreturns.features.contests.ContestsStore]). */
+    val contests: ContestsConfig = ContestsConfig(),
     val dev: DevConfig = DevConfig(),
     /** The config menu's own state (pins, recently changed, seen NEW, layout); not a feature setting. */
     val menu: ConfigMenuState = ConfigMenuState(),
+)
+
+/**
+ * Friends & Contests. The feature does nothing until the player adds a friend or joins a contest, so it
+ * has no master switch; the HUD and toasts are on by default (owner decision, an explicit exception).
+ */
+@Serializable
+data class ContestsConfig(
+    /** Contest HUD, drawn only in the Crystal Hollows while in a running contest. */
+    val hud: Boolean = true,
+    val hudExpanded: Boolean = false,
+    val hudTransform: HudTransform = HudTransform(offsetX = 8f, offsetY = 64f),
+    /** The contest toast stack (top right). */
+    val toastTransform: HudTransform = HudTransform(hAnchor = HudAnchor.END, offsetX = -8f, offsetY = 8f),
+    /** Toasts when someone passes you or finishes. */
+    val toasts: Boolean = true,
+    /** Contest end animation: `full`, `small` or `off` (chat line + toast). Unknown reads as `full`. */
+    val endAnimation: String = "full",
+    /** The Full variant: `podium` or `rollup`. */
+    val fullVariant: String = "podium",
+    /** "Friends can see where I am"; mirrored to the backend (`POST /friends/settings`). */
+    val shareArea: Boolean = true,
 )
 
 /**

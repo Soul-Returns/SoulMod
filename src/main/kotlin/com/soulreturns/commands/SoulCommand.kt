@@ -148,6 +148,9 @@ object SoulCommand {
                     .then(SpvCommand.node())
                     // `/soul update [check|install|skip|close]` — the updater's chat buttons run these.
                     .then(com.soulreturns.features.updater.UpdateNotices.node())
+                    // `/soul friends …`, `/soul contests …` — the contest chat buttons run these.
+                    .then(com.soulreturns.features.contests.ContestsCommand.friendsNode())
+                    .then(com.soulreturns.features.contests.ContestsCommand.contestsNode())
                     .then(
                         ClientCommands.literal("dungeon").requires { DevAccess.unlocked }.executes {
                             dungeonDebug()
@@ -261,6 +264,8 @@ object SoulCommand {
                             )
                             // `/soul dev update <state>`: the updater UI with fake releases (spec mocks/updater/).
                             .then(com.soulreturns.features.updater.UpdateNotices.previewNode())
+                            // `/soul dev contests fixture|hud|toast|reveal`: contests UI with fixed data (no backend).
+                            .then(com.soulreturns.features.contests.gui.ContestsFixtures.devNode())
                             .then(
                                 ClientCommands.literal("tab")
                                     .executes { devTab(false); 1 }

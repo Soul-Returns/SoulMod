@@ -60,6 +60,14 @@ Object.assign(I, {
   const PV = new Function(`${pv.slice(from, to).replace('export const I', 'const I')}; return I;`)();
   for (const [name, svg] of Object.entries(PV)) I[`pv${name[0].toUpperCase()}${name.slice(1)}`] = svg;
 }
+// Contests (mocks/contests/icons.js I), prefixed `ct` (ct_trophy, ct_user_plus, …).
+{
+  const ct = readFileSync('mocks/contests/icons.js', 'utf8');
+  const from = ct.indexOf('const P = ');
+  if (from < 0) throw new Error('icon block not found in mocks/contests/icons.js');
+  const CT = new Function(`${ct.slice(from).replace('export const I', 'const I')}; return I;`)();
+  for (const [name, svg] of Object.entries(CT)) I[`ct${name[0].toUpperCase()}${name.slice(1)}`] = svg;
+}
 
 const out = 'src/main/resources/assets/soul/textures/gui/icons';
 rmSync(out, { recursive: true, force: true });
