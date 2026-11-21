@@ -93,19 +93,19 @@ object ContestsSync {
         val now = System.currentTimeMillis()
         if (!connected && ContestsStore.runningSnapshots().isNotEmpty() && now - lastPoll >= ContestsStore.POLL_MS) {
             lastPoll = now
-            ContestsStore.runningSnapshots().forEach { ContestsStore.refreshContest(it.contest.id) }
-            ContestsStore.openId?.let { id -> if (ContestsStore.runningSnapshots().none { it.contest.id == id }) ContestsStore.refreshContest(id) }
+            ContestsStore.runningSnapshots().forEach { ContestsStore.scheduleContestRefetch(it.contest.id) }
+            ContestsStore.openId?.let { id -> if (ContestsStore.runningSnapshots().none { it.contest.id == id }) ContestsStore.scheduleContestRefetch(id) }
         }
         if (tick % (TICK_EVERY * 30) == 0) ContestOutbox.flush()
     }
 
     private fun refetchAll() {
         logger.info("Realtime reconnected: refetching contests")
-        ContestsStore.refreshContests()
-        ContestsStore.refreshFriends()
+        ContestsStore.scheduleContestsRefetch()
+        ContestsStore.scheduleFriendsRefetch()
         ContestsStore.heldSnapshots()
             .filter { !ContestStates.isOver(it.contest.state) || it.contest.id == ContestsStore.openId }
-            .forEach { ContestsStore.refreshContest(it.contest.id) }
+            .forEach { ContestsStore.scheduleContestRefetch(it.contest.id) }
         ContestOutbox.flush(force = true)
     }
 }

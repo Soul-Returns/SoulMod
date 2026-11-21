@@ -25,6 +25,7 @@ import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.util.MojangUuid
 import com.soulreturns.util.SoulLogger
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import net.minecraft.client.Minecraft
 
 /** A value loaded from the backend plus its load state. [error] is the contract's error code. */
@@ -130,6 +131,18 @@ object ContestsStore {
     internal var endShown: (Long) -> Boolean = { ContestOutbox.endShown(it) }
     internal var markEndShown: (Long) -> Unit = { ContestOutbox.markEndShown(it) }
 
+    /** Runs [block] on the client thread after [delayMs] (the coalescing timer). */
+    internal var schedule: (Long, () -> Unit) -> Unit = { delayMs, block ->
+        SoulScope.io.launch {
+            delay(delayMs)
+            post(block)
+        }
+    }
+
+    internal var fetchFriends: suspend () -> ContestsApi.Reply<FriendsBody> = { ContestsApi.friends() }
+    internal var fetchContests: suspend () -> ContestsApi.Reply<ContestsBody> = { ContestsApi.contests() }
+    internal var fetchSnapshot: suspend (Long) -> ContestsApi.Reply<ContestSnapshot> = { ContestsApi.snapshot(it) }
+
     // ------------------------------------------------------------------ state (read on the client thread)
 
     var version: Long = 0L
@@ -221,9 +234,12 @@ object ContestsStore {
     fun refreshFriends(onDone: (ActionResult) -> Unit = {}) {
         friends = friends.copy(loading = true)
         changed()
+        val co = friendsCo
+        began(co)
         launch {
-            val reply = ContestsApi.friends()
+            val reply = fetchFriends()
             post {
+                finished(co, reply.value != null, null, reply)
                 if (reply.value != null) {
                     friends = Remote(reply.value, fetchedAt = now())
                     ShareAreaSync.onFriendsLoaded(reply.value)
@@ -241,9 +257,12 @@ object ContestsStore {
     fun refreshContests(onDone: (ActionResult) -> Unit = {}) {
         contests = contests.copy(loading = true)
         changed()
+        val co = listCo
+        began(co)
         launch {
-            val reply = ContestsApi.contests()
+            val reply = fetchContests()
             post {
+                finished(co, reply.value != null, null, reply)
                 if (reply.value != null) {
                     onContestsLoaded(reply.value)
                     onDone(ActionResult.OK)
@@ -288,9 +307,12 @@ object ContestsStore {
     fun refreshContest(id: Long, onDone: (ActionResult) -> Unit = {}) {
         snapshots[id] = snapshot(id).copy(loading = true)
         changed()
+        val co = contestCo(id)
+        began(co)
         launch {
-            val reply = ContestsApi.snapshot(id)
+            val reply = fetchSnapshot(id)
             post {
+                finished(co, reply.value != null, reply.value?.rev, reply)
                 if (reply.value != null) {
                     acceptSnapshot(reply.value, live = true)
                     onDone(ActionResult.OK)
@@ -496,7 +518,7 @@ object ContestsStore {
                     memberRuns.keys.filter { it.startsWith("${snap.contest.id}/") }.forEach { key ->
                         loadMemberRuns(snap.contest.id, key.substringAfter('/'))
                     }
-                    refreshContests()
+                    scheduleContestsRefetch()
                     onDone(ActionResult(ok = true, contestId = snap.contest.id))
                 } else {
                     fail(reply.status, reply.error, contestId, onDone)
@@ -521,7 +543,7 @@ object ContestsStore {
         }
         for (summary in body.active) {
             val held = snapshots[summary.id]?.value
-            if (held == null || held.rev < summary.rev) refreshContest(summary.id)
+            if (held == null || held.rev < summary.rev) scheduleContestRefetch(summary.id, summary.rev)
         }
         // Ended while away: finished under an hour ago, never seen running in this session or announced here before.
         if (first) {
@@ -549,6 +571,13 @@ object ContestsStore {
             return
         }
         snapshots[id] = Remote(snap, fetchedAt = now())
+        contestCos[id]?.let { co ->
+            if (snap.rev >= co.newestRev && co.inFlight == 0) {
+                co.pending = false
+                co.firstPendingAt = 0L
+                co.token++
+            }
+        }
         dataAsOf = now()
         netOk()
         if (live) signalTransitions(old, snap)
@@ -603,10 +632,10 @@ object ContestsStore {
     /** Realtime `contest-update` (already on the client thread). */
     internal fun onContestUpdate(u: ContestUpdate) {
         val held = snapshots[u.contestId]?.value
-        if (u.kind == UpdateKinds.MEMBER || u.kind == UpdateKinds.STATE || held == null) refreshContests()
+        if (u.kind == UpdateKinds.MEMBER || u.kind == UpdateKinds.STATE || held == null) scheduleContestsRefetch()
         if (held == null) {
             // Not held: only fetch what a screen, the HUD or capture needs.
-            if (u.contestId == openId) refreshContest(u.contestId)
+            if (u.contestId == openId) scheduleContestRefetch(u.contestId, u.rev)
             return
         }
         val outcome = ContestReducer.apply(held, u)
@@ -617,7 +646,7 @@ object ContestsStore {
         if (outcome.stale) return
         val next = outcome.snapshot
         if (outcome.refetch || next == null) {
-            refreshContest(u.contestId)
+            scheduleContestRefetch(u.contestId, u.rev)
             return
         }
         snapshots[u.contestId] = Remote(next, fetchedAt = now())
@@ -688,7 +717,7 @@ object ContestsStore {
             ContestsChat.friendRequest(u)
         }
         if (u.kind == FriendUpdateKinds.ACCEPTED) ContestsChat.friendAccepted(u)
-        refreshFriends()
+        scheduleFriendsRefetch()
     }
 
     // ------------------------------------------------------------------ connection
@@ -747,6 +776,10 @@ object ContestsStore {
 
     /** Drop everything (account switch, tests). */
     internal fun reset() {
+        epoch++
+        friendsCo = Coalescer { refreshFriends() }
+        listCo = Coalescer { refreshContests() }
+        contestCos.clear()
         friends = Remote(); contests = Remote(); types = Remote(); history = HistoryState()
         openId = null; snapshots.clear(); olderFeed.clear(); memberRuns.clear()
         announcedInvites.clear(); missedEnds.clear(); endedSeen.clear()
@@ -758,5 +791,103 @@ object ContestsStore {
     /** Test seam: put a snapshot in without signals. */
     internal fun seed(snap: ContestSnapshot) {
         snapshots[snap.contest.id] = Remote(snap, fetchedAt = now())
+    }
+
+    // ------------------------------------------------------------------ coalesced refetches
+
+    /** Trailing window after the last event before a realtime-driven refetch runs. */
+    internal const val COALESCE_MS = 300L
+
+    /** A steady stream of events still refetches at least this often. */
+    internal const val COALESCE_MAX_MS = 2_000L
+
+    /** Wait after a 429 without a usable `Retry-After`. */
+    private const val RATE_LIMIT_DEFAULT_MS = 15_000L
+    private const val RATE_LIMIT_MAX_RETRIES = 3
+
+    /**
+     * Refetch state of one resource (a contest snapshot, the list, the friends). Realtime events only mark
+     * it [pending]; one timer turns pending into one fetch, never while another fetch of it is in flight.
+     */
+    private class Coalescer(val fire: () -> Unit) {
+        var inFlight = 0
+        var pending = false
+        var newestRev = 0L
+        var lastEventAt = 0L
+        var firstPendingAt = 0L
+        var blockedUntil = 0L
+        var rateLimitRetries = 0
+        var token = 0
+    }
+
+    private var epoch = 0
+    private var friendsCo = Coalescer { refreshFriends() }
+    private var listCo = Coalescer { refreshContests() }
+    private val contestCos = HashMap<Long, Coalescer>()
+
+    private fun contestCo(id: Long) = contestCos.getOrPut(id) { Coalescer { refreshContest(id) } }
+
+    /** A realtime event, a revision gap or a reconnect wants a fresh snapshot of [id] (at least revision [rev]). */
+    fun scheduleContestRefetch(id: Long, rev: Long? = null) = request(contestCo(id), rev)
+
+    fun scheduleContestsRefetch() = request(listCo, null)
+
+    fun scheduleFriendsRefetch() = request(friendsCo, null)
+
+    private fun request(co: Coalescer, rev: Long?) {
+        val t = now()
+        if (rev != null && rev > co.newestRev) co.newestRev = rev
+        if (!co.pending) {
+            co.pending = true
+            co.firstPendingAt = t
+        }
+        co.lastEventAt = t
+        arm(co)
+    }
+
+    /** (Re)starts the timer for a pending refetch; a fetch in flight re-arms when it ends. */
+    private fun arm(co: Coalescer) {
+        if (!co.pending || co.inFlight > 0) return
+        val t = now()
+        val due = maxOf(minOf(co.lastEventAt + COALESCE_MS, co.firstPendingAt + COALESCE_MAX_MS), co.blockedUntil, t)
+        val token = ++co.token
+        val at = epoch
+        schedule(due - t) { if (at == epoch && token == co.token) fireNow(co) }
+    }
+
+    private fun fireNow(co: Coalescer) {
+        if (!co.pending || co.inFlight > 0) return
+        if (now() < co.blockedUntil) return arm(co)
+        co.pending = false
+        co.firstPendingAt = 0L
+        co.fire()
+    }
+
+    private fun began(co: Coalescer) {
+        co.inFlight++
+        co.token++
+    }
+
+    /**
+     * A fetch ended. A snapshot at least as new as every event seen cancels the pending refetch; a 429 keeps
+     * (or makes) one pending and waits out `Retry-After`.
+     */
+    private fun finished(co: Coalescer, ok: Boolean, rev: Long?, reply: ContestsApi.Reply<*>) {
+        co.inFlight = maxOf(0, co.inFlight - 1)
+        val t = now()
+        if (ok) {
+            co.rateLimitRetries = 0
+            co.blockedUntil = 0L
+            if (rev != null && rev >= co.newestRev) co.pending = false
+        } else if (reply.status == 429 && ++co.rateLimitRetries <= RATE_LIMIT_MAX_RETRIES) {
+            if (!co.pending) {
+                co.pending = true
+                co.firstPendingAt = t
+            }
+            co.lastEventAt = t
+            co.blockedUntil = t + (reply.retryAfterMs ?: RATE_LIMIT_DEFAULT_MS)
+        }
+        if (!co.pending) co.firstPendingAt = 0L
+        arm(co)
     }
 }

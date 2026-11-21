@@ -120,6 +120,8 @@ class ContestReducerTest {
     }
 }
 
+private val time = FakeTime()
+
 class ContestStoreTest {
     private val signals = ArrayList<Event>()
     private val chat = ArrayList<String>()
@@ -131,7 +133,9 @@ class ContestStoreTest {
     fun setUp() {
         ContestsStore.post = { it() }
         ContestsStore.launch = { launched += "call" }
-        ContestsStore.now = { 1_795_000_000_000L }
+        time.reset()
+        ContestsStore.now = time::now
+        ContestsStore.schedule = time::schedule
         ContestsStore.selfUuidProvider = { ME }
         ContestsStore.emit = { signals += it }
         ContestsChat.sink = { c: Component -> chat += c.string }
@@ -172,9 +176,11 @@ class ContestStoreTest {
     }
 
     @Test
-    fun revisionGapRefetchesTheSnapshot() {
+    fun revisionGapRefetchesTheSnapshotAfterTheCoalescingWindow() {
         ContestsStore.seed(snapshot(133))
         ContestsStore.onContestUpdate(runUpdate(140))
+        assertEquals(0, launched.size)
+        time.advance(ContestsStore.COALESCE_MS)
         assertTrue(ContestsStore.snapshot(7).loading)
         assertEquals(133L, ContestsStore.snapshot(7).value?.rev)
         assertEquals(1, launched.size)
@@ -254,6 +260,7 @@ class ContestStoreTest {
     fun memberAndStateKindsAlsoRefreshTheList() {
         ContestsStore.seed(snapshot(133))
         ContestsStore.onContestUpdate(ContestUpdate(contestId = 7, rev = 134, kind = UpdateKinds.MEMBER))
+        time.advance(ContestsStore.COALESCE_MS)
         assertTrue(ContestsStore.contests.loading)
         assertTrue(ContestsStore.snapshot(7).loading)
     }
@@ -262,6 +269,7 @@ class ContestStoreTest {
     fun friendRequestEventSignalsAndRefetches() {
         ContestsStore.onFriendUpdate(FriendUpdate("request", "11111111111111111111111111111111", "Example_Two"))
         assertEquals("Example_Two", signals.filterIsInstance<FriendRequestSignal>().single().from.name)
+        time.advance(ContestsStore.COALESCE_MS)
         assertTrue(ContestsStore.friends.loading)
         assertTrue(chat.any { "friend request" in it })
     }
