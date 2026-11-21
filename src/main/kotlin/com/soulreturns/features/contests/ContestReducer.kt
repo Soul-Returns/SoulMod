@@ -11,7 +11,8 @@ import com.soulreturns.features.contests.model.UpdateKinds
  * - `rev <= held` is a duplicate or stale event: nothing changes.
  * - `rev != held + 1` is a gap (an event was lost, Mercure has no replay): refetch.
  * - `member|state|settings` and unknown kinds: refetch (the event carries no state to apply).
- * - `run|void`: the runner's row, everyone's new ranks and the new feed entries are applied.
+ * - `run|void`: the runner's row, everyone's new ranks and the new feed entries are applied. An update
+ *   that does not place every held row is refetched: places only ever come from the server, never kept stale.
  * - `check`: the row is replaced; an open run list of that player is refetched by the store.
  */
 object ContestReducer {
@@ -32,10 +33,11 @@ object ContestReducer {
         }
         var standings = held.standings
         u.standing?.let { standings = replaceRow(standings, it) }
-        if (kind != UpdateKinds.CHECK && u.ranks.isNotEmpty()) {
+        if (kind != UpdateKinds.CHECK) {
             val byUuid = u.ranks.associateBy { it.uuid }
+            if (standings.any { it.uuid !in byUuid }) return Outcome(null, refetch = true)
             standings = standings.map { row ->
-                val r = byUuid[row.uuid] ?: return@map row
+                val r = byUuid.getValue(row.uuid)
                 row.copy(rank = r.rank, shared = r.shared)
             }
         }

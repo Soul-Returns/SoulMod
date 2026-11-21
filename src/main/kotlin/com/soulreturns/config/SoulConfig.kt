@@ -2,6 +2,7 @@ package com.soulreturns.config
 
 import com.soulreturns.ui.hud.movable.HudAnchor
 import com.soulreturns.ui.hud.movable.HudLink
+import com.soulreturns.ui.hud.movable.HudLinkHidden
 import com.soulreturns.ui.hud.movable.HudPlace
 import com.soulreturns.ui.hud.movable.HudTargets
 import com.soulreturns.ui.hud.movable.HudTransform
@@ -167,10 +168,18 @@ data class SoulConfig(
  */
 @Serializable
 data class ContestsConfig(
-    /** Contest HUD, drawn only in the Crystal Hollows while in a running contest. */
+    /**
+     * Contest HUD, drawn only in the Crystal Hollows while in a running contest. Default: under the
+     * Crystal Nucleus panel (both sit top left), in its place while that panel is hidden.
+     */
     val hud: Boolean = true,
     val hudExpanded: Boolean = false,
-    val hudTransform: HudTransform = HudTransform(offsetX = 8f, offsetY = 64f),
+    val hudTransform: HudTransform =
+        HudTransform(
+            offsetX = 9.5f,
+            offsetY = 11f,
+            link = HudLink(HudTargets.hud("nucleus_tracker"), h = HudPlace.START, v = HudPlace.OUT_END, offsetY = 5f, auto = false, whenHidden = HudLinkHidden.TAKE_PLACE),
+        ),
     /** The contest toast stack (top right). */
     val toastTransform: HudTransform = HudTransform(hAnchor = HudAnchor.END, offsetX = -8f, offsetY = 8f),
     /** Toasts when someone passes you or finishes. */

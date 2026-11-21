@@ -389,6 +389,8 @@ class SoulConfigScreen(
 
         val rows = ArrayList<Triple<String, String, String>>() // id, name, icon; "-" = separator
         rows += Triple("start", "Start", "home")
+        // Not a card tab: opens the Friends & Contests screen.
+        rows += Triple("contests", "Friends & Contests", "trophy")
         rows += Triple("-", "", "")
         for (a in ConfigRegistry.activities) rows += Triple(a.id, a.name, a.icon)
         rows += Triple("-", "", "")
@@ -414,7 +416,9 @@ class SoulConfigScreen(
             val hasNew = if (id == "settings") settingsHasNew() else ConfigRegistry.cards.any { it.activity == id && MenuState.isNew("f:${it.id}") }
             val dot = id in here
             navItem(g, mx, my, x0 + 6, y, x1 - 6, y + 28, name, icon, active, narrow, hasNew, if (dot) RightNow.why(id, null, nowGroups) else null, navTop, navBottom, soft = false) {
-                if (id == "start" || id == "settings") {
+                if (id == "contests") {
+                    onAction("openContests")
+                } else if (id == "start" || id == "settings") {
                     page = id
                     selected = null
                     revealTab = true

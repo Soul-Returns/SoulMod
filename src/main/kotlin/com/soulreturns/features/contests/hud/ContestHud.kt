@@ -194,6 +194,9 @@ object ContestHud : TrackerHud<ContestHud.Row>("contest_hud", "Contest", "genera
             val lead = v.ranked.firstOrNull()
             if (lead != null) out += listOf("Watching · " to Theme.TEXT_DIM, lead.name to Theme.TEXT, " leads" to Theme.TEXT_DIM)
         } else {
+            if (source.capture(v.c.id)?.state == com.soulreturns.features.contests.CaptureStates.WRONG_PROFILE) {
+                out += listOf("Other profile" to COLOR_BAD, " · ${unit.plural} here don't count" to Theme.TEXT_DIM)
+            }
             val probe = ContestRunProbe.of(v.type)
             val start = probe?.runStart()
             val n = me.units + v.queued.size + 1
@@ -232,8 +235,10 @@ object ContestHud : TrackerHud<ContestHud.Row>("contest_hud", "Contest", "genera
         val idx = v.ranked.indexOf(me)
         if (idx < 0) return emptyList()
         val out = ArrayList<Pair<String, Int>>()
-        v.ranked.getOrNull(idx - 1)?.let { a -> out += "${Format.short(a.total - me.total)} to ${ContestsFormat.ord(a.rank ?: 0)}" to Theme.TEXT }
-        v.ranked.getOrNull(idx + 1)?.let { b ->
+        // Gaps to the nearest player with a different place (a tie is no gap).
+        val myRank = me.rank ?: return emptyList()
+        v.ranked.take(idx).lastOrNull { (it.rank ?: 0) < myRank }?.let { a -> out += "${Format.short(a.total - me.total)} to ${ContestsFormat.ord(a.rank ?: 0)}" to Theme.TEXT }
+        v.ranked.drop(idx + 1).firstOrNull { (it.rank ?: Int.MAX_VALUE) > myRank }?.let { b ->
             if (out.isNotEmpty()) out += "  " to Theme.TEXT_DIM
             out += "${Format.short(me.total - b.total)} ahead of ${ContestsFormat.ord(b.rank ?: 0)}" to Theme.TEXT
         }

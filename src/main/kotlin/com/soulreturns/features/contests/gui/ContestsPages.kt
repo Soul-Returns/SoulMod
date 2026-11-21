@@ -93,7 +93,7 @@ object ContestsPages {
         val upcoming = active.filter { it.state != ContestView.RUNNING && it.startsAt != null }
         val heroes = active - upcoming.toSet()
         if (all == null) {
-            body += if (cs.loading) ParaNode(Rich.of("Loading…"), color = Ct.T_66, padY = 6) else ParaNode(Rich.of("Contests couldn't be loaded. ${cs.error?.message.orEmpty()}"), color = Ct.T_66, padY = 6)
+            body += if (cs.loading) ParaNode(Rich.of("Loading…"), color = Ct.T_66, padY = 6) else ParaNode(Rich.of("Contests couldn't be loaded. ${com.soulreturns.features.contests.ContestErrors.describe(cs.error)}"), color = Ct.T_66, padY = 6)
         } else if (heroes.isEmpty()) {
             val last = all.history.firstOrNull()
             body += cardOf(null, listOf(ListRowNode(rich {
@@ -234,8 +234,10 @@ object ContestsPages {
         } else {
             list += GroupLabelNode("Online · ${online.size}", padTop = 0)
             online.forEach { list += friendRow(h, it, false) }
-            list += GroupLabelNode("Offline · ${offline.size}")
-            offline.forEach { list += friendRow(h, it, false) }
+            if (offline.isNotEmpty()) {
+                list += GroupLabelNode("Offline · ${offline.size}")
+                offline.forEach { list += friendRow(h, it, false) }
+            }
         }
         val right = ArrayList<Node>()
         if (!down) {
@@ -355,7 +357,7 @@ object ContestsPages {
         form += cardOf(null, listOf(
             FormRowNode("Name", listOf(FieldNode(NAME_KEY, "${t.title} with friends", 220))),
             FormRowNode("Goal", listOf(SegNode("create.goal", "units", t.goalKinds.map { it.kind to it.label }.ifEmpty { listOf("units" to "Same number each") }))),
-            FormRowNode(ContestsFormat.unitsTitle(t) + " each", listOf(StepperNode(units, { nav.createUnits = max(g?.min ?: 1, units - 5) }, { nav.createUnits = minOf(g?.max ?: 200, units + 5) })),
+            FormRowNode(ContestsFormat.unitsTitle(t) + " each", listOf(StepperNode(units, { nav.createUnits = max(g?.min ?: 1, goalStep(units, up = false)) }, { nav.createUnits = minOf(g?.max ?: 200, goalStep(units, up = true)) })),
                 hint = "Everyone does the same number of ${t.unit.plural}; the best ${t.metric.label.lowercase()} wins."),
             FormRowNode("Start", listOfNotNull(
                 ToggleSegNode(listOf("now" to "When I press Start", "at" to "At a time"), if (nav.createStartAt) "at" else "now") { nav.createStartAt = it == "at" },
@@ -451,7 +453,7 @@ object ContestsPages {
 
     private fun loadingPage(h: ContestsHost, crumbs: List<Crumb>, key: String): Page {
         val err = h.nav.contestId?.let { h.src.snapshot(it).error }
-        val text = if (err != null) "This contest couldn't be loaded. ${err.message ?: err.error}" else "Loading…"
+        val text = if (err != null) "This contest couldn't be loaded. ${com.soulreturns.features.contests.ContestErrors.describe(err)}" else "Loading…"
         return Page(crumbs, fixed = listOfNotNull(connBanner(h, null)), body = listOf(ParaNode(Rich.of(text), color = Ct.T_66, padY = 6)), key = key)
     }
 
@@ -531,10 +533,29 @@ object ContestsPages {
                 Btn("Accept", style = Btn.ACCENT, small = true) { h.act({ h.src.approveJoin(id, m.uuid, it) }) },
                 Btn("Decline", style = Btn.GHOST, small = true) { h.act({ h.src.rejectJoin(id, m.uuid, it) }) },
             ))
+            captureBanner(h, v)?.let { fixed += it }
             body += progress(h, v)
             body += running(h, v)
         }
         return Page(crumbs, fixed = fixed, body = body, bar = bar, key = "contest:$id")
+    }
+
+    /** Why your own runs are not recorded right now; null while they are (or you do not play). */
+    private fun captureBanner(h: ContestsHost, v: ContestView): Node? {
+        val s = h.src.capture(v.c.id) ?: return null
+        val units = v.type.unit.plural
+        val text = when (s.state) {
+            com.soulreturns.features.contests.CaptureStates.WRONG_PROFILE ->
+                "You're on a different SkyBlock profile than the one you joined with, so ${units} here don't count. Switch back to that profile."
+            com.soulreturns.features.contests.CaptureStates.NO_PROFILE_LOCKED ->
+                "No SkyBlock profile is locked for you yet. Join with your profile to start counting."
+            com.soulreturns.features.contests.CaptureStates.UNSUPPORTED_TYPE ->
+                "This Soul version can't record this contest's $units. Update Soul."
+            else -> return null
+        }
+        val lock = s.state == com.soulreturns.features.contests.CaptureStates.NO_PROFILE_LOCKED && v.can("join") && s.currentProfileId != null
+        return BannerNode("warn", rich { b("Your $units aren't counted."); t(" $text") }, icon = "ct_warn",
+            buttons = if (lock) listOf(Btn("Use this profile", small = true) { h.act({ h.src.join(v.c.id, ContestView.PARTICIPANT, it) }) }) else emptyList())
     }
 
     private fun progress(h: ContestsHost, v: ContestView): Node {
@@ -768,7 +789,8 @@ object ContestsPages {
             val tips = HashMap<Int, List<String>>()
             tiles += "Rank" to Rich.of(if (dq) "DQ" else row.rank?.let { ord(it) + if (row.shared) " (shared)" else if (v.tieBreakWith(row) != null) " (tiebreak)" else "" } ?: "–")
             tiles += ContestsFormat.unitsTitle(t) to Rich.of("${row.units}/${v.goal}")
-            tiles += "Total" to rich { t(ContestsFormat.metric(t, row.total)); if (row.unpriced > 0) r(Rich.sized("  " + ContestsFormat.noPrice(row.unpriced), Ct.T_88, S.TINY)) }
+            // The note does not fit a tile: it goes to the counts line under the tiles; the tile keeps the tooltip.
+            tiles += "Total" to Rich.of(ContestsFormat.metric(t, row.total))
             if (row.unpriced > 0) tips[2] = listOf(ContestsFormat.NO_PRICE_TIP)
             tiles += "Avg/${t.unit.singular}" to Rich.of(if (row.units > 0) ContestsFormat.metric(t, row.avg) else "–")
             tiles += "Best ${t.unit.singular}" to Rich.of(if (row.units > 0) ContestsFormat.metric(t, row.best) else "–")
@@ -786,12 +808,17 @@ object ContestsPages {
                 if (c.flagged > 0) add("${c.flagged} flagged")
             }
             if (row != null && row.voided > 0) add("${row.voided} voided")
+            if (row != null && row.unpriced > 0) add(ContestsFormat.noPrice(row.unpriced))
             if (queued.isNotEmpty()) add("${queued.size} not sent yet")
         }
-        val sent = runs.size
+        // Offline the list cannot be fetched; the standing still knows how many reached the server.
+        val sent = runsR.value?.runs?.size ?: row?.let { it.units + it.extra + it.voided } ?: 0
         val runNodes = ArrayList<Node>()
         if (runsR.value == null && runsR.loading) runNodes += ParaNode(Rich.of("Loading ${t.unit.plural}…"), color = Ct.T_66, padY = 6)
-        else if (runsR.value == null && runsR.error != null) runNodes += ParaNode(Rich.of("Couldn't load the ${t.unit.plural}. ${runsR.error.message.orEmpty()}"), color = Ct.T_66, padY = 6)
+        else if (runsR.value == null && runsR.error != null) {
+            runNodes += ParaNode(Rich.of("Couldn't load the ${t.unit.plural}. ${com.soulreturns.features.contests.ContestErrors.describe(runsR.error)}"), color = Ct.T_66, padY = 6)
+            if (queued.isNotEmpty()) runNodes += RunListNode(t, emptyList(), queued, v.finished, false, onVoid = {}, onRestore = {})
+        }
         else runNodes += RunListNode(t, runs, queued, v.finished, manage && v.can("void"),
             onVoid = { r -> voidPrompt(h, v, r, pname) },
             onRestore = { r -> h.confirm("Restore ${t.unit.singular} ${r.n ?: ""}?", "It counts again. Everyone sees that you restored it.", "Restore") { h.act({ h.src.restoreRun(id, r.runId, it) }) { h.src.loadRuns(id, uuid) } } })
@@ -895,6 +922,10 @@ class ToggleSegNode(val options: List<Pair<String, String>>, val value: String, 
         }
     }
 }
+
+/** The goal stepper's next value: 1, 5, 10, 15, … (a value off the grid snaps onto it). */
+internal fun goalStep(units: Int, up: Boolean): Int =
+    if (up) (units / 5 + 1) * 5 else if (units <= 5) 1 else (units - 1) / 5 * 5
 
 /** `.stepper`: − value +. */
 class StepperNode(val value: Int, val minus: () -> Unit, val plus: () -> Unit) : Node(), Inline {

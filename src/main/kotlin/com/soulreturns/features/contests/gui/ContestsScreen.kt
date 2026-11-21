@@ -210,7 +210,11 @@ class ContestsScreen(override val src: ContestsSource = StoreContestsSource, sta
         val y1 = card.y1
         roundRect(g, x0, y0, x1, y1, Theme.SIDEBAR, SoulRenderPipelines.ROUND_BL)
         val sel = N.railOf(nav.page, nav.fromHistory)
-        val running = src.contests().value?.active?.any { it.state == ContestView.RUNNING } == true
+        // A held snapshot newer than the list wins: the list is only refetched on some events.
+        val running = src.contests().value?.active?.any { s ->
+            val held = src.snapshot(s.id).value?.takeIf { it.rev > s.rev }
+            (held?.contest?.state ?: s.state) == ContestView.RUNNING
+        } == true
         val requests = src.friends().value?.incoming?.size ?: 0
         val invites = src.contests().value?.invitations?.size ?: 0
         var ry = y0 + L.RAIL_PAD_Y

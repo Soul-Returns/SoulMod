@@ -7,6 +7,8 @@ import com.soulreturns.features.contests.model.ContestInfo
 import com.soulreturns.features.contests.model.ContestSnapshot
 import com.soulreturns.features.contests.model.ContestStates
 import com.soulreturns.features.contests.model.ContestUpdate
+import com.soulreturns.features.contests.model.ContestSummary
+import com.soulreturns.features.contests.model.ContestsBody
 import com.soulreturns.features.contests.model.FeedEntry
 import com.soulreturns.features.contests.model.FriendUpdate
 import com.soulreturns.features.contests.model.Goal
@@ -106,6 +108,16 @@ class ContestReducerTest {
         val u = runUpdate(134).copy(kind = UpdateKinds.VOID)
         assertNotNull(ContestReducer.apply(snapshot(133), u).snapshot)
     }
+
+    @Test
+    fun anUpdateThatDoesNotPlaceEveryRowRefetchesInsteadOfKeepingAStalePlace() {
+        // A late joiner tied at 2nd: the server's update ranks everyone but leaves this row out.
+        val held = snapshot(133, standings = listOf(row(OWNER, "Example_Owner", 1, 2_000), row(ME, "Example_One", 2, 0, units = 0)))
+        val u = runUpdate(134).copy(standing = row(OWNER, "Example_Owner", 1, 2_500), ranks = listOf(RankRow(OWNER, 1)))
+        val out = ContestReducer.apply(held, u)
+        assertTrue(out.refetch)
+        assertNull(out.snapshot)
+    }
 }
 
 class ContestStoreTest {
@@ -113,6 +125,7 @@ class ContestStoreTest {
     private val chat = ArrayList<String>()
     private val launched = ArrayList<String>()
     private val savedTargets = HashMap<Long, CaptureTarget?>()
+    private val shown = HashSet<Long>()
 
     @BeforeTest
     fun setUp() {
@@ -124,8 +137,10 @@ class ContestStoreTest {
         ContestsChat.sink = { c: Component -> chat += c.string }
         ContestCaptures.targets = { savedTargets.values.filterNotNull() }
         ContestCaptures.saveTarget = { id, t -> savedTargets[id] = t }
+        ContestsStore.endShown = { it in shown }
+        ContestsStore.markEndShown = { shown += it }
         ContestsStore.reset()
-        signals.clear(); chat.clear(); launched.clear()
+        signals.clear(); chat.clear(); launched.clear(); shown.clear()
     }
 
     @AfterTest
@@ -192,6 +207,24 @@ class ContestStoreTest {
         assertTrue(ended.won)
         assertFalse(ended.missed)
         assertTrue(chat.any { "is over" in it && "You placed §e1st" in it })
+    }
+
+    @Test
+    fun aMissedEndIsAnnouncedOnceAcrossRestarts() {
+        val final = snapshot(102, ContestStates.FINISHED, listOf(row(ME, "Example_One", 1, 5_000), row(OWNER, "Example_Owner", 2, 4_000)))
+        val body = ContestsBody(history = listOf(ContestSummary(id = 7, state = ContestStates.FINISHED, endedAt = 1_795_000_000_000L - 60_000)))
+        ContestsStore.onContestsLoaded(body)
+        ContestsStore.acceptSnapshot(final, live = true)
+        assertTrue(signals.single { it is ContestEndedSignal }.let { (it as ContestEndedSignal).missed })
+        assertTrue(7L in shown)
+
+        // A restart: the session memory is gone, the disk memory is not.
+        ContestsStore.reset()
+        signals.clear(); chat.clear()
+        ContestsStore.onContestsLoaded(body)
+        ContestsStore.acceptSnapshot(final, live = true)
+        assertTrue(signals.none { it is ContestEndedSignal })
+        assertTrue(chat.none { "is over" in it })
     }
 
     @Test

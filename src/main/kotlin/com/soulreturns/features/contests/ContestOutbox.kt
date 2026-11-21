@@ -59,6 +59,8 @@ internal data class ContestOutboxFile(
     val seqs: Map<String, Int> = emptyMap(),
     /** Contests you play in (lobby/running), so capture works before the first snapshot of a session. */
     val targets: List<CaptureTarget> = emptyList(),
+    /** Contests whose end was already announced on this computer (newest last), so a restart does not replay it. */
+    val endsShown: List<Long> = emptyList(),
 )
 
 /**
@@ -85,6 +87,7 @@ object ContestOutbox {
     /** Contests last at most 7 days plus 24 h of late uploads: anything older can never be accepted. */
     private const val MAX_PENDING_AGE_MS = 9L * 24 * 3_600_000L
     private const val REJECTED_KEEP_MS = 7L * 24 * 3_600_000L
+    private const val MAX_ENDS_SHOWN = 100
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true; coerceInputValues = true }
 
@@ -160,7 +163,7 @@ object ContestOutbox {
         val p = path()
         try {
             Files.createDirectories(p.parent)
-            if (file.entries.isEmpty() && file.seqs.isEmpty() && file.targets.isEmpty()) {
+            if (file.entries.isEmpty() && file.seqs.isEmpty() && file.targets.isEmpty() && file.endsShown.isEmpty()) {
                 Files.deleteIfExists(p)
                 return
             }
@@ -186,6 +189,21 @@ object ContestOutbox {
         synchronized(stateLock) {
             val rest = file.targets.filter { it.contestId != contestId }
             file = file.copy(targets = if (target == null) rest else rest + target)
+            persist()
+        }
+    }
+
+    /** True once the end of [contestId] was announced here (chat line, toast, reveal). */
+    internal fun endShown(contestId: Long): Boolean {
+        load()
+        return contestId in file.endsShown
+    }
+
+    internal fun markEndShown(contestId: Long) {
+        load()
+        synchronized(stateLock) {
+            if (contestId in file.endsShown) return
+            file = file.copy(endsShown = (file.endsShown + contestId).takeLast(MAX_ENDS_SHOWN))
             persist()
         }
     }

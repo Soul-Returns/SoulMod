@@ -23,8 +23,9 @@ import com.soulreturns.features.contests.gui.ContestsLayout as L
 import kotlin.math.max
 import kotlin.math.min
 
-/** Tie chip of a standings row (owner decision Q9: higher best run wins, equal best runs share). */
+/** Tie chip of a standings row (owner decision Q9: higher best run wins, equal best runs share). None before a first run (everyone ties at 0). */
 fun tieChip(v: ContestView, row: StandingRow): Chip? {
+    if (row.units == 0) return null
     if (row.shared) return Ct.warn("SHARED", "Same total and the same best run: they share the place.")
     val other = v.tieBreakWith(row) ?: return null
     return Ct.warn("TIEBREAK", "Same total as ${other.name}. The higher best run decides: ${ContestsFormat.metric(v.type, row.best)} vs ${ContestsFormat.metric(v.type, other.best)}.")
@@ -151,7 +152,7 @@ class LeaderboardNode(
         val bot = y + L.LB_ROW_H
         val base = alpha(if (zero) Ct.T_66 else Ct.T_EE)
         // rank
-        val rankText = (r.rank ?: 0).toString() + if (r.shared) "=" else ""
+        val rankText = (r.rank ?: 0).toString() + if (r.shared && !zero) "=" else ""
         val rkColor = alpha(if (done) Ct.GOLD else base)
         val rkW = c.width(rankText, S.HEADING, true)
         c.text(rankText, cx(0) + cw(0) - rkW, top, bot, rkColor, S.HEADING, true)
@@ -200,7 +201,7 @@ class LeaderboardNode(
             nx += 14
         }
         if (me) nx += Ct.you().paint(c, nx, (lineTop + lineBot) / 2) + 6
-        tieChip(v, r)?.let { nx += it.paint(c, nx, (lineTop + lineBot) / 2, "tie:${r.uuid}") + 6 }
+        tieChip(v, r)?.takeIf { nx + it.width(c) <= nameRight }?.let { nx += it.paint(c, nx, (lineTop + lineBot) / 2, "tie:${r.uuid}") + 6 }
         if (sub) {
             val np = ContestsFormat.noPrice(r.unpriced)
             c.text(np, px, top + 17, top + 27, alpha(0xFF8A8A8A.toInt()), S.CHIP)

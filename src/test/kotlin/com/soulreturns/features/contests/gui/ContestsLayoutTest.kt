@@ -83,4 +83,12 @@ class ContestsLayoutTest {
         assertNull(s.burst)
         assertTrue(s.close > s.settled)
     }
+
+    @Test
+    fun goalStepperWalksOneFiveTen() {
+        assertEquals(listOf(5, 10, 15), generateSequence(1) { goalStep(it, up = true) }.drop(1).take(3).toList())
+        assertEquals(listOf(10, 5, 1, 1), generateSequence(15) { goalStep(it, up = false) }.drop(1).take(4).toList())
+        assertEquals(10, goalStep(7, up = true))
+        assertEquals(5, goalStep(7, up = false))
+    }
 }

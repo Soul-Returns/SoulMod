@@ -126,6 +126,10 @@ object ContestsStore {
     /** Signals go to the bus; tests capture them. */
     internal var emit: (com.soulreturns.core.events.Event) -> Unit = { Events.publish(it) }
 
+    /** Ends already announced on this computer (kept on disk, so a restart within the hour does not replay them). */
+    internal var endShown: (Long) -> Boolean = { ContestOutbox.endShown(it) }
+    internal var markEndShown: (Long) -> Unit = { ContestOutbox.markEndShown(it) }
+
     // ------------------------------------------------------------------ state (read on the client thread)
 
     var version: Long = 0L
@@ -519,10 +523,10 @@ object ContestsStore {
             val held = snapshots[summary.id]?.value
             if (held == null || held.rev < summary.rev) refreshContest(summary.id)
         }
-        // Ended while away: finished under an hour ago, never seen running in this session.
+        // Ended while away: finished under an hour ago, never seen running in this session or announced here before.
         if (first) {
             val cutoff = now() - MISSED_END_WINDOW_MS
-            body.history.filter { it.state == ContestStates.FINISHED && (it.endedAt ?: 0) >= cutoff }
+            body.history.filter { it.state == ContestStates.FINISHED && (it.endedAt ?: 0) >= cutoff && !endShown(it.id) }
                 .forEach { missedEnds += it.id; refreshContest(it.id) }
         }
     }
@@ -558,6 +562,7 @@ object ContestsStore {
             if (snap.contest.id in missedEnds && state == ContestStates.FINISHED) {
                 missedEnds -= snap.contest.id
                 endedSeen += snap.contest.id
+                markEndShown(snap.contest.id)
                 emit(ContestEndedSignal(snap, missed = true, won = won(snap)))
                 ContestsChat.ended(snap)
             }
@@ -569,6 +574,7 @@ object ContestsStore {
             ContestsChat.started(snap)
         }
         if (!ContestStates.isOver(was) && ContestStates.isOver(state) && endedSeen.add(snap.contest.id)) {
+            markEndShown(snap.contest.id)
             emit(ContestEndedSignal(snap, missed = false, won = won(snap)))
             ContestsChat.ended(snap)
         } else if (was == ContestStates.FINISHED && state == ContestStates.FINISHED && old.rev != snap.rev) {
@@ -604,6 +610,10 @@ object ContestsStore {
             return
         }
         val outcome = ContestReducer.apply(held, u)
+        logger.debug(
+            "contest-update c=${u.contestId} rev=${u.rev} held=${held.rev} kind=${u.kind} ranks=${u.ranks.joinToString { "${it.uuid.take(6)}:${it.rank}" }}" +
+                " -> ${if (outcome.stale) "stale" else if (outcome.refetch) "refetch" else outcome.snapshot?.standings?.joinToString { "${it.name}:${it.rank}" }}",
+        )
         if (outcome.stale) return
         val next = outcome.snapshot
         if (outcome.refetch || next == null) {
