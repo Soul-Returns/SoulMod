@@ -7,12 +7,13 @@ import kotlinx.serialization.json.JsonObject
  * sort their contents. The blobs are base64 gzipped NBT, decoded by `LegacyItemDecoder`.
  *
  * Verified against a real dump: `inv_armor` lists boots first, `wardrobe_contents` holds 36 slots per page
- * (row = piece, column = set, two pages) and `wardrobe_equipped_slot` counts from 1 (-1 = none; the worn
- * set's own wardrobe column is empty). The type-line ordering stays as a guard.
+ * (row = piece, column = set; a dump holds two or three pages, the count is the data's) and
+ * `wardrobe_equipped_slot` counts from 1 (-1 = none; the worn set's own wardrobe column is empty). The
+ * type-line ordering stays as a guard.
  */
 
 /**
- * `inventory.wardrobe_equipped_slot` as a 0-based set index (0..17), null when no set is worn (absent or
+ * `inventory.wardrobe_equipped_slot` as a 0-based set index, null when no set is worn (absent or
  * the API's -1). The API counts from 1.
  */
 val SkyblockProfileMember.wardrobeEquippedSet: Int?
@@ -28,6 +29,24 @@ object GearText {
 
     /** Ender Chest pages hold five rows of nine. */
     const val ENDER_PAGE = 45
+
+    /** A wardrobe page: four piece rows of nine set columns. */
+    const val WARDROBE_PAGE = 36
+    const val WARDROBE_COLUMNS = 9
+
+    /** Every wardrobe has at least two pages; the cap only guards a nonsense blob or worn index. */
+    private const val WARDROBE_MIN_PAGES = 2
+    private const val WARDROBE_MAX_PAGES = 50
+
+    /**
+     * How many sets to show: the blob's pages (36 slots each, at least two), extended so the [worn] set
+     * (0-based) is always inside, times nine.
+     */
+    fun wardrobeSetCount(slotCount: Int, worn: Int?): Int {
+        val ofData = (slotCount + WARDROBE_PAGE - 1) / WARDROBE_PAGE
+        val ofWorn = if (worn == null) 0 else worn / WARDROBE_COLUMNS + 1
+        return maxOf(WARDROBE_MIN_PAGES, ofData, ofWorn).coerceAtMost(WARDROBE_MAX_PAGES) * WARDROBE_COLUMNS
+    }
 
     private val OBFUSCATED = Regex("§k.")
     private val CODES = Regex("§.")

@@ -73,7 +73,13 @@ object LegacyItemDecoder {
         return List(list.size) { index ->
             if (list[index] !is CompoundTag) null else {
                 val legacy = list.getCompoundOrEmpty(index)
-                val stack = fix(legacy)
+                // One bad slot is a null slot, never a lost blob.
+                val stack = try {
+                    fix(legacy)
+                } catch (e: Exception) {
+                    logger.warn("Could not decode slot $index (${legacy.getCompoundOrEmpty("tag").getCompoundOrEmpty("ExtraAttributes").getStringOr("id", "?")}): $e")
+                    ItemStack.EMPTY
+                }
                 if (stack.isEmpty && !legacy.isEmpty && legacy.getShortOr("id", -1) != 0.toShort()) null else stack
             }
         }
@@ -85,7 +91,9 @@ object LegacyItemDecoder {
         V18_IDS[legacy.getShortOr("id", 0).toInt()]?.let { item.putString("id", "minecraft:$it") }
         val modern = item.remove("components") as? CompoundTag
         val extra = item.getCompoundOrEmpty("tag").getCompoundOrEmpty("ExtraAttributes")
-        val ops = Minecraft.getInstance().connection?.registryAccess()?.createSerializationContext(NbtOps.INSTANCE) ?: NbtOps.INSTANCE
+        val mc: Minecraft? = Minecraft.getInstance() // null in JVM tests
+        val ops = mc?.connection?.registryAccess()?.createSerializationContext(NbtOps.INSTANCE)
+            ?: NbtOps.INSTANCE
         val stack = try {
             val fixed = DataFixers.getDataFixer().update(
                 References.ITEM_STACK,

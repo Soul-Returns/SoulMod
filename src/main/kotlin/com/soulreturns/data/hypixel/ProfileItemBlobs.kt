@@ -22,7 +22,7 @@ val SkyblockProfileMember.armorBlob: String? get() = dataBlob("inventory", "inv_
 /** `inventory.equipment_contents.data`: necklace, cloak, belt, gloves. */
 val SkyblockProfileMember.equipmentBlob: String? get() = dataBlob("inventory", "equipment_contents")
 
-/** `inventory.wardrobe_contents.data`: 36 slots per page, two pages. */
+/** `inventory.wardrobe_contents.data`: 36 slots per page, as many pages as the player has (two or three seen). */
 val SkyblockProfileMember.wardrobeBlob: String? get() = dataBlob("inventory", "wardrobe_contents")
 
 /** `inventory.inv_contents.data`: hotbar first (slots 0..8), then the three inventory rows. */

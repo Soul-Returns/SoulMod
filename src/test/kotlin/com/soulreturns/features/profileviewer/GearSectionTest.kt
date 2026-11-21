@@ -2,6 +2,7 @@ package com.soulreturns.features.profileviewer
 
 import com.soulreturns.data.hypixel.GearText
 import com.soulreturns.data.hypixel.PlayerIdentity
+import com.soulreturns.data.hypixel.SkyblockProfileMember
 import com.soulreturns.data.hypixel.SkyblockProfiles
 import com.soulreturns.data.hypixel.armorBlob
 import com.soulreturns.data.hypixel.backpackBlobs
@@ -21,11 +22,15 @@ import com.soulreturns.features.profileviewer.gui.sections.GearSection
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import net.minecraft.core.component.DataComponents
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
+import net.minecraft.nbt.NbtIo
+import net.minecraft.nbt.StringTag
 import net.minecraft.network.chat.Component
 import net.minecraft.server.Bootstrap
 import net.minecraft.SharedConstants
@@ -34,6 +39,7 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.item.component.CustomData
 import net.minecraft.world.item.component.ItemLore
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.util.Base64
 import java.util.zip.GZIPInputStream
 import kotlin.test.AfterTest
@@ -275,18 +281,18 @@ class GearSectionTest {
         assertTrue(h > 0)
     }
 
-    private fun view(worn: Int?, wardrobeSets: Int): GearSection.View {
+    private fun view(worn: Int?, wardrobeSets: Int, pages: Int = 2): GearSection.View {
         val names = listOf("Helmet", "Chestplate", "Leggings", "Boots")
         val armor = names.map { stack(Items.LEATHER_HELMET, "§6Ancient Necron's $it", "§6§lLEGENDARY DUNGEON ${it.uppercase()}", "ancient") }
         val set = List(4) { armor[it] }
-        val sets = List(18) { if (it < wardrobeSets) set else listOf(null, null, null, null) }
+        val sets = List(pages * 9) { if (it < wardrobeSets) set else listOf(null, null, null, null) }
         val weapons = listOf(
             GearSection.Weapon(stack(Items.IRON_SWORD, "§6Heroic Hyperion", "§6§lLEGENDARY DUNGEON SWORD"), "Hotbar 1"),
             GearSection.Weapon(stack(Items.FISHING_ROD, "§6Rod of the Sea", "§6§lLEGENDARY FISHING ROD"), "Ender Chest 3"),
         )
         return GearSection.View(
             armor, listOf(stack(Items.PAPER, "§5Implosion Belt", "§5§lEPIC BELT"), null, null, null), GearSection.Part(),
-            sets, worn, GearSection.Part(), weapons, GearSection.Part(),
+            GearSection.Wardrobe(sets, worn, slotCount = pages * 36, filled = wardrobeSets * 4), GearSection.Part(), weapons, GearSection.Part(),
         )
     }
 
@@ -309,22 +315,23 @@ class GearSectionTest {
         assertTrue("LEGENDARY DUNGEON SWORD · Hotbar 1" in text, text)
         assertTrue("LEGENDARY FISHING ROD · Ender Chest 3" in text, text)
         assertTrue("3 of 18 sets" in text, text)
-        assertTrue("PAGE 1" in text && "PAGE 2" in text, text)
+        assertTrue("PAGE 1" in text && "PAGE 2" in text && "PAGE 3" !in text, text)
     }
 
     @Test
     fun `an empty wardrobe and no weapons still build`() {
         val v = view(worn = null, wardrobeSets = 0)
-        val empty = GearSection.View(v.armor, v.equipment, v.equipped, v.wardrobe, null, v.wardrobePart, emptyList(), GearSection.Part())
+        val empty = GearSection.View(v.armor, v.equipment, v.equipped, v.wardrobe, v.wardrobePart, emptyList(), GearSection.Part())
         val text = built(empty).first.all()
         assertTrue("0 of 18 sets" in text, text)
+        assertTrue("PAGE 2" in text, text)
         assertTrue("No weapons or tools found" in text, text)
     }
 
     @Test
     fun `unreadable parts say so instead of showing empty slots`() {
         val v = view(worn = 0, wardrobeSets = 3)
-        val broken = GearSection.View(v.armor, v.equipment, GearSection.Part(failed = true), v.wardrobe, v.worn, GearSection.Part(loading = true), v.weapons, v.weaponsPart)
+        val broken = GearSection.View(v.armor, v.equipment, GearSection.Part(failed = true), v.wardrobe, GearSection.Part(loading = true), v.weapons, v.weaponsPart)
         val text = built(broken).first.all()
         assertTrue("could not be read" in text, text)
         assertFalse("Necron's set" in text)
@@ -336,6 +343,20 @@ class GearSectionTest {
         val narrow = built(view(0, 3), 476).second
         assertTrue(narrow > wide, "narrow $narrow wide $wide")
         assertEquals(built(view(0, 3), 969).second, wide)
+    }
+
+    @Test
+    fun `a third page joins the row when it fits and wraps to a second row when it does not`() {
+        assertEquals(3, GearSection.pagesPerRow(969, 3))
+        assertEquals(2, GearSection.pagesPerRow(476, 3))
+        assertEquals(1, GearSection.pagesPerRow(300, 3))
+        assertEquals(2, GearSection.pagesPerRow(969, 2))
+        val wide = built(view(0, 3, pages = 3), 969)
+        val narrow = built(view(0, 3, pages = 3), 476)
+        assertTrue("PAGE 3" in wide.first.all() && "PAGE 3" in narrow.first.all())
+        assertTrue("3 of 27 sets" in wide.first.all(), wide.first.all())
+        assertEquals(built(view(0, 3, pages = 2), 969).second, wide.second)
+        assertTrue(narrow.second > wide.second)
     }
 
     @Test
@@ -352,5 +373,160 @@ class GearSectionTest {
         assertTrue(sets[2][0] === a && sets[2][3] === b)
         assertTrue(sets[17][0] === c)
         assertTrue(sets[0].all { it == null })
+    }
+
+    @Test
+    fun `the set count follows the data's pages and always holds the worn set`() {
+        assertEquals(18, GearText.wardrobeSetCount(0, null))
+        assertEquals(18, GearText.wardrobeSetCount(72, null))
+        assertEquals(27, GearText.wardrobeSetCount(108, null))
+        assertEquals(36, GearText.wardrobeSetCount(144, 12))
+        assertEquals(27, GearText.wardrobeSetCount(72, 20))
+        assertEquals(18, GearText.wardrobeSetCount(72, 17))
+        assertEquals(450, GearText.wardrobeSetCount(0, 1_000_000))
+    }
+
+    // ------------------------------------------------------------------ wardrobe blobs through the real decoder
+
+    /** A 1.8 item: numeric [id] (leather armor 298..301), name and the rarity line Hypixel puts last in the lore. */
+    private fun legacyItem(id: Int, name: String, typeLine: String): CompoundTag = CompoundTag().apply {
+        putShort("id", id.toShort())
+        putByte("Count", 1)
+        putShort("Damage", 0)
+        put("tag", CompoundTag().apply {
+            put("display", CompoundTag().apply {
+                putString("Name", name)
+                put("Lore", ListTag().apply { add(StringTag.valueOf("§7Defense: §a+10")); add(StringTag.valueOf(typeLine)) })
+            })
+            put("ExtraAttributes", CompoundTag().apply { putString("id", "TEST_PIECE") })
+        })
+    }
+
+    private val pieceIds = listOf(298, 299, 300, 301)
+    private val pieceNames = listOf("Helmet", "Chestplate", "Leggings", "Boots")
+
+    /** The four pieces of a test set named [set]; slot of piece [p] in a column is `page * 36 + row(p) * 9 + column`. */
+    private fun piece(set: String, p: Int) = legacyItem(pieceIds[p], "§6$set ${pieceNames[p]}", "§6§lLEGENDARY ${pieceNames[p].uppercase()}")
+
+    /** A Hypixel blob of [count] slots, empty except [filled]. */
+    private fun blob(count: Int, filled: Map<Int, CompoundTag>): String {
+        val list = ListTag()
+        repeat(count) { list.add(filled[it] ?: CompoundTag()) }
+        val out = ByteArrayOutputStream()
+        NbtIo.writeCompressed(CompoundTag().apply { put("i", list) }, out)
+        return Base64.getEncoder().encodeToString(out.toByteArray())
+    }
+
+    /** The sam fixture's member with its wardrobe replaced (null = key absent); every other blob stays. */
+    private fun contextWith(wardrobe: String?, worn: Long? = null): ProfileContext {
+        val base = SpvGearFixtures.context("sam", "gear-sam")
+        val raw = base.member.raw
+        val inv = raw["inventory"] as JsonObject
+        val kept = inv.filterKeys { it != "wardrobe_contents" && it != "wardrobe_equipped_slot" }
+        val patched = buildMap {
+            putAll(kept)
+            if (wardrobe != null) put("wardrobe_contents", JsonObject(mapOf("type" to JsonPrimitive(0), "data" to JsonPrimitive(wardrobe))))
+            if (worn != null) put("wardrobe_equipped_slot", JsonPrimitive(worn))
+        }
+        val member = SkyblockProfileMember(JsonObject(raw + ("inventory" to JsonObject(patched))))
+        return ProfileContext(base.identity, base.profiles, base.profile, member, false, null, true, null, 1_800_000_000_000L, {}, {})
+    }
+
+    private fun <T> synchronously(block: () -> T): T {
+        SectionBuildTest.bindItemComponents
+        val before = ProfileItems.synchronous
+        ProfileItems.synchronous = true
+        try {
+            return block()
+        } finally {
+            ProfileItems.synchronous = before
+        }
+    }
+
+    private fun names(set: List<ItemStack?>) = set.map { it?.let { s -> GearSection.plainName(s) } }
+
+    @Test
+    fun `a 108-slot wardrobe gives 27 sets with their pieces in the right set, helmet first`() = synchronously {
+        val filled = HashMap<Int, CompoundTag>()
+        // set 22 (page 3, column 4), stored boots-first in the rows to prove the type line orders them
+        for (row in 0..3) filled[72 + row * 9 + 3] = piece("Third", 3 - row)
+        // set 2 (page 1, column 2) in the normal order, and set 13 (page 2, column 4) helmet only
+        for (row in 0..3) filled[row * 9 + 1] = piece("First", row)
+        filled[36 + 3] = piece("Second", 0)
+        val ctx = contextWith(blob(108, filled), worn = 13)
+        val v = GearSection.view(ctx)
+        assertTrue(v.wardrobePart.ready)
+        assertEquals(27, v.wardrobe.sets.size)
+        assertEquals(3, v.wardrobe.pages)
+        assertEquals(12, v.wardrobe.worn)
+        assertEquals(3, v.wardrobe.setsWithPieces)
+        assertEquals(9, v.wardrobe.filled)
+        assertEquals(0, v.wardrobe.unreadable)
+        assertEquals(listOf("§6First Helmet", "§6First Chestplate", "§6First Leggings", "§6First Boots"), names(v.wardrobe.sets[1]).map { it!! })
+        assertEquals(listOf("§6Second Helmet", null, null, null), names(v.wardrobe.sets[12]))
+        assertEquals(listOf("§6Third Helmet", "§6Third Chestplate", "§6Third Leggings", "§6Third Boots"), names(v.wardrobe.sets[21]).map { it!! })
+        assertTrue(v.wardrobe.sets[0].all { it == null } && v.wardrobe.sets[26].all { it == null })
+        val text = built(v).first.all()
+        assertTrue("3 of 27 sets" in text && "PAGE 3" in text, text)
+    }
+
+    @Test
+    fun `a 72-slot wardrobe gives 18 sets`() = synchronously {
+        val filled = mapOf(0 to piece("Only", 0), 9 to piece("Only", 1), 36 + 8 to piece("Last", 0))
+        val v = GearSection.view(contextWith(blob(72, filled)))
+        assertEquals(18, v.wardrobe.sets.size)
+        assertEquals(2, v.wardrobe.setsWithPieces)
+        assertNull(v.wardrobe.worn)
+        val text = built(v).first.all()
+        assertTrue("2 of 18 sets" in text && "PAGE 2" in text && "PAGE 3" !in text, text)
+    }
+
+    @Test
+    fun `a worn set past the blob's pages is still drawn`() = synchronously {
+        val v = GearSection.view(contextWith(blob(72, emptyMap()), worn = 21))
+        assertEquals(27, v.wardrobe.sets.size)
+        assertEquals(20, v.wardrobe.worn)
+    }
+
+    @Test
+    fun `no wardrobe blob with the Inventory API on is not an empty wardrobe`() = synchronously {
+        val ctx = contextWith(null, worn = 13)
+        assertFalse(ctx.member.apiAccessDisabled)
+        val v = GearSection.view(ctx)
+        assertFalse(v.wardrobe.present)
+        assertTrue(v.wardrobe.noData)
+        assertNull(v.wardrobe.worn)
+        val text = built(v).first.all()
+        assertTrue("No wardrobe data" in text && "did not send a wardrobe" in text, text)
+        assertFalse("of 18 sets" in text || "PAGE 1" in text, text)
+    }
+
+    @Test
+    fun `a blob without slots says so`() = synchronously {
+        val v = GearSection.view(contextWith(blob(0, emptyMap())))
+        assertTrue(v.wardrobe.present && v.wardrobe.noData)
+        val text = built(v).first.all()
+        assertTrue("holds no slots" in text && "PAGE 1" !in text, text)
+    }
+
+    @Test
+    fun `a wardrobe whose occupied slots cannot be decoded says so instead of drawing empty frames`() = synchronously {
+        val bad = legacyItem(9999, "Unknown", "§6§lLEGENDARY HELMET")
+        val filled = mapOf(0 to bad, 9 to piece("Good", 1), 36 + 1 to bad)
+        val v = GearSection.view(contextWith(blob(72, filled)))
+        assertEquals(72, v.wardrobe.slotCount)
+        assertEquals(1, v.wardrobe.filled)
+        assertEquals(2, v.wardrobe.unreadable)
+        val text = built(v).first.all()
+        assertTrue("1 of 18 sets" in text && "2 wardrobe items could not be read." in text, text)
+    }
+
+    @Test
+    fun `a genuinely empty wardrobe is shown as empty slots`() = synchronously {
+        val v = GearSection.view(contextWith(blob(108, emptyMap()), worn = 2))
+        assertEquals(27, v.wardrobe.sets.size)
+        assertEquals(0, v.wardrobe.unreadable)
+        val text = built(v).first.all()
+        assertTrue("0 of 27 sets" in text && "could not be read" !in text, text)
     }
 }
