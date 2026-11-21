@@ -16,6 +16,10 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.2-beta.6" to
+                listOf(
+                    ReleaseNote("Friends & Contests: add Soul friends and run contests with them, starting with Crystal Nucleus profit", listOf("f:contests")),
+                ),
             "0.3.2-beta.5" to
                 listOf(
                     ReleaseNote("Profile Viewer rebuilt: 17 sections, player model, market value and the HOTM tree; opens with /sp", listOf("s:profile")),
