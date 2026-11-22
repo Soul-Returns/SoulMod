@@ -39,13 +39,13 @@ object GearText {
     private const val WARDROBE_MAX_PAGES = 50
 
     /**
-     * How many sets to show: the blob's pages (36 slots each, at least two), extended so the [worn] set
-     * (0-based) is always inside, times nine.
+     * How many sets to show: the pages the data needs (36 slots each, `4 × highest set id` for the Loadouts sets),
+     * at least [minPages], extended so the [worn] set (0-based) is always inside, times nine.
      */
-    fun wardrobeSetCount(slotCount: Int, worn: Int?): Int {
+    fun wardrobeSetCount(slotCount: Int, worn: Int?, minPages: Int = WARDROBE_MIN_PAGES): Int {
         val ofData = (slotCount + WARDROBE_PAGE - 1) / WARDROBE_PAGE
         val ofWorn = if (worn == null) 0 else worn / WARDROBE_COLUMNS + 1
-        return maxOf(WARDROBE_MIN_PAGES, ofData, ofWorn).coerceAtMost(WARDROBE_MAX_PAGES) * WARDROBE_COLUMNS
+        return maxOf(minPages, ofData, ofWorn).coerceAtMost(WARDROBE_MAX_PAGES) * WARDROBE_COLUMNS
     }
 
     private val OBFUSCATED = Regex("§k.")

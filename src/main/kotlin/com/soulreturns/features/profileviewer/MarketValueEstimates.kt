@@ -4,10 +4,12 @@ import com.soulreturns.data.hypixel.SkyblockProfile
 import com.soulreturns.data.hypixel.SkyblockProfileMember
 import com.soulreturns.data.hypixel.accessoryBagBlob
 import com.soulreturns.data.hypixel.armorBlob
+import com.soulreturns.data.hypixel.armorSets
 import com.soulreturns.data.hypixel.backpackBlobs
 import com.soulreturns.data.hypixel.bankBalance
 import com.soulreturns.data.hypixel.enderChestBlob
 import com.soulreturns.data.hypixel.equipmentBlob
+import com.soulreturns.data.hypixel.equipmentSets
 import com.soulreturns.data.hypixel.essenceAmounts
 import com.soulreturns.data.hypixel.fishingBagBlob
 import com.soulreturns.data.hypixel.inventoryBlob
@@ -28,6 +30,8 @@ import com.soulreturns.features.profileviewer.gui.sections.PetsSection
 import com.soulreturns.platform.concurrent.SoulScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
+import net.minecraft.core.component.DataComponents
+import net.minecraft.world.item.ItemStack
 
 /**
  * [MarketValue] for the profile on screen, computed off the render path and cached per viewed profile
@@ -56,8 +60,7 @@ object MarketValueEstimates {
         if (cached != null && cached.prices === prices) return State(cached.estimate)
         val busy = running
         if (busy == null || busy.first !== member.raw || busy.second !== prices) {
-            val groups = blobGroups(member)
-            val decoded = groups?.map { (label, blobs) -> label to blobs.map(ProfileItems::get) }
+            val decoded = decodedGroups(member)
             if (decoded == null || decoded.none { (_, blobs) -> blobs.any { it.loading } }) {
                 running = member.raw to prices
                 SoulScope.io.launch {
@@ -70,27 +73,37 @@ object MarketValueEstimates {
         return cached?.let { State(it.estimate) } ?: LOADING
     }
 
-    /** The member's item blobs in breakdown order, null when the Inventory API is off. */
-    private fun blobGroups(m: SkyblockProfileMember): List<Pair<String, List<String>>>? {
+    /** The member's decoded item groups in breakdown order, null when the Inventory API is off. */
+    private fun decodedGroups(m: SkyblockProfileMember): List<Pair<String, List<ProfileItems.Blob>>>? {
         if (m.apiAccessDisabled) return null
         val backpacks = m.backpackBlobs
+        fun blobs(vararg data: String?) = data.filterNotNull().map(ProfileItems::get)
+        // The wardrobe's items: the old blob and/or the Loadouts armor and equipment sets (one-item blobs, decoded
+        // together under the same keys the Gear section uses, so they decode once). The worn set's own entry is empty.
+        val loadoutSets = listOfNotNull(
+            m.armorSets?.let { sets -> ProfileItems.getPieces(m.raw, "armor") { sets.blobs } },
+            m.equipmentSets?.let { sets -> ProfileItems.getPieces(m.raw, "equipment") { sets.blobs } },
+        )
         return listOf(
-            "Armor and equipment" to listOfNotNull(m.armorBlob, m.equipmentBlob),
-            "Inventory" to listOfNotNull(m.inventoryBlob),
-            "Ender Chest" to listOfNotNull(m.enderChestBlob),
-            "Backpacks" to backpacks.map { it.data } + backpacks.mapNotNull { it.iconBlob },
-            "Wardrobe" to listOfNotNull(m.wardrobeBlob),
-            "Accessories" to listOfNotNull(m.accessoryBagBlob),
-            "Bags" to listOfNotNull(m.potionBagBlob, m.fishingBagBlob, m.quiverBlob, m.sacksBagBlob),
-            "Personal Vault" to listOfNotNull(m.personalVaultBlob),
+            "Armor and equipment" to blobs(m.armorBlob, m.equipmentBlob),
+            "Inventory" to blobs(m.inventoryBlob),
+            "Ender Chest" to blobs(m.enderChestBlob),
+            "Backpacks" to blobs(*(backpacks.map { it.data } + backpacks.mapNotNull { it.iconBlob }).toTypedArray()),
+            "Wardrobe" to blobs(m.wardrobeBlob) + loadoutSets,
+            "Accessories" to blobs(m.accessoryBagBlob),
+            "Bags" to blobs(m.potionBagBlob, m.fishingBagBlob, m.quiverBlob, m.sacksBagBlob),
+            "Personal Vault" to blobs(m.personalVaultBlob),
         )
     }
+
+    private fun uuidOf(stack: ItemStack): String? =
+        stack.get(DataComponents.CUSTOM_DATA)?.copyTag()?.getStringOr("uuid", "")?.takeIf { it.isNotEmpty() }
 
     private fun inputs(profile: SkyblockProfile, m: SkyblockProfileMember, decoded: List<Pair<String, List<ProfileItems.Blob>>>?): MarketValue.Inputs {
         val hidden = ArrayList<String>()
         val groups = decoded?.map { (label, blobs) ->
             if (blobs.any { it.failed }) hidden += "$label: unreadable"
-            val stacks = blobs.flatMap { it.stacks }.mapNotNull { s -> s?.takeUnless { it.isEmpty }?.let { MarketValue.Stack(MarketItemKey.of(it), it.count) } }
+            val stacks = blobs.flatMap { it.stacks }.mapNotNull { s -> s?.takeUnless { it.isEmpty }?.let { MarketValue.Stack(MarketItemKey.of(it), it.count, uuidOf(it)) } }
             MarketValue.Group(label, stacks)
         }
         if (groups != null && m.personalVaultBlob == null) hidden += "Personal Vault: API off"

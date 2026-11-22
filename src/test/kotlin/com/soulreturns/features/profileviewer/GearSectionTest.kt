@@ -20,6 +20,11 @@ import com.soulreturns.features.profileviewer.gui.kit.Ui
 import com.soulreturns.features.profileviewer.gui.kit.ViewState
 import com.soulreturns.features.profileviewer.gui.sections.GearSection
 import kotlinx.serialization.json.Json
+import com.soulreturns.util.MessageDetector
+import com.soulreturns.data.hypixel.armorSets
+import com.soulreturns.data.hypixel.equipmentSets
+import com.soulreturns.data.hypixel.loadouts
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -389,7 +394,7 @@ class GearSectionTest {
     // ------------------------------------------------------------------ wardrobe blobs through the real decoder
 
     /** A 1.8 item: numeric [id] (leather armor 298..301), name and the rarity line Hypixel puts last in the lore. */
-    private fun legacyItem(id: Int, name: String, typeLine: String): CompoundTag = CompoundTag().apply {
+    private fun legacyItem(id: Int, name: String, typeLine: String, uuid: String? = null): CompoundTag = CompoundTag().apply {
         putShort("id", id.toShort())
         putByte("Count", 1)
         putShort("Damage", 0)
@@ -398,7 +403,7 @@ class GearSectionTest {
                 putString("Name", name)
                 put("Lore", ListTag().apply { add(StringTag.valueOf("§7Defense: §a+10")); add(StringTag.valueOf(typeLine)) })
             })
-            put("ExtraAttributes", CompoundTag().apply { putString("id", "TEST_PIECE") })
+            put("ExtraAttributes", CompoundTag().apply { putString("id", "TEST_PIECE"); if (uuid != null) putString("uuid", uuid) })
         })
     }
 
@@ -418,7 +423,7 @@ class GearSectionTest {
     }
 
     /** The sam fixture's member with its wardrobe replaced (null = key absent); every other blob stays. */
-    private fun contextWith(wardrobe: String?, worn: Long? = null): ProfileContext {
+    private fun contextWith(wardrobe: String?, worn: Long? = null, loadout: JsonObject? = null): ProfileContext {
         val base = SpvGearFixtures.context("sam", "gear-sam")
         val raw = base.member.raw
         val inv = raw["inventory"] as JsonObject
@@ -428,7 +433,7 @@ class GearSectionTest {
             if (wardrobe != null) put("wardrobe_contents", JsonObject(mapOf("type" to JsonPrimitive(0), "data" to JsonPrimitive(wardrobe))))
             if (worn != null) put("wardrobe_equipped_slot", JsonPrimitive(worn))
         }
-        val member = SkyblockProfileMember(JsonObject(raw + ("inventory" to JsonObject(patched))))
+        val member = SkyblockProfileMember(JsonObject(raw + ("inventory" to JsonObject(patched)) + (if (loadout != null) mapOf("loadout" to loadout) else emptyMap())))
         return ProfileContext(base.identity, base.profiles, base.profile, member, false, null, true, null, 1_800_000_000_000L, {}, {})
     }
 
@@ -528,5 +533,220 @@ class GearSectionTest {
         assertEquals(0, v.wardrobe.unreadable)
         val text = built(v).first.all()
         assertTrue("0 of 27 sets" in text && "could not be read" !in text, text)
+    }
+
+    // ------------------------------------------------------------------ Loadouts (loadout.armor / equipment / loadouts)
+
+    private fun obj(vararg e: Pair<String, JsonElement>) = JsonObject(mapOf(*e))
+
+    /** A set piece as Hypixel sends it: `{type: 0, data: <one-item blob>}`. */
+    private fun pieceJson(item: CompoundTag) = obj("type" to JsonPrimitive(0), "data" to JsonPrimitive(blob(1, mapOf(0 to item))))
+
+    private fun lset(id: Int, vararg pieces: Pair<String, CompoundTag>) =
+        obj("id" to JsonPrimitive(id), *pieces.map { (key, item) -> key to pieceJson(item) }.toTypedArray())
+
+    /** `loadout.armor` or `loadout.equipment`: sets keyed by id (in the order given) plus `equipped_set`. */
+    private fun setsJson(equipped: Int?, vararg sets: JsonObject): JsonObject = JsonObject(
+        buildMap {
+            for (s in sets) put(s["id"]!!.jsonPrimitive.content, s)
+            if (equipped != null) put("equipped_set", JsonPrimitive(equipped))
+        },
+    )
+
+    private fun loadoutJson(id: Int, armorSet: Int?, equipmentSet: Int?) = obj(
+        "id" to JsonPrimitive(id), "name" to JsonPrimitive("Loadout $id"),
+        *listOfNotNull(armorSet?.let { "armor_set_id" to JsonPrimitive(it) }, equipmentSet?.let { "equipment_set_id" to JsonPrimitive(it) }).toTypedArray(),
+    )
+
+    private fun loadoutOf(armor: JsonObject? = null, equipment: JsonObject? = null, loadouts: JsonObject? = null) = JsonObject(
+        buildMap {
+            if (armor != null) put("armor", armor)
+            if (equipment != null) put("equipment", equipment)
+            if (loadouts != null) put("loadouts", loadouts)
+        },
+    )
+
+    private fun plain(s: ItemStack?) = s?.let { MessageDetector.stripColorCodes(GearSection.plainName(it)) }
+
+    @Test
+    fun `loadout armor sets fill their columns by id with pieces in the right rows, sparse ids and the worn set`() = synchronously {
+        val armor = setsJson(
+            12,
+            // keys in scrambled order; the helmet key holds an item whose type line says BOOTS: the key decides the row
+            lset(1, "BOOTS" to piece("One", 3), "HELMET" to legacyItem(298, "§6One Helmet", "§6§lLEGENDARY BOOTS"), "LEGGINGS" to piece("One", 2), "CHESTPLATE" to piece("One", 1)),
+            lset(3, "CHESTPLATE" to piece("Three", 1)),
+            lset(5),
+            lset(12),
+        )
+        val v = GearSection.view(contextWith(null, worn = 7, loadout = loadoutOf(armor)))
+        assertTrue(v.wardrobePart.ready)
+        assertEquals("loadout", v.wardrobe.source)
+        assertEquals(18, v.wardrobe.sets.size)
+        assertEquals(11, v.wardrobe.worn) // equipped_set 12, not wardrobe_equipped_slot 7
+        assertEquals(2, v.wardrobe.setsWithPieces)
+        assertEquals(5, v.wardrobe.filled)
+        assertEquals(0, v.wardrobe.unreadable)
+        assertEquals(listOf("One Helmet", "One Chestplate", "One Leggings", "One Boots"), v.wardrobe.sets[0].map { plain(it) })
+        assertEquals(listOf(null, "Three Chestplate", null, null), v.wardrobe.sets[2].map { plain(it) })
+        for (empty in listOf(1, 3, 4, 5, 11, 17)) assertTrue(v.wardrobe.sets[empty].all { it == null }, "column $empty")
+        val text = built(v).first.all()
+        assertTrue("2 of 18 sets" in text && "PAGE 2" in text && "PAGE 3" !in text, text)
+    }
+
+    @Test
+    fun `the set count is the highest id rounded up to a page, never below two pages, and holds the worn set`() = synchronously {
+        fun count(highest: Int, worn: Int? = null): Int {
+            val v = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(worn, lset(1, "HELMET" to piece("A", 0)), lset(highest)))))
+            return v.wardrobe.sets.size
+        }
+        assertEquals(18, count(9))
+        assertEquals(18, count(18))
+        assertEquals(27, count(19))
+        assertEquals(27, count(20))
+        assertEquals(36, count(28))
+        assertEquals(27, count(5, worn = 22))
+        val v = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(null, lset(20, "HELMET" to piece("Last", 0))))))
+        assertEquals("Last Helmet", plain(v.wardrobe.sets[19][0]))
+        assertTrue("1 of 27 sets" in built(v).first.all(), built(v).first.all())
+    }
+
+    @Test
+    fun `equipment sets are a second card of four-slot columns with their own worn set`() = synchronously {
+        val equipment = setsJson(
+            2,
+            lset(1, "EQUIPMENT_SLOT_4" to piece("Gloves", 0), "EQUIPMENT_SLOT_1" to piece("Necklace", 1)),
+            lset(2),
+            lset(4, "EQUIPMENT_SLOT_2" to piece("Cloak", 2)),
+        )
+        val v = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(1, lset(1)), equipment)))
+        val es = v.equipmentSets!!
+        assertEquals(9, es.sets.size) // one page: highest id 4 rounded up
+        assertEquals(1, es.worn)
+        assertEquals(listOf("Necklace Chestplate", null, null, "Gloves Helmet"), es.sets[0].map { plain(it) })
+        assertEquals(listOf(null, "Cloak Leggings", null, null), es.sets[3].map { plain(it) })
+        assertEquals(2, es.setsWithPieces)
+        val text = built(v).first.all()
+        assertTrue("Equipment sets" in text && "2 of 9 sets" in text, text)
+        assertEquals(2, Regex("PAGE 1").findAll(text).count(), text) // wardrobe's and equipment's first page
+        assertFalse("PAGE 3" in text, text)
+    }
+
+    @Test
+    fun `a member with armor sets only has no equipment sets card`() = synchronously {
+        val v = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(1, lset(1, "HELMET" to piece("A", 0))))))
+        assertNull(v.equipmentSets)
+        assertFalse("Equipment sets" in built(v).first.all())
+    }
+
+    @Test
+    fun `the worn set follows equipped_set, and the selected loadout in wardrobe_equipped_slot never moves it`() = synchronously {
+        val armor = setsJson(9, lset(1, "HELMET" to piece("A", 0)), lset(9))
+        val withLoadouts = loadoutOf(armor, loadouts = obj("13" to loadoutJson(13, 9, 8)))
+        assertEquals(8, GearSection.view(contextWith(null, worn = 13, loadout = withLoadouts)).wardrobe.worn)
+        // sets migrated without equipped_set: the old meaning of wardrobe_equipped_slot (the worn set, 1-based) ...
+        val migrated = loadoutOf(setsJson(null, lset(1, "HELMET" to piece("A", 0)), lset(13)))
+        assertEquals(13, GearSection.view(contextWith(null, worn = 14, loadout = migrated)).wardrobe.worn)
+        // ... but with loadouts present that number is a loadout id, so nothing is outlined
+        val unknown = loadoutOf(setsJson(null, lset(1, "HELMET" to piece("A", 0))), loadouts = obj("1" to loadoutJson(1, 1, null)))
+        assertNull(GearSection.view(contextWith(null, worn = 14, loadout = unknown)).wardrobe.worn)
+    }
+
+    @Test
+    fun `set columns list the loadouts that use them`() = synchronously {
+        val armor = setsJson(2, lset(1, "HELMET" to piece("A", 0)), lset(2))
+        val loadouts = obj("3" to loadoutJson(3, 1, 2), "5" to loadoutJson(5, 1, null), "7" to loadoutJson(7, null, null), "9" to loadoutJson(9, 2, 1))
+        val equipment = setsJson(1, lset(1), lset(2, "EQUIPMENT_SLOT_1" to piece("E", 0)))
+        val v = GearSection.view(contextWith(null, loadout = loadoutOf(armor, equipment, loadouts)))
+        assertEquals(listOf("Loadout 3", "Loadout 5"), v.wardrobe.usedBy[0])
+        assertEquals(listOf("Loadout 9"), v.wardrobe.usedBy[1])
+        assertNull(v.wardrobe.usedBy[2])
+        assertEquals(listOf("Loadout 9"), v.equipmentSets!!.usedBy[0])
+        assertEquals(listOf("Loadout 3"), v.equipmentSets.usedBy[1])
+        assertEquals(listOf("Equipped right now", "Used by: Loadout 3, Loadout 5"), GearSection.setTooltip(true, v.wardrobe.usedBy[0]))
+        assertEquals(listOf("Used by: Loadout 9"), GearSection.setTooltip(false, v.wardrobe.usedBy[1]))
+        assertTrue(GearSection.setTooltip(false, null).isEmpty())
+    }
+
+    @Test
+    fun `an old wardrobe blob is the fallback, and loadout sets win when both exist`() = synchronously {
+        val oldBlob = blob(72, mapOf(0 to piece("Old", 0)))
+        val old = GearSection.view(contextWith(oldBlob, worn = 3))
+        assertEquals("blob", old.wardrobe.source)
+        assertEquals("Old Helmet", plain(old.wardrobe.sets[0][0]))
+        assertEquals(2, old.wardrobe.worn)
+        // loadout.armor present but without a single set: the blob is still used
+        val emptySets = GearSection.view(contextWith(oldBlob, loadout = loadoutOf(setsJson(null))))
+        assertEquals("blob", emptySets.wardrobe.source)
+        assertEquals("Old Helmet", plain(emptySets.wardrobe.sets[0][0]))
+        val both = GearSection.view(contextWith(oldBlob, loadout = loadoutOf(setsJson(null, lset(1, "HELMET" to piece("New", 0))))))
+        assertEquals("loadout", both.wardrobe.source)
+        assertEquals("New Helmet", plain(both.wardrobe.sets[0][0]))
+    }
+
+    @Test
+    fun `neither loadout sets nor a blob is the notice, and an empty loadout object says it holds no sets`() = synchronously {
+        val none = GearSection.view(contextWith(null, worn = 13))
+        assertFalse(none.wardrobe.present)
+        val text = built(none).first.all()
+        assertTrue("No wardrobe data" in text && "did not send a wardrobe" in text && "PAGE 1" !in text, text)
+        val hollow = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(null))))
+        assertTrue(hollow.wardrobe.noData && hollow.wardrobe.present)
+        assertTrue("holds no sets" in built(hollow).first.all())
+    }
+
+    @Test
+    fun `an undecodable loadout piece is counted and said, never a lost set`() = synchronously {
+        val bad = legacyItem(9999, "Unknown", "§6§lLEGENDARY HELMET")
+        val v = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(null, lset(1, "HELMET" to bad, "BOOTS" to piece("Ok", 3))))))
+        assertEquals(1, v.wardrobe.unreadable)
+        assertEquals(1, v.wardrobe.filled)
+        assertEquals("Ok Boots", plain(v.wardrobe.sets[0][3]))
+        assertTrue("1 wardrobe item could not be read." in built(v).first.all())
+    }
+
+    @Test
+    fun `the loadout readers skip what they cannot read and ignore unknown keys`() {
+        val raw = obj(
+            "loadout" to obj(
+                "armor" to obj(
+                    "1" to JsonPrimitive(5), // not an object
+                    "abc" to lset(99, "HELMET" to piece("X", 0)), // not a numeric key
+                    "2" to obj("id" to JsonPrimitive(2), "HELMET" to obj("data" to JsonPrimitive("")), "BOOTS" to JsonPrimitive("x"), "NEW_KEY" to JsonPrimitive(1)),
+                    "7" to lset(7, "LEGGINGS" to piece("Y", 2)),
+                    "equipped_set" to JsonPrimitive(7.0),
+                ),
+                "equipment" to obj("equipped_set" to JsonPrimitive(-1)),
+                "loadouts" to obj("4" to obj("name" to JsonPrimitive("Mine"), "armor_set_id" to JsonPrimitive(7)), "x" to JsonPrimitive(1), "6" to JsonPrimitive(2)),
+                "future" to obj("a" to JsonPrimitive(1)),
+            ),
+        )
+        val m = SkyblockProfileMember(raw)
+        val armor = m.armorSets!!
+        assertEquals(listOf(2, 7), armor.sets.map { it.id })
+        assertEquals(7, armor.equippedId)
+        assertEquals(7, armor.highestId)
+        assertEquals(1, armor.blobs.size) // blank data and a non-object piece are empty slots
+        assertEquals(listOf(null, null, null, null), armor.sets[0].pieces)
+        assertEquals(listOf(null, null, armor.sets[1].pieces[2], null), armor.sets[1].pieces)
+        assertNotNull(armor.sets[1].pieces[2])
+        val equipment = m.equipmentSets!!
+        assertTrue(equipment.sets.isEmpty())
+        assertNull(equipment.equippedId)
+        assertEquals(listOf(4), m.loadouts.map { it.id })
+        assertEquals("Mine", m.loadouts[0].name)
+        assertEquals(7, m.loadouts[0].armorSetId)
+        assertNull(m.loadouts[0].equipmentSetId)
+        assertNull(SkyblockProfileMember(JsonObject(emptyMap())).armorSets)
+        assertTrue(SkyblockProfileMember(JsonObject(emptyMap())).loadouts.isEmpty())
+    }
+
+    @Test
+    fun `loadout pieces decode together, in set and row order, each item once`() = synchronously {
+        val armor = setsJson(null, lset(2, "BOOTS" to piece("B", 3), "HELMET" to piece("B", 0)), lset(1, "CHESTPLATE" to piece("A", 1)))
+        val m = contextWith(null, loadout = loadoutOf(armor)).member
+        val sets = m.armorSets!!
+        val blob = ProfileItems.getPieces(m.raw, "armor") { sets.blobs }
+        assertEquals(listOf("A Chestplate", "B Helmet", "B Boots"), blob.stacks.map { plain(it) })
+        assertTrue(ProfileItems.getPieces(m.raw, "armor") { error("memoized") } === blob)
     }
 }

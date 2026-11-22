@@ -66,4 +66,18 @@ class MarketValueTest {
         assertEquals(listOf(MarketValue.ITEMS_HIDDEN, "Bank: Banking API off"), e.hidden)
         assertEquals(setOf("Purse", "Bank", "Pets", "Sacks", "Essence"), e.parts.map { it.label }.toSet())
     }
+
+    @Test
+    fun `an item with a uuid is counted once however many containers list it`() {
+        val items = listOf(
+            MarketValue.Group("Armor and equipment", listOf(MarketValue.Stack("HYPERION", 1, "uuid-worn"))),
+            // a loadout set listing the worn piece again, one other physical copy, and a stack without a uuid
+            MarketValue.Group("Wardrobe", listOf(MarketValue.Stack("HYPERION", 1, "uuid-worn"), MarketValue.Stack("HYPERION", 1, "uuid-other"), MarketValue.Stack("ENCHANTED_DIAMOND", 2))),
+            MarketValue.Group("Inventory", listOf(MarketValue.Stack("HYPERION", 1, "uuid-other"), MarketValue.Stack("ENCHANTED_DIAMOND", 2))),
+        )
+        val parts = estimate(inputs(items)).parts.associate { it.label to it.coins }
+        assertEquals(900_000_000.0, parts["Armor and equipment"])
+        assertEquals(900_002_000.0, parts["Wardrobe"]) // the worn piece is not counted again; the other copy and the diamonds are
+        assertEquals(2_000.0, parts["Inventory"]) // uuid-other was already counted in the wardrobe; diamonds have no uuid
+    }
 }

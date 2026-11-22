@@ -7,8 +7,12 @@ package com.soulreturns.features.profileviewer
  * total and breakdown out, so it is tested without prices or decoded items.
  */
 object MarketValue {
-    /** One stack: its market key (null = the stack has none) and its count. */
-    class Stack(val key: String?, val count: Int)
+    /**
+     * One stack: its market key (null = the stack has none), its count and the item's `ExtraAttributes.uuid` when
+     * it has one. A uuid is one physical item, counted once however many containers list it (a worn set shown
+     * both on the body and in a loadout set).
+     */
+    class Stack(val key: String?, val count: Int, val uuid: String? = null)
 
     /** A group of items under one breakdown label ("Inventory", "Ender Chest"). */
     class Group(val label: String, val stacks: List<Stack>)
@@ -58,8 +62,9 @@ object MarketValue {
         }
         inputs.purse?.let { parts += Part("Purse", it) }
         inputs.bank?.let { parts += Part("Bank", it) }
+        val seen = HashSet<String>()
         for (group in inputs.items.orEmpty()) {
-            parts += Part(group.label, group.stacks.sumOf { priced(it.key, it.count.toLong()) })
+            parts += Part(group.label, group.stacks.sumOf { if (it.uuid != null && !seen.add(it.uuid)) 0.0 else priced(it.key, it.count.toLong()) })
         }
         parts += Part("Pets", inputs.pets.sumOf { priced(it, 1) })
         parts += Part("Sacks", inputs.sacks.entries.sumOf { (id, n) -> priced(id, n) })

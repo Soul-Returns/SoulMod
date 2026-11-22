@@ -1,6 +1,12 @@
 package com.soulreturns.features.profileviewer.gui.sections
 
 import com.soulreturns.data.hypixel.GearText
+import com.soulreturns.data.hypixel.Loadout
+import com.soulreturns.data.hypixel.LoadoutSets
+import com.soulreturns.data.hypixel.armorSets
+import com.soulreturns.data.hypixel.equipmentSets
+import com.soulreturns.data.hypixel.hasLoadouts
+import com.soulreturns.data.hypixel.loadouts
 import com.soulreturns.data.hypixel.armorBlob
 import com.soulreturns.data.hypixel.backpackBlobs
 import com.soulreturns.data.hypixel.enderChestBlob
@@ -59,12 +65,12 @@ object GearSection : ProfileSection {
     }
 
     /**
-     * The wardrobe card's data. [present] is whether Hypixel's data has a wardrobe blob at all (it can be missing
-     * with the Inventory API on), [slotCount]/[filled]/[unreadable] what the blob held: slots, occupied slots
-     * that decoded, occupied slots that could not be decoded.
+     * One card of sets (the wardrobe's armor sets, or the equipment sets). [present] is whether Hypixel's data
+     * has any source for it (it can have neither with the Inventory API on); [slotCount]/[filled]/[unreadable]
+     * what the source held: slots, occupied slots that decoded, occupied slots that could not be decoded.
      */
     internal class Wardrobe(
-        /** Four pieces per set, helmet first; nine sets per page, as many pages as the data has. */
+        /** Four pieces per set, helmet first; nine sets per page, as many pages as the data has; column n is set n + 1. */
         val sets: List<List<ItemStack?>> = emptyList(),
         /** 0-based worn set, always inside [sets] when set. */
         val worn: Int? = null,
@@ -72,12 +78,17 @@ object GearSection : ProfileSection {
         val slotCount: Int = 0,
         val filled: Int = 0,
         val unreadable: Int = 0,
-        val blobChars: Int = 0,
+        /** Where the sets came from: `loadout` (`loadout.armor`) or `blob` (the old `wardrobe_contents`), for the log and the notice. */
+        val source: String = "blob",
+        /** What the source looked like, for the log (`blob 1234 chars, 72 slots`). */
+        val detail: String = "",
+        /** 0-based column to the names of the loadouts that use that set. */
+        val usedBy: Map<Int, List<String>> = emptyMap(),
     ) {
         val pages: Int get() = sets.size / GearText.WARDROBE_COLUMNS
         val setsWithPieces: Int get() = sets.count { set -> set.any { it != null } }
 
-        /** No wardrobe to draw: no blob, or a blob without a single slot. */
+        /** Nothing to draw: no source at all, or a source without a single slot or set. */
         val noData: Boolean get() = !present || slotCount == 0
     }
 
@@ -91,6 +102,9 @@ object GearSection : ProfileSection {
         val wardrobePart: Part,
         val weapons: List<Weapon>,
         val weaponsPart: Part,
+        /** The equipment sets (`loadout.equipment`); null when the member has none, which hides their card. */
+        val equipmentSets: Wardrobe? = null,
+        val equipmentSetsPart: Part = Part(),
     )
 
     private class Found(val list: List<Weapon>, val loading: Boolean, val failed: Boolean)
@@ -161,7 +175,7 @@ object GearSection : ProfileSection {
     /** The last wardrobe line logged, so a frame that changes nothing logs nothing. */
     @Volatile private var lastLogged: String? = null
 
-    /** What an API element is, for the log when the wardrobe blob is not where it should be. */
+    /** What an API element is, for the log when the wardrobe is not where it should be. */
     private fun shape(e: kotlinx.serialization.json.JsonElement?): String = when {
         e == null -> "missing"
         e is JsonObject -> "object" + e.entries.joinToString(",", "{", "}") { (k, v) -> "$k:" + (if (v is JsonObject) "object" else if (v is kotlinx.serialization.json.JsonArray) "array" else "value") }
@@ -169,27 +183,83 @@ object GearSection : ProfileSection {
         else -> "value"
     }
 
-    /** One line per change of the wardrobe's state, at WARN when anything looks wrong (INFO is hidden unless debug mode is on). */
-    private fun logWardrobe(ctx: ProfileContext, w: Wardrobe) {
-        val inv = ctx.member.raw.path("inventory")
-        val line = if (!w.present) {
-            "wardrobe: blob absent, inventory keys=${inv?.keys?.sorted()}, wardrobe_contents=${shape(inv?.get("wardrobe_contents"))}, " +
-                "wardrobe_equipped_slot=${inv?.get("wardrobe_equipped_slot")}"
-        } else {
-            "wardrobe: blob ${w.blobChars} chars, ${w.slotCount} slots, ${w.filled} decoded, ${w.unreadable} unreadable, " +
-                "${w.setsWithPieces} of ${w.sets.size} sets with a piece (${w.pages} pages), worn=${w.worn?.plus(1)}"
-        }
-        if (line == lastLogged) return
-        lastLogged = line
-        if (!w.present || w.slotCount == 0 || w.filled == 0 || w.unreadable > 0) logger.warn(line) else logger.info(line)
+    private fun describe(w: Wardrobe?): String = when {
+        w == null -> "none"
+        !w.present -> "absent"
+        else -> "${w.source} ${w.detail}, ${w.filled} decoded, ${w.unreadable} unreadable, " +
+            "${w.setsWithPieces} of ${w.sets.size} sets with a piece (${w.pages} pages), worn=${w.worn?.plus(1)}"
     }
 
-    private fun wardrobe(ctx: ProfileContext, pass: Pass): Wardrobe {
-        val data = ctx.member.wardrobeBlob ?: return Wardrobe(present = false)
+    private fun looksWrong(w: Wardrobe?) = w != null && (!w.present || w.slotCount == 0 || w.filled == 0 || w.unreadable > 0)
+
+    /** One line per change of the wardrobe's and the equipment sets' state, at WARN when anything looks wrong (INFO is hidden unless debug mode is on). */
+    private fun logWardrobe(ctx: ProfileContext, w: Wardrobe, equipment: Wardrobe?) {
+        val inv = ctx.member.raw.path("inventory")
+        val where = if (!w.present) {
+            ", inventory keys=${inv?.keys?.sorted()}, wardrobe_contents=${shape(inv?.get("wardrobe_contents"))}, loadout=${shape(ctx.member.raw["loadout"])}"
+        } else {
+            ""
+        }
+        val line = "wardrobe: ${describe(w)}$where; equipment sets: ${describe(equipment)}; wardrobe_equipped_slot=${inv?.get("wardrobe_equipped_slot")}"
+        if (line == lastLogged) return
+        lastLogged = line
+        if (looksWrong(w) || looksWrong(equipment)) logger.warn(line) else logger.info(line)
+    }
+
+    /** Loadout names per 0-based set column, from [pick] (a loadout's armor or equipment set id). */
+    private fun usedBy(ctx: ProfileContext, pick: (Loadout) -> Int?): Map<Int, List<String>> =
+        ctx.member.loadouts.mapNotNull { l -> pick(l)?.let { (it - 1) to l.name } }.groupBy({ it.first }, { it.second })
+
+    /**
+     * Sets from the new Loadouts data: column n is set id n + 1 (ids are sparse), pieces straight from their keys.
+     * The set count is the highest id rounded up to a page and never below [minPages] pages (nor below the worn set).
+     */
+    private fun fromSets(ctx: ProfileContext, sets: LoadoutSets, tag: String, worn: Int?, used: Map<Int, List<String>>, pass: Pass, minPages: Int): Wardrobe {
+        val blob = ctx.items.getPieces(ctx.member.raw, tag) { sets.blobs }
+        if (blob.loading) {
+            pass.loading = true
+            return Wardrobe(source = "loadout")
+        }
+        val count = GearText.wardrobeSetCount(sets.highestId * 4, worn, minPages)
+        val columns = MutableList<List<ItemStack?>>(count) { List(4) { null } }
+        var next = 0
+        var pieces = 0
+        var filled = 0
+        var unreadable = 0
+        for (set in sets.sets) {
+            val row = set.pieces.map { blobText ->
+                if (blobText == null) {
+                    null
+                } else {
+                    pieces++
+                    val stack = blob.stacks.getOrNull(next++)
+                    if (stack == null) {
+                        unreadable++
+                        null
+                    } else if (stack.isEmpty) {
+                        null
+                    } else {
+                        filled++
+                        stack
+                    }
+                }
+            }
+            if (set.id - 1 < count) columns[set.id - 1] = row
+        }
+        return Wardrobe(
+            columns, worn?.takeIf { it < count }, slotCount = sets.sets.size * 4, filled = filled, unreadable = unreadable,
+            source = "loadout", detail = "${sets.sets.size} sets (highest id ${sets.highestId}), $pieces pieces", usedBy = used,
+        )
+    }
+
+    /** The old wardrobe: `inventory.wardrobe_contents`, kept for members whose data has not been migrated. */
+    private fun fromBlob(ctx: ProfileContext, pass: Pass): Wardrobe {
+        val data = ctx.member.wardrobeBlob
+            ?: return if (ctx.member.armorSets != null) Wardrobe(source = "loadout", detail = "no sets") else Wardrobe(present = false)
         val blob = ctx.items.get(data)
         if (blob.loading) {
             pass.loading = true
-            return Wardrobe(blobChars = data.length)
+            return Wardrobe()
         }
         if (blob.failed) {
             pass.failed = true
@@ -198,15 +268,33 @@ object GearSection : ProfileSection {
                 lastLogged = line
                 logger.warn(line)
             }
-            return Wardrobe(blobChars = data.length)
+            return Wardrobe()
         }
         val worn = ctx.member.wardrobeEquippedSet
         val stacks = blob.stacks.map { s -> s?.takeUnless { it.isEmpty } }
         val sets = wardrobeSets(stacks, worn)
         return Wardrobe(
             sets, worn?.takeIf { it < sets.size }, slotCount = blob.stacks.size, filled = stacks.count { it != null },
-            unreadable = blob.stacks.count { it == null }, blobChars = data.length,
-        ).also { logWardrobe(ctx, it) }
+            unreadable = blob.stacks.count { it == null }, detail = "blob ${data.length} chars, ${blob.stacks.size} slots",
+        )
+    }
+
+    /**
+     * The wardrobe card: the Loadouts armor sets when present, else the old blob. The worn set is `equipped_set`
+     * (`wardrobe_equipped_slot` is the selected loadout there); a member migrated without it and without
+     * `loadouts` still has the old meaning of `wardrobe_equipped_slot`.
+     */
+    private fun wardrobe(ctx: ProfileContext, pass: Pass): Wardrobe {
+        val m = ctx.member
+        val sets = m.armorSets?.takeIf { it.sets.isNotEmpty() } ?: return fromBlob(ctx, pass)
+        val worn = sets.equippedId?.minus(1) ?: if (m.hasLoadouts) null else m.wardrobeEquippedSet
+        return fromSets(ctx, sets, "armor", worn, usedBy(ctx) { it.armorSetId }, pass, minPages = 2)
+    }
+
+    /** The equipment sets card; null when the member has none (the card is then not drawn). */
+    private fun equipmentSets(ctx: ProfileContext, pass: Pass): Wardrobe? {
+        val sets = ctx.member.equipmentSets?.takeIf { it.sets.isNotEmpty() } ?: return null
+        return fromSets(ctx, sets, "equipment", sets.equippedId?.minus(1), usedBy(ctx) { it.equipmentSetId }, pass, minPages = 1)
     }
 
     internal fun view(ctx: ProfileContext): View {
@@ -217,9 +305,11 @@ object GearSection : ProfileSection {
         val equipment = List(4) { equipmentApi.getOrNull(it) }
         val wd = Pass()
         val wardrobe = wardrobe(ctx, wd)
-        if (!wardrobe.present) logWardrobe(ctx, wardrobe)
+        val es = Pass()
+        val equipmentSets = equipmentSets(ctx, es)
+        if (!wd.loading && !wd.failed && !es.loading) logWardrobe(ctx, wardrobe, equipmentSets)
         val found = weapons(ctx)
-        return View(armor, equipment, eq.part(), wardrobe, wd.part(), found.list, Part(found.loading, found.failed))
+        return View(armor, equipment, eq.part(), wardrobe, wd.part(), found.list, Part(found.loading, found.failed), equipmentSets, es.part())
     }
 
     // ------------------------------------------------------------------ build
@@ -279,11 +369,28 @@ object GearSection : ProfileSection {
             } else if (wd.noData) {
                 empty(
                     "pv_helmet", "No wardrobe data",
-                    if (wd.present) "Hypixel's wardrobe for this profile holds no slots." else "Hypixel did not send a wardrobe for this profile, although the Inventory API is on.",
+                    if (!wd.present) {
+                        "Hypixel did not send a wardrobe for this profile, although the Inventory API is on."
+                    } else if (wd.source == "loadout") {
+                        "Hypixel's wardrobe for this profile holds no sets."
+                    } else {
+                        "Hypixel's wardrobe for this profile holds no slots."
+                    },
                 )
             } else {
-                add(wardrobeNode(wd.sets, wd.worn))
+                add(wardrobeNode(wd, "wardrobe"))
                 if (wd.unreadable > 0) text("${wd.unreadable} wardrobe ${if (wd.unreadable == 1) "item" else "items"} could not be read.", size = S.SMALL, color = S.TEXT_DIM)
+            }
+        }
+        val es = v.equipmentSets
+        if (es != null) {
+            ui.card("Equipment sets", sub = if (v.equipmentSetsPart.ready) "${es.setsWithPieces} of ${es.sets.size} sets" else null) {
+                if (v.equipmentSetsPart.loading) {
+                    skeleton(4)
+                } else {
+                    add(wardrobeNode(es, "equipment"))
+                    if (es.unreadable > 0) text("${es.unreadable} equipment ${if (es.unreadable == 1) "item" else "items"} could not be read.", size = S.SMALL, color = S.TEXT_DIM)
+                }
             }
         }
         ui.card("Weapons and tools", sub = "found in inventory, Ender Chest and backpacks") {
@@ -317,19 +424,26 @@ object GearSection : ProfileSection {
     /** Pages side by side while they fit (never more than there are), the rest wrap to the next row. */
     internal fun pagesPerRow(w: Int, pages: Int): Int = ((w + PAGE_GAP) / (PAGE_W + PAGE_GAP)).coerceIn(1, maxOf(1, pages))
 
-    private fun wardrobeNode(sets: List<List<ItemStack?>>, worn: Int?): CustomNode {
-        val pages = sets.size / GearText.WARDROBE_COLUMNS
+    private fun wardrobeNode(w: Wardrobe, keyPrefix: String): CustomNode {
+        val pages = w.sets.size / GearText.WARDROBE_COLUMNS
         return CustomNode(
-            heightAt = { _, w ->
-                val rows = (pages + pagesPerRow(w, pages) - 1) / pagesPerRow(w, pages)
+            heightAt = { _, width ->
+                val rows = (pages + pagesPerRow(width, pages) - 1) / pagesPerRow(width, pages)
                 rows * (PAGE_HEAD + SET_H) + (rows - 1) * PAGE_GAP
             },
-        ) { c, x, y, w, _ -> paintWardrobe(c, x, y, w, sets, worn) }
+        ) { c, x, y, width, _ -> paintWardrobe(c, x, y, width, w, keyPrefix) }
     }
 
-    private fun paintWardrobe(c: KitCanvas, x: Int, y: Int, w: Int, sets: List<List<ItemStack?>>, worn: Int?) {
+    /** The hover lines of a set column: whether it is worn and which loadouts use it; empty when neither. */
+    internal fun setTooltip(isWorn: Boolean, usedBy: List<String>?): List<String> = buildList {
+        if (isWorn) add("Equipped right now")
+        if (!usedBy.isNullOrEmpty()) add("Used by: ${usedBy.joinToString(", ")}")
+    }
+
+    private fun paintWardrobe(c: KitCanvas, x: Int, y: Int, width: Int, w: Wardrobe, keyPrefix: String) {
+        val sets = w.sets
         val pages = sets.size / GearText.WARDROBE_COLUMNS
-        val perRow = pagesPerRow(w, pages)
+        val perRow = pagesPerRow(width, pages)
         for (page in 0 until pages) {
             val px = x + (page % perRow) * (PAGE_W + PAGE_GAP)
             val py = y + (page / perRow) * (PAGE_HEAD + SET_H + PAGE_GAP)
@@ -339,14 +453,15 @@ object GearSection : ProfileSection {
                 val n = page * GearText.WARDROBE_COLUMNS + col
                 val sx = px + col * (SET_W + SET_GAP)
                 val sy = py + PAGE_HEAD
-                val isWorn = n == worn
+                val isWorn = n == w.worn
                 if (isWorn) c.framed(sx, sy, sx + SET_W, sy + SET_H, WORN_BG, S.ACCENT, Corner.SMALL)
                 val set = sets.getOrNull(n)
                 for (row in 0 until 4) c.slot(set?.getOrNull(row), sx + 2, sy + 3 + row * (S.SLOT_SM + 1), S.SLOT_SM)
                 val numTop = sy + 3 + 4 * (S.SLOT_SM + 1)
                 val text = "${n + 1}"
                 c.text(text, sx + (SET_W - c.width(text, S.TINY)) / 2, numTop, numTop + 11, if (isWorn) S.ACCENT_LIGHT else S.TEXT_FAINT, S.TINY)
-                if (isWorn) c.tooltip(sx, numTop, sx + SET_W, sy + SET_H, listOf("Equipped right now"), "wardrobe:$n")
+                val lines = setTooltip(isWorn, w.usedBy[n])
+                if (lines.isNotEmpty()) c.tooltip(sx, numTop, sx + SET_W, sy + SET_H, lines, "$keyPrefix:$n")
             }
         }
     }
