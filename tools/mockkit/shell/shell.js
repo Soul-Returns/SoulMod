@@ -28,6 +28,7 @@ window.__mockShell = {
     mockWin = win;
     watchFrameKeys(win);
     paintVariants();
+    paintLean();
     paintUnread();
     paintControls(true);
     pushState();
@@ -37,6 +38,7 @@ window.__mockShell = {
     if (what === 'state') { syncGhost(); paintControls(); pushStateSoon(); }
     else if (what === 'controls') paintControls();
     else if (what === 'variants') { paintVariants(); syncGhost(); pushStateSoon(); }
+    else if (what === 'lean') paintLean();
   },
   sendFromMock({ kind = 'message', text = '', element = null, pick }) {
     const el = element?.nodeType === 1 ? element : null;
@@ -44,6 +46,18 @@ window.__mockShell = {
   },
 };
 const rt = () => mockWin?.__mock ?? null;
+/** Lean mocks (tools/mockkit/lean.js): chat only, no sandbox tab. Design and scene tag every message. */
+function paintLean() {
+  const lean = !!rt()?.lean();
+  document.body.classList.toggle('lean', lean);
+  if (lean && S.tab !== 'chat') setTab('chat');
+}
+function leanTags() {
+  const l = rt()?.lean();
+  if (!l) return {};
+  const tag = (list, id) => { const x = list.find((e) => e[0] === id); return x ? `${x[1]} (${id})` : id; };
+  return { design: l.design() ? tag(l.designs, l.design()) : undefined, scene: l.scene() ? tag(l.scenes, l.scene()) : undefined };
+}
 frame.src = '/m/';
 frame.addEventListener('load', () => {
   // a mock without the runtime still gets chat, comments and screenshot captures
@@ -210,6 +224,8 @@ function paintLog() {
       const who = m.from === 'agent' ? 'agent' : 'you';
       const meta = [`<span class="who">${who}</span>`, `<span>${new Date(m.at).toTimeString().slice(0, 5)}</span>`];
       if (m.variant) meta.push(`<span>variant ${esc(m.variant)}</span>`);
+      if (m.design) meta.push(`<span>${esc(m.design)}</span>`);
+      if (m.scene) meta.push(`<span>${esc(m.scene)}</span>`);
       if (m.from === 'user') meta.push(m.delivered ? '<span class="ok">✓ delivered</span>' : '<span class="q">queued</span>');
       const pick = m.pick ? `<div class="pickl">Picked: ${esc((m.pick.labels ?? []).join(', ') || 'nothing')}</div>` : '';
       return `<div class="msg ${m.from}" data-id="${esc(m.id)}"><div class="meta">${meta.join('')}</div>${refTag(m)}${pick}${m.text ? fmtText(m.text, m) : ''}</div>`;
@@ -436,7 +452,7 @@ async function send({ kind, text, el = null, desc = null, pick, images = [] }) {
   const r = rt();
   const live = el && el.isConnected ? el : desc ? findEl(desc.selector) : null;
   const element = live ? describe(live) : desc;
-  const body = { kind, text, element: element ? strip(element) : undefined, pick, images: images.length ? images : undefined, variant: r?.variant() ?? undefined, state: r?.hasState() ? r.state() : undefined };
+  const body = { kind, text, element: element ? strip(element) : undefined, pick, images: images.length ? images : undefined, variant: r?.variant() ?? undefined, ...leanTags(), state: r?.hasState() ? r.state() : undefined };
   $('send').disabled = true;
   try {
     try {

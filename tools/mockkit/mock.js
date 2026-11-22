@@ -23,7 +23,7 @@ const tell = (what) => shell?.notify?.(what, window);
 const listeners = {};
 const emit = (ev, ...a) => (listeners[ev] ?? []).forEach((f) => { try { f(...a); } catch (e) { console.error(e); } });
 let stateObj = null, stateSkip = new Set(), lastSaved = '';
-let renderFn = null, controlsFn = null, variantList = null, describers = [];
+let renderFn = null, controlsFn = null, variantList = null, describers = [], leanApi = null;
 let variant = null;
 
 const ss = {
@@ -118,11 +118,16 @@ export const Mock = {
   describe(fn) {
     describers.push(fn);
   },
+  /** Lean mode (lean.js): { designs, scenes, design(), scene(), questions } for the shell, which then hides the sandbox, variants and ghost. */
+  lean(api) {
+    leanApi = api;
+    tell('lean');
+  },
 
   /** A message from the mock's own UI (e.g. a "Send this layout" button), with screenshot and state like the drawer's. */
   send(text, { element = null } = {}) {
     if (shell) return shell.sendFromMock({ text, element });
-    return fetch('/api/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'message', text, variant, state: stateObj ? plain(stateObj) : undefined }) });
+    return fetch('/api/message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'message', text, variant, design: leanApi?.design(), scene: leanApi?.scene(), state: stateObj ? plain(stateObj) : undefined }) });
   },
 
   /**
@@ -154,6 +159,7 @@ window.__mock = {
   variants: () => variantList,
   variant: () => variant,
   setVariant: (id) => Mock.setVariant(id),
+  lean: () => leanApi,
   controls: () => {
     try { return controlsFn ? controlsFn() ?? [] : []; } catch (e) { console.error(e); return []; }
   },

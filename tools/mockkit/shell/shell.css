@@ -139,3 +139,6 @@ body.closed #resizer, body.closed #drawer { display: none; }
 .ctl .hint { font-size: 12px; color: var(--dim); }
 .sbx-foot { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); padding: var(--s-3) var(--s-5) var(--s-5); border-top: 1px solid var(--hair); }
 .sbx-foot .check { margin-left: auto; }
+
+/* lean mocks (kit/lean.js): the drawer is chat only */
+body.lean #drawer .tabs, body.lean #variantbar { display: none; }
