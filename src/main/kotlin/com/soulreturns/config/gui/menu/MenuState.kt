@@ -16,6 +16,16 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.2" to
+                listOf(
+                    ReleaseNote("Friends & Contests: add Soul friends and run Crystal Nucleus profit contests with them", listOf("f:contests")),
+                    ReleaseNote("Profile Viewer rebuilt: 17 sections, player model, market value and the HOTM tree; opens with /sp", listOf("s:profile")),
+                    ReleaseNote("Corpse locator: points you to Frozen Corpses and shares them with your party", listOf("f:corpselocator")),
+                    ReleaseNote("Vanguard guild call: tells your guild about a Vanguard mineshaft", listOf("f:vanguardguild")),
+                    ReleaseNote("Search everywhere also finds items in your sacks", listOf("f:searcheverywhere")),
+                    ReleaseNote("Highlight active pet: the summoned pet stands out in the Pets menu", listOf("f:petmark")),
+                    ReleaseNote("Kill Combo overlay: Combat Wisdom and coins per kill", listOf("f:combo")),
+                ),
             "0.3.2-beta.6" to
                 listOf(
                     ReleaseNote("Friends & Contests: add Soul friends and run contests with them, starting with Crystal Nucleus profit", listOf("f:contests")),
