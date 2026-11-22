@@ -6,7 +6,7 @@
  *   import { lean } from '/kit/lean.js';
  *   lean({
  *     title: 'Contest HUD',
- *     frame: { backdrop: 'world' | 'dim' | 'plain', hud: true, gui: 3, soul: 1.5 },   // all optional
+ *     frame: { backdrop: 'world' | 'dim' | 'plain', hud: true | { scoreboard, chat, bossBar, actionBar, title… }, gui: 3, soul: 1.5 },   // all optional; hud: true = hotbar + status only
  *     designs: [['a', 'Compact'], ['b', 'Wide']],          // keys 1..9
  *     scenes: [['running', 'Running'], ['done', 'Finished']], // keys ← →
  *     state: { tab: 'history' },                           // defaults of the persisted state
@@ -16,7 +16,7 @@
  *   });
  *
  * layers: { world, gui, dim, screen, soul, top } as in game/window.js (soul = Soul px, screen and gui = GUI px).
- * They are emptied before each draw; hud: true keeps the vanilla HUD in gui. Fill them with HTML strings.
+ * They are emptied before each draw (scroll positions of scrollable elements are kept); hud keeps the vanilla HUD in gui. Fill them with HTML strings.
  * ui (each returns an attribute string or markup to put inside your HTML):
  *   ui.set(key, value)  click sets state[key]        ui.toggle(key)   click flips state[key]
  *   ui.tip(lines)       hover shows a vanilla tooltip (§ lines)   ui.at(x, y, html, label?)  positioned box (Soul px in soul)
@@ -53,7 +53,7 @@ export async function lean(o) {
   document.title = o.title ?? 'Mock';
   document.body.innerHTML = `<header id="lean-bar"></header><main id="lean-stage"><div id="lean-wrap"><div class="gw-frame"><div class="gw-game">
     <div class="gw-world"></div><div class="gw-gui"></div><div class="gw-dim"></div><div class="gw-screen"></div><div class="gw-soul s-layer"></div><div class="gw-top"></div><div class="gw-gui lean-tt"></div>
-  </div></div></div><pre id="lean-err" hidden></pre></main><section id="lean-q" data-mock="open-questions" data-mock-label="Open questions (mock only)" hidden></section>`;
+  </div></div></div><pre id="lean-err" hidden></pre><section id="lean-q" data-mock="open-questions" data-mock-label="Open questions (mock only)" hidden></section></main>`;
   const $ = (s) => document.querySelector(s);
   const frame = $('.gw-frame'), game = $('.gw-game'), wrap = $('#lean-wrap'), stage = $('#lean-stage'), errBox = $('#lean-err');
   const q = (c) => $('.gw-' + c);
@@ -66,6 +66,9 @@ export async function lean(o) {
   const backdrop = fr.backdrop ?? 'world';
   layers.dim.classList.toggle('on', backdrop === 'dim');
   if (backdrop === 'plain') layers.world.style.background = '#16181d';
+  // hud: true is hotbar + status only; opt in per piece: { scoreboard: true, chat: true, bossBar: true, actionBar: '§a…', title: '§c…' } (true = the kit's sample content)
+  const hudOpts = { ...VANILLA_DEFAULTS, scoreboard: false, chat: false, bossBar: null, actionBar: null, title: null, subtitle: null };
+  for (const [k, v] of Object.entries(typeof fr.hud === 'object' ? fr.hud : {})) hudOpts[k] = v === true && VANILLA_DEFAULTS[k] != null ? VANILLA_DEFAULTS[k] : v;
 
   // ---- state
   const ui = {
@@ -79,11 +82,26 @@ export async function lean(o) {
   function go(patch) { Object.assign(S, patch); paintBar(); redraw(); Mock.save(); }
 
   let first = true;
+  // Scroll positions survive a redraw (same design and scene): found by their child-index path.
+  const SCROLL = ['screen', 'soul', 'top'];
+  let drawn = '';
+  function scrolled() {
+    const out = [];
+    for (const k of SCROLL) for (const el of layers[k].querySelectorAll('*')) {
+      if (!el.scrollTop && !el.scrollLeft) continue;
+      const path = [];
+      for (let n = el; n !== layers[k]; n = n.parentElement) path.push([...n.parentElement.children].indexOf(n));
+      out.push([k, path.reverse(), el.scrollTop, el.scrollLeft]);
+    }
+    return out;
+  }
   function redraw() {
-    for (const k of ['screen', 'soul', 'top']) layers[k].innerHTML = '';
+    const id = `${S.design}|${S.scene}`;
+    const keep = id === drawn ? scrolled() : [];
+    for (const k of SCROLL) layers[k].innerHTML = '';
     layers.gui.querySelectorAll(':scope > :not(.v-hud)').forEach((n) => n.remove());
     ttLayer.innerHTML = '';
-    if (fr.hud) renderVanilla(layers.gui, E, fr.hud === true ? VANILLA_DEFAULTS : { ...VANILLA_DEFAULTS, ...fr.hud });
+    if (fr.hud) renderVanilla(layers.gui, E, hudOpts);
     else layers.gui.querySelector(':scope > .v-hud')?.remove();
     try {
       o.draw?.({ design: S.design, scene: S.scene, layers, state: S.state, ui, env: E, first });
@@ -94,6 +112,12 @@ export async function lean(o) {
       errBox.hidden = false;
       errBox.textContent = `draw() failed: ${e.message}`;
     }
+    for (const [k, path, top, left] of keep) {
+      let el = layers[k];
+      for (const i of path) el = el?.children[i];
+      if (el) { el.scrollTop = top; el.scrollLeft = left; }
+    }
+    drawn = id;
   }
 
   // ---- clicks, tooltips, Soul controls
@@ -128,7 +152,7 @@ export async function lean(o) {
       + (!designs.length && !scenes.length ? qBtn : '');
     bar.hidden = !bar.innerHTML;
     $('#lean-q').hidden = S.page !== 'questions';
-    stage.hidden = S.page === 'questions';
+    // the questions page covers the stage instead of removing it, so scroll positions stay
     if (S.page === 'questions') paintQuestions();
   }
   bar.addEventListener('click', (e) => {
@@ -138,18 +162,26 @@ export async function lean(o) {
     else if (b.dataset.scene) go({ scene: b.dataset.scene, page: 'mock' });
     else if (b.dataset.page) go({ page: S.page === 'questions' ? 'mock' : 'questions' });
   });
-  addEventListener('keydown', (e) => {
-    if (e.altKey || e.ctrlKey || e.metaKey || (e.target instanceof Element && e.target.closest('input,textarea,[contenteditable]'))) return;
+  /** Keys 1-9, ←/→, Q, Esc. The shell calls this for every keydown, whether focus is in the frame or outside it. */
+  function key(e) {
+    if (e.altKey || e.ctrlKey || e.metaKey || e.target?.closest?.('input,textarea,select,[contenteditable]')) return false;
     const n = Number(e.key);
     if (n >= 1 && n <= designs.length) go({ design: designs[n - 1][0], page: 'mock' });
-    else if (e.key === 'q' && questions.length) go({ page: S.page === 'questions' ? 'mock' : 'questions' });
+    else if (e.key.toLowerCase() === 'q' && questions.length) go({ page: S.page === 'questions' ? 'mock' : 'questions' });
     else if (e.key === 'Escape' && S.page === 'questions') go({ page: 'mock' });
     else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && scenes.length) {
       const i = scenes.findIndex((s) => s[0] === S.scene) + (e.key === 'ArrowRight' ? 1 : -1);
       go({ scene: scenes[(i + scenes.length) % scenes.length][0], page: 'mock' });
-    } else return;
-    e.preventDefault();
-  });
+    } else return false;
+    return true;
+  }
+  /** For the CLI (`snap --design b`, `set`): { design?, scene?, page? }; throws on an unknown id. */
+  function set({ design, scene, page }) {
+    if (design && !designs.some((d) => d[0] === design)) throw new Error(`no design "${design}" (have ${designs.map((d) => d[0]).join(', ') || 'none'})`);
+    if (scene && !scenes.some((d) => d[0] === scene)) throw new Error(`no scene "${scene}" (have ${scenes.map((d) => d[0]).join(', ') || 'none'})`);
+    if (page && page !== 'mock' && !(page === 'questions' && questions.length)) throw new Error(`no page "${page}" (mock${questions.length ? ', questions' : ''})`);
+    go({ ...(design ? { design } : {}), ...(scene ? { scene } : {}), page: page ?? 'mock' });
+  }
 
   // ---- the Open questions page (mock only)
   function paintQuestions() {
@@ -184,7 +216,7 @@ export async function lean(o) {
     return { win: by(1), gui: by(E.g), soul: by(E.s) }; // [x, y, w, h] in 1920x1080 frame px, GUI px, Soul px
   });
   Mock.render(redraw);
-  Mock.lean({ designs, scenes, questions, design: () => S.design, scene: () => S.scene });
+  Mock.lean({ designs, scenes, questions, design: () => S.design, scene: () => S.scene, key, get: () => ({ design: S.design, scene: S.scene, page: S.page }), set });
   fit();
   paintBar();
   redraw();

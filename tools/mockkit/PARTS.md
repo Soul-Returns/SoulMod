@@ -26,23 +26,25 @@ Controls with a `key` read and write `state[key]` by themselves; the page redraw
 
 ## Items, inventories, tooltips (GUI px) — `/kit/mc/items.js`, `/kit/mc/inventory.js`, `/kit/mc/tooltip.js`
 - Item: `const it = item({ id: 'REFINED_DIAMOND', mcId: 'minecraft:diamond', name: '§aRefined Diamond', lore: ['§7Crafted from 10 Diamonds', '', '§a§lUNCOMMON'], count: 4 })` (rarity comes from the last lore line; `icon: 'sword'` or `'orb:#ff55ff'` overrides the drawn icon)
-- Icon in your own HTML (16 px in GUI px, scale it yourself in Soul px): `itemIcon(it)`; rarity line: `rarityLine('LEGENDARY', 'SWORD')`
+- Icon in your own HTML: `itemIcon(it)` is 16×16 CSS px: 16 GUI px in `layers.screen`/`gui` (48 screen px), but only 16 Soul px in `layers.soul` (24 screen px; vanilla size there is 32 Soul px, so wrap it in `transform: scale(2)` with `transform-origin: 0 0`). Rarity line: `rarityLine('LEGENDARY', 'SWORD')`
+- Icons are drawn pixel sprites picked from the ids (`mcId`, `id`, then the name). Drawn properly: tools and weapons (sword, pickaxe, axe, shovel, hoe, drill, bow, rod, stick; ids like `diamond_sword`, `HYPERION`, `TERMINATOR`), armor (helmet, chestplate, leggings, boots), `player_head`/`skull` (brown face), gems (`diamond`, `*_gemstone`, `RUBY`…), `emerald`, ingots, dusts/powder, `book`/`enchanted_book`, `potion`/`bottle`, `*_egg`, `nether_star`, `paper`/`map`, `bone`, `feather`, `torch`, `name_tag`, chests/sacks/backpacks, `ender_pearl`, `cookie`, `clock`, `compass`, fish, coins/nuggets, `arrow`, `barrier`, `*_stained_glass_pane`. Material and dye words tint them (`iron_`, `golden_`, `diamond_`, `leather_`, `red_…`). **Unknown ids**: a vanilla id with no matching word becomes a plain colored cube (a stable color per id; `minecraft:oak_log`, `wheat`, `cooked_beef` all look like cubes); an unknown SkyBlock `id` becomes a rarity-tinted orb. Force a look with `icon: 'sword'`, `'orb:#ff55ff'` or `'head:#aa7744'`; the kinds are `ICON_KINDS` in `mc/items.js`
 - Chest or SkyBlock menu: `const c = chestScreen({ sw: env.gw, sh: env.gh, rows: 4, title: 'Sack of Sacks', items: skyblockMenu({ rows: 4, back: 'SkyBlock Menu', items: { [slotIndex(1, 4)]: it } }) }); layers.screen.innerHTML = c.html;`
 - Player inventory: `layers.screen.innerHTML = playerScreen({ sw: env.gw, sh: env.gh, player: { hotbar: [it], main: [] } }).html`
 - Hover tooltips on those slots (once, inside `if (first)`): `bindInventory(layers.screen, { tooltip: (slot) => cur.items[slot] })` with `cur = c` set in draw
 - Tooltip on any of your own elements: put `${ui.tip(['§aBazaar', '§7Highest buy order'])}` in its tag; for an item `ui.tip([it.name, ...it.lore])`
 - Standalone tooltip HTML: `tooltip(it, { mx: 100, my: 80, sw: env.gw, sh: env.gh })` (item or § lines; GUI px)
 
-## Vanilla HUD — `frame: { hud: true }` or `frame: { hud: { ...options } }`
-Hotbar, hearts, food, armor, XP, action bar, chat, SkyBlock scoreboard and a boss bar are on by default. Options (all optional):
-`hotbar`, `selected`, `items` (9 CSS colors or null), `status`, `health`, `armor`, `food`, `xpLevel`, `actionBar: '§c6,267/5,892❤'`,
-`chat: false`, `chatLines: [{ text: '§aHello', age: 0 }]`, `scoreboard: false`, `scoreTitle`, `scoreLines: ['Purse: §61.2M', '']`, `bossBar: null | [{ name, progress, color }]`, `title: '§cRARE DROP!'`, `subtitle`.
+## Vanilla HUD — `frame: { hud: true }` or `frame: { hud: { ...pieces } }`
+`hud: true` is the plain HUD: hotbar, hearts, food, armor and XP only. Opt in per piece (`true` = sample content, or your own):
+`scoreboard: true | false`, `scoreTitle`, `scoreLines: ['Purse: §61.2M', '']`, `chat: true`, `chatLines: [{ text: '§aHello', age: 0 }]`, `bossBar: true | [{ name, progress, color }]`,
+`actionBar: '§c6,267/5,892❤'`, `title: '§cRARE DROP!'`, `subtitle`. Also `hotbar`, `selected`, `items` (9 CSS colors or null), `health`, `armor`, `food`, `xpLevel`.
 
 ## Text and numbers — `import { mcText, num, short, esc } from '/kit/util.js'`
 - `mcText('§aGreen §l§6Gold')` → HTML spans; `num(1234567)` → `1,234,567`; `short(1234567)` → `1.2M` (`15300` → `15.3k`); `esc(text)` escapes user text
 - Colors: `MC_COLORS` (§ code → hex), `RARITY` (name → color and code)
 
 ## The page (`lean()` options, `draw` arguments)
-- `ui.set('tab', 'history')` on a clickable element sets `state.tab`; `ui.toggle('open')` flips `state.open`; `ui.put(key, value)` from your own handler
+- `ui.set` and `ui.toggle` return an **attribute string** to put inside a tag: `<div ${ui.set('tab', 'history')}>` sets `state.tab` on click, `<div ${ui.toggle('open')}>` flips `state.open`; same for `ui.tip(lines)`. `ui.at(...)` returns a whole positioned `<div>`. `ui.put(key, value)` sets a key from your own handler
+- Scroll positions of scrollable elements are kept across redraws by themselves (same design and scene)
 - Soul px size of the layer: `env.W` x `env.H`; GUI px: `env.gw` x `env.gh`
 - Extra CSS: `lean({ css: ['mock.css'] })`; name things users will comment on with `ui.at(..., 'Label')` or `data-mock-label="..."`

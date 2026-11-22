@@ -1,7 +1,7 @@
 /* Lean mock page (lean.js): bar with design and scene tabs, the fixed game frame, the Open questions page. */
 body { display: flex; flex-direction: column; background: #0c0d10; }
 #lean-bar { flex: none; display: flex; flex-direction: column; gap: 3px; padding: 6px 12px 4px; }
-#lean-bar[hidden], #lean-q[hidden], #lean-stage[hidden] { display: none; }
+#lean-bar[hidden], #lean-q[hidden] { display: none; }
 .lean-row { display: flex; align-items: center; gap: 8px; height: 24px; }
 .lean-k { width: 92px; white-space: nowrap; flex: none; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
 .lean-k small { margin-left: 5px; color: var(--faint); font-size: 9.5px; letter-spacing: 0; text-transform: none; }
@@ -26,7 +26,7 @@ body { display: flex; flex-direction: column; background: #0c0d10; }
 #lean-err { position: absolute; left: 12px; right: 12px; bottom: 8px; margin: 0; padding: 8px 10px; border-radius: 6px; background: #3a1414; color: #ffb4b4; font: 12px/1.4 var(--mc-font); white-space: pre-wrap; z-index: 3; }
 #lean-err[hidden] { display: none; }
 
-#lean-q { flex: 1; min-height: 0; overflow: auto; padding: 18px 24px 40px; }
+#lean-q { position: absolute; inset: 0; z-index: 4; background: #0c0d10; overflow: auto; padding: 18px 24px 40px; }
 .lq-in { max-width: 760px; margin: 0 auto; }
 .lq-in h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; font-size: 18px; font-weight: 600; }
 .lq-chip { padding: 1px 7px; border-radius: 4px; background: rgba(139,92,246,.35); color: #fff; font-size: 10px; letter-spacing: .08em; }

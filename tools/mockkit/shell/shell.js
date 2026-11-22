@@ -128,6 +128,7 @@ function connect() {
   });
   es.addEventListener('change', (e) => onChange(JSON.parse(e.data).paths));
   es.addEventListener('snap', (e) => answerSnap(JSON.parse(e.data)));
+  es.addEventListener('set', (e) => answerSet(JSON.parse(e.data)));
   es.addEventListener('server', () => { data.online = false; paintStatus(); });
   es.onerror = () => { data.online = false; paintStatus(); };
 }
@@ -834,13 +835,34 @@ $('resetState').addEventListener('click', () => {
 });
 
 // ------------------------------------------------------------------ agent requests a screenshot
-async function answerSnap({ req, element }) {
+/** Lean mocks: { design, scene, page } switch the tab (null = leave); returns what to restore. */
+function leanSet(patch) {
+  const l = rt()?.lean();
+  if (!l) throw new Error('not a lean mock: nothing to switch');
+  const prev = l.get();
+  l.set(Object.fromEntries(Object.entries(patch).filter(([, v]) => v)));
+  return prev;
+}
+const settle = () => new Promise((r) => setTimeout(r, 200));
+async function answerSnap({ req, element, design, scene, page }) {
+  let prev = null;
   try {
     if (!mockWin) throw new Error('the mock is not loaded');
+    if (design || scene || page) { prev = leanSet({ design, scene, page }); await settle(); }
     const el = element ? findEl(element) : null;
     const d = el ? describe(el) : null;
     const shot = await capture(mockWin, { highlight: d?.rect, label: d?.label });
     await post('/api/snap', { req, shot });
+  } catch (e) {
+    post('/api/snap', { req, error: String(e?.message ?? e) }).catch(() => {});
+  } finally {
+    if (prev) try { rt()?.lean()?.set(prev); } catch {}
+  }
+}
+async function answerSet({ req, design, scene, page }) {
+  try {
+    leanSet({ design, scene, page });
+    await post('/api/snap', { req, done: true });
   } catch (e) {
     post('/api/snap', { req, error: String(e?.message ?? e) }).catch(() => {});
   }
@@ -896,6 +918,8 @@ function onKey(e) {
   else if (e.altKey && !e.ctrlKey && (e.code === 'KeyC')) { e.preventDefault(); picking ? stopComment() : startComment(); }
   else if (e.altKey && !e.ctrlKey && (e.code === 'KeyS')) { e.preventDefault(); shooting ? stopShot() : startShot(); }
   else if (e.altKey && !e.ctrlKey && (e.code === 'KeyD')) { e.preventDefault(); setOpen(!S.open); }
+  // lean mocks: design / scene / questions keys work wherever focus is (the lean runtime skips text fields)
+  else if (!picking && !shooting && rt()?.lean()?.key(e)) e.preventDefault();
 }
 window.addEventListener('keydown', onKey);
 function watchFrameKeys(win) {
