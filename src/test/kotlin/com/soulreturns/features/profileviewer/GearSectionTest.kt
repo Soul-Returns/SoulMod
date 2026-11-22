@@ -528,7 +528,7 @@ class GearSectionTest {
 
     @Test
     fun `a genuinely empty wardrobe is shown as empty slots`() = synchronously {
-        val v = GearSection.view(contextWith(blob(108, emptyMap()), worn = 2))
+        val v = GearSection.view(contextWith(blob(108, emptyMap())))
         assertEquals(27, v.wardrobe.sets.size)
         assertEquals(0, v.wardrobe.unreadable)
         val text = built(v).first.all()
@@ -583,14 +583,17 @@ class GearSectionTest {
         assertEquals("loadout", v.wardrobe.source)
         assertEquals(18, v.wardrobe.sets.size)
         assertEquals(11, v.wardrobe.worn) // equipped_set 12, not wardrobe_equipped_slot 7
-        assertEquals(2, v.wardrobe.setsWithPieces)
+        assertEquals(3, v.wardrobe.setsWithPieces)
         assertEquals(5, v.wardrobe.filled)
         assertEquals(0, v.wardrobe.unreadable)
         assertEquals(listOf("One Helmet", "One Chestplate", "One Leggings", "One Boots"), v.wardrobe.sets[0].map { plain(it) })
         assertEquals(listOf(null, "Three Chestplate", null, null), v.wardrobe.sets[2].map { plain(it) })
-        for (empty in listOf(1, 3, 4, 5, 11, 17)) assertTrue(v.wardrobe.sets[empty].all { it == null }, "column $empty")
+        for (empty in listOf(1, 3, 4, 5, 17)) assertTrue(v.wardrobe.sets[empty].all { it == null }, "column $empty")
+        // the worn set's own entry is empty: its column shows the worn armor, helmet first
+        assertTrue(v.armor.all { it != null })
+        assertEquals(v.armor.map { plain(it) }, v.wardrobe.sets[11].map { plain(it) })
         val text = built(v).first.all()
-        assertTrue("2 of 18 sets" in text && "PAGE 2" in text && "PAGE 3" !in text, text)
+        assertTrue("3 of 18 sets" in text && "PAGE 2" in text && "PAGE 3" !in text, text)
     }
 
     @Test
@@ -624,9 +627,10 @@ class GearSectionTest {
         assertEquals(1, es.worn)
         assertEquals(listOf("Necklace Chestplate", null, null, "Gloves Helmet"), es.sets[0].map { plain(it) })
         assertEquals(listOf(null, "Cloak Leggings", null, null), es.sets[3].map { plain(it) })
-        assertEquals(2, es.setsWithPieces)
+        assertEquals(3, es.setsWithPieces) // sets 1 and 4, plus the worn set 2 shown from equipment_contents
+        assertEquals(v.equipment.map { plain(it) }, es.sets[1].map { plain(it) })
         val text = built(v).first.all()
-        assertTrue("Equipment sets" in text && "2 of 9 sets" in text, text)
+        assertTrue("Equipment sets" in text && "3 of 9 sets" in text, text)
         assertEquals(2, Regex("PAGE 1").findAll(text).count(), text) // wardrobe's and equipment's first page
         assertFalse("PAGE 3" in text, text)
     }
@@ -748,5 +752,82 @@ class GearSectionTest {
         val blob = ProfileItems.getPieces(m.raw, "armor") { sets.blobs }
         assertEquals(listOf("A Chestplate", "B Helmet", "B Boots"), blob.stacks.map { plain(it) })
         assertTrue(ProfileItems.getPieces(m.raw, "armor") { error("memoized") } === blob)
+    }
+
+    // ------------------------------------------------------------------ the worn set's column shows what is on the body
+
+    @Test
+    fun `an empty worn armor set shows the worn armor, helmet first, and counts in the header`() = synchronously {
+        val armor = setsJson(3, lset(1, "HELMET" to piece("One", 0)), lset(3))
+        val v = GearSection.view(contextWith(null, loadout = loadoutOf(armor)))
+        assertEquals(2, v.wardrobe.worn)
+        assertTrue(v.wardrobe.wornFromBody)
+        assertTrue(v.armor.all { it != null })
+        val shown = v.wardrobe.sets[2]
+        assertEquals(v.armor.map { it?.let(GearSection::typeLine) }, shown.map { it?.let(GearSection::typeLine) })
+        assertEquals(listOf("HELMET", "CHESTPLATE", "LEGGINGS", "BOOTS"), shown.map { it!!.let(GearSection::typeLine).substringAfterLast(' ') })
+        assertEquals(2, v.wardrobe.setsWithPieces)
+        assertTrue("2 of 18 sets" in built(v).first.all())
+        assertEquals(1, v.wardrobe.filled) // the decode count is the set data's own: the body's items are display only
+    }
+
+    @Test
+    fun `an empty worn equipment set shows equipment_contents in slot order`() = synchronously {
+        val v = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(1, lset(1)), setsJson(2, lset(1, "EQUIPMENT_SLOT_1" to piece("Own", 0)), lset(2)))))
+        val es = v.equipmentSets!!
+        assertTrue(es.wornFromBody)
+        assertTrue(v.equipment.any { it != null })
+        assertEquals(v.equipment.map { plain(it) }, es.sets[1].map { plain(it) })
+        assertEquals(listOf("Own Helmet", null, null, null), es.sets[0].map { plain(it) })
+        assertTrue("2 of 9 sets" in built(v).first.all())
+    }
+
+    @Test
+    fun `the worn set's own pieces always win over the body's items`() = synchronously {
+        val own = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(3, lset(3, "CHESTPLATE" to piece("Own", 1))))))
+        assertFalse(own.wardrobe.wornFromBody)
+        assertEquals(listOf(null, "Own Chestplate", null, null), own.wardrobe.sets[2].map { plain(it) })
+        // an own piece that did not decode still counts as the set having pieces: nothing is drawn over it
+        val bad = legacyItem(9999, "Unknown", "§6§lLEGENDARY HELMET")
+        val unreadable = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(3, lset(3, "HELMET" to bad)))))
+        assertFalse(unreadable.wardrobe.wornFromBody)
+        assertTrue(unreadable.wardrobe.sets[2].all { it == null })
+        assertEquals(1, unreadable.wardrobe.unreadable)
+        val ownEquipment = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(1, lset(1)), setsJson(2, lset(2, "EQUIPMENT_SLOT_3" to piece("Own", 2))))))
+        assertFalse(ownEquipment.equipmentSets!!.wornFromBody)
+        assertEquals(listOf(null, null, "Own Leggings", null), ownEquipment.equipmentSets.sets[1].map { plain(it) })
+    }
+
+    @Test
+    fun `without a worn set nothing is drawn from the body, and the old blob's empty worn column is filled too`() = synchronously {
+        val noWorn = GearSection.view(contextWith(null, loadout = loadoutOf(setsJson(null, lset(1, "HELMET" to piece("One", 0))))))
+        assertNull(noWorn.wardrobe.worn)
+        assertFalse(noWorn.wardrobe.wornFromBody)
+        assertEquals(1, noWorn.wardrobe.setsWithPieces)
+        // old blob, worn slot 3 (1-based) with an empty column: filled from inv_armor; set 5's own pieces would win
+        val oldBlob = blob(72, mapOf(0 to piece("Old", 0), 4 to piece("Five", 0)))
+        val old = GearSection.view(contextWith(oldBlob, worn = 3))
+        assertEquals("blob", old.wardrobe.source)
+        assertTrue(old.wardrobe.wornFromBody)
+        assertEquals(old.armor.map { plain(it) }, old.wardrobe.sets[2].map { plain(it) })
+        assertEquals(3, old.wardrobe.setsWithPieces)
+        val ownWins = GearSection.view(contextWith(oldBlob, worn = 5))
+        assertFalse(ownWins.wardrobe.wornFromBody)
+        assertEquals("Five Helmet", plain(ownWins.wardrobe.sets[4][0]))
+        assertNull(ownWins.wardrobe.sets[4][1])
+    }
+
+    @Test
+    fun `the market value's wardrobe group holds the sets' own items only, so the worn items are not valued twice`() = synchronously {
+        val armor = setsJson(3, lset(1, "HELMET" to piece("One", 0), "BOOTS" to piece("One", 3)), lset(3))
+        val equipment = setsJson(2, lset(1, "EQUIPMENT_SLOT_2" to piece("E", 1)), lset(2))
+        val ctx = contextWith(null, loadout = loadoutOf(armor, equipment))
+        val v = GearSection.view(ctx)
+        assertTrue(v.wardrobe.wornFromBody && v.equipmentSets!!.wornFromBody)
+        val groups = MarketValueEstimates.decodedGroups(ctx.member)!!.associate { it.first to it.second }
+        val wardrobeItems = groups["Wardrobe"]!!.flatMap { it.stacks }.filter { it != null && !it.isEmpty }
+        assertEquals(listOf("One Helmet", "One Boots", "E Chestplate"), wardrobeItems.map { plain(it) })
+        val body = groups["Armor and equipment"]!!.flatMap { it.stacks }.filter { it != null && !it.isEmpty }
+        assertEquals(8, body.size) // inv_armor and equipment_contents, valued once, there
     }
 }

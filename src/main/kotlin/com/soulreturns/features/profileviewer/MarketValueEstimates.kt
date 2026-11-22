@@ -74,7 +74,7 @@ object MarketValueEstimates {
     }
 
     /** The member's decoded item groups in breakdown order, null when the Inventory API is off. */
-    private fun decodedGroups(m: SkyblockProfileMember): List<Pair<String, List<ProfileItems.Blob>>>? {
+    internal fun decodedGroups(m: SkyblockProfileMember): List<Pair<String, List<ProfileItems.Blob>>>? {
         if (m.apiAccessDisabled) return null
         val backpacks = m.backpackBlobs
         fun blobs(vararg data: String?) = data.filterNotNull().map(ProfileItems::get)

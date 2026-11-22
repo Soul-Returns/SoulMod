@@ -84,12 +84,29 @@ object GearSection : ProfileSection {
         val detail: String = "",
         /** 0-based column to the names of the loadouts that use that set. */
         val usedBy: Map<Int, List<String>> = emptyMap(),
+        /** False when the worn set's own entry holds pieces (or ones that did not decode): the body's items never replace those. */
+        val wornEntryEmpty: Boolean = true,
+        /** True when the worn column shows the items on the body instead of its own (empty) entry. */
+        val wornFromBody: Boolean = false,
     ) {
         val pages: Int get() = sets.size / GearText.WARDROBE_COLUMNS
         val setsWithPieces: Int get() = sets.count { set -> set.any { it != null } }
 
         /** Nothing to draw: no source at all, or a source without a single slot or set. */
         val noData: Boolean get() = !present || slotCount == 0
+
+        /**
+         * The worn set's column filled with the items on the body ([worn]: `inv_armor` helmet first, or
+         * `equipment_contents` in slot order) when the set's own entry has no pieces; the set's own pieces always win.
+         * Display only: the Market value counts the physical items once, from the body.
+         */
+        fun withWorn(items: List<ItemStack?>): Wardrobe {
+            val n = worn ?: return this
+            if (!wornEntryEmpty || sets.getOrNull(n)?.all { it == null } != true || items.none { it != null }) return this
+            val filledSets = sets.toMutableList()
+            filledSets[n] = List(4) { items.getOrNull(it) }
+            return Wardrobe(filledSets, worn, present, slotCount, filled, unreadable, source, detail, usedBy, wornEntryEmpty, wornFromBody = true)
+        }
     }
 
     internal class View(
@@ -187,7 +204,7 @@ object GearSection : ProfileSection {
         w == null -> "none"
         !w.present -> "absent"
         else -> "${w.source} ${w.detail}, ${w.filled} decoded, ${w.unreadable} unreadable, " +
-            "${w.setsWithPieces} of ${w.sets.size} sets with a piece (${w.pages} pages), worn=${w.worn?.plus(1)}"
+            "${w.setsWithPieces} of ${w.sets.size} sets with a piece (${w.pages} pages), worn=${w.worn?.plus(1)}" + if (w.wornFromBody) " (shown from the body)" else ""
     }
 
     private fun looksWrong(w: Wardrobe?) = w != null && (!w.present || w.slotCount == 0 || w.filled == 0 || w.unreadable > 0)
@@ -246,9 +263,10 @@ object GearSection : ProfileSection {
             }
             if (set.id - 1 < count) columns[set.id - 1] = row
         }
+        val wornEntryEmpty = worn == null || sets.sets.firstOrNull { it.id - 1 == worn }?.pieces?.all { it == null } != false
         return Wardrobe(
             columns, worn?.takeIf { it < count }, slotCount = sets.sets.size * 4, filled = filled, unreadable = unreadable,
-            source = "loadout", detail = "${sets.sets.size} sets (highest id ${sets.highestId}), $pieces pieces", usedBy = used,
+            source = "loadout", detail = "${sets.sets.size} sets (highest id ${sets.highestId}), $pieces pieces", usedBy = used, wornEntryEmpty = wornEntryEmpty,
         )
     }
 
@@ -273,9 +291,11 @@ object GearSection : ProfileSection {
         val worn = ctx.member.wardrobeEquippedSet
         val stacks = blob.stacks.map { s -> s?.takeUnless { it.isEmpty } }
         val sets = wardrobeSets(stacks, worn)
+        // the worn set's slots in the blob, to tell an empty worn column from one whose items did not decode
+        val wornEntryEmpty = worn == null || List(4) { row -> blob.stacks.getOrNull((worn / GearText.WARDROBE_COLUMNS) * GearText.WARDROBE_PAGE + row * GearText.WARDROBE_COLUMNS + worn % GearText.WARDROBE_COLUMNS) }.all { it != null && it.isEmpty }
         return Wardrobe(
             sets, worn?.takeIf { it < sets.size }, slotCount = blob.stacks.size, filled = stacks.count { it != null },
-            unreadable = blob.stacks.count { it == null }, detail = "blob ${data.length} chars, ${blob.stacks.size} slots",
+            unreadable = blob.stacks.count { it == null }, detail = "blob ${data.length} chars, ${blob.stacks.size} slots", wornEntryEmpty = wornEntryEmpty,
         )
     }
 
@@ -304,9 +324,9 @@ object GearSection : ProfileSection {
         val equipmentApi = slots(ctx, ctx.member.equipmentBlob, eq)
         val equipment = List(4) { equipmentApi.getOrNull(it) }
         val wd = Pass()
-        val wardrobe = wardrobe(ctx, wd)
+        val wardrobe = wardrobe(ctx, wd).let { if (eq.part().ready) it.withWorn(armor) else it }
         val es = Pass()
-        val equipmentSets = equipmentSets(ctx, es)
+        val equipmentSets = equipmentSets(ctx, es)?.let { if (eq.part().ready) it.withWorn(equipment) else it }
         if (!wd.loading && !wd.failed && !es.loading) logWardrobe(ctx, wardrobe, equipmentSets)
         val found = weapons(ctx)
         return View(armor, equipment, eq.part(), wardrobe, wd.part(), found.list, Part(found.loading, found.failed), equipmentSets, es.part())
