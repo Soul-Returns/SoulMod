@@ -119,7 +119,7 @@ object StoreContestsSource : ContestsSource {
 
     override fun connection(): Connection {
         val c = S.connection
-        val now = System.currentTimeMillis()
+        val now = S.now()
         if (c == ContestConnection.OFFLINE) return Connection(Connection.OFFLINE, dataAt = S.dataAsOf.takeIf { it > 0 })
         if (c == ContestConnection.RECONNECTING) return Connection(Connection.RECONNECTING, since = S.reconnectingSince, dataAt = S.dataAsOf.takeIf { it > 0 })
         val back = S.reconnectedAt

@@ -731,12 +731,21 @@ object ContestsStore {
             restFailing -> ContestConnection.OFFLINE
             else -> ContestConnection.RECONNECTING
         }
-        if (connected && before != ContestConnection.LIVE && reconnectingSince != null) reconnectedAt = now()
+        if (!connected && wasLive) wentDown = true
+        if (connected && before != ContestConnection.LIVE && reconnectingSince != null && wentDown) reconnectedAt = now()
+        if (connected) wentDown = false
+        if (connection == ContestConnection.LIVE) wasLive = true
         if (connected) reconnectingSince = null else if (reconnectingSince == null) reconnectingSince = now()
         if (before != connection) changed()
     }
 
     private var restFailing = false
+
+    /** The stream has been LIVE since the last [reset]; the first connect is not a recovery. */
+    private var wasLive = false
+
+    /** The stream dropped after being live, or REST failed, and has not yet recovered ("Back online" needs it). */
+    private var wentDown = false
 
     private fun netOk() {
         if (restFailing) {
@@ -751,6 +760,7 @@ object ContestsStore {
         val code = error?.error
         if (code == ContestsApi.ERR_TRANSPORT && !restFailing) {
             restFailing = true
+            wentDown = true
             connection = ContestConnection.OFFLINE
             if (reconnectingSince == null) reconnectingSince = now()
         }
@@ -784,7 +794,7 @@ object ContestsStore {
         openId = null; snapshots.clear(); olderFeed.clear(); memberRuns.clear()
         announcedInvites.clear(); missedEnds.clear(); endedSeen.clear()
         connection = ContestConnection.OFFLINE; reconnectingSince = null; reconnectedAt = null
-        dataAsOf = 0L; lastError = null; restFailing = false
+        dataAsOf = 0L; lastError = null; restFailing = false; wasLive = false; wentDown = false
         changed()
     }
 
