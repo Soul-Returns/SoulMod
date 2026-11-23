@@ -6,9 +6,10 @@ server 127.0.0.1:25590 (tools/testserver/s).
 
   c install            create/refresh the instance (builds the Soul + dev bridge jars, downloads Fabric API + FLK)
   c update             rebuild the Soul + dev bridge jars and replace them in the instance (client must be down)
-  c up [--no-join] [--backend local]
+  c up [--no-join] [--backend local] [--hot]
                        launch, join 127.0.0.1:25590, wait until in the world (--no-join: title screen;
-                       --backend local: talk to the local dev SkyBackend with a pre-issued test bearer)
+                       --backend local: talk to the local dev SkyBackend with a pre-issued test bearer;
+                       --hot: UI hot reload, see below)
   c down               quit the client
   c status             running? joined? test server port open?
   c shot NAME          F2 screenshot -> tools/testclient/shots/NAME.png
@@ -23,6 +24,14 @@ server 127.0.0.1:25590 (tools/testserver/s).
   c type TEXT          type text into the focused field
   c run "/cmd"         a command as the player: open chat, type, Enter (no screen may be open)
   c log [N]            last N (default 40) lines of the client's latest.log
+
+Hot reload (`c up --hot`, dev-only): the game runs on JetBrains Runtime 25 (downloaded once into
+~/.cache/soulmod/jbr, sha512-checked) with -XX:+AllowEnhancedClassRedefinition and the agent
+tools/testclient/hotswap/SoulHotswap.java. A background watcher compiles src/main on every save
+(./gradlew compileKotlin compileJava -q) and the agent redefines the changed classes in the running
+game, structural changes (new methods, fields, lambdas) included. Install the current build first
+(c update), the agent only pushes classes compiled after launch. Logs: cache/hotswap/compile.log
+(compiles), <game>/logs/hotswap.log (redefinitions). c down stops the watcher.
 
 Wrap a whole session in the lock so agents take turns:
   tools/testclient/lock testclient bash -c 'tools/testclient/c up && ...; tools/testclient/c down'
@@ -75,6 +84,14 @@ CACHE = HERE / "cache"
 MC, LOADER = "26.2", "0.19.3"
 MODS = (("fabric-api", "0.153.0+26.2"), ("fabric-language-kotlin", "1.13.12+kotlin.2.4.0"))
 OPTIONS_BASE = PRISM / "instances/26.2 mod testing/minecraft/options.txt"
+# `c up --hot`: JetBrains Runtime (GPLv2 + Classpath Exception, like OpenJDK) can redefine classes structurally
+JBR_BUILD = "jbrsdk-25.0.5.1-linux-x64-b635.102"
+JBR_SHA512 = ("d7e61f7057d4d464a5a8f85c4c830cd7b66e54bbef6080deb0d0b17d817cc0d6"
+              "5b0c8b3cf7c89406ad8d2f1be83738497e1535a92c0eeb6f0d203723604b53f6")
+JBR_HOME = Path.home() / ".cache/soulmod/jbr" / JBR_BUILD
+HOTSWAP = CACHE / "hotswap"
+CLASS_DIRS = (REPO / "build/classes/kotlin/main", REPO / "build/classes/java/main")
+WATCHER_PID = HOTSWAP / "watcher.pid"
 
 WRAP = """#!/usr/bin/env bash
 # Launch wrapper of the SoulMod test instance (tools/testclient): always a headless gamescope,
@@ -454,7 +471,90 @@ def running_backend():
     return None if url == BACKEND else url
 
 
-def launch(join, local):
+# ---------- hot reload (c up --hot) ----------
+
+def jbr_java():
+    """JetBrains Runtime 25 in ~/.cache/soulmod/jbr (outside the repo), fetched once and sha512-checked."""
+    java = JBR_HOME / "bin/java"
+    if not java.exists():
+        url = "https://cache-redirector.jetbrains.com/intellij-jbr/%s.tar.gz" % JBR_BUILD
+        print("downloading", url)
+        data = urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "soulmod-testclient"}),
+                                      timeout=600).read()
+        if hashlib.sha512(data).hexdigest() != JBR_SHA512:
+            sys.exit("checksum mismatch for %s" % url)
+        JBR_HOME.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["tar", "xz", "-C", str(JBR_HOME.parent)], input=data, check=True)
+    return java
+
+
+def hotswap_agent():
+    """Builds tools/testclient/hotswap/SoulHotswap.java into cache/hotswap/soul-hotswap.jar when it changed."""
+    src, jar = HERE / "hotswap/SoulHotswap.java", HOTSWAP / "soul-hotswap.jar"
+    if jar.exists() and jar.stat().st_mtime >= src.stat().st_mtime:
+        return jar
+    classes = HOTSWAP / "classes"
+    shutil.rmtree(classes, ignore_errors=True)
+    subprocess.run([str(JBR_HOME / "bin/javac"), "--release", "25", "-d", str(classes), str(src)], check=True)
+    manifest = HOTSWAP / "MANIFEST.MF"
+    manifest.write_text("Premain-Class: SoulHotswap\nCan-Redefine-Classes: true\n")
+    subprocess.run([str(JBR_HOME / "bin/jar"), "cfm", str(jar), str(manifest), "-C", str(classes), "."], check=True)
+    return jar
+
+
+def source_mtimes():
+    out = {}
+    for root, _, files in os.walk(REPO / "src/main"):
+        for f in files:
+            if f.endswith((".kt", ".java")):
+                p = os.path.join(root, f)
+                try:
+                    out[p] = os.stat(p).st_mtime_ns
+                except OSError:
+                    pass
+    return out
+
+
+def cmd_watch(_):
+    """Background loop of `c up --hot`: compiles src/main after every save. The game-side agent picks up the classes."""
+    log = open(HOTSWAP / "compile.log", "a", buffering=1)
+    seen = source_mtimes()
+    started = False
+    while True:
+        time.sleep(0.2)
+        alive = java_pid() is not None
+        if started and not alive:
+            return   # the game is gone (c down, crash)
+        started |= alive
+        now = source_mtimes()
+        if now == seen:
+            continue
+        changed = sorted(p for p in now if now[p] != seen.get(p))
+        seen = now
+        t0 = time.time()
+        r = subprocess.run(["./gradlew", "compileKotlin", "compileJava", "-q"], cwd=REPO, capture_output=True, text=True)
+        log.write("%d change %s; compile %s in %.1f s\n" % (t0 * 1000, " ".join(os.path.relpath(p, REPO) for p in changed),
+                                                        "ok" if r.returncode == 0 else "FAILED", time.time() - t0))
+        if r.returncode:
+            log.write(r.stdout + r.stderr)
+
+
+def stop_watcher():
+    try:
+        os.killpg(int(WATCHER_PID.read_text()), 15)
+    except (OSError, ValueError):
+        pass
+    WATCHER_PID.unlink(missing_ok=True)
+
+
+def start_watcher():
+    stop_watcher()
+    p = subprocess.Popen([sys.executable, str(HERE / "client.py"), "_watch"], stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=open(HOTSWAP / "compile.log", "a"), start_new_session=True)
+    WATCHER_PID.write_text(str(p.pid))
+
+
+def launch(join, local, hot=False):
     if join and not server_up():
         sys.exit("test server not reachable on %s: start it with tools/testserver/s up" % SERVER)
     if not GAME.exists():
@@ -469,9 +569,16 @@ def launch(join, local):
     set_soul_scale()
     cp, asset_index = launch_files()
     t0 = time.time()
+    java, hot_args = JAVA, []
+    if hot:
+        java = jbr_java()
+        HOTSWAP.mkdir(parents=True, exist_ok=True)
+        hot_args = ["-XX:+AllowEnhancedClassRedefinition",
+                    "-javaagent:%s=%s" % (hotswap_agent(), ":".join(map(str, CLASS_DIRS)))]
+        start_watcher()
     # authlib's Mojang hosts go to the dead port; Realms still contacts Mojang with the dummy token "0"
     hosts = ["-Dminecraft.api.%s.host=%s" % (h, BACKEND) for h in ("auth", "account", "session", "services", "profiles")]
-    args = [str(INSTANCE / "wrap.sh"), str(JAVA), "-Xms1024m", "-Xmx4096m", "-Dsoul.backendUrl=%s" % backend,
+    args = [str(INSTANCE / "wrap.sh"), str(java), "-Xms1024m", "-Xmx4096m", *hot_args, "-Dsoul.backendUrl=%s" % backend,
             "-Dsoul.testclient=true", *extra, *hosts,
             "-cp", ":".join(cp), "net.fabricmc.loader.impl.launch.knot.KnotClient",
             "--username", ACCOUNT, "--uuid", ACCOUNT_UUID.hex, "--accessToken", TOKEN, "--userType", "legacy",
@@ -510,15 +617,18 @@ def stop():
         subprocess.run(["kill", str(pid)])
         while java_pid():
             time.sleep(0.2)
+    stop_watcher()
     swap_dev_access(False)
 
 
 def cmd_up(args):
-    join, local, rest = True, False, list(args)
+    join, local, hot, rest = True, False, False, list(args)
     while rest:
         a = rest.pop(0)
         if a == "--no-join":
             join = False
+        elif a == "--hot":
+            hot = True
         elif a == "--backend" and rest and rest[0] in ("local", "off"):
             local = rest.pop(0) == "local"
         else:
@@ -531,9 +641,9 @@ def cmd_up(args):
             sys.exit("client is running with backend %s: c down first" % (running_backend() or "off"))
         print("client already running")
         return
-    launch(join, local)
+    launch(join, local, hot)
     print("client up" + (", joined %s" % SERVER if join else " (title screen)") +
-          (", backend %s" % running_backend() if local else ""))
+          (", backend %s" % running_backend() if local else "") + (", hot reload on" if hot else ""))
 
 
 def cmd_status(_):
@@ -544,6 +654,10 @@ def cmd_status(_):
         print("joined:", "yes" if joined(text) else "no")
         print("backend:", running_backend() or "off (dead port)")
     print("test server %s:" % SERVER, "up" if server_up() else "down")
+    watcher = WATCHER_PID.read_text() if WATCHER_PID.exists() else None
+    if watcher and not Path("/proc/%s" % watcher).exists():
+        watcher = None
+    print("hot reload:", "on (watcher pid %s)" % watcher if watcher else "off")
 
 
 def cmd_shot(args):
@@ -636,6 +750,8 @@ def main():
         xdo("type", "--delay", "15", text)
         xdo("key", "Return")
         time.sleep(0.5)
+    elif c == "_watch":
+        cmd_watch(args)
     elif c == "log":
         cmd_log(args)
     else:
