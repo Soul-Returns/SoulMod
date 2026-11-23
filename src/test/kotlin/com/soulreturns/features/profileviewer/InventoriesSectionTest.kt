@@ -19,17 +19,20 @@ import kotlin.test.assertTrue
 class InventoriesSectionTest {
     private val price = InventoryLookups.price
     private val itemName = InventoryLookups.itemName
+    private val sackCatalog = InventoryLookups.sackCatalog
 
     @BeforeTest
     fun seams() {
         InventoryLookups.price = { 100L }
         InventoryLookups.itemName = { null }
+        InventoryLookups.sackCatalog = { com.soulreturns.data.sacks.SackCatalogIndex.EMPTY }
     }
 
     @AfterTest
     fun restore() {
         InventoryLookups.price = price
         InventoryLookups.itemName = itemName
+        InventoryLookups.sackCatalog = sackCatalog
     }
 
     private fun sam() = InvHarness.context("sam", "inventories-sam", "accessories-sam")
@@ -89,6 +92,7 @@ class InventoriesSectionTest {
     fun `search counts sack rows too`() {
         val state = ViewState()
         state.set("inventories.container", "sacks")
+        state.set("inventories.sackSel", "OTHER")
         state.field("inventories.q").set("cobble")
         val text = render(sam(), state).first.all()
         assertTrue("Cobblestone" in text && "Mithril Ore" !in text, text)
@@ -98,8 +102,9 @@ class InventoriesSectionTest {
     fun `sacks list names, counts and the hide-empty switch`() {
         val state = ViewState()
         state.set("inventories.container", "sacks")
+        state.set("inventories.sackSel", "OTHER")
         val all = render(sam(), state).first.all()
-        assertTrue("Sack items" in all && "Cobblestone" in all && "55,020" in all, all)
+        assertTrue("Other items" in all && "Cobblestone" in all && "55,020" in all, all)
         assertTrue("Wheat" in all, "empty sacks rows are dimmed, not hidden")
         assertTrue("Hide empty" in all)
 
@@ -113,10 +118,12 @@ class InventoriesSectionTest {
     fun `Inventory API off shows the notice, sacks and the locked list`() {
         val ctx = InvHarness.context("builder", "inventories-builder", "accessories-builder")
         assertNotNull(InventoriesSection.locked(ctx))
-        val text = render(ctx).first.all()
+        val state = ViewState()
+        state.set("inventories.sackSel", "OTHER")
+        val text = render(ctx, state).first.all()
         assertTrue("Builder42's Inventory API is off" in text, text)
         assertTrue("Sacks still show: Hypixel sends sack counts even with the Inventory API off." in text, text)
-        assertTrue("Sack items" in text && "Cobblestone" in text)
+        assertTrue("Other items" in text && "Cobblestone" in text)
         assertTrue("Ender Chest 1" !in text)
         assertTrue("Personal Vault" in text, "locked entries stay in the list")
     }

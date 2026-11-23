@@ -55,6 +55,7 @@ object SackMenus {
     data class SackItem(val id: String, val name: String, val count: Long)
 
     fun register() {
+        SackReporter.register()
         ClientTickEvents.END_CLIENT_TICK.register(ClientTickEvents.EndTick { scan() })
         ScreenEvents.AFTER_INIT.register(
             ScreenEvents.AfterInit { _, screen, _, _ ->

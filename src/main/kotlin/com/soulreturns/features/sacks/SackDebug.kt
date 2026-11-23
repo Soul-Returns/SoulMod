@@ -12,6 +12,7 @@ object SackDebug {
         val counts = SackState.allCounts()
         DevOutput.line("§7enabled §f${cfg.sacks.hud}§7 · profile bucket §f${SackState.profileKey()}§7 · §f${counts.size}§7 counts · §f${SackState.learnedNames().size}§7 learned names")
         DevOutput.line("§7last summary: §f${SackState.lastSummary}")
+        DevOutput.line("§7catalog: §f${com.soulreturns.data.sacks.SackCatalogClient.index.sacks.size}§7 sacks · reporter: §f${SackReporter.summary()}")
         DevOutput.line("")
         DevOutput.line("§eTracked")
         if (cfg.sacks.tracked.isEmpty()) DevOutput.line("§7  (none; middle-click an item in a sack menu)")

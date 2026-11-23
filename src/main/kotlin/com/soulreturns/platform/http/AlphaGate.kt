@@ -14,7 +14,7 @@ internal object AlphaGate {
 
     /** Catalog, price, update and dev-access reads, and lookups keyed only on a Mojang name or uuid. */
     private val GET_PATHS = setOf(
-        "/items", "/prices", "/drops", "/sea-creatures", "/recipes", "/market/values",
+        "/items", "/prices", "/drops", "/sea-creatures", "/recipes", "/sacks", "/market/values",
         "/mod/update", "/dev/access", "/player/resolve", "/skyblock/profiles",
     )
     private val GET_PATTERNS = listOf(

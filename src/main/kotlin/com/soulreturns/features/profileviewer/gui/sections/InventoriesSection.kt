@@ -1,8 +1,7 @@
 package com.soulreturns.features.profileviewer.gui.sections
 
-import com.soulreturns.data.items.ItemIcons
 import com.soulreturns.data.hypixel.BlobItem
-import com.soulreturns.data.hypixel.SackLine
+import com.soulreturns.data.hypixel.SackSummary
 import com.soulreturns.data.hypixel.ItemBlobs
 import com.soulreturns.data.hypixel.backpackBlobs
 import com.soulreturns.data.hypixel.enderChestBlob
@@ -12,18 +11,21 @@ import com.soulreturns.data.hypixel.humanizeItemId
 import com.soulreturns.data.hypixel.inventoryBlob
 import com.soulreturns.data.hypixel.inventoryDisplayOrder
 import com.soulreturns.data.hypixel.mergeSacks
+import com.soulreturns.data.hypixel.ownedSacks
+import com.soulreturns.data.hypixel.sacksBagBlob
 import com.soulreturns.data.hypixel.personalVaultBlob
 import com.soulreturns.data.hypixel.potionBagBlob
 import com.soulreturns.data.hypixel.quiverBlob
 import com.soulreturns.data.items.ItemCatalogClient
 import com.soulreturns.data.prices.PriceCache
+import com.soulreturns.data.sacks.SackCatalogClient
+import com.soulreturns.data.sacks.SackCatalogIndex
 import com.soulreturns.data.skyblock.SkyblockProfileState
 import com.soulreturns.features.profileviewer.gui.ProfileContext
 import com.soulreturns.features.profileviewer.gui.ProfileSection
 import com.soulreturns.features.profileviewer.gui.kit.Corner
 import com.soulreturns.features.profileviewer.gui.kit.Format
 import com.soulreturns.features.profileviewer.gui.kit.KitCanvas
-import com.soulreturns.features.profileviewer.gui.kit.KitLayout
 import com.soulreturns.features.profileviewer.gui.kit.KitMeasure
 import com.soulreturns.features.profileviewer.gui.kit.KitStyle as S
 import com.soulreturns.features.profileviewer.gui.kit.LH_SMALL
@@ -63,11 +65,16 @@ internal object InventoryLookups {
     /** The catalog's display name of a SkyBlock id, null when the catalog does not know it. */
     @Volatile
     var itemName: (String) -> String? = { id -> try { ItemCatalogClient.byId(id)?.displayName } catch (_: LinkageError) { null } }
+
+    /** Which items each sack holds (the backend's sack catalog); empty before the first download. */
+    @Volatile
+    var sackCatalog: () -> SackCatalogIndex = { try { SackCatalogClient.index } catch (_: LinkageError) { SackCatalogIndex.EMPTY } }
 }
 
 /**
- * Every container, searchable at once, plus sacks (mock `inventories`). Sacks are one "Sack items" card: the API
- * and the local counts are per item id, and grouping them per sack needs an id-to-sack table the mod does not have.
+ * Every container, searchable at once, plus sacks (mock `inventories`; sacks per `mocks/pv-sacks/` design b). The API
+ * and the local counts are per item id, so the tiles group them by the backend's sack catalog and the player's owned
+ * sacks ([SackView]); an item no known sack lists, or any item while the catalog is empty, sits under "Other items".
  */
 object InventoriesSection : ProfileSection {
     override val id = "inventories"
@@ -90,7 +97,6 @@ object InventoriesSection : ProfileSection {
     private const val NAV_W = 128
     private const val NAV_GAP = 10
     private const val WALL_MIN = 212
-    private const val SACK_COL_MIN = 220
 
     /**
      * One page card's data: [items] drive search and value, [stacks] the drawing (null while the blob
@@ -124,7 +130,12 @@ object InventoriesSection : ProfileSection {
         if (!apiOn) ui.apiOff(ctx.name, ctx.isSelf, "Inventory API", "inventories, Ender Chest and backpacks")
         ui.row {
             search("q", "Find an item in every container", width = 260, count = if (q.isNotEmpty()) "$total" else null)
-            if (view == "sacks") toggle("Hide empty", hideEmpty) { ui.toggleFlag("hideEmpty") }
+            if (view == "sacks") {
+                grow()
+                text("Sort", size = S.CAPTION, color = S.TEXT_DIM, wrap = false)
+                seg("sackSort", "value", listOf("value" to "Value", "count" to "Count", "name" to "Name"))
+                toggle("Hide empty", hideEmpty) { ui.toggleFlag("hideEmpty") }
+            }
         }
 
         val nav = CONTAINERS.map { (key, label) ->
@@ -140,7 +151,7 @@ object InventoriesSection : ProfileSection {
         val stateKey = "${ui.sectionId}.container"
         val body = ui.collect {
             if (view == "sacks") {
-                sackBody(ctx, sacks.newestSoulAt, apiOn, sackRows, q)
+                sackBody(ctx, sacks, apiOn, sackRows.isNotEmpty(), q, hideEmpty, ui.value("sackSort", "value"), ui.value("sackSel", ""), "${ui.sectionId}.sackSel")
             } else {
                 if (storage != null) {
                     val seen = storage.at?.let { " (${Format.ago(ctx.nowMs - it)})" }.orEmpty()
@@ -216,18 +227,42 @@ object InventoriesSection : ProfileSection {
         return PageNode(page.title, page.icon, matchText, value, body, faded = q.isNotEmpty() && matches == 0)
     }
 
-    private fun Ui.sackBody(ctx: ProfileContext, newestSoulAt: Long?, apiOn: Boolean, rows: List<SackLine>, q: String) {
-        if (newestSoulAt != null) note("Counts from your sack menus (${Format.ago(ctx.nowMs - newestSoulAt)}), newer than Hypixel's.")
+    private fun Ui.sackBody(
+        ctx: ProfileContext,
+        sacks: SackSummary,
+        apiOn: Boolean,
+        anyShown: Boolean,
+        q: String,
+        hideEmpty: Boolean,
+        sort: String,
+        selected: String,
+        stateKey: String,
+    ) {
+        if (sacks.newestSoulAt != null) note("Counts from your sack menus (${Format.ago(ctx.nowMs - sacks.newestSoulAt)}), newer than Hypixel's.")
         if (!apiOn) note("Sacks still show: Hypixel sends sack counts even with the Inventory API off.", chip = null)
-        if (rows.isEmpty()) {
+        if (sacks.lines.isEmpty() || !anyShown) {
             if (q.isNotEmpty()) empty("pv_search", "No sack item matches", "Try another word.")
             else empty("pv_chest", "No sack counts", "Hypixel sent none for this profile.")
             return
         }
-        val worth = rows.sumOf { InventoryLookups.price(it.id) * it.count }
-        card("Sack items", sub = "${Format.num(rows.size)} items${if (worth > 0) " · worth ${coins(worth)} coins" else ""}") {
-            add(SackListNode(rows.map { SackRow(it.id, sackName(it.id), it.count, it.fromSoul) }))
+        val owned = ctx.member.ownedSacks.orEmpty()
+        val catalog = InventoryLookups.sackCatalog()
+        val grouping = SackView.group(owned, catalog, sacks.lines)
+        val price = InventoryLookups.price
+        val name = ::sackName
+        val totals = SackView.totals(sacks.lines, price)
+        val topSack = SackView.tiles(grouping, { it.count > 0 }, false, "value", name, price).firstOrNull { it.key != SackView.OTHER_KEY && it.value > 0 }
+        tiles {
+            tile("Total value", if (totals.value > 0) coins(totals.value) else "—", "at bazaar sell price", color = S.COIN)
+            tile("Items stored", Format.num(totals.items), "${Format.num(totals.kinds)} kinds")
+            totals.top?.let { tile("Most valuable", name(it.id), if (totals.topValue > 0) "${coins(totals.topValue)} coins · ${Format.num(it.count)} stored" else "${Format.num(it.count)} stored") }
+            if (topSack != null) tile("Top sack", topSack.name, "${coins(topSack.value)} coins worth", color = topSack.color)
         }
+        if (catalog.isEmpty) note("Soul has not learned which items belong to which sack yet, so they are listed together.", chip = null)
+        else if (grouping.unknown.isNotEmpty()) note("${grouping.unknown.size} of the sacks in this Sack of Sacks have no item list yet; their items sit under Other items.", chip = null)
+        val tiles = SackView.tiles(grouping, { (!hideEmpty || it.count > 0) && (q.isEmpty() || name(it.id).lowercase(Locale.ROOT).contains(q)) }, hideEmpty || q.isNotEmpty(), sort, name, price)
+        val decoded = ctx.member.sacksBagBlob?.let { ctx.items.get(it) }?.takeIf { it.ready }
+        add(SackTilesNode(tiles, selected, stateKey) { tile -> tile.owned?.let { decoded?.stacks?.getOrNull(it.slot) } })
     }
 
     /** `.page`: a container card, a header (icon, title, matches, worth) over its slot grid. */
@@ -311,44 +346,6 @@ object InventoriesSection : ProfileSection {
             const val ROW_H = 24
             const val GAP = 1
             val ON_BG = 0xFF1C2331.toInt()
-        }
-    }
-
-    private class SackRow(val id: String, val name: String, val count: Long, val soul: Boolean)
-
-    /**
-     * `.sack` rows as columns of at least 220 px, filled top to bottom: the item's icon (when one is known) and name
-     * left, count right, empty ones dimmed.
-     */
-    private class SackListNode(val rows: List<SackRow>) : Node() {
-        private fun cols(w: Int) = KitLayout.autoFillColumns(w, SACK_COL_MIN, COL_GAP)
-        private fun perColumn(w: Int) = (rows.size + cols(w) - 1) / cols(w)
-
-        override fun measure(m: KitMeasure, w: Int): Int = perColumn(w) * ROW_H
-
-        override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
-            val cols = cols(w)
-            val colW = (w - COL_GAP * (cols - 1)) / cols
-            val per = max(1, perColumn(w))
-            for ((i, row) in rows.withIndex()) {
-                val ry = y + (i % per) * ROW_H
-                if (ry + ROW_H < c.viewTop || ry > c.viewBottom) continue
-                val rx = x + (i / per) * (colW + COL_GAP)
-                val zero = row.count == 0L
-                val value = Format.num(row.count)
-                val vw = c.width(value, S.SMALL, true)
-                c.text(value, rx + colW - vw, ry, ry + ROW_H, if (zero) S.TEXT_GHOST else if (row.soul) S.ACCENT_LIGHT else S.TEXT, S.SMALL, true)
-                val nx = rx + ICON + 4
-                ItemIcons.icon(row.id)?.let { c.item(it, rx, ry + (ROW_H - ICON) / 2, ICON, count = false) }
-                c.text(Rich.of(row.name).ellipsize(c, S.SMALL, rx + colW - vw - 8 - nx).plain, nx, ry, ry + ROW_H, if (zero) S.TEXT_GHOST else S.TEXT_MID, S.SMALL)
-            }
-        }
-
-        private companion object {
-            const val ROW_H = 15
-            const val COL_GAP = 14
-            /** `.xs` item size: fits the 15 px row. */
-            const val ICON = 12
         }
     }
 

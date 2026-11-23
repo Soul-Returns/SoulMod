@@ -198,6 +198,7 @@ object Soul : ClientModInitializer {
         PriceCatalogClient.init()
         com.soulreturns.data.recipes.RecipeCatalogClient.init()
         com.soulreturns.data.hypixel.HotmTreeClient.init()
+        com.soulreturns.data.sacks.SackCatalogClient.init()
         CatalogRegistry.init()
         // Market values merge deltas rather than swapping snapshots, so they sit beside the
         // registry with their own subscription (kind `market` is unclaimed there).

@@ -13,6 +13,8 @@ import com.soulreturns.data.hypixel.SkyblockProfiles
 import com.soulreturns.data.hypixel.SoulStatsAnswer
 import com.soulreturns.data.hypixel.SoulStatsClient
 import com.soulreturns.data.hypixel.SoulStatsEnvelope
+import com.soulreturns.data.sacks.SackCatalogClient
+import com.soulreturns.data.sacks.SackCatalogSnapshot
 import com.soulreturns.features.dev.DevOutput
 import com.soulreturns.features.experiments.RngMeterStore
 import com.soulreturns.features.fishing.FishingCounts
@@ -58,14 +60,15 @@ import java.util.UUID
  *   "profiles": { …a Hypixel /skyblock/profiles body… }, "profile": "Banana",
  *   "soulStats": { "status": 200, "body": { "schemaVersion": 1, "shared": true, "namespaces": { … } } },
  *   "caps": { "schemaVersion": 2, "profiles": { "<profile id>": { "farming": 60 } } },
- *   "hotmTree": { …a `GET /hotm/tree` body… },
+ *   "hotmTree": { …a `GET /hotm/tree` body… }, "sackCatalog": { …a `GET /sacks` body… },
  *   "localSoul": { "nucleus": { …NucleusCounts… }, "fishing": { …FishingCounts… }, "dragons": { …DragonProfitStats… },
  *                  "detector": { …DetectorLootCounts… }, "rng": { "name": "Jaderald", "odds": 0.5, "readAt": "now-600000" } } }
  * ```
  * `self: true` swaps in your own name and uuid (the fixture's `uuid` member becomes yours); `hold: true`
  * stops after resolving (the loading state). `skin` gives the player a skin texture inline (the test
  * client has no session server to resolve one by uuid); without it the skin lookup goes by uuid; `"loading"`
- * and `"none"` force the figure's "Loading skin" and "No skin" fallbacks. `hotmTree`
+ * and `"none"` force the figure's "Loading skin" and "No skin" fallbacks. `sackCatalog`
+ * does the same for the sack catalog (the Inventories sack tiles). `hotmTree`
  * stands in for the backend's Heart of the Mountain catalog until its next refresh (the shared payload is
  * `src/test/resources/profileviewer/fragments/hotm-tree.json`). `localSoul` (with `self: true`) seeds the local
  * Soul cards in memory, for every profile of the fixture, in place of this computer's `stats.json` buckets
@@ -114,6 +117,13 @@ object SpvFixtures {
                 HotmTreeClient.preview(json.decodeFromJsonElement(HotmTreeSnapshot.serializer(), tree))
             } catch (e: Exception) {
                 DevOutput.line("§cIgnoring §fhotmTree§c: ${e.message}")
+            }
+        }
+        (root["sackCatalog"] as? JsonObject)?.let { catalog ->
+            try {
+                SackCatalogClient.preview(json.decodeFromJsonElement(SackCatalogSnapshot.serializer(), catalog))
+            } catch (e: Exception) {
+                DevOutput.line("§cIgnoring §fsackCatalog§c: ${e.message}")
             }
         }
         DevOutput.line("§7Presenting §f${identity.name}§7 from §f$file")
