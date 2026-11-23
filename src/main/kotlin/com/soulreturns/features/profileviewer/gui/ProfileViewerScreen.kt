@@ -185,6 +185,9 @@ class ProfileViewerScreen private constructor(
 
     private var sectionId = OverviewSection.id
     private val scrolls = HashMap<String, ScrollState>()
+
+    /** The scroll of the body painting right now, for [kitReveal]. */
+    private var bodyScroll: ScrollState? = null
     private val railScroll = ScrollState()
     private val search = SoulTextField()
     private var popover: String? = null
@@ -386,6 +389,12 @@ class ProfileViewerScreen private constructor(
     }
 
     override fun kitOpenSection(id: String) = goSection(id)
+
+    override fun kitReveal(y0: Int, y1: Int) {
+        val st = bodyScroll ?: return
+        val off = st.pos.roundToInt() - canvas.viewTop
+        st.reveal(y0 + off, y1 + off, 8)
+    }
 
     override fun kitPlayerModel(uuidUndashed: String, name: String, x0: Int, y0: Int, x1: Int, y1: Int, armor: List<ItemStack?>?): Int {
         val g = frame ?: return PlayerModel.UNAVAILABLE
@@ -762,10 +771,12 @@ class ProfileViewerScreen private constructor(
         canvas.viewBottom = y1
         beginClip(g, x0, top, x1, y1)
         canvas.culling = true
+        bodyScroll = st
         try {
             root.paint(canvas, bx0, top + L.BODY_PAD_TOP - st.pos.roundToInt(), bw, contentH)
         } finally {
             canvas.culling = false
+            bodyScroll = null
         }
         endClip(g)
         drawScrollbar(g, mx, my, st, x0, top, x1 - 4, y1 - 4)

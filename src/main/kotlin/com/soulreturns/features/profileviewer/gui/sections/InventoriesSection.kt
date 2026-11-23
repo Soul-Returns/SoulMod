@@ -257,17 +257,34 @@ object InventoriesSection : ProfileSection {
         val name = ::sackName
         val totals = SackView.totals(sacks.lines, price)
         val topSack = SackView.tiles(grouping, { it.count > 0 }, false, "value", name, price).firstOrNull { it.key != SackView.OTHER_KEY && it.value > 0 }
+        val shown = SackView.tiles(grouping, { (!hideEmpty || it.count > 0) && (q.isEmpty() || name(it.id).lowercase(Locale.ROOT).contains(q)) }, hideEmpty || q.isNotEmpty(), sort, name, price)
+        // A summary tile's click opens its sack and pulses the target; a search hiding the target is cleared.
+        fun jump(target: SackView.Jump?) {
+            if (target == null) return
+            if (q.isNotEmpty() && SackView.hides(shown, target)) {
+                state.field("$sectionId.q").set("")
+                state.blurFields()
+            }
+            setValue("sackSel", target.tile)
+            setValue("sackJump", target.encode())
+        }
         tiles {
             tile("Total value", if (totals.value > 0) coins(totals.value) else "—", "at bazaar sell price", color = S.COIN)
             tile("Items stored", Format.num(totals.items), "${Format.num(totals.kinds)} kinds")
-            totals.top?.let { tile("Most valuable", name(it.id), if (totals.topValue > 0) "${coins(totals.topValue)} coins · ${Format.num(it.count)} stored" else "${Format.num(it.count)} stored") }
-            if (topSack != null) tile("Top sack", topSack.name, "${coins(topSack.value)} coins worth", color = topSack.color)
+            totals.top?.let { top ->
+                tile(
+                    "Most valuable", name(top.id), if (totals.topValue > 0) "${coins(totals.topValue)} coins · ${Format.num(top.count)} stored" else "${Format.num(top.count)} stored",
+                    tip = "Click to show it in its sack",
+                ) { jump(SackView.jumpToItem(SackView.tiles(grouping, { true }, false, sort, name, price), top.id, ctx.nowMs)) }
+            }
+            if (topSack != null) tile("Top sack", topSack.name, "${coins(topSack.value)} coins worth", color = topSack.color, tip = "Click to open this sack") {
+                jump(SackView.Jump(topSack.key, null, ctx.nowMs))
+            }
         }
         if (catalog.isEmpty) note("Soul has not learned which items belong to which sack yet, so they are listed together.", chip = null)
         else if (grouping.unknown.isNotEmpty()) note("${grouping.unknown.size} of the sacks in this Sack of Sacks have no item list yet; their items sit under Other items.", chip = null)
-        val tiles = SackView.tiles(grouping, { (!hideEmpty || it.count > 0) && (q.isEmpty() || name(it.id).lowercase(Locale.ROOT).contains(q)) }, hideEmpty || q.isNotEmpty(), sort, name, price)
         val decoded = ctx.member.sacksBagBlob?.let { ctx.items.get(it) }?.takeIf { it.ready }
-        add(SackTilesNode(tiles, selected, stateKey) { tile -> tile.owned?.let { decoded?.stacks?.getOrNull(it.slot) } })
+        add(SackTilesNode(shown, selected, stateKey, SackView.parseJump(value("sackJump", ""))) { tile -> tile.owned?.let { decoded?.stacks?.getOrNull(it.slot) } })
     }
 
     /** `.page`: a container card, a header (icon, title, matches, worth) over its slot grid. */

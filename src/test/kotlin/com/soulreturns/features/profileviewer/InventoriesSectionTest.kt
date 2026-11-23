@@ -105,13 +105,8 @@ class InventoriesSectionTest {
         state.set("inventories.sackSel", "OTHER")
         val all = render(sam(), state).first.all()
         assertTrue("Other items" in all && "Cobblestone" in all && "55,020" in all, all)
-        assertTrue("Wheat" in all, "empty sacks rows are dimmed, not hidden")
+        assertTrue("Wheat" !in all, "a 0 under an id no sack lists stays out of Other items: $all")
         assertTrue("Hide empty" in all)
-
-        state.set("inventories.hideEmpty", "1")
-        val hidden = render(sam(), state).first.all()
-        assertTrue("Wheat" !in hidden, hidden)
-        assertTrue("Cobblestone" in hidden)
     }
 
     @Test

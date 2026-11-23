@@ -239,17 +239,55 @@ internal object SackView {
     fun gemStored(g: Gem): List<String> =
         g.tiers.map { "§7${it.label}: §f${Format.num(it.row.count)} §8(${Format.num(it.roughEq)})" } +
             ("§7Stored: §e${Format.num(g.roughEq)}" + if (g.cap > 0) "§7 / ${Format.short(g.cap)}" else "")
+
+    /**
+     * A summary tile's click ("Top sack", "Most valuable"): select [tile], highlight [row] (an item id; for a gemstone
+     * tier the drawer highlights its gemstone entry) and scroll there. [at] = the click's clock, for the pulse.
+     */
+    class Jump(val tile: String, val row: String?, val at: Long) {
+        fun encode(): String = "$tile|${row.orEmpty()}|$at"
+    }
+
+    fun parseJump(s: String): Jump? {
+        val p = s.split('|')
+        if (p.size != 3 || p[0].isEmpty()) return null
+        return Jump(p[0], p[1].ifEmpty { null }, p[2].toLongOrNull() ?: return null)
+    }
+
+    /**
+     * "Most valuable": the first tile in [tiles] (unfiltered, in the current order) that lists [id], so of several
+     * owned sacks the one shown first; an item in no owned sack is under Other items, which is last.
+     */
+    fun jumpToItem(tiles: List<Tile>, id: String, at: Long): Jump? =
+        tiles.firstOrNull { t -> t.rows.any { it.id == id } }?.let { Jump(it.key, id, at) }
+
+    /**
+     * Whether the filtered [shown] tiles lack the jump's tile or row. A jump clears the search then; Hide empty
+     * never hides a target (both summary tiles point at items with a count), so it stays as the player set it.
+     */
+    fun hides(shown: List<Tile>, jump: Jump): Boolean {
+        val tile = shown.firstOrNull { it.key == jump.tile } ?: return true
+        return jump.row != null && tile.rows.none { it.id == jump.row }
+    }
+
+    /** The jump highlight's strength [elapsed] ms after the click: full for 300 ms, then fading out until 1.5 s. */
+    fun pulse(elapsed: Long): Float = when {
+        elapsed < 0 || elapsed >= 1500 -> 0f
+        elapsed < 300 -> 1f
+        else -> 1f - (elapsed - 300).toFloat() / 1200f
+    }
 }
 
 /**
  * Design b of `mocks/pv-sacks/`: sack tiles, three to a row, and a drawer under the selected tile's row listing the
- * sack's items. A tile click toggles [stateKey] (the selected tile's key). One-off visual, so it lives here and not
- * in the kit.
+ * sack's items. A tile click toggles [stateKey] (the selected tile's key). [jump] (a summary tile's click) pulses its
+ * tile and row and scrolls them into view once. One-off visual, so it lives here and not in the kit.
  */
 internal class SackTilesNode(
     private val tiles: List<SackView.Tile>,
     private val selected: String,
     private val stateKey: String,
+    private val jump: SackView.Jump?,
     private val icon: (SackView.Tile) -> ItemStack?,
 ) : Node() {
     private fun cols(w: Int) = ((w + TILE_GAP) / (TILE_MIN_W + TILE_GAP)).coerceIn(1, 3)
@@ -284,6 +322,7 @@ internal class SackTilesNode(
         val tileW = (w - TILE_GAP * (cols - 1)) / cols
         val sel = selectedIndex()
         val drawerRow = if (sel < 0) -1 else sel / cols
+        if (jump != null && sel >= 0 && tiles[sel].key == jump.tile && SackView.pulse(c.nowMs - jump.at) > 0f) reveal(c, y, w, sel / cols, tiles[sel])
         var ry = y
         var row = 0
         while (row * cols < tiles.size) {
@@ -304,9 +343,57 @@ internal class SackTilesNode(
         }
     }
 
+    /**
+     * Scrolls the jump's tile (in tile row [tileRow]) and its drawer entry into view, the tile and the drawer's head
+     * for a sack alone; when both do not fit, the entry wins.
+     */
+    private fun reveal(c: KitCanvas, y: Int, w: Int, tileRow: Int, t: SackView.Tile) {
+        val tileTop = y + tileRow * (TILE_H + TILE_GAP)
+        val drawerTop = tileTop + TILE_H + TILE_GAP
+        val entry = jump?.row?.let { entryAt(t, it, w) }
+        if (entry == null) {
+            c.reveal("sack:${jump?.encode()}", tileTop, drawerTop + min(drawerHeight(t, w), DRAWER_PAD_Y + HEAD_H + HEAD_GAP + 3 * ROW_H))
+            return
+        }
+        val entryTop = drawerTop + entry[0]
+        val entryBottom = entryTop + entry[1]
+        val fits = entryBottom - tileTop <= c.viewBottom - c.viewTop - 24
+        c.reveal("sack:${jump?.encode()}", if (fits) tileTop else entryTop - 2 * ROW_H, entryBottom)
+    }
+
+    /** Top (from the drawer's top) and height of the drawer entry showing item [id]: its gemstone entry for a tier. */
+    private fun entryAt(t: SackView.Tile, id: String, w: Int): IntArray? {
+        val cols = drawerCols(w)
+        val by = DRAWER_PAD_Y + HEAD_H + HEAD_GAP
+        val gems = t.gems.orEmpty()
+        val gi = gems.indexOfFirst { g -> g.tiers.any { it.row.id == id } }
+        if (gi >= 0) return intArrayOf(by + gi / cols * GEM_H, GEM_H)
+        val li = t.loose.indexOfFirst { it.id == id }
+        if (li >= 0) return intArrayOf(by + lines(gems.size, cols) * GEM_H + li / cols * ROW_H, ROW_H)
+        return null
+    }
+
+    /** The jump pulse's strength for tile [key] (and, with [ids], only for an entry holding the jump's row). */
+    private fun pulse(c: KitCanvas, key: String, ids: List<String>? = null): Float {
+        val j = jump ?: return 0f
+        if (j.tile != key || (ids != null && j.row !in ids)) return 0f
+        return SackView.pulse(c.nowMs - j.at)
+    }
+
+    /** The pulse ring: an accent edge [ring] px around the box fading with [f]; the box's own fill [bg] goes on top. */
+    private fun ring(c: KitCanvas, x0: Int, y0: Int, x1: Int, y1: Int, f: Float, ring: Int, bg: Int, corner: Int) {
+        c.rect(x0 - ring, y0 - ring, x1 + ring, y1 + ring, alpha(S.ACCENT_LIGHT, f), corner)
+        c.rect(x0, y0, x1, y1, bg, corner)
+    }
+
+    private fun alpha(color: Int, a: Float): Int = ((a.coerceIn(0f, 1f) * 255).toInt() shl 24) or (color and 0xFFFFFF)
+
     private fun paintTile(c: KitCanvas, t: SackView.Tile, x: Int, y: Int, w: Int, on: Boolean) {
         val hover = c.hovered(x, y, x + w, y + TILE_H)
+        val f = pulse(c, t.key)
+        if (f > 0f) ring(c, x, y, x + w, y + TILE_H, f, 2, if (on) ON_BG else BG, Corner.MEDIUM)
         if (on) c.framed(x, y, x + w, y + TILE_H, ON_BG, S.ACCENT, Corner.MEDIUM) else c.rect(x, y, x + w, y + TILE_H, if (hover) HOVER_BG else BG, Corner.MEDIUM)
+        if (f > 0f) c.rect(x, y, x + w, y + TILE_H, alpha(S.ACCENT, 0.25f * f), Corner.MEDIUM)
         val ix = x + PAD_X
         val top = y + PAD_Y
         val stack = icon(t)
@@ -395,6 +482,11 @@ internal class SackTilesNode(
      */
     private fun paintGem(c: KitCanvas, t: SackView.Tile, g: SackView.Gem, x: Int, y: Int, w: Int) {
         val zero = g.roughEq == 0L
+        val f = pulse(c, t.key, g.tiers.map { it.row.id })
+        if (f > 0f) {
+            ring(c, x, y, x + w, y + GEM_H, f, 1, DRAWER_BG, Corner.SMALL)
+            c.rect(x, y, x + w, y + GEM_H, alpha(S.ACCENT, 0.25f * f), Corner.SMALL)
+        }
         if (c.hovered(x, y, x + w, y + GEM_H)) c.rect(x, y, x + w, y + GEM_H, HOVER_BG, Corner.SMALL)
         ItemIcons.icon(g.tiers.last().row.id)?.let { c.item(it, x + 3, y + (ROW_H - MINI_ICON) / 2, MINI_ICON, count = false) }
         var rx = x + w - 3
@@ -440,6 +532,11 @@ internal class SackTilesNode(
 
     private fun paintRow(c: KitCanvas, t: SackView.Tile, r: SackView.Row, x: Int, y: Int, w: Int) {
         val zero = r.count == 0L
+        val f = pulse(c, t.key, listOf(r.id))
+        if (f > 0f) {
+            ring(c, x, y, x + w, y + ROW_H, f, 1, DRAWER_BG, Corner.SMALL)
+            c.rect(x, y, x + w, y + ROW_H, alpha(S.ACCENT, 0.25f * f), Corner.SMALL)
+        }
         if (c.hovered(x, y, x + w, y + ROW_H)) c.rect(x, y, x + w, y + ROW_H, HOVER_BG, Corner.SMALL)
         ItemIcons.icon(r.id)?.let { c.item(it, x + 3, y + (ROW_H - MINI_ICON) / 2, MINI_ICON, count = false) }
         var rx = x + w - 3

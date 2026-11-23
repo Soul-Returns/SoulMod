@@ -263,6 +263,44 @@ class SackViewTest {
         assertEquals(1, tile.full)
     }
 
+    @Test
+    fun `a summary jump finds the first sack in tile order, Other items last, and says when the search hides it`() {
+        val owned = ownedSacks(ItemBlobs.parse(testBlob)!!)
+        val catalog = index(
+            SackCatalogEntry("MINING_SACK", "Mining Sack", listOf("COAL", "MAGMA_CREAM")),
+            SackCatalogEntry("DWARVEN_MINES_SACK", "Dwarven Sack", listOf("MAGMA_CREAM", "MITHRIL_ORE")),
+        )
+        val grouping = SackView.group(owned, catalog, lines("COAL" to 50L, "MAGMA_CREAM" to 7L, "MITHRIL_ORE" to 3L, "DIRT" to 1L))
+        fun all(sort: String) = SackView.tiles(grouping, { true }, false, sort, { it }, InventoryLookups.price)
+        // By value Mining (500 + 700) comes before Dwarven (700 + 300); by name Dwarven comes first.
+        val byValue = SackView.jumpToItem(all("value"), "MAGMA_CREAM", 5L)!!
+        assertEquals("MINING_SACK", byValue.tile)
+        assertEquals("MAGMA_CREAM", byValue.row)
+        assertEquals("DWARVEN_MINES_SACK", SackView.jumpToItem(all("name"), "MAGMA_CREAM", 5L)!!.tile)
+        assertEquals(SackView.OTHER_KEY, SackView.jumpToItem(all("value"), "DIRT", 5L)!!.tile, "an item in no owned sack is under Other items")
+        assertNull(SackView.jumpToItem(all("value"), "QUARTZ", 5L))
+
+        val searched = SackView.tiles(grouping, { it.id.contains("MITHRIL") }, true, "value", { it }, InventoryLookups.price)
+        assertTrue(SackView.hides(searched, byValue), "the search shows no Mining Sack: it is cleared")
+        assertTrue(SackView.hides(searched, SackView.Jump("DWARVEN_MINES_SACK", "MAGMA_CREAM", 5L)), "the tile shows, the row does not")
+        assertTrue(!SackView.hides(searched, SackView.Jump("DWARVEN_MINES_SACK", "MITHRIL_ORE", 5L)))
+        assertTrue(!SackView.hides(searched, SackView.Jump("DWARVEN_MINES_SACK", null, 5L)), "a sack jump needs only its tile")
+
+        val back = SackView.parseJump(byValue.encode())!!
+        assertEquals(listOf("MINING_SACK", "MAGMA_CREAM", "5"), listOf(back.tile, back.row, back.at.toString()))
+        assertNull(SackView.parseJump(SackView.Jump("MINING_SACK", null, 9L).encode())!!.row)
+        assertNull(SackView.parseJump(""))
+    }
+
+    @Test
+    fun `a gemstone tier jumps into the Gemstone Sack and the pulse fades within 1500 ms`() {
+        val grouping = SackGrouping(listOf(SackGroup("GEMSTONE_SACK", "Gemstone Sack", null, lines("ROUGH_RUBY_GEM" to 9L, "FINE_RUBY_GEM" to 2L))), null, emptyList())
+        val jump = SackView.jumpToItem(SackView.tiles(grouping, { true }, false, "value", { it }, InventoryLookups.price), "FINE_RUBY_GEM", 0L)!!
+        assertEquals("GEMSTONE_SACK", jump.tile)
+        assertEquals("FINE_RUBY_GEM", jump.row)
+        assertEquals(listOf(0f, 1f, 1f, 0.5f, 0f), listOf(-1L, 0L, 300L, 900L, 1500L).map { SackView.pulse(it) })
+    }
+
     // ------------------------------------------------------------------ the section
 
     private fun context(counts: Map<String, Long>, sacksBag: String? = testBlob): ProfileContext {

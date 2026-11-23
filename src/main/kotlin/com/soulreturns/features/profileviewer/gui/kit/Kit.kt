@@ -93,6 +93,12 @@ interface KitCanvas : KitMeasure {
     /** Switches the viewer to another section (`ctx.open` from inside a click). */
     fun openSection(id: String)
 
+    /**
+     * Scrolls the body so [y0]..[y1] (this frame's px) is in view, once per [token]: a node may ask every frame
+     * while its jump lasts and the player can still scroll away. Bodies that do not scroll ignore it.
+     */
+    fun reveal(token: String, y0: Int, y1: Int) = Unit
+
     /** A vertical gradient fill ([top] to [bottom] color) with [corner]; a plain [top] fill where gradients are not drawn. */
     fun gradient(x0: Int, y0: Int, x1: Int, y1: Int, top: Int, bottom: Int, corner: Int = Corner.MEDIUM) = rect(x0, y0, x1, y1, top, corner)
 

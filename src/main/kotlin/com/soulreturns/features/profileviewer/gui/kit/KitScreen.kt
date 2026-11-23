@@ -50,6 +50,12 @@ abstract class KitScreen(title: Component) : SoulScreenBase(title) {
 
     protected open fun kitOpenSection(id: String) {}
 
+    /** Scrolls the body so [y0]..[y1] (screen Soul px) is in view; see [KitCanvas.reveal]. */
+    protected open fun kitReveal(y0: Int, y1: Int) {}
+
+    /** The last [KitCanvas.reveal] token served, so each one scrolls once. */
+    private var revealed: String? = null
+
     protected open fun kitPlayerModel(uuidUndashed: String, name: String, x0: Int, y0: Int, x1: Int, y1: Int, armor: List<ItemStack?>?): Int = PlayerModel.UNAVAILABLE
 
     /** Starts a frame: clears regions, records the pointer in Soul px and the clock. */
@@ -204,6 +210,12 @@ abstract class KitScreen(title: Component) : SoulScreenBase(title) {
         }
 
         override fun openSection(id: String) = kitOpenSection(id)
+
+        override fun reveal(token: String, y0: Int, y1: Int) {
+            if (token == revealed) return
+            revealed = token
+            kitReveal(y0, y1)
+        }
 
         override fun gradient(x0: Int, y0: Int, x1: Int, y1: Int, top: Int, bottom: Int, corner: Int) {
             val g = frame ?: return
