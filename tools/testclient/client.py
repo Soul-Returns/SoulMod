@@ -6,14 +6,15 @@ server 127.0.0.1:25590 (tools/testserver/s).
 
   c install            create/refresh the instance (builds the Soul + dev bridge jars, downloads Fabric API + FLK)
   c update             rebuild the Soul + dev bridge jars and replace them in the instance (client must be down)
-  c up [--no-join] [--backend local] [--hot]
+  c up [--no-join] [--backend local] [--hot[=watch]] [--window]
                        launch, join 127.0.0.1:25590, wait until in the world (--no-join: title screen;
                        --backend local: talk to the local dev SkyBackend with a pre-issued test bearer;
-                       --hot: UI hot reload, see below)
+                       --hot: UI hot reload, see below; --window: visible on the desktop, see below)
   c down               quit the client
-  c status             running? joined? test server port open?
-  c shot NAME          F2 screenshot -> tools/testclient/shots/NAME.png
-  c click X Y          left click at window pixels (1708 x 960)
+  c status             running? joined? test server port open? hot reload, window, frame size
+  c size               the game frame in pixels (1708 x 960 headless; the window's current size with --window)
+  c shot NAME          screenshot of the game frame -> tools/testclient/shots/NAME.png
+  c click X Y          left click at frame pixels (see c size)
   c rclick X Y         right click
   c mclick X Y         middle click
   c move X Y           move the mouse (hover tooltips)
@@ -23,19 +24,34 @@ server 127.0.0.1:25590 (tools/testserver/s).
   c hold KEY SECS      hold a key down
   c type TEXT          type text into the focused field
   c run "/cmd"         a command as the player: open chat, type, Enter (no screen may be open)
+  c reload [--reopen]  hot mode: compile, then swap the changed classes into the running game (--reopen: then
+                       close the screen with Escape and repeat the last `c run`, e.g. for new fields)
   c log [N]            last N (default 40) lines of the client's latest.log
 
 Hot reload (`c up --hot`, dev-only): the game runs on JetBrains Runtime 25 (downloaded once into
 ~/.cache/soulmod/jbr, sha512-checked) with -XX:+AllowEnhancedClassRedefinition and the agent
-tools/testclient/hotswap/SoulHotswap.java. A background watcher compiles src/main on every save
-(./gradlew compileKotlin compileJava -q) and the agent redefines the changed classes in the running
-game, structural changes (new methods, fields, lambdas) included. Install the current build first
-(c update), the agent only pushes classes compiled after launch. Logs: cache/hotswap/compile.log
-(compiles), <game>/logs/hotswap.log (redefinitions). c down stops the watcher.
+tools/testclient/agent/SoulTestAgent.java. Nothing changes in the game until `c reload`: it runs
+./gradlew compileKotlin compileJava -q (on a compile error it prints the error, exits 1 and pushes
+nothing), copies the classes that differ from what the game runs into cache/hotswap/live and has the
+agent redefine them, structural changes (new methods, fields, lambdas, classes) included. Other
+compiles in the checkout (another agent's build or test) never reach the game by themselves. Classes
+the game loads later get the bytes of the last `c reload`, or the installed jar's before the first one
+(c update first: the game starts from the jar). `--hot=watch` instead reloads after every save under
+src/main. Logs: cache/hotswap/compile.log (watch mode), <game>/logs/testagent.log (redefinitions).
+
+Visible window (`c up --window`, combinable with --hot): the same offline instance as a normal game window on
+the desktop (resizable, tiled like any window; GUI scale Auto, Soul's UI scale picked for the monitor),
+started as the systemd user unit soulmod-testclient so it never replaces the terminal that ran `c up`. Every
+command above works the same and needs no focus, workspace or pointer: input goes through Minecraft's own
+mouse/keyboard handlers and `c shot` reads the game's frame, both via the test agent
+(tools/testclient/agent/SoulTestAgent.java, attached only by c up --window/--hot, and refusing input unless
+the game is the offline SoulTester on 127.0.0.1:25590). The frame follows the window, so check `c size`
+before clicking; the owner's own mouse inside the window still moves the same pointer.
 
 Wrap a whole session in the lock so agents take turns:
   tools/testclient/lock testclient bash -c 'tools/testclient/c up && ...; tools/testclient/c down'
 """
+import fcntl
 import hashlib
 import json
 import os
@@ -48,6 +64,7 @@ import sys
 import time
 import urllib.request
 import uuid
+import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -91,11 +108,16 @@ JBR_SHA512 = ("d7e61f7057d4d464a5a8f85c4c830cd7b66e54bbef6080deb0d0b17d817cc0d6"
 JBR_HOME = Path.home() / ".cache/soulmod/jbr" / JBR_BUILD
 HOTSWAP = CACHE / "hotswap"
 CLASS_DIRS = (REPO / "build/classes/kotlin/main", REPO / "build/classes/java/main")
+LIVE = HOTSWAP / "live"   # the Soul classes the game runs: the jar's at launch, then each c reload's
 WATCHER_PID = HOTSWAP / "watcher.pid"
+LAST_RUN = HOTSWAP / "last_run"   # the last `c run` command, for c reload --reopen
+AGENT = CACHE / "agent"    # tools/testclient/agent/SoulTestAgent.java, built here
+CTL = AGENT / "ctl"        # req-<id> / res-<id> files between c and the agent in the game
+UNIT = "soulmod-testclient"   # systemd user unit of a --window client (outside the caller's process tree)
 
 WRAP = """#!/usr/bin/env bash
-# Launch wrapper of the SoulMod test instance (tools/testclient): always a headless gamescope,
-# rendered on the GPU, no window on the desktop, no audio.
+# Launch wrapper of the SoulMod test instance (tools/testclient): a headless gamescope, rendered on the GPU,
+# or a plain window with c up --window; no audio.
 set -euo pipefail
 
 # Offline identity guard: start only with exactly one `--username %s` and one `--accessToken %s`
@@ -122,13 +144,18 @@ done
 [ "$nuser" -eq 1 ] && [ "$ntoken" -eq 1 ] || refuse "need exactly one --username and one --accessToken in argv"
 [ "$user" = %s ] && [ "$token" = %s ] || refuse "not the offline test identity"
 
-unset WAYLAND_DISPLAY
 export ALSOFT_DRIVERS=null
 export SOUL_BACKEND_URL=%s
 # NVIDIA only: glvnd/Vulkan must never pick Mesa (llvmpipe under the headless Xwayland).
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
 export __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json
 export VK_DRIVER_FILES=/usr/share/vulkan/icd.d/nvidia_icd.json
+if [ "${SOUL_TEST_WINDOW:-}" = 1 ]; then
+    # c up --window: a plain, resizable game window on the desktop (started by systemd-run, outside the
+    # caller's process tree); agent input and screenshots go through the in-game test agent, not X
+    exec "$@"
+fi
+unset WAYLAND_DISPLAY
 exec gamescope --backend headless -W %d -H %d -- "$@"
 """ % (ACCOUNT, TOKEN, ACCOUNT, ACCOUNT, TOKEN, BACKEND, W, H)
 
@@ -349,12 +376,20 @@ def java_pid():
     return None
 
 
+def java_env(pid):
+    return Path("/proc/%d/environ" % pid).read_bytes().split(b"\0")
+
+
+def window_running():
+    pid = java_pid()
+    return pid is not None and b"SOUL_TEST_WINDOW=1" in java_env(pid)
+
+
 def display():
     pid = java_pid()
     if not pid:
         sys.exit("client not running (c up)")
-    env = Path("/proc/%d/environ" % pid).read_bytes().split(b"\0")
-    return next(e.split(b"=", 1)[1].decode() for e in env if e.startswith(b"DISPLAY="))
+    return next(e.split(b"=", 1)[1].decode() for e in java_env(pid) if e.startswith(b"DISPLAY="))
 
 
 def xdo(*args):
@@ -432,15 +467,15 @@ def test_token(url):
     return token
 
 
-def set_soul_scale():
-    """Pins Soul's own UI scale to SOUL_UI_SCALE so HUD sizes match a typical player's. Only an existing
-    config is patched: the mod writes the versioned file itself on the first launch."""
+def set_soul_scale(scale):
+    """Pins Soul's own UI scale (None: unset, so the mod picks it for the monitor on start, as on a player's
+    first launch). Only an existing config is patched: the mod writes the versioned file itself on the first launch."""
     try:
         conf = json.loads(SOUL_CONFIG.read_text())
     except (OSError, ValueError):
         return
-    if conf.get("general", {}).get("uiScale") != SOUL_UI_SCALE:
-        conf.setdefault("general", {})["uiScale"] = SOUL_UI_SCALE
+    if conf.get("general", {}).get("uiScale") != scale:
+        conf.setdefault("general", {})["uiScale"] = scale
         SOUL_CONFIG.write_text(json.dumps(conf, indent=2))
 
 
@@ -488,18 +523,133 @@ def jbr_java():
     return java
 
 
-def hotswap_agent():
-    """Builds tools/testclient/hotswap/SoulHotswap.java into cache/hotswap/soul-hotswap.jar when it changed."""
-    src, jar = HERE / "hotswap/SoulHotswap.java", HOTSWAP / "soul-hotswap.jar"
+def test_agent():
+    """Builds tools/testclient/agent/SoulTestAgent.java into cache/agent/soul-test-agent.jar when it changed
+    (with the JDK 25 every build here needs) and empties the request directory."""
+    src, jar = HERE / "agent/SoulTestAgent.java", AGENT / "soul-test-agent.jar"
+    shutil.rmtree(CTL, ignore_errors=True)
+    CTL.mkdir(parents=True)
     if jar.exists() and jar.stat().st_mtime >= src.stat().st_mtime:
         return jar
-    classes = HOTSWAP / "classes"
+    jdk = Path(os.environ.get("JAVA25_HOME", "/usr/lib/jvm/java-25-openjdk"))
+    classes = AGENT / "classes"
     shutil.rmtree(classes, ignore_errors=True)
-    subprocess.run([str(JBR_HOME / "bin/javac"), "--release", "25", "-d", str(classes), str(src)], check=True)
-    manifest = HOTSWAP / "MANIFEST.MF"
-    manifest.write_text("Premain-Class: SoulHotswap\nCan-Redefine-Classes: true\n")
-    subprocess.run([str(JBR_HOME / "bin/jar"), "cfm", str(jar), str(manifest), "-C", str(classes), "."], check=True)
+    subprocess.run([str(jdk / "bin/javac"), "--release", "25", "-d", str(classes), str(src)], check=True)
+    manifest = AGENT / "MANIFEST.MF"
+    manifest.write_text("Premain-Class: SoulTestAgent\nCan-Redefine-Classes: true\n")
+    subprocess.run([str(jdk / "bin/jar"), "cfm", str(jar), str(manifest), "-C", str(classes), "."], check=True)
     return jar
+
+
+class AgentError(Exception):
+    pass
+
+
+def agent_request(verb, *args, timeout=20):
+    """One request to the agent in the game; returns its result lines or raises AgentError."""
+    rid = "%d-%d" % (time.time_ns(), os.getpid())
+    tmp = CTL / ("req-%s.tmp" % rid)
+    tmp.write_text("\n".join([rid, verb, *map(str, args)]) + "\n")
+    tmp.replace(CTL / ("req-" + rid))
+    response = CTL / ("res-" + rid)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        time.sleep(0.01)
+        try:
+            lines = response.read_text().split("\n")
+        except FileNotFoundError:
+            continue
+        response.unlink()
+        if lines[1] == "ok":
+            return [l for l in lines[2:] if l]
+        raise AgentError("\n".join(lines[2:]).strip())
+    (CTL / ("req-" + rid)).unlink(missing_ok=True)
+    raise AgentError("the game-side agent did not answer within %d s" % timeout)
+
+
+def hot_class(rel):
+    """Soul classes the reload handles; mixins stay as launched (Mixin applies them once, at target load)."""
+    return rel.startswith("com/soulreturns/") and rel.endswith(".class") and not rel.startswith("com/soulreturns/mixin/")
+
+
+def seed_live():
+    """cache/hotswap/live = the installed jar's Soul classes, what the game runs at launch."""
+    jars = [j for j in (GAME / "mods").glob("soul-*.jar") if not j.name.startswith("soul-devbridge")]
+    if len(jars) != 1:
+        sys.exit("expected one Soul jar in %s: c update first" % (GAME / "mods"))
+    shutil.rmtree(LIVE, ignore_errors=True)
+    LAST_RUN.unlink(missing_ok=True)
+    with zipfile.ZipFile(jars[0]) as z:
+        z.extractall(LIVE, [n for n in z.namelist() if hot_class(n)])
+
+
+class ReloadError(Exception):
+    pass
+
+
+def reload_classes():
+    """Compiles, copies the classes that differ from what the game runs into LIVE and has the game-side agent
+    redefine them. Returns (redefined, changed); raises ReloadError with the game left as it was."""
+    with open(HOTSWAP / "reload.lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)   # c reload and the watch loop never overlap
+        r = subprocess.run(["./gradlew", "compileKotlin", "compileJava", "-q"], cwd=REPO, capture_output=True, text=True)
+        if r.returncode:
+            raise ReloadError("compile failed, nothing reloaded:\n" + (r.stdout + r.stderr).strip())
+        changed, undo = [], {}
+        for d in CLASS_DIRS:
+            for root, _, files in os.walk(d):
+                for f in files:
+                    src = Path(root, f)
+                    rel = src.relative_to(d).as_posix()
+                    if not hot_class(rel):
+                        continue
+                    new, dest = src.read_bytes(), LIVE / rel
+                    old = dest.read_bytes() if dest.exists() else None
+                    if new != old:
+                        undo[dest] = old
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        dest.write_bytes(new)
+                        changed.append(rel[:-len(".class")])
+        if not changed:
+            return 0, 0
+        try:
+            return int(agent_request("reload", *changed)[0]), len(changed)
+        except AgentError as e:
+            for dest, old in undo.items():   # later class loads keep the previous bytes too
+                if old is None:
+                    dest.unlink(missing_ok=True)
+                else:
+                    dest.write_bytes(old)
+            raise ReloadError("redefinition failed: %s; the game keeps the previous classes" % e)
+
+
+def jvm_args_have(text):
+    pid = java_pid()
+    return pid is not None and text.encode() in Path("/proc/%d/cmdline" % pid).read_bytes()
+
+
+def hot_running():
+    return jvm_args_have("AllowEnhancedClassRedefinition")
+
+
+def cmd_reload(args):
+    if not hot_running():
+        sys.exit("no hot client running: c up --hot")
+    t0 = time.time()
+    try:
+        redefined, changed = reload_classes()
+    except ReloadError as e:
+        sys.exit(str(e))
+    print("reloaded %d classes in %.1f s" % (redefined, time.time() - t0) +
+          (" (%d class files changed; the rest load when first used)" % changed if changed > redefined else
+           "" if changed else " (nothing changed)"))
+    if "--reopen" in args:
+        if not LAST_RUN.exists():
+            sys.exit("--reopen: no `c run` since c up")
+        key("Escape")
+        time.sleep(0.5)
+        run_command(LAST_RUN.read_text())
+        print("reopened: /" + LAST_RUN.read_text())
 
 
 def source_mtimes():
@@ -516,7 +666,7 @@ def source_mtimes():
 
 
 def cmd_watch(_):
-    """Background loop of `c up --hot`: compiles src/main after every save. The game-side agent picks up the classes."""
+    """Background loop of `c up --hot=watch`: reloads after every save under src/main."""
     log = open(HOTSWAP / "compile.log", "a", buffering=1)
     seen = source_mtimes()
     started = False
@@ -529,14 +679,16 @@ def cmd_watch(_):
         now = source_mtimes()
         if now == seen:
             continue
-        changed = sorted(p for p in now if now[p] != seen.get(p))
+        saved = sorted(p for p in now if now[p] != seen.get(p))
         seen = now
         t0 = time.time()
-        r = subprocess.run(["./gradlew", "compileKotlin", "compileJava", "-q"], cwd=REPO, capture_output=True, text=True)
-        log.write("%d change %s; compile %s in %.1f s\n" % (t0 * 1000, " ".join(os.path.relpath(p, REPO) for p in changed),
-                                                        "ok" if r.returncode == 0 else "FAILED", time.time() - t0))
-        if r.returncode:
-            log.write(r.stdout + r.stderr)
+        try:
+            redefined, changed = reload_classes()
+            result = "reloaded %d classes (%d changed)" % (redefined, changed)
+        except ReloadError as e:
+            result = str(e)
+        log.write("%d save %s; %s in %.1f s\n" % (t0 * 1000, " ".join(os.path.relpath(p, REPO) for p in saved),
+                                                 result, time.time() - t0))
 
 
 def stop_watcher():
@@ -554,7 +706,25 @@ def start_watcher():
     WATCHER_PID.write_text(str(p.pid))
 
 
-def launch(join, local, hot=False):
+def hypr(what):
+    """`hyprctl -j <what>` as JSON, or None without Hyprland."""
+    try:
+        r = subprocess.run(["hyprctl", "-j", what], capture_output=True, text=True, timeout=5)
+        return json.loads(r.stdout) if r.returncode == 0 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return None
+
+
+def focus_window(address):
+    """Hyprland focus dispatch: the Lua config syntax first, then the classic one."""
+    for d in ('hl.dsp.focus({ window = "address:%s" })' % address, "focuswindow address:%s" % address):
+        r = subprocess.run(["hyprctl", "dispatch", d], capture_output=True, text=True)
+        if r.stdout.strip() == "ok":
+            return
+
+
+def launch(join, local, hot=None, window=False):
+    """hot: None, "reload" (c reload only) or "watch" (reload after every save)."""
     if join and not server_up():
         sys.exit("test server not reachable on %s: start it with tools/testserver/s up" % SERVER)
     if not GAME.exists():
@@ -565,20 +735,33 @@ def launch(join, local, hot=False):
         if re.search(r"soulreturns\.com", backend, re.I):
             sys.exit("refused: the test bearer only ever goes to the local dev stack")
         extra = ["-Dsoul.testBearerToken=%s" % test_token(backend)]
+    if window and not os.environ.get("WAYLAND_DISPLAY"):
+        sys.exit("--window needs the desktop session (WAYLAND_DISPLAY is not set)")
+    if (INSTANCE / "wrap.sh").read_text() != WRAP:   # instances installed before the wrapper changed
+        (INSTANCE / "wrap.sh").write_text(WRAP)
     swap_dev_access(local)
-    set_soul_scale()
+    # headless: a fixed 1708x960 frame at GUI 2 and Soul 2/3 of the owner's setup; window: whatever size the
+    # desktop gives it, GUI scale Auto and Soul's own first-start pick for the monitor, like a player's game
+    set_options({"guiScale": "0" if window else "2"})
+    set_soul_scale(None if window else SOUL_UI_SCALE)
     cp, asset_index = launch_files()
     t0 = time.time()
-    java, hot_args = JAVA, []
-    if hot:
-        java = jbr_java()
-        HOTSWAP.mkdir(parents=True, exist_ok=True)
-        hot_args = ["-XX:+AllowEnhancedClassRedefinition",
-                    "-javaagent:%s=%s" % (hotswap_agent(), ":".join(map(str, CLASS_DIRS)))]
-        start_watcher()
+    java, jvm_extra = JAVA, []
+    stop_watcher()
+    if hot or window:
+        live = ""
+        if hot:
+            java = jbr_java()
+            HOTSWAP.mkdir(parents=True, exist_ok=True)
+            seed_live()
+            jvm_extra = ["-XX:+AllowEnhancedClassRedefinition"]
+            live = ":%s" % LIVE
+        jvm_extra.append("-javaagent:%s=%s%s" % (test_agent(), CTL, live))
+        if hot == "watch":
+            start_watcher()
     # authlib's Mojang hosts go to the dead port; Realms still contacts Mojang with the dummy token "0"
     hosts = ["-Dminecraft.api.%s.host=%s" % (h, BACKEND) for h in ("auth", "account", "session", "services", "profiles")]
-    args = [str(INSTANCE / "wrap.sh"), str(java), "-Xms1024m", "-Xmx4096m", *hot_args, "-Dsoul.backendUrl=%s" % backend,
+    args = [str(INSTANCE / "wrap.sh"), str(java), "-Xms1024m", "-Xmx4096m", *jvm_extra, "-Dsoul.backendUrl=%s" % backend,
             "-Dsoul.testclient=true", *extra, *hosts,
             "-cp", ":".join(cp), "net.fabricmc.loader.impl.launch.knot.KnotClient",
             "--username", ACCOUNT, "--uuid", ACCOUNT_UUID.hex, "--accessToken", TOKEN, "--userType", "legacy",
@@ -588,14 +771,40 @@ def launch(join, local, hot=False):
     if join:
         args += ["--quickPlayMultiplayer", SERVER]
     (GAME / "logs").mkdir(exist_ok=True)
-    with open(GAME / "logs/stdout.log", "wb") as out:
-        subprocess.Popen(args, cwd=GAME, stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
-                         start_new_session=True)
+    if window:
+        # its own user unit, outside the caller's process tree: Hyprland would otherwise swallow the terminal
+        # that ran `c up` and put the game in its place
+        subprocess.run(["systemctl", "--user", "stop", UNIT], capture_output=True)
+        env = {k: os.environ[k] for k in ("DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "XDG_SESSION_TYPE",
+                                          "XAUTHORITY", "HOME", "PATH", "LANG") if k in os.environ}
+        env["SOUL_TEST_WINDOW"] = "1"
+        subprocess.run(["systemd-run", "--user", "--collect", "--quiet", "--property=Type=exec", "--unit=" + UNIT,
+                        "--working-directory=%s" % GAME,
+                        "--property=StandardOutput=truncate:%s" % (GAME / "logs/stdout.log"),
+                        "--property=StandardError=inherit",
+                        *("--setenv=%s=%s" % kv for kv in env.items()), *args], check=True)
+    else:
+        with open(GAME / "logs/stdout.log", "wb") as out:
+            subprocess.Popen(args, cwd=GAME, stdout=out, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                             start_new_session=True)
+    # Hyprland focuses a newly mapped window: for 3 s after the game maps, whenever it is the focused window,
+    # hand focus back to the window that had it before `c up` (a focus change elsewhere is left alone).
+    previous = window and (hypr("activewindow") or {}).get("address")
+    mapped_at = None
     while time.time() - t0 < 240:
         if time.time() - t0 > 15 and not java_pid():
             sys.exit("game exited during startup:\n%s" % "\n".join(
                 (GAME / "logs/stdout.log").read_text(errors="replace").splitlines()[-25:]))
         time.sleep(0.5)
+        if previous:
+            pid = java_pid()
+            if mapped_at is None and any(c.get("pid") == pid for c in hypr("clients") or []):
+                mapped_at = time.time()
+            if mapped_at is not None:
+                if (hypr("activewindow") or {}).get("pid") == pid:
+                    focus_window(previous)
+                if time.time() - mapped_at > 3:
+                    previous = None
         text = log_text(t0)
         if text is None:
             continue
@@ -618,32 +827,39 @@ def stop():
         while java_pid():
             time.sleep(0.2)
     stop_watcher()
+    subprocess.run(["systemctl", "--user", "stop", UNIT], capture_output=True)
     swap_dev_access(False)
 
 
 def cmd_up(args):
-    join, local, hot, rest = True, False, False, list(args)
+    join, local, hot, window, rest = True, False, None, False, list(args)
     while rest:
         a = rest.pop(0)
         if a == "--no-join":
             join = False
-        elif a == "--hot":
-            hot = True
+        elif a in ("--hot", "--hot=watch"):
+            hot = "watch" if a == "--hot=watch" else "reload"
+        elif a == "--window":
+            window = True
         elif a == "--backend" and rest and rest[0] in ("local", "off"):
             local = rest.pop(0) == "local"
         else:
             refuse_hypixel(a)
-            sys.exit("unknown argument %s (the server is always %s; --backend local|off)" % (a, SERVER))
+            sys.exit("unknown argument %s (the server is always %s; --backend local|off, --hot[=watch], --window)" % (a, SERVER))
     if java_pid():
         if join and not joined(log_text() or ""):
             sys.exit("client is running but not joined to %s: c down first" % SERVER)
         if (running_backend() is not None) != local:
             sys.exit("client is running with backend %s: c down first" % (running_backend() or "off"))
+        if bool(hot) != hot_running():
+            sys.exit("client is running %s hot reload: c down first" % ("with" if hot_running() else "without"))
         print("client already running")
         return
-    launch(join, local, hot)
+    launch(join, local, hot, window)
     print("client up" + (", joined %s" % SERVER if join else " (title screen)") +
-          (", backend %s" % running_backend() if local else "") + (", hot reload on" if hot else ""))
+          (", backend %s" % running_backend() if local else "") +
+          (", hot reload on (%s)" % ("after every save" if hot == "watch" else "c reload") if hot else "") +
+          (", window on the desktop" if window else ""))
 
 
 def cmd_status(_):
@@ -657,12 +873,147 @@ def cmd_status(_):
     watcher = WATCHER_PID.read_text() if WATCHER_PID.exists() else None
     if watcher and not Path("/proc/%s" % watcher).exists():
         watcher = None
-    print("hot reload:", "on (watcher pid %s)" % watcher if watcher else "off")
+    print("hot reload:", "off" if not (pid and hot_running()) else
+          "on, after every save (watcher pid %s)" % watcher if watcher else "on, c reload")
+    if pid:
+        print("window:", "on the desktop (unit %s)" % UNIT if in_window() else "headless")
+        print("frame: %s (c shot and click coordinates are frame pixels)" % " x ".join(frame_size()))
+
+
+# ---------- input: xdotool into the headless gamescope, or the in-game agent for --window ----------
+
+_window = None
+
+
+def in_window():
+    global _window
+    if _window is None:
+        _window = window_running()
+    return _window
+
+
+def agent(verb, *args):
+    try:
+        return agent_request(verb, *args, timeout=15)
+    except AgentError as e:
+        sys.exit("%s: %s" % (verb, e))
+
+
+def frame_size():
+    return agent("size")[0].split() if in_window() else [str(W), str(H)]
+
+
+# xdotool key names -> GLFW key codes (the --window path)
+GLFW_KEYS = {"space": 32, "apostrophe": 39, "comma": 44, "minus": 45, "period": 46, "slash": 47, "semicolon": 59,
+             "equal": 61, "bracketleft": 91, "backslash": 92, "bracketright": 93, "grave": 96,
+             "Escape": 256, "Return": 257, "KP_Enter": 335, "Tab": 258, "BackSpace": 259, "Insert": 260,
+             "Delete": 261, "Right": 262, "Left": 263, "Down": 264, "Up": 265, "Prior": 266, "Page_Up": 266,
+             "Next": 267, "Page_Down": 267, "Home": 268, "End": 269,
+             "shift": 340, "Shift_L": 340, "ctrl": 341, "Control_L": 341, "alt": 342, "Alt_L": 342,
+             "super": 343, "Super_L": 343, "Shift_R": 344, "Control_R": 345, "Alt_R": 346}
+GLFW_KEYS.update({"F%d" % n: 289 + n for n in range(1, 13)})
+GLFW_KEYS.update({c: ord(c.upper()) for c in "abcdefghijklmnopqrstuvwxyz0123456789"})
+MOD_BITS = {340: 1, 344: 1, 341: 2, 345: 2, 342: 4, 346: 4, 343: 8}
+PRINTABLE = {"space": " ", "apostrophe": "'", "comma": ",", "minus": "-", "period": ".", "slash": "/",
+             "semicolon": ";", "equal": "=", "bracketleft": "[", "backslash": "\\", "bracketright": "]", "grave": "`"}
+
+
+def glfw_key(name):
+    code = GLFW_KEYS.get(name, GLFW_KEYS.get(name.lower()) if len(name) == 1 else None)
+    if code is None:
+        sys.exit("key %s: not mapped for the --window client (tools/testclient/client.py GLFW_KEYS)" % name)
+    return code
+
+
+def key(combo, chars=True):
+    """One xdotool-style key or combo (shift+Tab, ctrl+a). In the window, a printable key without ctrl/alt also
+    types its character, as a real key press does."""
+    if not in_window():
+        xdo("key", combo)
+        return
+    *mods, main = combo.split("+")
+    codes = [glfw_key(m) for m in mods]
+    bits = sum(MOD_BITS.get(c, 0) for c in codes)
+    for c in codes:
+        agent("key", c, 1, bits)
+    agent("key", glfw_key(main), 1, bits)
+    agent("key", glfw_key(main), 0, bits)
+    for c in reversed(codes):
+        agent("key", c, 0, bits)
+    char = main if len(main) == 1 else PRINTABLE.get(main)
+    if chars and char and not bits & 6:
+        agent("char", ord(char.upper() if bits & 1 else char))
+
+
+def type_text(text, delay):
+    if not in_window():
+        xdo("type", "--delay", str(delay), text)
+        return
+    for ch in text:
+        agent("char", ord(ch))
+
+
+def move(x, y):
+    if in_window():
+        agent("move", x, y)
+    else:
+        xdo("mousemove", x, y)
+
+
+def click(button, x, y):
+    """button: 1 left, 2 middle, 3 right (xdotool numbers)."""
+    move(x, y)
+    if in_window():
+        b = {"1": 0, "3": 1, "2": 2}[button]
+        time.sleep(0.05)
+        agent("button", b, 1, 0)
+        time.sleep(0.08)
+        agent("button", b, 0, 0)
+        return
+    time.sleep(0.15)
+    xdo("mousedown", button)
+    time.sleep(0.08)
+    xdo("mouseup", button)
+
+
+def wheel(x, y, direction, n):
+    move(x, y)
+    time.sleep(0.1 if in_window() else 1.0)   # gamescope delivers the pointer move late: the first step is lost otherwise
+    for _ in range(n):
+        if in_window():
+            agent("scroll", 1 if direction == "up" else -1)
+        else:
+            xdo("click", "4" if direction == "up" else "5")
+        time.sleep(0.25)
+
+
+def hold(name, secs):
+    if not in_window():
+        xdo("keydown", name)
+        time.sleep(secs)
+        xdo("keyup", name)
+        return
+    agent("key", glfw_key(name), 1, 0)
+    time.sleep(secs)
+    agent("key", glfw_key(name), 0, 0)
+
+
+def cursor():
+    if in_window():
+        x, y = agent("cursor")[0].split()
+        print("x:%s y:%s (frame pixels)" % (x, y))
+    else:
+        xdo("getmouselocation")
 
 
 def cmd_shot(args):
     if not args:
         sys.exit("usage: c shot NAME")
+    if in_window():
+        out = SHOTS / ("%s.png" % args[0])
+        out.unlink(missing_ok=True)
+        print(agent("shot", out)[0])
+        return
     d = GAME / "screenshots"
     d.mkdir(exist_ok=True)
     before = set(d.iterdir())
@@ -685,18 +1036,20 @@ def cmd_shot(args):
     sys.exit("no screenshot")
 
 
-def click(button, x, y):
-    xdo("mousemove", x, y)
-    time.sleep(0.15)
-    xdo("mousedown", button)
-    time.sleep(0.08)
-    xdo("mouseup", button)
-
 
 def cmd_log(args):
     n = int(args[0]) if args else 40
     text = log_text() or ""
     print("\n".join(text.splitlines()[-n:]))
+
+
+def run_command(text):
+    refuse_hypixel(text)
+    key("slash", chars=False)   # the command key opens chat with the "/" already in it
+    time.sleep(0.3)
+    type_text(text, 15)
+    key("Return")
+    time.sleep(0.5)
 
 
 def main():
@@ -723,33 +1076,29 @@ def main():
     elif c == "mclick":
         click("2", args[0], args[1])
     elif c == "move":
-        xdo("mousemove", args[0], args[1])
+        move(args[0], args[1])
     elif c == "cursor":
-        xdo("getmouselocation")
+        cursor()
+    elif c == "size":
+        print(" ".join(frame_size()))
     elif c == "wheel":
-        xdo("mousemove", args[0], args[1])
-        time.sleep(1.0)   # gamescope delivers the pointer move late: the first wheel step is lost otherwise
-        for _ in range(int(args[3]) if len(args) > 3 else 1):
-            xdo("click", "4" if args[2] == "up" else "5")
-            time.sleep(0.25)
+        wheel(args[0], args[1], args[2], int(args[3]) if len(args) > 3 else 1)
     elif c == "key":
-        xdo("key", *args)
+        for k in args:
+            key(k)
     elif c == "hold":
-        xdo("keydown", args[0])
-        time.sleep(float(args[1]))
-        xdo("keyup", args[0])
+        hold(args[0], float(args[1]))
     elif c == "type":
         text = " ".join(args)
         refuse_hypixel(text)
-        xdo("type", "--delay", "30", text)
+        type_text(text, 30)
     elif c == "run":
         text = " ".join(args).removeprefix("/")
-        refuse_hypixel(text)
-        xdo("key", "slash")
-        time.sleep(0.3)
-        xdo("type", "--delay", "15", text)
-        xdo("key", "Return")
-        time.sleep(0.5)
+        run_command(text)
+        if hot_running():
+            LAST_RUN.write_text(text)
+    elif c == "reload":
+        cmd_reload(args)
     elif c == "_watch":
         cmd_watch(args)
     elif c == "log":
