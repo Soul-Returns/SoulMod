@@ -41,17 +41,45 @@ internal object SackView {
         val byId = lines.associateBy { it.id }
         for (sack in owned) {
             val entry = catalog.byKey(sack.key) ?: catalog.byName(sack.name)
-            if (entry == null) {
+            val runes = if (sack.key == RUNE_SACK) lines.map { it.id }.filter(::isRune).takeIf { it.isNotEmpty() } else null
+            val ids = entry?.items?.distinct() ?: runes
+            if (ids == null) {
                 unknown += sack
                 continue
             }
-            covered += entry.items
-            val members = entry.items.distinct().map { byId[it] ?: SackLine(it, 0, false) }
+            covered += ids
+            val members = ids.map { byId[it] ?: SackLine(it, 0, false) }
             groups += SackGroup(sack.key, sack.name, sack, members.sortedWith(compareByDescending<SackLine> { it.count }.thenBy { it.id }))
         }
         val rest = lines.filter { it.id !in covered }
         return SackGrouping(groups, if (rest.isEmpty()) null else SackGroup(OTHER_KEY, "Other items", null, rest), unknown)
     }
+
+    /**
+     * The Rune Sack's rows carry no SkyBlock ids (live 2026-11-23: player heads named "◆ Blood Rune" with I/II/III
+     * counts), so the reporter learns nothing there; `sacks_counts` keys its runes `RUNE_<NAME>_<tier>` with Hypixel's
+     * internal names (`RUNE_ZOMBIE_SLAYER_1` is the Pestilence Rune), and those make up the Rune Sack.
+     */
+    private const val RUNE_SACK = "RUNE_SACK"
+    private val RUNE_ID = Regex("""^RUNE_([A-Z0-9_]+)_(\d+)$""")
+
+    fun isRune(id: String): Boolean = RUNE_ID.matches(id)
+
+    /** `RUNE_ZOMBIE_SLAYER_1` = "Zombie Slayer Rune I"; null for any other id. */
+    fun runeName(id: String): String? {
+        val m = RUNE_ID.matchEntire(id) ?: return null
+        val name = m.groupValues[1].split('_').joinToString(" ") { w -> w.lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) } }
+        val tier = m.groupValues[2].toInt()
+        return "$name Rune ${ROMAN.getOrElse(tier) { tier.toString() }}"
+    }
+
+    /** The market key of a sack id: runes are `<NAME>_RUNE;<tier>` there (rule://catalogs-prices), the rest unchanged. */
+    fun marketKey(id: String): String {
+        val m = RUNE_ID.matchEntire(id) ?: return id
+        return "${m.groupValues[1]}_RUNE;${m.groupValues[2]}"
+    }
+
+    private val ROMAN = listOf("", "I", "II", "III", "IV", "V")
 
     /** Whole-profile figures over each distinct item once: value, count, kinds, most valuable item. */
     class Totals(val value: Long, val items: Long, val kinds: Int, val top: SackLine?, val topValue: Long)

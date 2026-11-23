@@ -3,6 +3,7 @@ package com.soulreturns.features.sacks
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.config.TrackedSackItem
 import com.soulreturns.config.cfg
+import com.soulreturns.data.items.ItemCatalogClient
 import com.soulreturns.data.skyblock.SkyblockState
 import com.soulreturns.features.inventorybuttons.InventoryButtonIcons
 import com.soulreturns.features.inventorybuttons.InventoryButtons
@@ -75,10 +76,23 @@ object SackMenus {
     /** The sack item [stack] shows, or null when it is not one (no id, no `Stored:` line). */
     fun read(stack: ItemStack): SackItem? {
         if (stack.isEmpty) return null
-        val id = SkyblockItemUtils.getSkyblockId(stack) ?: return null
         val lore = stack.get(DataComponents.LORE)?.lines() ?: return null
         val count = SackParsing.storedCount(lore) ?: return null
+        val id = itemId(stack) ?: return null
         return SackItem(id, SackParsing.strip(stack.hoverName.string).trim(), count)
+    }
+
+    /**
+     * The id a sack row stands for in `sacks_counts`. Some rows carry another item's id: the Bait Sack's
+     * "Whale Bait" row is `COMMON_HOOK` (seen live 2026-11-23; the API counts it as `WHALE_BAIT`). When the row's
+     * name differs from its id's catalog name and the catalog has an item of exactly that name, that item wins.
+     */
+    fun itemId(stack: ItemStack): String? {
+        val id = SkyblockItemUtils.getSkyblockId(stack) ?: return null
+        val name = SackParsing.strip(stack.hoverName.string).trim()
+        val catalogName = ItemCatalogClient.byId(id)?.displayName?.let { SackParsing.strip(it).trim() } ?: return id
+        if (catalogName.equals(name, ignoreCase = true)) return id
+        return ItemCatalogClient.byDisplayName(name)?.id?.takeIf { it.isNotEmpty() } ?: id
     }
 
     private fun active(): AbstractContainerScreen<*>? {
@@ -104,6 +118,9 @@ object SackMenus {
                 parsedFrom[index] = stack
                 val item = read(stack)
                 if (item == null) slotItems.remove(index) else slotItems[index] = item
+                // A remapped row (favored bait shows as COMMON_HOOK) never holds its raw id: drop counts older builds stored under it.
+                val raw = if (item == null) null else SkyblockItemUtils.getSkyblockId(stack)
+                if (raw != null && raw != item?.id) SackState.forget(raw)
             }
             val item = slotItems[index] ?: continue
             SackState.onMenuRead(item.id, item.name, item.count, now)

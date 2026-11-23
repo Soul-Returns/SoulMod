@@ -122,7 +122,7 @@ object SackReporter {
     private fun slot(stack: ItemStack): SackReport.MenuSlot {
         if (stack.isEmpty) return SackReport.MenuSlot(null, "", emptyList())
         val lore = stack.get(DataComponents.LORE)?.lines()?.map { it.string }.orEmpty()
-        return SackReport.MenuSlot(SkyblockItemUtils.getSkyblockId(stack), stack.hoverName.string, lore)
+        return SackReport.MenuSlot(SackMenus.itemId(stack), stack.hoverName.string, lore)
     }
 
     /** Compares a completely read sack with the catalog and sends it when it differs. */

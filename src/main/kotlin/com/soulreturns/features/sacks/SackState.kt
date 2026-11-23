@@ -141,6 +141,11 @@ object SackState {
 
     fun allCounts(): Map<String, SackCount> = counts.read().items
 
+    /** Drops [id]'s stored count, for ids a sack row only borrows ([SackMenus.itemId]). */
+    fun forget(id: String) {
+        if (id in counts.read().items) counts.update { copy(items = items - id) }
+    }
+
     fun learnedNames(): Map<String, String> = names.read().byName
 
     fun profileKey(): String = counts.currentKey()

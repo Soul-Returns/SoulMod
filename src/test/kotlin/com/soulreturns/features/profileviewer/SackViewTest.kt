@@ -138,7 +138,7 @@ class SackViewTest {
         assertEquals(listOf("COAL", "MAGMA_CREAM"), grouping.groups[0].lines.map { it.id })
         assertEquals(listOf("MAGMA_CREAM", "MITHRIL_ORE"), grouping.groups[1].lines.map { it.id })
         assertEquals(listOf("QUARTZ", "DIRT"), grouping.other!!.lines.map { it.id }, "the sack not owned lists QUARTZ: it falls to Other")
-        assertEquals(listOf("RUNE_SACK"), grouping.unknown.map { it.key }, "an owned sack without a catalog entry")
+        assertEquals(listOf("RUNE_SACK"), grouping.unknown.map { it.key }, "an owned sack without a catalog entry (and no rune counts)")
         val totals = SackView.totals(sacks, InventoryLookups.price)
         assertEquals(50L * 10 + (7 + 3 + 9 + 1) * 100L, totals.value)
         assertEquals(50L + 7 + 3 + 9 + 1, totals.items)
@@ -153,6 +153,18 @@ class SackViewTest {
         assertEquals(listOf("COAL", "DIRT"), grouping.other!!.lines.map { it.id })
         assertEquals(owned.size, grouping.unknown.size)
         assertNull(SackView.group(owned, SackCatalogIndex.EMPTY, emptyList()).other)
+    }
+
+    @Test
+    fun `the Rune Sack holds the RUNE_ tier counts`() {
+        val owned = ownedSacks(ItemBlobs.parse(testBlob)!!)
+        val grouping = SackView.group(owned, SackCatalogIndex.EMPTY, lines("RUNE_ZOMBIE_SLAYER_1" to 107L, "RUNE_BLOOD_2_1" to 110L, "RUNEBOOK" to 1L))
+        val runes = grouping.groups.single { it.key == "RUNE_SACK" }
+        assertEquals(listOf("RUNE_BLOOD_2_1", "RUNE_ZOMBIE_SLAYER_1"), runes.lines.map { it.id })
+        assertEquals(listOf("RUNEBOOK"), grouping.other!!.lines.map { it.id })
+        assertEquals("Zombie Slayer Rune I", SackView.runeName("RUNE_ZOMBIE_SLAYER_1"))
+        assertEquals("BLOOD_2_RUNE;1", SackView.marketKey("RUNE_BLOOD_2_1"))
+        assertEquals("COAL", SackView.marketKey("COAL"))
     }
 
     @Test

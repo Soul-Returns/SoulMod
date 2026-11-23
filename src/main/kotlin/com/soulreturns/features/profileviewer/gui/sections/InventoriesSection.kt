@@ -206,7 +206,7 @@ object InventoriesSection : ProfileSection {
 
     private fun coins(v: Long): String = if (v >= 10_000) Format.short(v) else Format.num(v)
 
-    private fun sackName(id: String): String = InventoryLookups.itemName(id) ?: humanizeItemId(id)
+    private fun sackName(id: String): String = InventoryLookups.itemName(id) ?: SackView.runeName(id) ?: humanizeItemId(id)
 
     private fun pageNode(page: Page, q: String): Node {
         val matches = page.items.count { it?.matches(q) == true }
@@ -248,7 +248,7 @@ object InventoriesSection : ProfileSection {
         val owned = ctx.member.ownedSacks.orEmpty()
         val catalog = InventoryLookups.sackCatalog()
         val grouping = SackView.group(owned, catalog, sacks.lines)
-        val price = InventoryLookups.price
+        val price: (String) -> Long = { id -> InventoryLookups.price(SackView.marketKey(id)) }
         val name = ::sackName
         val totals = SackView.totals(sacks.lines, price)
         val topSack = SackView.tiles(grouping, { it.count > 0 }, false, "value", name, price).firstOrNull { it.key != SackView.OTHER_KEY && it.value > 0 }
