@@ -87,7 +87,7 @@ object BridgeInfo {
             "started" to started,
         )
 
-    /** `<gameDir>/soul-dev/bridge.json` (owner-only: the token is the only access control) plus a discovery pointer. */
+    /** `<gameDir>/soul-dev/bridge.json` (owner and owner's group only: the token is the only access control) plus a discovery pointer. */
     fun write(port: Int, token: String, disabled: String?): Path {
         Files.createDirectories(dir)
         val target = dir.resolve("bridge.json")
@@ -104,11 +104,13 @@ object BridgeInfo {
         return target
     }
 
+    // rw-rw----, not rw-------: on a dir with a default ACL the group bits become the ACL mask, and the desk sandbox
+    // (granted soul-dev/ by ACL) must read the token. On a user-private group this stays owner-only.
     private fun writePrivate(target: Path, content: String) {
         val tmp = target.resolveSibling(target.fileName.toString() + ".tmp")
         Files.deleteIfExists(tmp)
         try {
-            Files.createFile(tmp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
+            Files.createFile(tmp, PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-rw----")))
         } catch (_: UnsupportedOperationException) {
             Files.createFile(tmp)
         }
