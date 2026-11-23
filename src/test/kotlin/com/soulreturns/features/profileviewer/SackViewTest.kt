@@ -146,11 +146,11 @@ class SackViewTest {
     }
 
     @Test
-    fun `an empty catalog puts every item under Other`() {
+    fun `an empty catalog puts every held item under Other`() {
         val owned = ownedSacks(ItemBlobs.parse(testBlob)!!)
         val grouping = SackView.group(owned, SackCatalogIndex.EMPTY, lines("COAL" to 1L, "DIRT" to 0L))
         assertTrue(grouping.groups.isEmpty())
-        assertEquals(listOf("COAL", "DIRT"), grouping.other!!.lines.map { it.id })
+        assertEquals(listOf("COAL"), grouping.other!!.lines.map { it.id }, "a 0 under an id no sack lists is left out")
         assertEquals(owned.size, grouping.unknown.size)
         assertNull(SackView.group(owned, SackCatalogIndex.EMPTY, emptyList()).other)
     }
@@ -244,9 +244,8 @@ class SackViewTest {
         assertTrue("Coal" in text && "Magma Cream" in text, text)
         assertTrue("2 items" in text, text)
         val other = render(context(counts), "sackSel" to "OTHER")
-        assertTrue("Mithril Ore" in other && "Quartz" in other && "Dirt" in other, other)
-        val hidden = render(context(counts), "sackSel" to "OTHER", "hideEmpty" to "1")
-        assertTrue("Dirt" !in hidden, hidden)
+        assertTrue("Mithril Ore" in other && "Quartz" in other, other)
+        assertTrue("Dirt" !in other, "a 0 under an id no sack lists stays out of Other: $other")
     }
 
     @Test

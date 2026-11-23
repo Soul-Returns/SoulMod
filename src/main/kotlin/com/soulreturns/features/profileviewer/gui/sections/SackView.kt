@@ -32,7 +32,9 @@ internal object SackView {
      * Sorts every sack line into the owned sacks whose catalog entry lists it. An item that several owned sacks list
      * is in each of them (totals count it once, see [totals]); an item in no owned, catalogued sack lands in
      * [SackGrouping.other], so nothing disappears (an empty catalog puts everything there). A catalogued item the
-     * profile has no count for (`sacks_counts` omits some, e.g. baits) still shows in its sack with 0.
+     * profile has no count for (`sacks_counts` omits some, e.g. baits) still shows in its sack with 0. Other items
+     * skips zero counts: `sacks_counts` keeps 0 under ids no sack holds any more (`ENCHANTED_HAY_BLOCK`,
+     * `PERFECT_OPAL_GEM`), so a 0 there is noise.
      */
     fun group(owned: List<OwnedSack>, catalog: SackCatalogIndex, lines: List<SackLine>): SackGrouping {
         val groups = ArrayList<SackGroup>()
@@ -51,7 +53,7 @@ internal object SackView {
             val members = ids.map { byId[it] ?: SackLine(it, 0, false) }
             groups += SackGroup(sack.key, sack.name, sack, members.sortedWith(compareByDescending<SackLine> { it.count }.thenBy { it.id }))
         }
-        val rest = lines.filter { it.id !in covered }
+        val rest = lines.filter { it.id !in covered && it.count > 0 }
         return SackGrouping(groups, if (rest.isEmpty()) null else SackGroup(OTHER_KEY, "Other items", null, rest), unknown)
     }
 
