@@ -50,6 +50,7 @@ object SackReporter {
     private val lastAttempt = HashMap<String, Long>()
 
     private var watching: AbstractContainerScreen<*>? = null
+    private var watchingTitle = ""
     private var lastStacks: List<ItemStack> = emptyList()
     private var stableTicks = 0
     private var readThisScreen = false
@@ -68,13 +69,16 @@ object SackReporter {
     private fun tick() {
         val screen = Minecraft.getInstance().gui.screen() as? AbstractContainerScreen<*>
         if (screen == null || !SackMenus.isSackMenu(screen) || !allowed()) {
+            flushUnread()
             watching = null
             return
         }
         val containerSlots = screen.menu.slots.filter { it.container !is Inventory }
         val stacks = containerSlots.map { it.item }
         if (screen !== watching) {
+            flushUnread()
             watching = screen
+            watchingTitle = SackParsing.strip(screen.title.string).trim()
             lastStacks = stacks
             stableTicks = 0
             readThisScreen = false
@@ -96,8 +100,17 @@ object SackReporter {
             pages.touch(now)
             return
         }
+        read(watchingTitle, stacks, now)
+    }
+
+    /** A sack closed before its slots settled for [STABLE_TICKS] (players flick through quickly): read its last state. */
+    private fun flushUnread() {
+        if (watching == null || readThisScreen || stableTicks < 2 || lastStacks.all { it.isEmpty }) return
+        read(watchingTitle, lastStacks, System.currentTimeMillis())
+    }
+
+    private fun read(title: String, stacks: List<ItemStack>, now: Long) {
         readThisScreen = true
-        val title = SackParsing.strip(screen.title.string).trim()
         val slots = stacks.map { slot(it) }
         val ids = SackReport.idsOf(slots, SackReport.isGemstone(title))
         val complete = pages.add(title, ids, SackReport.pageNav(slots), now) ?: return
@@ -141,7 +154,7 @@ object SackReporter {
                 logger.info(lastOutcome)
             } else {
                 lastOutcome = "${body.name}: ${(result as BackendResult.Failure).message}"
-                logger.debug(lastOutcome)
+                logger.info(lastOutcome)
             }
         }
     }
