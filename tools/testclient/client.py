@@ -46,7 +46,8 @@ command above works the same and needs no focus, workspace or pointer: input goe
 mouse/keyboard handlers and `c shot` reads the game's frame, both via the test agent
 (tools/testclient/agent/SoulTestAgent.java, attached only by c up --window/--hot, and refusing input unless
 the game is the offline SoulTester on 127.0.0.1:25590). The frame follows the window, so check `c size`
-before clicking; the owner's own mouse inside the window still moves the same pointer.
+before clicking; the owner's own mouse inside the window still moves the same pointer. The window has sound
+(master 50 %, music off) so sound features can be heard; headless stays silent on a null audio device.
 
 Wrap a whole session in the lock so agents take turns:
   tools/testclient/lock testclient bash -c 'tools/testclient/c up && ...; tools/testclient/c down'
@@ -116,8 +117,8 @@ CTL = AGENT / "ctl"        # req-<id> / res-<id> files between c and the agent i
 UNIT = "soulmod-testclient"   # systemd user unit of a --window client (outside the caller's process tree)
 
 WRAP = """#!/usr/bin/env bash
-# Launch wrapper of the SoulMod test instance (tools/testclient): a headless gamescope, rendered on the GPU,
-# or a plain window with c up --window; no audio.
+# Launch wrapper of the SoulMod test instance (tools/testclient): a headless gamescope, rendered on the GPU
+# and silent, or a plain window with sound with c up --window.
 set -euo pipefail
 
 # Offline identity guard: start only with exactly one `--username %s` and one `--accessToken %s`
@@ -144,7 +145,6 @@ done
 [ "$nuser" -eq 1 ] && [ "$ntoken" -eq 1 ] || refuse "need exactly one --username and one --accessToken in argv"
 [ "$user" = %s ] && [ "$token" = %s ] || refuse "not the offline test identity"
 
-export ALSOFT_DRIVERS=null
 export SOUL_BACKEND_URL=%s
 # NVIDIA only: glvnd/Vulkan must never pick Mesa (llvmpipe under the headless Xwayland).
 export __GLX_VENDOR_LIBRARY_NAME=nvidia
@@ -155,6 +155,7 @@ if [ "${SOUL_TEST_WINDOW:-}" = 1 ]; then
     # caller's process tree); agent input and screenshots go through the in-game test agent, not X
     exec "$@"
 fi
+export ALSOFT_DRIVERS=null
 unset WAYLAND_DISPLAY
 exec gamescope --backend headless -W %d -H %d -- "$@"
 """ % (ACCOUNT, TOKEN, ACCOUNT, ACCOUNT, TOKEN, BACKEND, W, H)
@@ -226,6 +227,13 @@ def nbt_servers():
     entry = (b"\x08" + s("name") + s("SoulMod Test Server") + b"\x08" + s("ip") + s(SERVER)
              + b"\x01" + s("acceptTextures") + b"\x01" + b"\x00")
     return b"\x0a" + s("") + b"\x09" + s("servers") + b"\x0a" + struct.pack(">i", 1) + entry + b"\x00"
+
+
+def sound_options(audible):
+    """All categories off for the headless client; in the window everything but music, at half master volume."""
+    volume = {"master": "0.5", "music": "0.0"} if audible else {}
+    return {"soundCategory_%s" % c: volume.get(c, "1.0" if audible else "0.0") for c in (
+        "master", "music", "record", "weather", "block", "hostile", "neutral", "player", "ambient", "voice", "ui")}
 
 
 def set_options(values):
@@ -339,9 +347,7 @@ def cmd_install(_):
         shutil.copy(OPTIONS_BASE, opts)   # options.txt without `version` is read as an old format and dropped
     elif not opts.exists():
         opts.write_text("version:4903\n")
-    sounds = {"soundCategory_%s" % c: "0.0" for c in (
-        "master", "music", "record", "weather", "block", "hostile", "neutral", "player", "ambient", "voice", "ui")}
-    set_options({**sounds, "guiScale": "2", "fullscreen": "false", "narrator": "0", "narratorHotkey": "false",
+    set_options({**sound_options(False), "guiScale": "2", "fullscreen": "false", "narrator": "0", "narratorHotkey": "false",
                  "pauseOnLostFocus": "false", "onboardAccessibility": "false", "tutorialStep": "none",
                  "skipMultiplayerWarning": "true", "joinedFirstServer": "true", "musicToast": '"never"',
                  "chatVisibility": "0", "chatOpacity": "1.0", "renderDistance": "8", "maxFps": "60",
@@ -742,7 +748,7 @@ def launch(join, local, hot=None, window=False):
     swap_dev_access(local)
     # headless: a fixed 1708x960 frame at GUI 2 and Soul 2/3 of the owner's setup; window: whatever size the
     # desktop gives it, GUI scale Auto and Soul's own first-start pick for the monitor, like a player's game
-    set_options({"guiScale": "0" if window else "2"})
+    set_options({**sound_options(window), "guiScale": "0" if window else "2"})
     set_soul_scale(None if window else SOUL_UI_SCALE)
     cp, asset_index = launch_files()
     t0 = time.time()
