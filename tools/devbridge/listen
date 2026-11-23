@@ -83,9 +83,16 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 PRISM = Path.home() / ".local/share/PrismLauncher/instances"
-DEV_GAME = REPO / "run"
+LIVE = Path.home() / "live"   # the sandbox's view of the owner's game dirs (agent-vps via desk)
+
+
+def live_or(path, name):
+    return LIVE / name if not path.exists() and (LIVE / name).exists() else path
+
+
+DEV_GAME = live_or(REPO / "run", "dev")
 TEST_GAME = PRISM / "soulmod-test/minecraft"
-SKYBLOCK_GAME = PRISM / "Hypixel Skyblock/minecraft"
+SKYBLOCK_GAME = live_or(PRISM / "Hypixel Skyblock/minecraft", "skyblock")
 POINTERS = Path.home() / ".cache/soul-devbridge/clients"
 EVENTS_TABLE = Path(__file__).resolve().parent / "events.json"
 COLOR = re.compile("§(#[0-9a-fA-F]{6}|.)|[\u200b\u2060]")   # color codes and the zero-width spaces some Hypixel/room names carry
@@ -100,6 +107,8 @@ def alive(pid):
     try:
         os.kill(int(pid), 0)
         return True
+    except PermissionError:
+        return True   # exists, but runs as another user (the sandbox watching the owner's client)
     except (OSError, ValueError, TypeError):
         return False
 
@@ -208,7 +217,21 @@ def fetch_json(info, target, timeout=15):
             break
         body += chunk
     sock.close()
-    return json.loads(body)
+    return local_paths(info, json.loads(body))
+
+
+def local_paths(info, v):
+    """Rebase paths under the client's reported game dir onto the game dir this CLI was given (a sandbox sees it mounted elsewhere)."""
+    src, dst = info.get("game_dir"), info.get("_game")
+    if not src or not dst or Path(src) == Path(dst):
+        return v
+    if isinstance(v, str):
+        return str(Path(dst) / v[len(src):].lstrip("/")) if v == src or v.startswith(src.rstrip("/") + "/") else v
+    if isinstance(v, list):
+        return [local_paths(info, x) for x in v]
+    if isinstance(v, dict):
+        return {k: local_paths(info, x) for k, x in v.items()}
+    return v
 
 
 def query(**kw):
@@ -862,6 +885,8 @@ def cmd_log(args):
     game = target_game(args)
     info = read_info(game)
     path = Path(info["log"]) if info and info.get("log") else None
+    if path is not None and not os.access(path, os.R_OK) and (game / "logs/latest.log").exists():
+        path = game / "logs/latest.log"   # the reported path is outside what this user can read (sandbox)
     if path is None:
         sys.exit("the client's bridge.json has no log path (client not running, or a bridge older than this CLI)")
     lines = path.read_text(errors="replace").splitlines()
