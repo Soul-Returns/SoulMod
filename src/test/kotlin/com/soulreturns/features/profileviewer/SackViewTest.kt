@@ -14,6 +14,8 @@ import com.soulreturns.features.profileviewer.gui.kit.ViewState
 import com.soulreturns.features.profileviewer.gui.sections.InventoriesSection
 import com.soulreturns.features.profileviewer.gui.sections.InventoryLookups
 import com.soulreturns.features.profileviewer.gui.sections.SackView
+import com.soulreturns.features.profileviewer.gui.sections.SackGroup
+import com.soulreturns.features.profileviewer.gui.sections.SackGrouping
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import net.minecraft.nbt.CompoundTag
@@ -34,11 +36,13 @@ class SackViewTest {
     private val price = InventoryLookups.price
     private val itemName = InventoryLookups.itemName
     private val catalog = InventoryLookups.sackCatalog
+    private val marketName = InventoryLookups.marketName
 
     @BeforeTest
     fun seams() {
         InventoryLookups.price = { id -> if (id == "COAL") 10L else 100L }
         InventoryLookups.itemName = { null }
+        InventoryLookups.marketName = { null }
     }
 
     @AfterTest
@@ -46,6 +50,7 @@ class SackViewTest {
         InventoryLookups.price = price
         InventoryLookups.itemName = itemName
         InventoryLookups.sackCatalog = catalog
+        InventoryLookups.marketName = marketName
     }
 
     private fun sack(id: String, name: String, capacity: Long, rarity: String = "EPIC", stitches: Int = 0): CompoundTag = CompoundTag().apply {
@@ -162,9 +167,17 @@ class SackViewTest {
         val runes = grouping.groups.single { it.key == "RUNE_SACK" }
         assertEquals(listOf("RUNE_BLOOD_2_1", "RUNE_ZOMBIE_SLAYER_1"), runes.lines.map { it.id })
         assertEquals(listOf("RUNEBOOK"), grouping.other!!.lines.map { it.id })
-        assertEquals("Zombie Slayer Rune I", SackView.runeName("RUNE_ZOMBIE_SLAYER_1"))
+        assertEquals("Zombie Slayer Rune I", SackView.runeName("RUNE_ZOMBIE_SLAYER_1"), "no served name: derived from the id")
         assertEquals("BLOOD_2_RUNE;1", SackView.marketKey("RUNE_BLOOD_2_1"))
         assertEquals("COAL", SackView.marketKey("COAL"))
+    }
+
+    @Test
+    fun `a rune takes the name the backend saw for its market key`() {
+        InventoryLookups.marketName = { key -> if (key == "ZOMBIE_SLAYER_RUNE;1") "Pestilence Rune I" else null }
+        assertEquals("Pestilence Rune I", SackView.runeName("RUNE_ZOMBIE_SLAYER_1"))
+        assertEquals("Blood 2 Rune I", SackView.runeName("RUNE_BLOOD_2_1"), "a key without a served name falls back")
+        assertNull(SackView.runeName("COAL"))
     }
 
     @Test
@@ -195,6 +208,43 @@ class SackViewTest {
         val tile = SackView.tiles(grouping, { true }, false, "value", { it }, InventoryLookups.price).single()
         assertEquals(1, tile.full)
         assertEquals("", tile.sub)
+    }
+
+    @Test
+    fun `the Gemstone Sack groups its tiers per type with a total in equivalents`() {
+        val gemLines = lines(
+            "ROUGH_RUBY_GEM" to 160L, "FLAWED_RUBY_GEM" to 1L, "FINE_RUBY_GEM" to 2L,
+            "ROUGH_AMBER_GEM" to 13_000L, "FLAWED_AMBER_GEM" to 0L,
+            "ROUGH_JADE_GEM" to 0L, "FLAWED_JADE_GEM" to 0L, "FINE_JADE_GEM" to 0L,
+        )
+        val grouping = SackGrouping(
+            listOf(SackGroup("GEMSTONE_SACK", "Gemstone Sack", null, gemLines), SackGroup("MINING_SACK", "Mining Sack", null, lines("COAL" to 5L, "IRON" to 9L))),
+            null, emptyList(),
+        )
+        val byCount = SackView.tiles(grouping, { true }, false, "count", { it }, InventoryLookups.price)
+        val gems = byCount.single { it.key == "GEMSTONE_SACK" }.gems!!
+        // Ruby 160 + 1 × 80 + 2 × 6,400 = 13,040 Rough beats Amber's 13,000 Rough although Amber holds more items.
+        assertEquals(listOf("Ruby", "Amber", "Jade"), gems.map { it.name })
+        val ruby = gems[0]
+        assertEquals(listOf("ROUGH_RUBY_GEM", "FLAWED_RUBY_GEM", "FINE_RUBY_GEM"), ruby.tiers.map { it.id })
+        assertEquals(13_040L, ruby.roughEq)
+        assertEquals("2 Fine, 3 Flawed", SackView.gemBreakdown(ruby.roughEq))
+        assertEquals("2.0 Fine", SackView.gemTotal(ruby.roughEq))
+        assertEquals(163L * 100, ruby.value, "the sum of its tier values")
+        assertEquals("3.5 Flawed", SackView.gemTotal(280))
+        assertEquals("45 Rough", SackView.gemTotal(45))
+        assertEquals("0 Rough", SackView.gemBreakdown(0))
+        val byValue = SackView.tiles(grouping, { true }, false, "value", { it }, InventoryLookups.price).single { it.key == "GEMSTONE_SACK" }
+        assertEquals(listOf("Amber", "Ruby", "Jade"), byValue.gems!!.map { it.name })
+        assertTrue(byValue.loose.isEmpty())
+        val hideEmpty = SackView.tiles(grouping, { it.count > 0 }, true, "name", { it }, InventoryLookups.price).single { it.key == "GEMSTONE_SACK" }
+        assertEquals(listOf("Amber", "Ruby"), hideEmpty.gems!!.map { it.name }, "a type goes only when all its tiers are hidden")
+        assertEquals(listOf("ROUGH_AMBER_GEM"), hideEmpty.gems!![0].tiers.map { it.id })
+        val mining = byCount.single { it.key == "MINING_SACK" }
+        assertNull(mining.gems, "a non-gem sack is untouched")
+        assertEquals(listOf("IRON", "COAL"), mining.loose.map { it.id })
+        val other = SackView.tiles(SackGrouping(emptyList(), SackGroup(SackView.OTHER_KEY, "Other items", null, lines("ROUGH_OPAL_GEM" to 3L)), emptyList()), { true }, false, "value", { it }, InventoryLookups.price)
+        assertEquals(listOf("Opal"), other.single().gems!!.map { it.name }, "rows that are all gem tiers group without the sack key")
     }
 
     // ------------------------------------------------------------------ the section
@@ -263,6 +313,16 @@ class SackViewTest {
         InventoryLookups.sackCatalog = { index(SackCatalogEntry("MINING_SACK", "Mining Sack", listOf("COAL"))) }
         val text = render(context(counts, sacksBag = null), "sackSel" to "OTHER")
         assertTrue("Other items" in text && "Coal" in text && "Quartz" in text, text)
+    }
+
+    @Test
+    fun `the Gemstone Sack drawer lists one entry per gemstone type`() {
+        InventoryLookups.sackCatalog = { index(SackCatalogEntry("GEMSTONE_SACK", "Gemstone Sack", listOf("ROUGH_RUBY_GEM", "FLAWED_RUBY_GEM", "FINE_RUBY_GEM"))) }
+        val bag = blob(sack("LARGE_GEMSTONE_SACK", "§6Large Gemstone Sack", 100_000))
+        val text = render(context(mapOf("ROUGH_RUBY_GEM" to 160L, "FLAWED_RUBY_GEM" to 1L, "FINE_RUBY_GEM" to 2L), sacksBag = bag), "sackSel" to "GEMSTONE_SACK")
+        assertTrue("1 gemstone ·" in text, text)
+        assertTrue("Ruby" in text && "2.0 Fine" in text, text)
+        assertTrue("Rough 160 Flawed 1 Fine 2" in text, text)
     }
 
     @Test

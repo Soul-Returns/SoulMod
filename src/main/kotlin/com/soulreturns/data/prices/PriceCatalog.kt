@@ -70,4 +70,10 @@ data class PriceCatalogSnapshot(
     /** Epoch ms of the backend's last successful lowest-BIN poll, or null if it never had one. */
     val lowestBinUpdatedAt: Long? = null,
     val prices: List<PriceEntry> = emptyList(),
+    /**
+     * Market key → in-game name for keys whose key does not spell it: runes, as the backend's auction
+     * scan last saw them (`ZOMBIE_SLAYER_RUNE;1` = "Pestilence Rune I"). Added 2026-11-23; older
+     * backends and caches omit it. Independent of [prices]: an unlisted rune keeps its name.
+     */
+    val names: Map<String, String> = emptyMap(),
 )

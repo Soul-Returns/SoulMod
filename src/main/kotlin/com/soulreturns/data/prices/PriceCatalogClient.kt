@@ -95,6 +95,9 @@ object PriceCatalogClient {
 
     fun isEmpty(): Boolean = byId.isEmpty()
 
+    /** The in-game name the backend saw for a market [key] (runes only, [PriceCatalogSnapshot.names]); a plain map read. */
+    fun name(key: String): String? = catalog.snapshot.names[key]
+
     private fun rebuild(fresh: PriceCatalogSnapshot) {
         val ids = HashMap<String, PriceEntry>(fresh.prices.size)
         var bazaar = 0

@@ -18,6 +18,7 @@ import com.soulreturns.data.hypixel.potionBagBlob
 import com.soulreturns.data.hypixel.quiverBlob
 import com.soulreturns.data.items.ItemCatalogClient
 import com.soulreturns.data.prices.PriceCache
+import com.soulreturns.data.prices.PriceCatalogClient
 import com.soulreturns.data.sacks.SackCatalogClient
 import com.soulreturns.data.sacks.SackCatalogIndex
 import com.soulreturns.data.skyblock.SkyblockProfileState
@@ -65,6 +66,10 @@ internal object InventoryLookups {
     /** The catalog's display name of a SkyBlock id, null when the catalog does not know it. */
     @Volatile
     var itemName: (String) -> String? = { id -> try { ItemCatalogClient.byId(id)?.displayName } catch (_: LinkageError) { null } }
+
+    /** The in-game name the backend saw for a market key (runes: `ZOMBIE_SLAYER_RUNE;1`), null when it has none. */
+    @Volatile
+    var marketName: (String) -> String? = { key -> try { PriceCatalogClient.name(key) } catch (_: LinkageError) { null } }
 
     /** Which items each sack holds (the backend's sack catalog); empty before the first download. */
     @Volatile
