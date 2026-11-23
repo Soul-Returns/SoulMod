@@ -21,11 +21,13 @@ class SackReportTest {
 
     @Test
     fun `a gemstone row lists one id per tier line`() {
-        val ruby = MenuSlot("RUBY_GEM_ROW", "§cRuby Gemstone", listOf("§7Rough: §a1,000", "§7Flawed: §a20", "§7Fine: §a3"))
-        assertEquals(setOf("ROUGH_RUBY_GEM", "FLAWED_RUBY_GEM", "FINE_RUBY_GEM"), SackReport.idsOf(ruby, gemstone = true))
-        assertEquals(emptySet(), SackReport.idsOf(ruby, gemstone = false), "tier lines only count in the Gemstone Sack")
+        // Live row (2026-11-23): the rough gem's id, tier lines and a Stored line.
+        val jade = MenuSlot("ROUGH_JADE_GEM", "§aJade Gemstones", listOf("§8Gemstones", "§7Rough: §a15,344 §8(15,344)", "§7Flawed: §a0 §8(0)", "§7Fine: §a0 §8(0)", "§7Stored: §a15,344§7/19.7M"))
+        assertEquals(setOf("ROUGH_JADE_GEM", "FLAWED_JADE_GEM", "FINE_JADE_GEM"), SackReport.idsOf(jade, gemstone = true))
+        assertEquals(setOf("ROUGH_JADE_GEM"), SackReport.idsOf(jade, gemstone = false), "tier lines only count in the Gemstone Sack")
         val direct = MenuSlot("ROUGH_AMBER_GEM", "§6Rough Amber Gemstone", listOf("§7Stored: 5/22.2k"))
-        assertEquals(setOf("ROUGH_AMBER_GEM"), SackReport.idsOf(direct, gemstone = true), "a Stored row is its own id")
+        assertEquals(setOf("ROUGH_AMBER_GEM"), SackReport.idsOf(direct, gemstone = true), "a row without tier lines is its own id")
+        assertTrue(SackReport.isGemstone("Gemstones Sack"))
         assertTrue(SackReport.isGemstone("Gemstone Sack"))
         assertFalse(SackReport.isGemstone("Mining Sack"))
     }

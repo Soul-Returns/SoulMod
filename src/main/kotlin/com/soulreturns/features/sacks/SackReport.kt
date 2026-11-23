@@ -23,22 +23,23 @@ object SackReport {
     private val GEM_WORDS = setOf("rough", "flawed", "fine", "flawless", "perfect", "gemstone", "gem", "gemstones")
 
     /**
-     * The item ids [slot] stands for: its SkyBlock id when its lore has a `Stored:` line (every normal sack row,
-     * whatever follows `Stored:`); in the Gemstone Sack ([gemstone]) a row without one that lists per-tier
-     * counts stands for `<TIER>_<TYPE>_GEM` of each tier line, the type being the row's name without tier and
-     * "Gemstone" words (`Ruby Gemstone` + `Rough: 5` = `ROUGH_RUBY_GEM`). Borders, arrows and buttons are no items.
+     * The item ids [slot] stands for. In the Gemstone Sack ([gemstone]) a row lists per-tier counts and stands for
+     * `<TIER>_<TYPE>_GEM` of each tier line, the type being the row's name without tier and "Gemstone" words
+     * (`Jade Gemstones` + `Rough: … | Flawed: … | Fine: …` = ROUGH/FLAWED/FINE_JADE_GEM; seen live 2026-11-23: the
+     * row's own id is the rough gem and it has a `Stored:` line too). Every other row with a `Stored:` line is its
+     * SkyBlock id. Borders, arrows and buttons are no items.
      */
     fun idsOf(slot: MenuSlot, gemstone: Boolean): Set<String> {
         val lines = slot.lore.map { SackParsing.strip(it).trim() }
+        if (gemstone) {
+            val tiers = lines.mapNotNull { GEM_TIER.find(it)?.groupValues?.get(1)?.uppercase(Locale.ROOT) }
+            val type = SackParsing.strip(slot.name).trim().split(Regex("""\s+"""))
+                .filter { it.isNotEmpty() && it.lowercase(Locale.ROOT) !in GEM_WORDS }
+                .joinToString("_") { it.uppercase(Locale.ROOT) }
+            if (tiers.isNotEmpty() && type.isNotEmpty()) return tiers.mapTo(LinkedHashSet()) { "${it}_${type}_GEM" }
+        }
         if (slot.id != null && lines.any { STORED.matches(it) }) return setOf(slot.id)
-        if (!gemstone) return emptySet()
-        val tiers = lines.mapNotNull { GEM_TIER.find(it)?.groupValues?.get(1)?.uppercase(Locale.ROOT) }
-        if (tiers.isEmpty()) return emptySet()
-        val type = SackParsing.strip(slot.name).trim().split(Regex("""\s+"""))
-            .filter { it.isNotEmpty() && it.lowercase(Locale.ROOT) !in GEM_WORDS }
-            .joinToString("_") { it.uppercase(Locale.ROOT) }
-        if (type.isEmpty()) return emptySet()
-        return tiers.mapTo(LinkedHashSet()) { "${it}_${type}_GEM" }
+        return emptySet()
     }
 
     /** The union of [idsOf] over a menu's container slots. */
