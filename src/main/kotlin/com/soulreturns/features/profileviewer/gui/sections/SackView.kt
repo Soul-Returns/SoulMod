@@ -121,7 +121,7 @@ internal object SackView {
     class Tile(val key: String, val name: String, val color: Int, val sub: String, val owned: OwnedSack?, val rows: List<Row>, val gems: List<Gem>? = null) {
         val value: Long = rows.sumOf { it.value }
         val count: Long = rows.sumOf { it.count }
-        val full: Int = rows.count { it.full }
+        val full: Int = rows.count { it.full } + (gems?.count { it.full } ?: 0)
         val soul: Boolean = rows.any { it.soul }
         val loose: List<Row> = if (gems == null) rows else rows.filter { !GEM_ID.matches(it.id) }
     }
@@ -163,13 +163,17 @@ internal object SackView {
         }
         fun build(group: SackGroup): Tile? {
             val cap = group.owned?.capacity ?: 0L
-            val rows = group.lines.filter(shown).map { Row(it.id, name(it.id), it.count, cap, price(it.id), it.fromSoul) }.sortedWith(rowOrder)
+            val gemSack = isGemSack(group)
+            // A Gemstone Sack's capacity holds per gemstone in Rough equivalents, so it is no tier's own limit.
+            val rows = group.lines.filter(shown).map {
+                Row(it.id, name(it.id), it.count, if (gemSack && GEM_ID.matches(it.id)) 0L else cap, price(it.id), it.fromSoul)
+            }.sortedWith(rowOrder)
             if (rows.isEmpty() && filtering) return null
             val owned = group.owned
             return Tile(
                 group.key, group.name, rarityColor(owned?.rarity),
                 if (owned != null) sub(owned) else "Not in a known sack", owned, rows,
-                if (isGemSack(group)) gems(rows, sort) else null,
+                if (gemSack) gems(rows, sort, cap) else null,
             )
         }
         val tiles = grouping.groups.mapNotNull(::build)
@@ -183,20 +187,30 @@ internal object SackView {
 
     /**
      * The Gemstone Sack holds every gemstone in three tiers (`ROUGH_/FLAWED_/FINE_<TYPE>_GEM`, 36 rows); its drawer
-     * shows one entry per type instead. 80 of a tier make one of the next ([GEM_STEP]).
+     * shows one entry per type instead. Like the game's sack, a type counts in Rough: 80 Rough = 1 Flawed, 80 Flawed
+     * = 1 Fine, and the sack's capacity is per type in those Rough equivalents.
      */
     private const val GEMSTONE_SACK = "GEMSTONE_SACK"
     private val GEM_ID = Regex("""^(ROUGH|FLAWED|FINE)_([A-Z]+)_GEM$""")
     private val GEM_TIERS = listOf("ROUGH", "FLAWED", "FINE")
-    const val GEM_STEP = 80L
-    private const val FINE_IN_ROUGH = GEM_STEP * GEM_STEP
+    private const val GEM_STEP = 80L
 
-    /** One gemstone type with its shown tier rows; [roughEq] = the type's total in Rough (Flawed × 80, Fine × 6,400). */
-    class Gem(val type: String, val name: String, val rough: Row?, val flawed: Row?, val fine: Row?) {
-        val tiers: List<Row> = listOfNotNull(rough, flawed, fine)
-        val value: Long = tiers.sumOf { it.value }
-        val roughEq: Long = (rough?.count ?: 0L) + (flawed?.count ?: 0L) * GEM_STEP + (fine?.count ?: 0L) * FINE_IN_ROUGH
-        val soul: Boolean = tiers.any { it.soul }
+    /** One shown tier of a [Gem]: `Rough`/`Flawed`/`Fine`, its row and how many Rough one of it is worth. */
+    class GemTier(val label: String, val row: Row, val rough: Long) {
+        val roughEq: Long get() = row.count * rough
+    }
+
+    /** One gemstone type with its shown tiers; [roughEq] = the type's total in Rough, [cap] = the sack capacity (0 = unknown). */
+    class Gem(val type: String, val name: String, rough: Row?, flawed: Row?, fine: Row?, val cap: Long) {
+        val tiers: List<GemTier> = listOfNotNull(
+            rough?.let { GemTier("Rough", it, 1L) },
+            flawed?.let { GemTier("Flawed", it, GEM_STEP) },
+            fine?.let { GemTier("Fine", it, GEM_STEP * GEM_STEP) },
+        )
+        val value: Long = tiers.sumOf { it.row.value }
+        val roughEq: Long = tiers.sumOf { it.roughEq }
+        val soul: Boolean = tiers.any { it.row.soul }
+        val full: Boolean = cap > 0 && roughEq > 0 && roughEq.toFloat() / cap >= FULL_AT
     }
 
     fun isGemSack(group: SackGroup): Boolean =
@@ -207,13 +221,13 @@ internal object SackView {
      * A type exists when at least one of its tiers is in [rows], so a filter hides a type only with all its tiers.
      * Order: [sort] `value` = summed tier value, `count` = [Gem.roughEq], `name` = type name.
      */
-    fun gems(rows: List<Row>, sort: String): List<Gem> {
+    fun gems(rows: List<Row>, sort: String, cap: Long): List<Gem> {
         val byType = LinkedHashMap<String, Array<Row?>>()
         for (r in rows) {
             val m = GEM_ID.matchEntire(r.id) ?: continue
             byType.getOrPut(m.groupValues[2]) { arrayOfNulls(3) }[GEM_TIERS.indexOf(m.groupValues[1])] = r
         }
-        val gems = byType.map { (type, t) -> Gem(type, type.lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) }, t[0], t[1], t[2]) }
+        val gems = byType.map { (type, t) -> Gem(type, type.lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) }, t[0], t[1], t[2], cap) }
         return when (sort) {
             "count" -> gems.sortedWith(compareByDescending<Gem> { it.roughEq }.thenBy { it.name })
             "name" -> gems.sortedBy { it.name }
@@ -221,24 +235,10 @@ internal object SackView {
         }
     }
 
-    /** A type's total on its row: `2.0 Fine` from one Fine up, else `3.5 Flawed`, else `45 Rough`; rounded down. */
-    fun gemTotal(roughEq: Long): String = when {
-        roughEq >= FINE_IN_ROUGH -> "${tenths(roughEq * 10 / FINE_IN_ROUGH)} Fine"
-        roughEq >= GEM_STEP -> "${tenths(roughEq * 10 / GEM_STEP)} Flawed"
-        else -> "${Format.num(roughEq)} Rough"
-    }
-
-    /** The exact total in whole tiers for the tooltip: `2 Fine, 3 Flawed`; `0 Rough` when empty. */
-    fun gemBreakdown(roughEq: Long): String {
-        val parts = listOf(
-            roughEq / FINE_IN_ROUGH to "Fine",
-            roughEq % FINE_IN_ROUGH / GEM_STEP to "Flawed",
-            roughEq % GEM_STEP to "Rough",
-        ).filter { it.first > 0 }
-        return if (parts.isEmpty()) "0 Rough" else parts.joinToString(", ") { "${Format.num(it.first)} ${it.second}" }
-    }
-
-    private fun tenths(t: Long): String = "${Format.num(t / 10)}.${t % 10}"
+    /** The game's tooltip lines for a type: `Rough: 1 (1)` per shown tier (count, Rough equivalent), then `Stored: 1,917,681 / 18.6M`. */
+    fun gemStored(g: Gem): List<String> =
+        g.tiers.map { "§7${it.label}: §f${Format.num(it.row.count)} §8(${Format.num(it.roughEq)})" } +
+            ("§7Stored: §e${Format.num(g.roughEq)}" + if (g.cap > 0) "§7 / ${Format.short(g.cap)}" else "")
 }
 
 /**
@@ -389,46 +389,47 @@ internal class SackTilesNode(
     }
 
     /**
-     * One gemstone type: icon of its best shown tier, name, total ([SackView.gemTotal]) and value on the first line;
-     * `Rough 160  Flawed 1  Fine 2` under the name, each tier with its own row tooltip.
+     * One gemstone type: icon of its best shown tier, name, the Rough-equivalent total (amber at ≥95 % of the sack's
+     * capacity; `1.9M` when the full number does not fit) and value on the first line; `Rough 160  Flawed 1  Fine 2`
+     * under the name, each tier with its own row tooltip.
      */
     private fun paintGem(c: KitCanvas, t: SackView.Tile, g: SackView.Gem, x: Int, y: Int, w: Int) {
         val zero = g.roughEq == 0L
         if (c.hovered(x, y, x + w, y + GEM_H)) c.rect(x, y, x + w, y + GEM_H, HOVER_BG, Corner.SMALL)
-        ItemIcons.icon(g.tiers.last().id)?.let { c.item(it, x + 3, y + (ROW_H - MINI_ICON) / 2, MINI_ICON, count = false) }
+        ItemIcons.icon(g.tiers.last().row.id)?.let { c.item(it, x + 3, y + (ROW_H - MINI_ICON) / 2, MINI_ICON, count = false) }
         var rx = x + w - 3
         val value = if (g.value > 0) coins(g.value) else if (zero) "0" else "—"
         rx -= VALUE_W
         c.text(value, rx + VALUE_W - c.width(value, S.CAPTION), y, y + ROW_H, if (zero) S.TEXT_GHOST else S.COIN, S.CAPTION)
         rx -= 6
-        val total = SackView.gemTotal(g.roughEq)
-        val tw = c.width(total, S.SMALL, true)
-        c.text(total, rx - tw, y, y + ROW_H, if (zero) S.TEXT_GHOST else if (g.soul) S.ACCENT_LIGHT else S.TEXT, S.SMALL, true)
         val nx = x + 3 + MINI_ICON + 6
-        val nameW = rx - tw - 8 - nx - if (g.soul) DOT + 4 else 0
-        val end = Rich.of(g.name).ellipsize(c, S.SMALL, nameW).draw(c, nx, y, y + ROW_H, S.SMALL, if (zero) S.TEXT_GHOST else S.TEXT, false)
+        val dotW = if (g.soul) DOT + 4 else 0
+        val exact = Format.num(g.roughEq)
+        val total = if (c.width(exact, S.SMALL, true) <= rx - nx - c.width(g.name, S.SMALL) - dotW - 8) exact else Format.short(g.roughEq)
+        val tw = c.width(total, S.SMALL, true)
+        c.text(total, rx - tw, y, y + ROW_H, if (zero) S.TEXT_GHOST else if (g.full) S.MAXED else if (g.soul) S.ACCENT_LIGHT else S.TEXT, S.SMALL, true)
+        val end = Rich.of(g.name).ellipsize(c, S.SMALL, rx - tw - 8 - nx - dotW).draw(c, nx, y, y + ROW_H, S.SMALL, if (zero) S.TEXT_GHOST else S.TEXT, false)
         if (g.soul) dot(c, end + 4, y + (ROW_H - DOT) / 2)
         c.tooltip(x, y, x + w, y + ROW_H, gemTip(g, t), "sg:${t.key}:${g.type}")
         val ty = y + ROW_H - 2
         var px = nx
-        for ((label, r) in listOf("Rough" to g.rough, "Flawed" to g.flawed, "Fine" to g.fine)) {
-            if (r == null) continue
+        for (tier in g.tiers) {
+            val r = tier.row
             val count = Format.num(r.count)
-            val lw = c.width(label, S.TINY)
+            val lw = c.width(tier.label, S.TINY)
             val sw = lw + 3 + c.width(count, S.TINY)
             if (px + sw > x + w - 3) break
-            c.text(label, px, ty, ty + TIER_H, S.TEXT_DIM, S.TINY)
-            val color = if (r.count == 0L) S.TEXT_GHOST else if (r.full) S.MAXED else if (r.soul) S.ACCENT_LIGHT else S.TEXT_SOFT
-            c.text(count, px + lw + 3, ty, ty + TIER_H, color, S.TINY)
+            c.text(tier.label, px, ty, ty + TIER_H, S.TEXT_DIM, S.TINY)
+            c.text(count, px + lw + 3, ty, ty + TIER_H, if (r.count == 0L) S.TEXT_GHOST else if (r.soul) S.ACCENT_LIGHT else S.TEXT_SOFT, S.TINY)
             c.tooltip(px, ty, px + sw, ty + TIER_H, rowTip(r, t), "sr:${t.key}:${r.id}")
             px += sw + TIER_GAP
         }
     }
 
+    /** Mirrors the game's Gemstone Sack row ([SackView.gemStored]), then value and sack. */
     private fun gemTip(g: SackView.Gem, t: SackView.Tile): List<String> = buildList {
         add("§f${g.name} Gemstones")
-        add("§7Total: §e${SackView.gemBreakdown(g.roughEq)}")
-        if (g.roughEq >= SackView.GEM_STEP) add("§8= ${Format.num(g.roughEq)} Rough (80 Rough = 1 Flawed, 80 Flawed = 1 Fine)")
+        addAll(SackView.gemStored(g))
         add(if (g.value > 0) "§7Value: §6${coins(g.value)} coins" else "§7No price known")
         add("§8${t.name}")
         if (g.soul) {

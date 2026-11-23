@@ -211,7 +211,7 @@ class SackViewTest {
     }
 
     @Test
-    fun `the Gemstone Sack groups its tiers per type with a total in equivalents`() {
+    fun `the Gemstone Sack groups its tiers per type with a Rough-equivalent total`() {
         val gemLines = lines(
             "ROUGH_RUBY_GEM" to 160L, "FLAWED_RUBY_GEM" to 1L, "FINE_RUBY_GEM" to 2L,
             "ROUGH_AMBER_GEM" to 13_000L, "FLAWED_AMBER_GEM" to 0L,
@@ -226,25 +226,41 @@ class SackViewTest {
         // Ruby 160 + 1 × 80 + 2 × 6,400 = 13,040 Rough beats Amber's 13,000 Rough although Amber holds more items.
         assertEquals(listOf("Ruby", "Amber", "Jade"), gems.map { it.name })
         val ruby = gems[0]
-        assertEquals(listOf("ROUGH_RUBY_GEM", "FLAWED_RUBY_GEM", "FINE_RUBY_GEM"), ruby.tiers.map { it.id })
+        assertEquals(listOf("ROUGH_RUBY_GEM", "FLAWED_RUBY_GEM", "FINE_RUBY_GEM"), ruby.tiers.map { it.row.id })
         assertEquals(13_040L, ruby.roughEq)
-        assertEquals("2 Fine, 3 Flawed", SackView.gemBreakdown(ruby.roughEq))
-        assertEquals("2.0 Fine", SackView.gemTotal(ruby.roughEq))
+        assertEquals(listOf(160L, 80L, 12_800L), ruby.tiers.map { it.roughEq })
         assertEquals(163L * 100, ruby.value, "the sum of its tier values")
-        assertEquals("3.5 Flawed", SackView.gemTotal(280))
-        assertEquals("45 Rough", SackView.gemTotal(45))
-        assertEquals("0 Rough", SackView.gemBreakdown(0))
+        assertEquals(listOf("Rough: 160 (160)", "Flawed: 1 (80)", "Fine: 2 (12,800)", "Stored: 13,040"), SackView.gemStored(ruby).map { it.replace(Regex("§."), "") }, "no capacity known")
         val byValue = SackView.tiles(grouping, { true }, false, "value", { it }, InventoryLookups.price).single { it.key == "GEMSTONE_SACK" }
         assertEquals(listOf("Amber", "Ruby", "Jade"), byValue.gems!!.map { it.name })
         assertTrue(byValue.loose.isEmpty())
         val hideEmpty = SackView.tiles(grouping, { it.count > 0 }, true, "name", { it }, InventoryLookups.price).single { it.key == "GEMSTONE_SACK" }
         assertEquals(listOf("Amber", "Ruby"), hideEmpty.gems!!.map { it.name }, "a type goes only when all its tiers are hidden")
-        assertEquals(listOf("ROUGH_AMBER_GEM"), hideEmpty.gems!![0].tiers.map { it.id })
+        assertEquals(listOf("ROUGH_AMBER_GEM"), hideEmpty.gems!![0].tiers.map { it.row.id })
         val mining = byCount.single { it.key == "MINING_SACK" }
         assertNull(mining.gems, "a non-gem sack is untouched")
         assertEquals(listOf("IRON", "COAL"), mining.loose.map { it.id })
         val other = SackView.tiles(SackGrouping(emptyList(), SackGroup(SackView.OTHER_KEY, "Other items", null, lines("ROUGH_OPAL_GEM" to 3L)), emptyList()), { true }, false, "value", { it }, InventoryLookups.price)
         assertEquals(listOf("Opal"), other.single().gems!!.map { it.name }, "rows that are all gem tiers group without the sack key")
+    }
+
+    @Test
+    fun `a gemstone is full by its Rough-equivalent total against the sack capacity`() {
+        val owned = ownedSacks(ItemBlobs.parse(blob(sack("LARGE_GEMSTONE_SACK", "§6Large Gemstone Sack", 18_636_800)))!!)
+        val catalog = index(SackCatalogEntry("GEMSTONE_SACK", "Gemstone Sack", listOf("ROUGH_JASPER_GEM", "FLAWED_JASPER_GEM", "FINE_JASPER_GEM", "ROUGH_RUBY_GEM", "FINE_RUBY_GEM")))
+        val grouping = SackView.group(owned, catalog, lines("ROUGH_JASPER_GEM" to 1L, "FLAWED_JASPER_GEM" to 51L, "FINE_JASPER_GEM" to 299L, "ROUGH_RUBY_GEM" to 5L, "FINE_RUBY_GEM" to 2_800L))
+        val tile = SackView.tiles(grouping, { true }, false, "count", { it }, InventoryLookups.price).single()
+        val (ruby, jasper) = tile.gems!!
+        // Live Jasper row (2026-11-23): Rough: 1 (1), Flawed: 51 (4,080), Fine: 299 (1,913,600), Stored: 1,917,681/18.6M.
+        assertEquals(
+            listOf("Rough: 1 (1)", "Flawed: 51 (4,080)", "Fine: 299 (1,913,600)", "Stored: 1,917,681 / 18.6M"),
+            SackView.gemStored(jasper).map { it.replace(Regex("§."), "") },
+        )
+        assertTrue(!jasper.full)
+        assertEquals(17_920_005L, ruby.roughEq)
+        assertTrue(ruby.full, "96 % of the per-gemstone capacity")
+        assertTrue(tile.rows.none { it.full || it.cap > 0 }, "a tier has no capacity of its own")
+        assertEquals(1, tile.full)
     }
 
     // ------------------------------------------------------------------ the section
@@ -321,7 +337,7 @@ class SackViewTest {
         val bag = blob(sack("LARGE_GEMSTONE_SACK", "§6Large Gemstone Sack", 100_000))
         val text = render(context(mapOf("ROUGH_RUBY_GEM" to 160L, "FLAWED_RUBY_GEM" to 1L, "FINE_RUBY_GEM" to 2L), sacksBag = bag), "sackSel" to "GEMSTONE_SACK")
         assertTrue("1 gemstone ·" in text, text)
-        assertTrue("Ruby" in text && "2.0 Fine" in text, text)
+        assertTrue("Ruby" in text && "13,040" in text, text)
         assertTrue("Rough 160 Flawed 1 Fine 2" in text, text)
     }
 
