@@ -51,6 +51,7 @@ object SackReporter {
 
     private var watching: AbstractContainerScreen<*>? = null
     private var watchingTitle = ""
+    private val PAGE_PREFIX = Regex("""^\(\d+/\d+\)\s*""")
     private var lastStacks: List<ItemStack> = emptyList()
     private var stableTicks = 0
     private var readThisScreen = false
@@ -78,7 +79,8 @@ object SackReporter {
         if (screen !== watching) {
             flushUnread()
             watching = screen
-            watchingTitle = SackParsing.strip(screen.title.string).trim()
+            // Paged sacks title each page "(1/2) Runes Sack" (seen live 2026-11-23); the sack is the rest.
+            watchingTitle = SackParsing.strip(screen.title.string).trim().replace(PAGE_PREFIX, "")
             lastStacks = stacks
             stableTicks = 0
             readThisScreen = false
