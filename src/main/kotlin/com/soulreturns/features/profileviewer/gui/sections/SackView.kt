@@ -31,21 +31,23 @@ internal object SackView {
     /**
      * Sorts every sack line into the owned sacks whose catalog entry lists it. An item that several owned sacks list
      * is in each of them (totals count it once, see [totals]); an item in no owned, catalogued sack lands in
-     * [SackGrouping.other], so nothing disappears (an empty catalog puts everything there).
+     * [SackGrouping.other], so nothing disappears (an empty catalog puts everything there). A catalogued item the
+     * profile has no count for (`sacks_counts` omits some, e.g. baits) still shows in its sack with 0.
      */
     fun group(owned: List<OwnedSack>, catalog: SackCatalogIndex, lines: List<SackLine>): SackGrouping {
         val groups = ArrayList<SackGroup>()
         val unknown = ArrayList<OwnedSack>()
         val covered = HashSet<String>()
+        val byId = lines.associateBy { it.id }
         for (sack in owned) {
             val entry = catalog.byKey(sack.key) ?: catalog.byName(sack.name)
             if (entry == null) {
                 unknown += sack
                 continue
             }
-            val members = entry.items.toHashSet()
-            covered += members
-            groups += SackGroup(sack.key, sack.name, sack, lines.filter { it.id in members })
+            covered += entry.items
+            val members = entry.items.distinct().map { byId[it] ?: SackLine(it, 0, false) }
+            groups += SackGroup(sack.key, sack.name, sack, members.sortedWith(compareByDescending<SackLine> { it.count }.thenBy { it.id }))
         }
         val rest = lines.filter { it.id !in covered }
         return SackGrouping(groups, if (rest.isEmpty()) null else SackGroup(OTHER_KEY, "Other items", null, rest), unknown)
