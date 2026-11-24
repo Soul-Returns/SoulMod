@@ -307,6 +307,7 @@ object ConfigRegistry {
                         toggle("Custom GUI", "Off keeps the normal menu and only highlights its slots", { t().customGui }, { v -> terminals { copy(customGui = v) } }, dt.customGui),
                         slider("GUI size", "Size of the cells in Soul's window", { t().guiSize.toDouble() }, { v -> terminals { copy(guiSize = v.toFloat()) } }, dt.guiSize.toDouble(), 0.6, 1.6, 0.05, visible = { t().customGui }),
                         toggle("Show left / right labels", "The small mouse-button hint under each number in the color terminal", { t().rubixLabels }, { v -> terminals { copy(rubixLabels = v) } }, dt.rubixLabels, visible = { t().customGui }),
+                        toggle("Show title", "The terminal name and the \"left\" counter above the board", { t().showTitle }, { v -> terminals { copy(showTitle = v) } }, dt.showTitle, visible = { t().customGui }),
                         toggle("What starts with", "\"What starts with: 'X'?\"", { t().startsWith }, { v -> terminals { copy(startsWith = v) } }, dt.startsWith),
                         toggle("Select all the color", "\"Select all the <color> items!\"", { t().selectColor }, { v -> terminals { copy(selectColor = v) } }, dt.selectColor),
                         toggle("Correct all the panes", "\"Correct all the panes!\"", { t().panes }, { v -> terminals { copy(panes = v) } }, dt.panes),

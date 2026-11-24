@@ -124,10 +124,11 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
 
         var geo = geo((baseCell() * cfg.dungeons.terminals.guiSize.coerceIn(0.5f, 2f)).roundToInt())
         val chromeW = 2 * PAD
-        val chromeH = 2 * PAD + HEADER_H + HEADER_GAP
+        val showTitle = cfg.dungeons.terminals.showTitle
+        val chromeH = 2 * PAD + if (showTitle) HEADER_H + HEADER_GAP else 0
         val fit = minOf(1f, (uiW - 16 - chromeW).toFloat() / geo.boardW, (uiH - 16 - chromeH).toFloat() / geo.boardH)
         if (fit < 1f) geo = geo(max(12, (geo.cell * fit).toInt()))
-        val w = max(geo.boardW, headerWidth().coerceAtMost(uiW - 16 - chromeW)) + chromeW
+        val w = max(geo.boardW, if (showTitle) headerWidth().coerceAtMost(uiW - 16 - chromeW) else 0) + chromeW
         val h = geo.boardH + chromeH
         val x0 = (uiW - w) / 2
         val y0 = (uiH - h) / 2
@@ -135,9 +136,9 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
         roundRect(g, x0, y0, x0 + w, y0 + h, PANEL_BG, SoulRenderPipelines.ROUND_MEDIUM)
 
         val sol = if (session.state == TerminalSession.ACTIVE) session.solution else null
-        drawHeader(g, sol, x0 + PAD, y0 + PAD, x0 + w - PAD)
+        if (showTitle) drawHeader(g, sol, x0 + PAD, y0 + PAD, x0 + w - PAD)
         val bx = x0 + (w - geo.boardW) / 2
-        val by = y0 + PAD + HEADER_H + HEADER_GAP
+        val by = y0 + PAD + if (showTitle) HEADER_H + HEADER_GAP else 0
         val overlays = ArrayList<() -> Unit>()
         if (type === TerminalType.Melody) drawMelody(g, sol, geo, bx, by, mx, my, overlays) else drawGrid(g, sol, geo, bx, by, mx, my, overlays)
         // Numbers, checks and dims go above the item icons.

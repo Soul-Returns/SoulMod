@@ -952,7 +952,9 @@ data class TerminalSolverConfig(
     /** Size multiplier of the custom GUI's cells. */
     val guiSize: Float = 1f,
     /** The small "left" / "right" under each count in the color (rubix) terminal of Soul's window. */
-    val rubixLabels: Boolean = true,
+    val rubixLabels: Boolean = false,
+    /** The terminal name and the "n/m left" counter row above the board of Soul's window. */
+    val showTitle: Boolean = false,
     val startsWith: Boolean = true,
     val selectColor: Boolean = true,
     val panes: Boolean = true,

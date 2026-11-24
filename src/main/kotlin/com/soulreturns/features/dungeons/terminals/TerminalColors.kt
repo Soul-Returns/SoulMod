@@ -19,10 +19,10 @@ object TerminalColors {
     val NOW = 0xFFA3E635.toInt()
 
     /**
-     * The order numbers after the next (green) one: the second amber, the third blue (the rubix action hues, apart
-     * for red-green color blindness and each a step darker), everything later neutral gray with a faint number.
+     * The order numbers after the next (green) one: the same green dimmed to about 55 % and 30 % over the idle cell
+     * (opaque, pre-blended), everything later neutral gray with a faint number.
      */
-    val UPCOMING_FILL = intArrayOf(0xFFB45309.toInt(), 0xFF1E3A8A.toInt(), 0xFF242424.toInt())
+    val UPCOMING_FILL = intArrayOf(0xFF1B5631.toInt(), 0xFF1E3E2A.toInt(), 0xFF242424.toInt())
     val UPCOMING_TEXT = intArrayOf(0xF2FFFFFF.toInt(), 0xD9FFFFFF.toInt(), 0x59FFFFFF)
 
     /**
