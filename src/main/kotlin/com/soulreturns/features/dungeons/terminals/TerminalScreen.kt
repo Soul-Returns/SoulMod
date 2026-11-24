@@ -26,7 +26,7 @@ import kotlin.math.roundToInt
  */
 class TerminalScreen(private val vanilla: ContainerScreen, private val session: TerminalSession) : SoulScreenBase(vanilla.title) {
     private companion object {
-        const val PAD = 14
+        const val PAD = 18
         const val HEADER_H = 24
         const val HEADER_GAP = 10
         val PANEL_BG = 0xF21A1A1A.toInt()
@@ -97,7 +97,7 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
     private class Geo(val cell: Int, val gap: Int, val boardW: Int, val boardH: Int)
 
     private fun geo(cell: Int): Geo {
-        val gap = max(3, (cell * 0.1f).roundToInt())
+        val gap = minOf(8, max(3, cell / 4))
         if (type === TerminalType.Melody) {
             val strip = max(6, cell / 4)
             return Geo(cell, gap, (6.6f * cell).roundToInt() + 8 * gap, 3 * cell + 2 * gap + 2 * (strip + gap))
@@ -166,82 +166,125 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
         drawTextV(g, title, l, t, t + HEADER_H, Theme.TEXT, size, semi)
     }
 
-    /** Blocked click on [slot]: a faint tint and a thin red edge inside the cell, fading out over 180 ms. */
-    private fun flashCue(g: GuiGraphicsExtractor, slot: Int, x0: Int, y0: Int, x1: Int, y1: Int, overlays: MutableList<() -> Unit>) {
+    // ---------------------------------------------------------------- cells
+
+    /** Soul px that move the Soul coordinate [v] onto a whole physical pixel under the current pose. */
+    private fun pixelShift(v: Int, scale: Float, translate: Float, guiScale: Int): Float {
+        val px = (v * scale + translate) * guiScale
+        return (px.roundToInt() - px) / (scale * guiScale)
+    }
+
+    /**
+     * Runs [body] with the origin ([x], [y]) moved onto a whole physical pixel, so a cell's edges and ring are not
+     * blurred at fractional UI scales; the overlays [body] adds are shifted the same way.
+     */
+    private fun snapped(g: GuiGraphicsExtractor, x: Int, y: Int, overlays: MutableList<() -> Unit>, body: (MutableList<() -> Unit>) -> Unit) {
+        val pose = g.pose()
+        val gs = minecraft?.window?.guiScale ?: 1
+        val dx = pixelShift(x, pose.m00(), pose.m20(), gs)
+        val dy = pixelShift(y, pose.m11(), pose.m21(), gs)
+        val local = ArrayList<() -> Unit>()
+        pose.pushMatrix()
+        pose.translate(dx, dy)
+        body(local)
+        pose.popMatrix()
+        if (local.isEmpty()) return
+        overlays += {
+            pose.pushMatrix()
+            pose.translate(dx, dy)
+            local.forEach { it() }
+            pose.popMatrix()
+        }
+    }
+
+    private fun fillCell(g: GuiGraphicsExtractor, x: Int, y: Int, w: Int, h: Int, color: Int, style: SoulRenderPipelines.CellStyle) =
+        roundRect(g, x, y, x + w, y + h, color, style.fill)
+
+    /** A filled cell with an inset ring: the fill sits under the ring (concentric), nothing is drawn outside the cell. */
+    private fun ringedCell(g: GuiGraphicsExtractor, x: Int, y: Int, w: Int, h: Int, fill: Int, ring: Int, style: SoulRenderPipelines.CellStyle, overlays: MutableList<() -> Unit>) {
+        roundRect(g, x + 1, y + 1, x + w - 1, y + h - 1, fill, style.under)
+        overlays += { roundRect(g, x, y, x + w, y + h, ring, style.ring) }
+    }
+
+    /** Blocked click on [slot]: a faint tint and a thin red ring inside the cell, fading out over 180 ms. */
+    private fun flashCue(g: GuiGraphicsExtractor, slot: Int, x0: Int, y0: Int, x1: Int, y1: Int, style: SoulRenderPipelines.CellStyle, overlays: MutableList<() -> Unit>) {
         val f = session.flash(slot)
         if (f <= 0f) return
         overlays += {
-            roundRect(g, x0, y0, x1, y1, TerminalColors.flashFill(f), SoulRenderPipelines.ROUND_SMALL)
-            // Straight edges stop short of the rounded corners.
-            val c = TerminalColors.flashEdge(f)
-            g.fill(x0 + 3, y0, x1 - 3, y0 + 1, c)
-            g.fill(x0 + 3, y1 - 1, x1 - 3, y1, c)
-            g.fill(x0, y0 + 3, x0 + 1, y1 - 3, c)
-            g.fill(x1 - 1, y0 + 3, x1, y1 - 3, c)
+            roundRect(g, x0, y0, x1, y1, TerminalColors.flashFill(f), style.fill)
+            roundRect(g, x0, y0, x1, y1, TerminalColors.flashEdge(f), style.ring)
         }
     }
 
     private fun drawGrid(g: GuiGraphicsExtractor, sol: TerminalTracker.Solution?, geo: Geo, bx: Int, by: Int, mx: Int, my: Int, overlays: MutableList<() -> Unit>) {
         val cs = geo.cell
+        val style = SoulRenderPipelines.cellStyle(cs)
         for (slot in type.board) {
             val x = bx + cols.indexOf(slot % 9) * (cs + geo.gap)
             val y = by + rows.indexOf(slot / 9) * (cs + geo.gap)
             val cell = sol?.cells?.get(slot)
             hits += Hit(slot, x, y, x + cs, y + cs)
             val hover = sol != null && mx >= x && mx < x + cs && my >= y && my < y + cs
-            if (cell == null) {
-                roundRect(g, x, y, x + cs, y + cs, TerminalColors.IDLE_FILL, SoulRenderPipelines.ROUND_SMALL)
-                continue
+            snapped(g, x, y, overlays) { ov ->
+                when {
+                    cell == null -> fillCell(g, x, y, cs, cs, TerminalColors.IDLE_FILL, style)
+                    type === TerminalType.Rubix -> drawRubixCell(g, cell, x, y, cs, hover, style, ov)
+                    type === TerminalType.Order -> drawOrderCell(g, cell, slot, x, y, cs, hover, style, ov)
+                    else -> drawCell(g, slot, cell, x, y, cs, hover, style, ov)
+                }
+                if (cell != null) flashCue(g, slot, x, y, x + cs, y + cs, style, ov)
             }
-            if (type === TerminalType.Rubix) {
-                drawRubixCell(g, cell, x, y, cs, hover, overlays)
-            } else {
-                drawCell(g, slot, cell, x, y, cs, hover, overlays)
-            }
-            flashCue(g, slot, x, y, x + cs, y + cs, overlays)
         }
     }
 
-    private fun frame(g: GuiGraphicsExtractor, x: Int, y: Int, cs: Int, edge: Int, fill: Int, width: Int = 2) {
-        roundRect(g, x, y, x + cs, y + cs, edge, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x + width, y + width, x + cs - width, y + cs - width, fill, SoulRenderPipelines.ROUND_SMALL)
+    private fun drawOrderCell(g: GuiGraphicsExtractor, cell: TerminalTracker.Cell, slot: Int, x: Int, y: Int, cs: Int, hover: Boolean, style: SoulRenderPipelines.CellStyle, overlays: MutableList<() -> Unit>) {
+        val state = cell.state
+        val rank = if (state == TerminalTracker.UPCOMING) cell.rank else 0
+        when {
+            state == TerminalTracker.TARGET ->
+                ringedCell(g, x, y, cs, cs, TerminalColors.ORDER_NEXT_FILL, if (hover) TerminalColors.TARGET_HOVER else TerminalColors.TARGET_EDGE, style, overlays)
+            rank == 1 -> {
+                fillCell(g, x, y, cs, cs, TerminalColors.UPCOMING_FILL[0], style)
+                overlays += { roundRect(g, x, y, x + cs, y + cs, TerminalColors.UPCOMING_DASH, style.dash) }
+            }
+            rank == 2 -> fillCell(g, x, y, cs, cs, TerminalColors.UPCOMING_FILL[1], style)
+            state == TerminalTracker.DONE -> fillCell(g, x, y, cs, cs, TerminalColors.DONE_FILL, style)
+            else -> fillCell(g, x, y, cs, cs, if (hover) TerminalColors.HOVER_FILL else TerminalColors.IDLE_FILL, style)
+        }
+        if (state == TerminalTracker.DONE) return
+        val size = cs * if (state == TerminalTracker.TARGET) 0.62f else 0.5f
+        val color = when {
+            state == TerminalTracker.TARGET -> Theme.TEXT
+            cell.rank in 1..3 -> TerminalColors.UPCOMING_TEXT[cell.rank - 1]
+            else -> Theme.TEXT_FAINT
+        }
+        val n = session.view[slot].count.toString()
+        overlays += { SoulText.drawCenteredOn(g, n, x + cs / 2, y + cs / 2, size, color, MsdfFonts.menuSemibold, forceCustom = true) }
     }
 
-    private fun drawCell(g: GuiGraphicsExtractor, slot: Int, cell: TerminalTracker.Cell, x: Int, y: Int, cs: Int, hover: Boolean, overlays: MutableList<() -> Unit>) {
+    private fun drawCell(g: GuiGraphicsExtractor, slot: Int, cell: TerminalTracker.Cell, x: Int, y: Int, cs: Int, hover: Boolean, style: SoulRenderPipelines.CellStyle, overlays: MutableList<() -> Unit>) {
         val showIcon = type === TerminalType.StartsWith || type === TerminalType.Select
         val state = cell.state
-        if (state == TerminalTracker.TARGET) {
-            frame(g, x, y, cs, if (hover) TerminalColors.TARGET_HOVER else TerminalColors.TARGET_EDGE, TerminalColors.TARGET_FILL, if (type === TerminalType.Order) 3 else 2)
-        } else if (state == TerminalTracker.UPCOMING && cell.rank in 1..3) {
-            roundRect(g, x, y, x + cs, y + cs, TerminalColors.UPCOMING_FILL[cell.rank - 1], SoulRenderPipelines.ROUND_SMALL)
-        } else if (state == TerminalTracker.DONE) {
-            roundRect(g, x, y, x + cs, y + cs, TerminalColors.DONE_FILL, SoulRenderPipelines.ROUND_SMALL)
-        } else {
-            frame(g, x, y, cs, if (hover) TerminalColors.HOVER_EDGE else TerminalColors.IDLE_FILL, TerminalColors.IDLE_FILL, 1)
+        when (state) {
+            TerminalTracker.TARGET ->
+                ringedCell(g, x, y, cs, cs, TerminalColors.TARGET_FILL, if (hover) TerminalColors.TARGET_HOVER else TerminalColors.TARGET_EDGE, style, overlays)
+            TerminalTracker.DONE -> fillCell(g, x, y, cs, cs, TerminalColors.DONE_FILL, style)
+            else -> fillCell(g, x, y, cs, cs, if (hover) TerminalColors.HOVER_FILL else TerminalColors.IDLE_FILL, style)
         }
-        if (showIcon) {
-            val icon = (cs * 0.62f).roundToInt()
-            g.pose().pushMatrix()
-            g.pose().translate((x + (cs - icon) / 2).toFloat(), (y + (cs - icon) / 2).toFloat())
-            g.pose().scale(icon / 16f, icon / 16f)
-            g.fakeItem(session.view[slot], 0, 0)
-            g.pose().popMatrix()
-            if (state == TerminalTracker.IDLE) overlays += { roundRect(g, x + 1, y + 1, x + cs - 1, y + cs - 1, TerminalColors.IDLE_DIM, SoulRenderPipelines.ROUND_SMALL) }
-            if (state == TerminalTracker.DONE) overlays += { roundRect(g, x, y, x + cs, y + cs, TerminalColors.DONE_DIM, SoulRenderPipelines.ROUND_SMALL) }
-        }
-        if (state == TerminalTracker.DONE && showIcon) {
+        if (!showIcon) return
+        val icon = (cs * 0.62f).roundToInt()
+        g.pose().pushMatrix()
+        g.pose().translate((x + (cs - icon) / 2).toFloat(), (y + (cs - icon) / 2).toFloat())
+        g.pose().scale(icon / 16f, icon / 16f)
+        g.fakeItem(session.view[slot], 0, 0)
+        g.pose().popMatrix()
+        if (state == TerminalTracker.IDLE) overlays += { fillCell(g, x, y, cs, cs, TerminalColors.IDLE_DIM, style) }
+        if (state == TerminalTracker.DONE) {
             val c = max(10, cs / 3)
-            overlays += { drawIcon(g, "check", x + (cs - c) / 2, y + (cs - c) / 2, c, TerminalColors.CHECK) }
-        }
-        if (type === TerminalType.Order && state != TerminalTracker.DONE) {
-            val n = session.view[slot].count.toString()
-            val size = cs * if (state == TerminalTracker.TARGET) 0.62f else 0.5f
-            val color = when {
-                state == TerminalTracker.TARGET -> Theme.TEXT
-                cell.rank in 1..3 -> TerminalColors.UPCOMING_TEXT[cell.rank - 1]
-                else -> Theme.TEXT_FAINT
+            overlays += {
+                fillCell(g, x, y, cs, cs, TerminalColors.DONE_DIM, style)
+                drawIcon(g, "check", x + (cs - c) / 2, y + (cs - c) / 2, c, TerminalColors.CHECK)
             }
-            overlays += { SoulText.drawCenteredOn(g, n, x + cs / 2, y + cs / 2, size, color, MsdfFonts.menuSemibold, forceCustom = true) }
         }
     }
 
@@ -249,13 +292,13 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
      * Like Odin's: a cell shows only what to do, never its pane's color. A signed count (minus = right clicks)
      * on the action's color, a small "left"/"right" under it; done cells stay empty.
      */
-    private fun drawRubixCell(g: GuiGraphicsExtractor, cell: TerminalTracker.Cell, x: Int, y: Int, cs: Int, hover: Boolean, overlays: MutableList<() -> Unit>) {
+    private fun drawRubixCell(g: GuiGraphicsExtractor, cell: TerminalTracker.Cell, x: Int, y: Int, cs: Int, hover: Boolean, style: SoulRenderPipelines.CellStyle, overlays: MutableList<() -> Unit>) {
         if (cell.clicks == 0) {
-            roundRect(g, x, y, x + cs, y + cs, TerminalColors.DONE_FILL, SoulRenderPipelines.ROUND_SMALL)
+            fillCell(g, x, y, cs, cs, TerminalColors.DONE_FILL, style)
             return
         }
-        val fill = TerminalColors.rubixAction(cell.clicks)
-        frame(g, x, y, cs, if (hover) TerminalColors.TARGET_HOVER else fill, fill)
+        fillCell(g, x, y, cs, cs, TerminalColors.rubixAction(cell.clicks), style)
+        if (hover) overlays += { roundRect(g, x, y, x + cs, y + cs, TerminalColors.TARGET_HOVER, style.ring) }
         val labels = cfg.dungeons.terminals.rubixLabels
         overlays += {
             SoulText.drawCenteredOn(g, cell.clicks.toString(), x + cs / 2, y + cs / 2 - if (labels) cs / 12 else 0, cs * 0.5f, Theme.TEXT, MsdfFonts.menuSemibold, forceCustom = true)
@@ -269,16 +312,20 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
     private fun drawMelody(g: GuiGraphicsExtractor, sol: TerminalTracker.Solution?, geo: Geo, bx: Int, by: Int, mx: Int, my: Int, overlays: MutableList<() -> Unit>) {
         val cs = geo.cell
         val gap = geo.gap
+        val style = SoulRenderPipelines.cellStyle(cs)
         val strip = max(6, cs / 4)
+        val stripStyle = SoulRenderPipelines.cellStyle(0)
         val m = sol?.melody
         val laneTop = by + strip + gap
         val buttonX = bx + 5 * (cs + gap) + gap * 3
         val target = m?.target
         if (target != null) {
             val cx = bx + (target - 1) * (cs + gap)
-            roundRect(g, cx - 2, by, cx + cs + 2, by + geo.boardH, TerminalColors.TARGET_COLUMN_TINT, SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, cx, by, cx + cs, by + strip, TerminalColors.TARGET_COLUMN, SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, cx, by + geo.boardH - strip, cx + cs, by + geo.boardH, TerminalColors.TARGET_COLUMN, SoulRenderPipelines.ROUND_SMALL)
+            snapped(g, cx, by, overlays) {
+                fillCell(g, cx, by, cs, geo.boardH, TerminalColors.TARGET_COLUMN_TINT, style)
+                fillCell(g, cx, by, cs, strip, TerminalColors.TARGET_COLUMN, stripStyle)
+                fillCell(g, cx, by + geo.boardH - strip, cs, strip, TerminalColors.TARGET_COLUMN, stripStyle)
+            }
         }
         for (l in 0 until 3) {
             val lane = m?.lanes?.getOrNull(l)
@@ -301,43 +348,41 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
                     done -> TerminalColors.DONE_FILL
                     else -> TerminalColors.LANE_IDLE
                 }
-                roundRect(g, x, y, x + cs, y + cs, fill, SoulRenderPipelines.ROUND_SMALL)
-                if (live && c == target) overlays += { frameEdge(g, x, y, x + cs, y + cs, TerminalColors.TARGET_COLUMN) }
-                if (moving && live && c == target) overlays += { frameEdge(g, x - 2, y - 2, x + cs + 2, y + cs + 2, TerminalColors.TARGET_HOVER) }
-                flashCue(g, slot, x, y, x + cs, y + cs, overlays)
+                snapped(g, x, y, overlays) { ov ->
+                    fillCell(g, x, y, cs, cs, fill, style)
+                    if (live && c == target) {
+                        val ring = if (moving) TerminalColors.TARGET_HOVER else TerminalColors.TARGET_COLUMN
+                        ov += { roundRect(g, x, y, x + cs, y + cs, ring, style.ring) }
+                    }
+                    flashCue(g, slot, x, y, x + cs, y + cs, style, ov)
+                }
             }
             val slot = (l + 1) * 9 + 7
             val bw = (cs * 1.6f).roundToInt()
             hits += Hit(slot, buttonX, y, buttonX + bw, y + cs)
             val hover = mx >= buttonX && mx < buttonX + bw && my >= y && my < y + cs
             val now = !locked && buttonCell?.state == TerminalTracker.TARGET
-            if (locked) {
-                frameW(g, buttonX, y, bw, cs, TerminalColors.NOW, TerminalColors.LANE_IDLE)
-                overlays += { SoulText.drawCenteredOn(g, "locked", buttonX + bw / 2, y + cs / 2, cs * 0.3f, Theme.TEXT, MsdfFonts.menuSemibold, forceCustom = true) }
-            } else if (now) {
-                frameW(g, buttonX, y, bw, cs, if (hover) TerminalColors.TARGET_HOVER else TerminalColors.NOW, TerminalColors.TARGET_FILL)
-                overlays += { SoulText.drawCenteredOn(g, "NOW", buttonX + bw / 2, y + cs / 2, cs * 0.42f, Theme.TEXT, MsdfFonts.menuSemibold, forceCustom = true) }
-            } else if (done) {
-                roundRect(g, buttonX, y, buttonX + bw, y + cs, TerminalColors.DONE_FILL, SoulRenderPipelines.ROUND_SMALL)
-                val c = max(10, cs / 3)
-                overlays += { drawIcon(g, "check", buttonX + (bw - c) / 2, y + (cs - c) / 2, c, TerminalColors.CHECK) }
-            } else {
-                frameW(g, buttonX, y, bw, cs, if (active) 0xFF3A3A3A.toInt() else TerminalColors.LANE_IDLE, TerminalColors.LANE_IDLE)
-                if (active) overlays += { SoulText.drawCenteredOn(g, "wait", buttonX + bw / 2, y + cs / 2, cs * 0.3f, Theme.TEXT_DIM, MsdfFonts.menuSemibold, forceCustom = true) }
+            snapped(g, buttonX, y, overlays) { ov ->
+                val cx = buttonX + bw / 2
+                val cy = y + cs / 2
+                if (locked) {
+                    ringedCell(g, buttonX, y, bw, cs, TerminalColors.LANE_IDLE, TerminalColors.NOW, style, ov)
+                    ov += { SoulText.drawCenteredOn(g, "locked", cx, cy, cs * 0.3f, Theme.TEXT, MsdfFonts.menuSemibold, forceCustom = true) }
+                } else if (now) {
+                    ringedCell(g, buttonX, y, bw, cs, TerminalColors.TARGET_FILL, if (hover) TerminalColors.TARGET_HOVER else TerminalColors.NOW, style, ov)
+                    ov += { SoulText.drawCenteredOn(g, "NOW", cx, cy, cs * 0.42f, Theme.TEXT, MsdfFonts.menuSemibold, forceCustom = true) }
+                } else if (done) {
+                    fillCell(g, buttonX, y, bw, cs, TerminalColors.DONE_FILL, style)
+                    val c = max(10, cs / 3)
+                    ov += { drawIcon(g, "check", buttonX + (bw - c) / 2, y + (cs - c) / 2, c, TerminalColors.CHECK) }
+                } else if (active) {
+                    ringedCell(g, buttonX, y, bw, cs, TerminalColors.LANE_IDLE, 0xFF3A3A3A.toInt(), style, ov)
+                    ov += { SoulText.drawCenteredOn(g, "wait", cx, cy, cs * 0.3f, Theme.TEXT_DIM, MsdfFonts.menuSemibold, forceCustom = true) }
+                } else {
+                    fillCell(g, buttonX, y, bw, cs, TerminalColors.LANE_IDLE, style)
+                }
+                flashCue(g, slot, buttonX, y, buttonX + bw, y + cs, style, ov)
             }
-            flashCue(g, slot, buttonX, y, buttonX + bw, y + cs, overlays)
         }
-    }
-
-    private fun frameW(g: GuiGraphicsExtractor, x: Int, y: Int, w: Int, h: Int, edge: Int, fill: Int) {
-        roundRect(g, x, y, x + w, y + h, edge, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x + 2, y + 2, x + w - 2, y + h - 2, fill, SoulRenderPipelines.ROUND_SMALL)
-    }
-
-    private fun frameEdge(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
-        g.fill(x0, y0, x1, y0 + 2, color)
-        g.fill(x0, y1 - 2, x1, y1, color)
-        g.fill(x0, y0, x0 + 2, y1, color)
-        g.fill(x1 - 2, y0, x1, y1, color)
     }
 }

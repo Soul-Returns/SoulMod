@@ -55,6 +55,25 @@ object SoulRenderPipelines {
     val DASH_2_R7: RenderPipeline = round("dash_2_r7", radius = 7f, stroke = 2f, dash = 7f)
 
     /**
+     * The pipelines of one terminal-cell shape: [fill] the cell, [under] a fill 1 px inside it with the ring's inner
+     * radius + 1 (it sits under [ring], concentric), [ring] a 2 px outline inside the cell's edge, [dash] the same ring
+     * dashed (period about 7 px, stretched to fit, one dash centered on every corner arc). All use `AACENTER` edges.
+     */
+    class CellStyle internal constructor(radius: Float, name: String) {
+        val fill: RenderPipeline = round("cell_fill_$name", radius = radius, center = true)
+        val under: RenderPipeline = round("cell_under_$name", radius = radius - 1f, center = true)
+        val ring: RenderPipeline = round("cell_ring_$name", radius = radius, stroke = 2f, center = true)
+        val dash: RenderPipeline = round("cell_dash_$name", radius = radius, stroke = 2f, dashp = 7f, center = true)
+    }
+
+    private val CELL_R10 = CellStyle(10f, "r10")
+    private val CELL_R14 = CellStyle(14f, "r14")
+    private val CELL_R17 = CellStyle(17f, "r17")
+
+    /** The cell shape for a cell of [size] Soul px: the corner radius is about 0.29 of the size (14 on 48), from fixed variants. */
+    fun cellStyle(size: Int): CellStyle = if (size < 44) CELL_R10 else if (size < 54) CELL_R14 else CELL_R17
+
+    /**
      * MSDF text pipeline — samples the Inter MSDF atlas (Sampler0) for crisp glyphs at any scale.
      * Based on GUI_TEXTURED_SNIPPET (POSITION_TEX_COLOR + standard UBOs + SAMPLER0 + translucent),
      * swapping in the MSDF shaders.
@@ -88,6 +107,8 @@ object SoulRenderPipelines {
         spread: Float = 0f,
         stroke: Float = 0f,
         dash: Float = 0f,
+        dashp: Float = 0f,
+        center: Boolean = false,
     ): RenderPipeline {
         var b =
             RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
@@ -104,6 +125,8 @@ object SoulRenderPipelines {
         if (shadow) b = b.withShaderDefine("SHADOW").withShaderDefine("SPREAD", spread)
         if (stroke > 0f) b = b.withShaderDefine("STROKE", stroke)
         if (dash > 0f) b = b.withShaderDefine("DASH", dash)
+        if (center) b = b.withShaderDefine("AACENTER")
+        if (dashp > 0f) b = b.withShaderDefine("DASHP", dashp)
         return RenderPipelines.register(b.build())
     }
 }

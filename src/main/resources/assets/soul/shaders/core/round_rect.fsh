@@ -67,14 +67,45 @@ void main() {
     // ~1px AA in composable units, recovered from the screen-space derivative of the distance field.
     float aa = max(fwidth(d), 1e-4);
     alpha = 1.0 - smoothstep(0.0, aa, d);
+#ifdef AACENTER
+    // Edge centered on the true boundary with a Euclidean width: the plain form above puts its whole fade outside the
+    // edge and, through fwidth's |x|+|y| norm, makes it up to 1.41x wider on diagonals (a ring looks thicker in corners).
+    aa = max(length(vec2(dFdx(d), dFdy(d))), 1e-4);
+    alpha = clamp(0.5 - d / aa, 0.0, 1.0);
+#endif
   #ifdef STROKE
     // Outline only: STROKE wide, inside the quad's edge, following the same rounded corners.
     alpha = 1.0 - smoothstep(0.0, aa, abs(d + STROKE * 0.5) - STROKE * 0.5);
+    #ifdef AACENTER
+    alpha = clamp(0.5 - (abs(d + STROKE * 0.5) - STROKE * 0.5) / aa, 0.0, 1.0);
+    #endif
     #ifdef DASH
     // Dashes of DASH * 0.55 along the nearer edge's axis.
     vec2 e = abs(p) - halfSize;
     float t = (e.x > e.y) ? p.y : p.x;
     if (fract(t / DASH) > 0.55) alpha = 0.0;
+    #endif
+    #ifdef DASHP
+    // Dashes along the stroke's centerline, parametrized by arc length u from the middle of the nearest corner arc:
+    // one dash is centered on every corner arc and on every side center, the period is stretched to fit exactly.
+    float rc = max(r - STROKE * 0.5, 0.01);
+    vec2 hc = halfSize - STROKE * 0.5;
+    vec2 cc = hc - rc;
+    vec2 ap = abs(p);
+    float quarter = rc * 1.5707963;
+    float u;
+    if (ap.x > cc.x && ap.y > cc.y) {
+        u = rc * (atan(ap.x - cc.x, ap.y - cc.y) - 0.7853982);
+    } else if (ap.y - cc.y > ap.x - cc.x) {
+        u = -(quarter * 0.5 + (cc.x - ap.x));
+    } else {
+        u = quarter * 0.5 + (cc.y - ap.y);
+    }
+    float L = quarter * 0.5 + cc.x;
+    float T = L / max(floor(L / DASHP + 0.5), 1.0);
+    float dd = abs(fract(u / T + 0.5) - 0.5) * T;
+    float du = max(fwidth(u), 1e-4);
+    alpha *= clamp((T * 0.25 - dd) / du + 0.5, 0.0, 1.0);
     #endif
   #endif
 #endif

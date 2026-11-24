@@ -5,12 +5,12 @@ object TerminalColors {
     val TARGET_FILL = 0xFF15803D.toInt()
     val TARGET_EDGE = 0xFF4ADE80.toInt()
     val TARGET_HOVER = 0xFFFFFFFF.toInt()
-    val IDLE_FILL = 0xFF222222.toInt()
+    val IDLE_FILL = 0xFF2A2A2A.toInt()
+    val HOVER_FILL = 0xFF333333.toInt()
     val IDLE_DIM = 0x99181818.toInt()
     val DONE_FILL = 0xFF151515.toInt()
     val DONE_DIM = 0xCC151515.toInt()
     val CHECK = 0xFF4ADE80.toInt()
-    val HOVER_EDGE = 0xFF555555.toInt()
 
     /** Blocked click: thin red edge plus a faint tint, both scaled by the fade [f] (1 → 0). */
     fun flashEdge(f: Float): Int = ((0xCC * f).toInt() shl 24) or 0xEF4444
@@ -18,11 +18,10 @@ object TerminalColors {
 
     val NOW = 0xFFA3E635.toInt()
 
-    /**
-     * The order numbers after the next (green) one: the same green dimmed to about 55 % and 30 % over the idle cell
-     * (opaque, pre-blended), everything later neutral gray with a faint number.
-     */
-    val UPCOMING_FILL = intArrayOf(0xFF1B5631.toInt(), 0xFF1E3E2A.toInt(), 0xFF242424.toInt())
+    /** Click in order: the next click's fill (inside a solid [TARGET_EDGE] ring), then the dimmed fills of the second (inside a dashed ring) and third. */
+    val ORDER_NEXT_FILL = 0xFF1A6B3B.toInt()
+    val UPCOMING_FILL = intArrayOf(0xFF1E5935.toInt(), 0xFF244430.toInt())
+    val UPCOMING_DASH = 0xCC4ADE80.toInt()
     val UPCOMING_TEXT = intArrayOf(0xF2FFFFFF.toInt(), 0xD9FFFFFF.toInt(), 0x59FFFFFF)
 
     /**
