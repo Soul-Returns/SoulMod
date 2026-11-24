@@ -27,6 +27,7 @@ import kotlin.math.roundToInt
 class TerminalScreen(private val vanilla: ContainerScreen, private val session: TerminalSession) : SoulScreenBase(vanilla.title) {
     private companion object {
         const val PAD = 18
+        const val LANE_PAD = 4
         const val HEADER_H = 24
         const val HEADER_GAP = 10
         val PANEL_BG = 0xF21A1A1A.toInt()
@@ -320,9 +321,16 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
         val buttonX = bx + 5 * (cs + gap) + gap * 3
         val target = m?.target
         if (target != null) {
+            // One lane behind the whole column, caps included: its radius is the cells' plus its padding, so it stays concentric with them.
             val cx = bx + (target - 1) * (cs + gap)
-            snapped(g, cx, by, overlays) {
-                fillCell(g, cx, by, cs, geo.boardH, TerminalColors.TARGET_COLUMN_TINT, style)
+            val lane = SoulRenderPipelines.cellStyle(cs + 2 * LANE_PAD * 3)
+            snapped(g, cx - LANE_PAD, by - LANE_PAD, overlays) { ov ->
+                val l0 = cx - LANE_PAD
+                val t0 = by - LANE_PAD
+                val l1 = cx + cs + LANE_PAD
+                val t1 = by + geo.boardH + LANE_PAD
+                roundRect(g, l0, t0, l1, t1, TerminalColors.TARGET_COLUMN_TINT, lane.fill)
+                ov += { roundRect(g, l0, t0, l1, t1, TerminalColors.TARGET_COLUMN_EDGE, lane.ring) }
                 fillCell(g, cx, by, cs, strip, TerminalColors.TARGET_COLUMN, stripStyle)
                 fillCell(g, cx, by + geo.boardH - strip, cs, strip, TerminalColors.TARGET_COLUMN, stripStyle)
             }

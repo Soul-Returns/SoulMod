@@ -42,6 +42,7 @@ object TerminalColors {
     val LANE_MOVING = 0xFF84CC16.toInt()
     val TARGET_COLUMN = 0xFFD946EF.toInt()
     val TARGET_COLUMN_TINT = 0x33D946EF
+    val TARGET_COLUMN_EDGE = 0x80D946EF.toInt()
 
     /** Vanilla-screen mode: the fill drawn over a slot (0 = none). */
     fun overlay(cell: TerminalTracker.Cell, type: TerminalType): Int {
