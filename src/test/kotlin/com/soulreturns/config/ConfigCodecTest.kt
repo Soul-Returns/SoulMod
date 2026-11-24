@@ -472,7 +472,7 @@ class ConfigCodecTest {
 
     @Test
     fun storedChestSharingOptOutSurvivesWithoutMigration() {
-        val old = """{"configVersion":20,"islandChests":{"enabled":true,"shareWithCoop":false,"searchKey":"key.keyboard.f8"}}"""
+        val old = """{"configVersion":21,"islandChests":{"enabled":true,"shareWithCoop":false,"searchKey":"key.keyboard.f8"}}"""
         val decoded = ConfigCodec.decode(old)
         assertEquals(false, decoded.migrated)
         assertEquals(IslandChestsConfig(enabled = true, shareWithCoop = false, searchKey = "key.keyboard.f8"), decoded.config.islandChests)
@@ -519,6 +519,22 @@ class ConfigCodecTest {
         assertEquals(false, fixture.config.combo.showCombatWisdom)
         val v19 = ConfigCodec.decode(fixtures.first { it.name.startsWith("v19-") }.readText())
         assertEquals(true, v19.config.combo.showCombatWisdom)
+    }
+
+    @Test
+    fun rubixLabelsFlipOffOnce() {
+        val stored = ConfigCodec.json.parseToJsonElement("""{"dungeons":{"terminals":{"enabled":true,"rubixLabels":true,"order":false}}}""").jsonObject
+        val terminals = ConfigMigrations.migrate(stored, 20).getValue("dungeons").jsonObject.getValue("terminals").jsonObject
+        assertEquals(JsonPrimitive(false), terminals.getValue("rubixLabels"))
+        assertEquals(JsonPrimitive(true), terminals.getValue("enabled"))
+        assertEquals(JsonPrimitive(false), terminals.getValue("order"))
+        val noSection = ConfigCodec.json.parseToJsonElement("""{"dungeons":{"terminals":{"enabled":true}}}""").jsonObject
+        assertEquals(noSection, ConfigMigrations.migrate(noSection, 20).filterKeys { it != ConfigCodec.VERSION_KEY }.let { JsonObject(it) })
+        // A player who turns the labels on again at the current version keeps them.
+        val on = ConfigCodec.json.parseToJsonElement("""{"configVersion":21,"dungeons":{"terminals":{"rubixLabels":true}}}""").toString()
+        assertEquals(true, ConfigCodec.decode(on).config.dungeons.terminals.rubixLabels)
+        val fixture = ConfigCodec.decode(fixtures.first { it.name.startsWith("v21-rubix-labels-off") }.readText())
+        assertEquals(false, fixture.config.dungeons.terminals.rubixLabels)
     }
 
     @Test

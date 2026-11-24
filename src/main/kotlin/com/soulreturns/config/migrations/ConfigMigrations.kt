@@ -70,9 +70,11 @@ import java.util.Locale
  * - 20: SkyBlock 0.27.3 replaced the combo's Magic Find with Combat Wisdom: `combo.showMagicFind` becomes
  *   `combo.showCombatWisdom` (same on/off), `combo.showCombatExp` is dropped with the Combat Exp row
  *   ([comboMagicFindToWisdom]).
+ * - 21: the terminal solver's "Show left / right labels" is off by default; a stored `dungeons.terminals.rubixLabels`
+ *   becomes false for everyone (one-time owner-decided flip, 2026-11-24; [RubixLabelsOffMigration]).
  */
 object ConfigMigrations {
-    const val CURRENT = 20
+    const val CURRENT = 21
 
     /** `steps[n]` turns a version-n root into version n+1. */
     private val steps: List<(Map<String, JsonElement>) -> Map<String, JsonElement>> =
@@ -97,6 +99,7 @@ object ConfigMigrations {
             ::mapClassColorsFromLeap, // 17 → 18
             { root -> root.withObject("islandChests") { it - "clearKey" } }, // 18 → 19
             ::comboMagicFindToWisdom, // 19 → 20
+            RubixLabelsOffMigration::migrate, // 20 → 21
         )
 
     init {
