@@ -114,6 +114,7 @@ WATCHER_PID = HOTSWAP / "watcher.pid"
 LAST_RUN = HOTSWAP / "last_run"   # the last `c run` command, for c reload --reopen
 AGENT = CACHE / "agent"    # tools/testclient/agent/SoulTestAgent.java, built here
 CTL = AGENT / "ctl"        # req-<id> / res-<id> files between c and the agent in the game
+WINDOW_WORKSPACE = "gaming"   # Hyprland workspace a --window client is moved to once it maps
 UNIT = "soulmod-testclient"   # systemd user unit of a --window client (outside the caller's process tree)
 
 WRAP = """#!/usr/bin/env bash
@@ -804,8 +805,12 @@ def launch(join, local, hot=None, window=False):
         time.sleep(0.5)
         if previous:
             pid = java_pid()
-            if mapped_at is None and any(c.get("pid") == pid for c in hypr("clients") or []):
+            mine = next((c for c in hypr("clients") or [] if c.get("pid") == pid), None)
+            if mapped_at is None and mine:
                 mapped_at = time.time()
+                # the owner's game workspace, not whichever one he is working on
+                subprocess.run(["hyprctl", "dispatch", 'hl.dsp.window.move({ workspace = "name:%s", window = "address:%s", '
+                                'follow = false })' % (WINDOW_WORKSPACE, mine["address"])], capture_output=True)
             if mapped_at is not None:
                 if (hypr("activewindow") or {}).get("pid") == pid:
                     focus_window(previous)
