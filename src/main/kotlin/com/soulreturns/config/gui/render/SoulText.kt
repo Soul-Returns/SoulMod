@@ -143,19 +143,16 @@ object SoulText {
         )
 
         // Emits one quad run (shadow pass first, then the main text on top) with its own atlas [setup].
-        // Legacy shadow setup (looked right): a TIGHT ~1 screen-pixel offset at 70% black — NOT a
-        // size-scaled offset (that grows fat at high UI scale). We derive the offset from the pose's
-        // scale so it lands ~1 screen px regardless. Non-null bounds: the GUI renderer culls a null.
+        // The shadow sits down-right in proportion to the text as drawn ([TextShadow]), whatever Minecraft's
+        // GUI scale is. Non-null bounds: the GUI renderer culls a null.
         fun emit(list: List<MsdfTextRenderState.Quad>, texSetup: TextureSetup) {
             if (list.isEmpty()) return
             if (shadow) {
-                val scaleX = kotlin.math.sqrt(pose.m00() * pose.m00() + pose.m01() * pose.m01()).coerceAtLeast(0.0001f)
-                val off = (1f / scaleX).coerceIn(0.3f, 4f)
+                val scaleX = kotlin.math.sqrt(pose.m00() * pose.m00() + pose.m01() * pose.m01())
+                val off = TextShadow.poseOffset(size, scaleX, Minecraft.getInstance().window.guiScale.toFloat(), MsdfFonts.isSemibold(font))
                 val sPose = Matrix3x2f(pose).translate(off, off)
-                val sBounds = ScreenRectangle(inkBounds.left(), inkBounds.top(), inkBounds.width() + 2, inkBounds.height() + 2)
-                    .transformMaxBounds(sPose)
                 g.guiRenderState.addGuiElement(
-                    MsdfTextRenderState(SoulRenderPipelines.MSDF_TEXT, texSetup, sPose, list, shadowColor(color), scissor, sBounds),
+                    MsdfTextRenderState(SoulRenderPipelines.MSDF_TEXT, texSetup, sPose, list, TextShadow.color(color), scissor, inkBounds.transformMaxBounds(sPose)),
                 )
             }
             val mainPose = Matrix3x2f(pose)
@@ -375,11 +372,5 @@ object SoulText {
         g.pose().scale(scale, scale)
         g.text(f, text, (x / scale).roundToInt(), (y / scale).roundToInt(), color, shadow)
         g.pose().popMatrix()
-    }
-
-    /** Shadow color: black at 70% of the text's alpha (legacy setup). */
-    private fun shadowColor(color: Int): Int {
-        val a = ((color ushr 24 and 0xFF) * 0.7f).toInt().coerceIn(0, 255)
-        return a shl 24 // black rgb
     }
 }

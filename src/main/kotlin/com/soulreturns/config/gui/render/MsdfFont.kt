@@ -309,6 +309,9 @@ object MsdfFonts {
         else -> interSemibold
     }
 
+    /** Whether [font] is one of the semibold weights (their strokes are about half again as thick as regular's). */
+    fun isSemibold(font: MsdfFont): Boolean = font === interSemibold || font === nunitoSemibold || font === baloo2Semibold
+
     fun init() {
         interRegular.init()
         interSemibold.init()
