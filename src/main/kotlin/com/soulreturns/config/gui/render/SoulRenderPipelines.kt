@@ -14,8 +14,9 @@ import net.minecraft.resources.Identifier
  * [RenderPipelines.GUI_SNIPPET] (standard bind groups + translucent blend + QUADS), overriding the
  * shaders + vertex format (POSITION_TEX_COLOR — the SDF needs a UV channel).
  *
- * Radii / shadow spread are in PHYSICAL pixels (size recovered via `fwidth`). Corner mask bits:
- * 1=top-left, 2=top-right, 4=bottom-right, 8=bottom-left (15 = all).
+ * Radii / shadow spread / stroke widths are in composable units (they scale with the pose). Every edge's fade is
+ * one physical pixel centered on the true boundary, so shapes keep their size and rings their width round the
+ * corners. Corner mask bits: 1=top-left, 2=top-right, 4=bottom-right, 8=bottom-left (15 = all).
  */
 object SoulRenderPipelines {
     // Legacy radii: radiusSmall = 4, radiusMedium = 6.
@@ -35,6 +36,9 @@ object SoulRenderPipelines {
 
     /** Bottom-right corner only — body footer (meets the card's bottom-right corner). */
     val ROUND_BR: RenderPipeline = round("round_br", radius = 6f, corners = 0b0100)
+
+    /** Left corners only (radiusSmall) — an accent stripe on a [ROUND_SMALL] card's left edge, flush with the card on its right. */
+    val ROUND_SMALL_LEFT: RenderPipeline = round("round_small_left", radius = 4f, corners = 0b1001)
 
     /**
      * Soft outer glow / shadow. Draw behind the content, expanded by ~[spread] all around; the SDF
@@ -57,16 +61,16 @@ object SoulRenderPipelines {
     /**
      * The pipelines of one terminal-cell shape: [fill] the cell, [under] a fill 1 px inside it with the ring's inner
      * radius + 1 (it sits under [ring], concentric), [ring] a 2 px outline inside the cell's edge, [dash] the same ring
-     * dashed (period about 7 px, stretched to fit, one dash centered on every corner arc). All use `AACENTER` edges.
+     * dashed (period about 7 px, stretched to fit, one dash centered on every corner arc).
      */
-    class CellStyle internal constructor(radius: Float, name: String) {
-        val fill: RenderPipeline = round("cell_fill_$name", radius = radius, center = true)
-        val under: RenderPipeline = round("cell_under_$name", radius = radius - 1f, center = true)
-        val ring: RenderPipeline = round("cell_ring_$name", radius = radius, stroke = 2f, center = true)
-        val dash: RenderPipeline = round("cell_dash_$name", radius = radius, stroke = 2f, dashp = 7f, center = true)
+    class CellStyle internal constructor(radius: Float, name: String, fill: RenderPipeline? = null, ring: RenderPipeline? = null) {
+        val fill: RenderPipeline = fill ?: round("cell_fill_$name", radius = radius)
+        val under: RenderPipeline = round("cell_under_$name", radius = radius - 1f)
+        val ring: RenderPipeline = ring ?: round("cell_ring_$name", radius = radius, stroke = 2f)
+        val dash: RenderPipeline = round("cell_dash_$name", radius = radius, stroke = 2f, dashp = 7f)
     }
 
-    private val CELL_R10 = CellStyle(10f, "r10")
+    private val CELL_R10 = CellStyle(10f, "r10", fill = ROUND_LARGE, ring = STROKE_2_R10)
     private val CELL_R14 = CellStyle(14f, "r14")
     private val CELL_R17 = CellStyle(17f, "r17")
 
@@ -108,7 +112,6 @@ object SoulRenderPipelines {
         stroke: Float = 0f,
         dash: Float = 0f,
         dashp: Float = 0f,
-        center: Boolean = false,
     ): RenderPipeline {
         var b =
             RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
@@ -125,7 +128,6 @@ object SoulRenderPipelines {
         if (shadow) b = b.withShaderDefine("SHADOW").withShaderDefine("SPREAD", spread)
         if (stroke > 0f) b = b.withShaderDefine("STROKE", stroke)
         if (dash > 0f) b = b.withShaderDefine("DASH", dash)
-        if (center) b = b.withShaderDefine("AACENTER")
         if (dashp > 0f) b = b.withShaderDefine("DASHP", dashp)
         return RenderPipelines.register(b.build())
     }

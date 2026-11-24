@@ -1,5 +1,6 @@
 package com.soulreturns.features.contests.hud
 
+import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.config.SoulConfig
 import com.soulreturns.config.cfg
@@ -148,7 +149,7 @@ object ContestToasts : MovableHud("contest_toasts", "Contest toasts", "general")
             val fade = if (age > ContestsLayout.TOAST_MS - 500) ((ContestsLayout.TOAST_MS - age) / 500f).coerceIn(0f, 1f) else 1f
             fun a(color: Int) = (((color ushr 24) * fade).toInt() shl 24) or (color and 0xFFFFFF)
             rect(g, 0, y, W, y + c.h, a(0xF0181818.toInt()))
-            rect(g, 0, y, 3, y + c.h, a(c.t.kind))
+            rect(g, 0, y, 3, y + c.h, a(c.t.kind), SoulRenderPipelines.ROUND_SMALL_LEFT)
             val id = net.minecraft.resources.Identifier.fromNamespaceAndPath("soul", "textures/gui/icons/${c.t.icon}.png")
             g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, id, PAD + 2, y + PAD, 0f, 0f, 14, 14, 64, 64, 64, 64, a(c.t.kind))
             val tx = PAD + 22
@@ -176,7 +177,7 @@ object ContestToasts : MovableHud("contest_toasts", "Contest toasts", "general")
         return out
     }
 
-    private fun rect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
-        g.guiRenderState.addGuiElement(RoundRectRenderState(SoulRenderPipelines.ROUND_SMALL, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x0, y0, x1, y1, color, null))
+    private fun rect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, pipeline: RenderPipeline = SoulRenderPipelines.ROUND_SMALL) {
+        g.guiRenderState.addGuiElement(RoundRectRenderState(pipeline, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x0, y0, x1, y1, color, null))
     }
 }

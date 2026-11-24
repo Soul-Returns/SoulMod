@@ -26,11 +26,14 @@ void main() {
     vec2 b = max(halfSize - SPREAD, vec2(0.0));
     float r = min(RADIUS, min(b.x, b.y));
     float d = roundedBoxSDF(texCoord0, b, r);
-    float aa = max(fwidth(d), 1e-4);
-    // Outside only; the card's own anti-aliased edge covers the seam.
-    float outside = smoothstep(-aa, 0.0, d);
+    // One physical pixel in composable units (see round_rect.fsh); edges fade over it, centered on the true boundary.
+    vec2 jx = dFdx(texCoord0);
+    vec2 jy = dFdy(texCoord0);
+    float px = max(sqrt(abs(jx.x * jy.y - jx.y * jy.x)), 1e-4);
+    // Outside only: exactly what the card's own edge leaves uncovered, so the seam adds up to one.
+    float outside = clamp(0.5 + d / px, 0.0, 1.0);
     // Hard ring of RING px.
-    float ring = 1.0 - smoothstep(RING - aa, RING + aa, d);
+    float ring = clamp(0.5 - (d - RING) / px, 0.0, 1.0);
     // Blurred copy of the card grown by BLUR_SPREAD: a Gaussian edge (sigma = BLUR / 2), approximated
     // over +-2 sigma.
     float soft = 1.0 - smoothstep(-BLUR, BLUR, d - BLUR_SPREAD);

@@ -2,10 +2,12 @@ package com.soulreturns.config.gui.render
 
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.vertex.VertexConsumer
+import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState
 import org.joml.Matrix3x2fc
+import kotlin.math.ceil
 
 /**
  * A custom GUI element that draws a quad with the SDF [SoulRenderPipelines.ROUND_RECT] pipeline.
@@ -32,17 +34,43 @@ class RoundRectRenderState(
         }
 
     override fun buildVertices(vertexConsumer: VertexConsumer) {
+        // The quad's edges go to whole physical pixels, where the rasterizer put a plain fill's edges too (pixel
+        // centers inside the quad), so straight sides stay crisp and the shader's centered edge fade (half a pixel
+        // either side of the true edge) lands exactly on them; corners are then cut from the same box.
+        var ax0 = x0.toFloat()
+        var ay0 = y0.toFloat()
+        var ax1 = x1.toFloat()
+        var ay1 = y1.toFloat()
+        if (pose.m01() == 0f && pose.m10() == 0f && pose.m00() > 0f && pose.m11() > 0f) {
+            val gs = Minecraft.getInstance().window.guiScale.toFloat()
+            val sx = pose.m00() * gs
+            val sy = pose.m11() * gs
+            val tx = pose.m20() * gs
+            val ty = pose.m21() * gs
+            val px0 = snap(x0 * sx + tx)
+            val py0 = snap(y0 * sy + ty)
+            // A hairline never collapses to nothing.
+            val px1 = maxOf(snap(x1 * sx + tx), if (x1 > x0) px0 + 1f else px0)
+            val py1 = maxOf(snap(y1 * sy + ty), if (y1 > y0) py0 + 1f else py0)
+            ax0 = (px0 - tx) / sx
+            ay0 = (py0 - ty) / sy
+            ax1 = (px1 - tx) / sx
+            ay1 = (py1 - ty) / sy
+        }
         // UV carries SIGNED composable-unit coordinates relative to the quad center, so the SDF works
         // in composable units — the corner radius (a shader define) then scales with the UI like the
         // legacy NanoVG renderer, instead of being a fixed physical-pixel size. Each corner's
         // abs(UV) equals the composable half-size, which the vertex shader forwards as a flat varying.
-        val hw = (x1 - x0) * 0.5f
-        val hh = (y1 - y0) * 0.5f
-        vertexConsumer.addVertexWith2DPose(pose, x0.toFloat(), y0.toFloat()).setUv(-hw, -hh).setColor(color)
-        vertexConsumer.addVertexWith2DPose(pose, x0.toFloat(), y1.toFloat()).setUv(-hw, hh).setColor(color)
-        vertexConsumer.addVertexWith2DPose(pose, x1.toFloat(), y1.toFloat()).setUv(hw, hh).setColor(color)
-        vertexConsumer.addVertexWith2DPose(pose, x1.toFloat(), y0.toFloat()).setUv(hw, -hh).setColor(color)
+        val hw = (ax1 - ax0) * 0.5f
+        val hh = (ay1 - ay0) * 0.5f
+        vertexConsumer.addVertexWith2DPose(pose, ax0, ay0).setUv(-hw, -hh).setColor(color)
+        vertexConsumer.addVertexWith2DPose(pose, ax0, ay1).setUv(-hw, hh).setColor(color)
+        vertexConsumer.addVertexWith2DPose(pose, ax1, ay1).setUv(hw, hh).setColor(color)
+        vertexConsumer.addVertexWith2DPose(pose, ax1, ay0).setUv(hw, -hh).setColor(color)
     }
+
+    /** The pixel boundary the rasterizer's pixel-center rule rounds a physical edge [v] to (ties go left/up). */
+    private fun snap(v: Float): Float = ceil(v - 0.5f)
 
     override fun pipeline(): RenderPipeline = pipeline
 

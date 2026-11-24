@@ -4,8 +4,8 @@
 // mode. Ported from the legacy round_rect.fsh (Odin, BSD-3). Works entirely in COMPOSABLE units:
 // texCoord0 is the fragment position relative to the quad center and `halfSize` is the quad's
 // composable half-extent (both forwarded from the vertex shader). RADIUS / SPREAD are therefore in
-// composable units too, so corners scale with the UI (matching the legacy NanoVG renderer). AA width
-// is derived from the screen-space derivative so edges stay crisp at any scale.
+// composable units too, so corners scale with the UI (matching the legacy NanoVG renderer).
+// RoundRectRenderState snaps the quad to whole physical pixels, so a straight edge lies on a pixel boundary.
 layout(std140) uniform DynamicTransforms {
     mat4 ModelViewMat;
     vec4 ColorModulator;
@@ -43,6 +43,12 @@ float pickRadius(vec2 p) {
     return mix(mix(rTL, rTR, sx), mix(rBL, rBR, sx), sy);
 }
 
+// Coverage of the inside (d < 0) for a pixel whose center lies at distance d: a one-pixel box filter centered on
+// the true edge, so the shape keeps its exact size and a ring measures the same along sides and around corners.
+float coverage(float d, float px) {
+    return clamp(0.5 - d / px, 0.0, 1.0);
+}
+
 void main() {
     vec2 p = texCoord0; // composable coords relative to center
 
@@ -64,21 +70,17 @@ void main() {
     float r = min(pickRadius(p), min(halfSize.x, halfSize.y));
   #endif
     float d = roundedBoxSDF(p, halfSize, r);
-    // ~1px AA in composable units, recovered from the screen-space derivative of the distance field.
-    float aa = max(fwidth(d), 1e-4);
-    alpha = 1.0 - smoothstep(0.0, aa, d);
-#ifdef AACENTER
-    // Edge centered on the true boundary with a Euclidean width: the plain form above puts its whole fade outside the
-    // edge and, through fwidth's |x|+|y| norm, makes it up to 1.41x wider on diagonals (a ring looks thicker in corners).
-    aa = max(length(vec2(dFdx(d), dFdy(d))), 1e-4);
-    alpha = clamp(0.5 - d / aa, 0.0, 1.0);
-#endif
+    // One physical pixel in composable units, from the interpolated position (exact and constant over the quad;
+    // the distance field's own derivative is wrong across a square corner's crease and dims that corner pixel).
+    vec2 px2 = vec2(dFdx(p.x), dFdy(p.x));
+    vec2 py2 = vec2(dFdx(p.y), dFdy(p.y));
+    float px = max(sqrt(abs(px2.x * py2.y - px2.y * py2.x)), 1e-4);
   #ifdef STROKE
-    // Outline only: STROKE wide, inside the quad's edge, following the same rounded corners.
-    alpha = 1.0 - smoothstep(0.0, aa, abs(d + STROKE * 0.5) - STROKE * 0.5);
-    #ifdef AACENTER
-    alpha = clamp(0.5 - (abs(d + STROKE * 0.5) - STROKE * 0.5) / aa, 0.0, 1.0);
-    #endif
+    // Outline only: STROKE wide inside the quad's edge, following the same rounded corners. The width is rounded up
+    // to whole physical pixels so the inner edge is as crisp as the outer one (a 1 px stroke at Soul scale 1.33 is
+    // 2 px, not one pixel plus a faint third of one).
+    float sw = max(ceil(STROKE / px - 0.05), 1.0) * px;
+    alpha = coverage(abs(d + sw * 0.5) - sw * 0.5, px);
     #ifdef DASH
     // Dashes of DASH * 0.55 along the nearer edge's axis.
     vec2 e = abs(p) - halfSize;
@@ -88,8 +90,8 @@ void main() {
     #ifdef DASHP
     // Dashes along the stroke's centerline, parametrized by arc length u from the middle of the nearest corner arc:
     // one dash is centered on every corner arc and on every side center, the period is stretched to fit exactly.
-    float rc = max(r - STROKE * 0.5, 0.01);
-    vec2 hc = halfSize - STROKE * 0.5;
+    float rc = max(r - sw * 0.5, 0.01);
+    vec2 hc = halfSize - sw * 0.5;
     vec2 cc = hc - rc;
     vec2 ap = abs(p);
     float quarter = rc * 1.5707963;
@@ -107,6 +109,8 @@ void main() {
     float du = max(fwidth(u), 1e-4);
     alpha *= clamp((T * 0.25 - dd) / du + 0.5, 0.0, 1.0);
     #endif
+  #else
+    alpha = coverage(d, px);
   #endif
 #endif
 
