@@ -782,6 +782,11 @@ def launch(join, local, hot=None, window=False):
         # its own user unit, outside the caller's process tree: Hyprland would otherwise swallow the terminal
         # that ran `c up` and put the game in its place
         subprocess.run(["systemctl", "--user", "stop", UNIT], capture_output=True)
+        # Opens straight on the owner's game workspace: a runtime Hyprland rule (gone with the next config
+        # reload; his own Minecraft rule matches the empty Wayland class, this game runs under XWayland).
+        # The move after mapping below stays as the fallback.
+        subprocess.run(["hyprctl", "eval", 'hl.window_rule({ match = { class = "^Minecraft\\\\* %s$" }, '
+                        'workspace = "name:%s silent" })' % (MC.replace(".", "\\\\."), WINDOW_WORKSPACE)], capture_output=True)
         env = {k: os.environ[k] for k in ("DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "XDG_SESSION_TYPE",
                                           "XAUTHORITY", "HOME", "PATH", "LANG") if k in os.environ}
         env["SOUL_TEST_WINDOW"] = "1"
