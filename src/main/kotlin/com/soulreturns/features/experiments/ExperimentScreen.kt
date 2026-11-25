@@ -493,7 +493,8 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             val x1 = x + CHRONO_TILE
             val y1 = y + CHRONO_TILE
             val key = "chrono:${c.name}"
-            val lit = s.litColor(c.name)
+            // Lit tiles are the pattern playing; in your turn the server's echo of a correct click is not drawn.
+            val lit = s.phase == ChronoModel.Phase.DISPLAY && s.litColor(c.name)
             val stack = Experiments.stacks.getOrNull(c.top)
             val base = opaque(dyeOf(BuiltinId.of(stack)))
             rr(x, y, x1, y1, if (lit) alpha(base, 0.32f) else if (hover == key) CELL_HI else CELL)
