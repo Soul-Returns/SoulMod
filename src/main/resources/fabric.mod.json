@@ -24,7 +24,8 @@
       }
     ],
     "rei_client": [
-      "com.soulreturns.features.storage.StorageReiPlugin"
+      "com.soulreturns.features.storage.StorageReiPlugin",
+      "com.soulreturns.features.inventory.InventoryReiPlugin"
     ]
   },
   "depends": {

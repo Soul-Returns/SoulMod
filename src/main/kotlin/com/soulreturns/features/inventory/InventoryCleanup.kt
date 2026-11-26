@@ -51,19 +51,33 @@ object InventoryCleanup {
     @PublishedApi internal fun endOwnTooltip() { drawingOwnTooltip = false }
 
     /**
-     * Whether a tooltip someone other than Soul asks for at ([mouseX], [mouseY]) must be dropped: the
-     * player inventory is open and the pointer is over the frame of an element hidden by its toggle
-     * (crafting grid + result, off-hand slot, recipe book button), whatever the tooltip's source
-     * (a hidden slot's item, the button, another mod). Called by `GuiGraphicsExtractorMixin`.
+     * Whether a tooltip someone other than Soul asks for at ([mouseX], [mouseY]) must be dropped: Soul
+     * [covers] that spot, whatever the tooltip's source (a hidden slot's item, the button, another mod
+     * such as REI's "View Recipes" click area). Called by `GuiGraphicsExtractorMixin`, for tooltips
+     * set for the next frame and for ones drawn directly.
      */
-    fun hidesVanillaTooltip(mouseX: Int, mouseY: Int): Boolean {
-        if (drawingOwnTooltip) return false
+    fun hidesVanillaTooltip(mouseX: Int, mouseY: Int): Boolean = !drawingOwnTooltip && covers(mouseX.toDouble(), mouseY.toDouble())
+
+    /**
+     * Whether another mod's click at ([mouseX], [mouseY]) must not reach what lies under Soul there
+     * (REI's crafting-arrow click area, `InventoryReiPlugin`): Soul [covers] the spot and it is not the
+     * info display's own link, which Soul handles itself.
+     */
+    fun blocksForeignClick(mouseX: Double, mouseY: Double): Boolean = covers(mouseX, mouseY) && !InventoryInfo.overLink(mouseX, mouseY)
+
+    /**
+     * The player inventory is open and ([mouseX], [mouseY]) lies on something Soul painted over it:
+     * the frame of an element hidden by its toggle (crafting grid + result, off-hand slot, recipe book
+     * button), or anywhere in the info display's [FREE_AREA] while it shows.
+     */
+    private fun covers(mouseX: Double, mouseY: Double): Boolean {
         val screen = Minecraft.getInstance().gui.screen() as? InventoryScreen ?: return false
         val x = mouseX - screen.leftPos
         val y = mouseY - screen.topPos
         fun inside(r: IntArray) = x >= r[0] && x < r[2] && y >= r[1] && y < r[3]
         val general = cfg.general
-        return (general.craftingGridHidden && inside(CRAFTING_FRAME)) ||
+        return (InventoryInfo.active() && inside(FREE_AREA)) ||
+            (general.craftingGridHidden && inside(CRAFTING_FRAME)) ||
             (general.offhandSlotHidden && inside(OFFHAND_FRAME)) ||
             (general.recipeBookHidden && inside(RECIPE_BUTTON))
     }

@@ -153,7 +153,8 @@ Elite SkyBlock lowest-BIN mirror are read by the Soul backend, not by the jar.
 Roughly Enough Items, https://github.com/shedaniel/RoughlyEnoughItems, Copyright (c) 2018-2023
 shedaniel, MIT: Soul compiles against its API (`RoughlyEnoughItems-api-fabric`) and, only when the
 player installs REI, registers exclusion zones so REI's item list stays off the storage overlay
-(`StorageReiPlugin`). Cloth basic-math, https://github.com/shedaniel/cloth-basic-math, by
+(`StorageReiPlugin`) and a click area so REI's crafting-arrow click does not act through the SkyBlock
+info display (`InventoryReiPlugin`). Cloth basic-math, https://github.com/shedaniel/cloth-basic-math, by
 shedaniel, The Unlicense: the `Rectangle` type of that API. Neither is included in this jar; REI
 brings both at runtime.
 

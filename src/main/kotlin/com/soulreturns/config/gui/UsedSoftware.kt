@@ -153,7 +153,7 @@ object UsedSoftware {
             Kind.REQUIRED, covers = listOf("lib:org.jetbrains.kotlinx:kotlinx-serialization-json"),
         ),
         Entry(
-            "Roughly Enough Items", "Optional integration: keeps its item list off the storage overlay; not bundled", "https://github.com/shedaniel/RoughlyEnoughItems", "MIT",
+            "Roughly Enough Items", "Optional integration: keeps its item list off the storage overlay and its crafting-arrow click off the SkyBlock info display; not bundled", "https://github.com/shedaniel/RoughlyEnoughItems", "MIT",
             Kind.OPTIONAL, covers = listOf("lib:me.shedaniel:RoughlyEnoughItems-api-fabric"),
         ),
         Entry(

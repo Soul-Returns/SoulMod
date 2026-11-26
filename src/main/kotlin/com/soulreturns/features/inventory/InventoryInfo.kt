@@ -183,13 +183,16 @@ object InventoryInfo {
      * when it lands on the "Profile" link. Returns whether it did, so the caller can consume it.
      */
     fun click(mouseX: Double, mouseY: Double): Boolean {
-        if (!linkShown) return false
-        if (mouseX < linkRect[0] || mouseX >= linkRect[2] || mouseY < linkRect[1] || mouseY >= linkRect[3]) return false
+        if (!overLink(mouseX, mouseY)) return false
         val self = Minecraft.getInstance().user.name
         if (self.isNullOrBlank()) return false
         ProfileViewerService.open(self)
         return true
     }
+
+    /** Whether ([mouseX], [mouseY]) is on the "Profile" link as last drawn in the real inventory. */
+    fun overLink(mouseX: Double, mouseY: Double): Boolean =
+        linkShown && mouseX >= linkRect[0] && mouseX < linkRect[2] && mouseY >= linkRect[1] && mouseY < linkRect[3]
 
     /**
      * [s] as an inline link with its text top at ([x], [y]): link-colored, with a rounded highlight

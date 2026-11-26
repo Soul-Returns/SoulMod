@@ -147,19 +147,42 @@ object InventoryButtons {
         ConfigManager.update { copy(inventoryButtons = inventoryButtons.copy(seenAreas = inventoryButtons.seenAreas + area)) }
     }
 
+    /**
+     * GUI-px rects (x, y, width, height) of the buttons drawn on [boxesScreen] in its last frame, a new list
+     * only when one moves: REI keeps its item list off them (`InventoryReiPlugin`).
+     */
+    private var boxes: List<IntArray> = emptyList()
+    private var boxesScreen: AbstractContainerScreen<*>? = null
+
+    /** The rects of the buttons drawn on [screen] (none before its first frame). */
+    fun drawnBoxes(screen: AbstractContainerScreen<*>): List<IntArray> = if (screen === boxesScreen) boxes else emptyList()
+
     private fun draw(screen: AbstractContainerScreen<*>, g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int) {
         if (pickTarget >= 0) {
             g.centeredText(Minecraft.getInstance().font, "Middle-click an item to use it as the button icon", screen.width / 2, 4, PICK_NOTICE)
         }
+        boxesScreen = screen
         val buttons = activeButtons()
-        if (buttons.isEmpty()) return
+        if (buttons.isEmpty()) {
+            boxes = emptyList()
+            return
+        }
         val layout = layout(screen)
         val hovered = hit(screen, layout, buttons, mouseX.toDouble(), mouseY.toDouble())
+        var drawn = 0
+        var moved = false
         for (index in buttons.indices) {
             val button = buttons[index]
             if (!shows(screen, button)) continue
             val spot = layout.at(button.spot) ?: continue
             InventoryButtonPainter.draw(g, button, spot.x, spot.y, hovered == index)
+            val box = boxes.getOrNull(drawn++)
+            if (box == null || box[0] != spot.x || box[1] != spot.y) moved = true
+        }
+        if (moved || drawn != boxes.size) {
+            boxes = buttons.mapNotNull { button ->
+                if (!shows(screen, button)) null else layout.at(button.spot)?.let { intArrayOf(it.x, it.y, SIZE, SIZE) }
+            }
         }
         // Like a slot, no tooltip while an item is on the cursor: it would sit on top of the stack.
         if (hovered >= 0 && !tray.busy && Minecraft.getInstance().player?.containerMenu?.carried?.isEmpty != false) {

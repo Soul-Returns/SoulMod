@@ -196,9 +196,19 @@ object EquipmentDisplay {
         }
     }
 
+    /** [occupiedRect] as drawn on [drawnScreen] in its last frame, the same array while it stays put (`InventoryReiPlugin`). */
+    private var drawn: IntArray? = null
+    private var drawnScreen: InventoryScreen? = null
+
+    /** The rect the display covers on [screen] (null when not drawn there). */
+    fun drawnRect(screen: InventoryScreen): IntArray? = if (screen === drawnScreen) drawn else null
+
     private fun draw(g: GuiGraphicsExtractor, screen: InventoryScreen, mouseX: Int, mouseY: Int) {
         panelRect = null
-        if (occupiedRect(screen.width, screen.leftPos, screen.topPos, screen.imageWidth) == null) return
+        drawnScreen = screen
+        val rect = occupiedRect(screen.width, screen.leftPos, screen.topPos, screen.imageWidth)
+        if (rect == null || !rect.contentEquals(drawn)) drawn = rect
+        if (rect == null) return
         val joined = cfg.general.equipmentJoinFrame
         val x0 = screen.leftPos - if (joined) FLUSH_INSET else GAP + SLOT
         val y0 = screen.topPos + 7
