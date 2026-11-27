@@ -12,7 +12,8 @@ package com.soulreturns.features.scoreboard
  *                          blank
  * Purse: 4,464,676 (+5)    Purse (Piggy: with a piggy bank) + Hypixel's own gain
  * Bits: 1,034              Bits
- * Objective                Objective heading, its text on the next line
+ * Objective ⬈              Objective heading (often a marker after it), its text on every line under it
+ * Buy an Abiphone          up to the next blank or the footer (long ones wrap; some add a progress line)
  *                          blank
  * www.hypixel.net          footer (alpha.hypixel.net on the Alpha network)
  * ```
@@ -50,6 +51,8 @@ object SidebarParser {
     private val PURSE = Regex("(Purse|Piggy): ([\\d,.]+)(?:\\s*\\(\\+([\\d,.]+)\\))?.*")
     private val BITS = Regex("Bits: ([\\d,.]+)(?:\\s*\\(\\+([\\d,.]+)\\))?.*")
     private val FOOTER = Regex("(?:www|alpha)\\.hypixel\\.net", RegexOption.IGNORE_CASE)
+    /** `Objective`, `Objective ⬈` (Crimson Isle 2026-11-27), `Objective ⬇`: the word, then any marker. */
+    private val OBJECTIVE = Regex("Objective(?:\\s.*)?")
 
     /** Location markers, newest first (see `SkyblockStateReader.LOCATION_MARKERS`). */
     private val LOCATION_MARKERS = charArrayOf('\uE067', '\u23E3')
@@ -115,7 +118,7 @@ object SidebarParser {
                 }
                 if (bits == i) continue
             }
-            if (objective < 0 && t == "Objective") {
+            if (objective < 0 && OBJECTIVE.matches(t)) {
                 objective = i
                 var j = i + 1
                 while (j < text.size && text[j].isNotEmpty() && !FOOTER.containsMatchIn(text[j])) objectiveLines += j++

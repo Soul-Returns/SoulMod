@@ -47,7 +47,7 @@ class ScoreboardTest {
 
     @Test
     fun theFixedBlockIsFoundInEveryCapture() {
-        assertEquals(4, captures.size)
+        assertEquals(5, captures.size)
         for (c in captures) {
             val f = SidebarParser.parse(c.lines.map(SourceLine::of))
             assertEquals(0, f.dateIndex, c.name)
@@ -90,6 +90,27 @@ class ScoreboardTest {
         val mystery = ScoreboardSnapshot.ofSidebar("", capture("forge-2026-11-16").lines.let { it.dropLast(1) + "§7Mystery: §a1" + it.last() })
         assertEquals(listOf("Mystery: 1"), NewLinesLine.unknown(mystery).map { it.text })
         assertTrue(NewLinesLine.unknown(snapshot(capture("upper-mines-2026-11-15"))).isEmpty())
+    }
+
+    /** Crimson Isle 2026-11-27: `Objective ⬈` (a marker after the word) and its text are the Objective line's, not new lines. */
+    @Test
+    fun markedObjectiveIsClaimed() {
+        val s = snapshot(capture("crimson-isle-2026-11-27"), area = "Crimson Isle", mode = "crimson_isle")
+        assertEquals(9, s.fields.objectiveIndex)
+        assertEquals(listOf(10), s.fields.objectiveLines)
+        assertTrue(NewLinesLine.unknown(s).isEmpty(), NewLinesLine.unknown(s).joinToString { it.text })
+        assertEquals(listOf("Objective ⬈", "Buy an Abiphone"), build(entries("objective"), s).map(LegacyText::strip))
+    }
+
+    /** A wrapped objective with a progress line: every line up to the blank is the Objective's. */
+    @Test
+    fun wrappedObjectiveIsClaimedWhole() {
+        val base = capture("upper-mines-2026-11-15").lines
+        val lines = base.dropLast(1) + listOf("§fObjective §a§l⬇", "§edefeat Kuudra", "§eand stun him", "§7(§a3§7/§a5§7)") + base.takeLast(2)
+        val s = ScoreboardSnapshot.ofSidebar("", lines)
+        assertEquals(3, s.fields.objectiveLines.size)
+        assertTrue(NewLinesLine.unknown(s).isEmpty(), NewLinesLine.unknown(s).joinToString { it.text })
+        assertEquals(listOf("Objective ⬇", "defeat Kuudra", "and stun him", "(3/5)"), build(entries("objective"), s).map(LegacyText::strip))
     }
 
     @Test

@@ -32,7 +32,8 @@ object CoreValues {
             ScoreboardValue("date", "Time", "SkyBlock date", "§fLate Winter 10th") { c -> c.sidebar(c.fields.skyblockDateIndex)?.let { "§f" + it.text.trim() } },
             ScoreboardValue("irl", "Time", "Real time", "§722:15") { _ -> "§7" + LocalTime.now().format(CLOCK) },
             ScoreboardValue("objective", "Progress", "Objective", "§eReach the Crystal Hollows") { c ->
-                c.fields.objectiveLines.firstOrNull()?.let { c.sidebar(it)?.legacy }?.let { LegacyText.normalize(it).trim() }
+                // Every line under the heading: long objectives wrap, some add a progress line.
+                c.fields.objectiveLines.mapNotNull { c.sidebar(it)?.legacy?.let(LegacyText::normalize)?.trim() }.joinToString(" ").ifEmpty { null }
             },
             ScoreboardValue("sblevel", "Progress", "SkyBlock level", "§b[312]") { c -> c.sources.tab.skyblockLevel?.let { "§b[${it.level}]" } },
             ScoreboardValue("pet", "Soul", "Pet", "§6Golden Dragon") { c ->

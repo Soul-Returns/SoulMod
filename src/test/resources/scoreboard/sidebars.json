@@ -1,74 +1,94 @@
 {
- "_doc": "Real Hypixel sidebars (title + lines as legacy text: team prefix + score holder + suffix), from dev-bridge snapshots. Only sidebars; no chat.",
- "sidebars": [
-  {
-   "name": "dwarven-village-2026-11-15",
-   "source": "commissions-2026-11-15/part2.ndjson",
-   "title": "§r§e§lSKYBLOCK §r§7♲",
-   "lines": [
-    "§r§8§711/15/26 §8m26§r§8§v§r§8§8CH",
-    "§r§f  §r§f§u",
-    "§r§f Early Summer 12§r§f§t§r§fth",
-    "§r§b §71:40am §b§r§b§s",
-    "§r§b §7 §bDwarven V§r§b§q§r§b§billage",
-    "§r§f      §r§f§p",
-    "§r§fPurse: §65,018,2§r§6§j§r§6§605",
-    "§r§fBits: §b1,697§r§b§i",
-    "§r§f         §r§f§h",
-    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
-   ]
-  },
-  {
-   "name": "forge-2026-11-16",
-   "source": "forge-2026-11-16/2026-11-16_17-46-51.ndjson",
-   "title": "§r§e§lSKYBLOCK",
-   "lines": [
-    "§r§8§711/16/26 §8m66§r§8§w§r§8§8J",
-    "§r§f  §r§f§v",
-    "§r§f Late Summer 22n§r§f§u§r§fd",
-    "§r§b §72:10pm §b§r§b§t",
-    "§r§b §7 §bThe Forge§r§b§s",
-    "§r§f      §r§f§q",
-    "§r§fPurse: §6387,612§r§6§p§r§6§6,744",
-    "§r§fBits: §b10,768§r§b§j",
-    "§r§fNearby Players: §r§f§i§r§f§a3",
-    "§r§f          §r§f§h",
-    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
-   ]
-  },
-  {
-   "name": "private-island-2026-11-16",
-   "source": "forge-2026-11-16/2026-11-16_18-18-18.ndjson",
-   "title": "§r§f§lSKYBLOC§r§6§lK",
-   "lines": [
-    "§r§8§711/16/26 §8m19§r§8§v§r§8§88AK",
-    "§r§f  §r§f§u",
-    "§r§f Late Summer 24t§r§f§t§r§fh",
-    "§r§7 §73:50am§r§7§s",
-    "§r§a §7 §aYour Isla§r§a§q§r§a§and",
-    "§r§f      §r§f§p",
-    "§r§fPurse: §6387,613§r§6§j§r§6§6,389",
-    "§r§fBits: §b11,470§r§b§i",
-    "§r§f         §r§f§h",
-    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
-   ]
-  },
-  {
-   "name": "upper-mines-2026-11-15",
-   "source": "commissions-2026-11-15/part.ndjson",
-   "title": "§r§f§lSKYBLOCK§r§6§l §r§7♲",
-   "lines": [
-    "§r§8§711/15/26 §8m14§r§8§v§r§8§84BH",
-    "§r§f  §r§f§u",
-    "§r§f Early Summer 11§r§f§t§r§fth",
-    "§r§b §71:20am §b☽§r§b§s",
-    "§r§b §7 §bUpper Min§r§b§q§r§b§bes",
-    "§r§f      §r§f§p",
-    "§r§fPurse: §64,464,6§r§6§j§r§6§676 §e(+5)",
-    "§r§fBits: §b1,034§r§b§i",
-    "§r§f         §r§f§h",
-    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
-   ]
-  }
- ]
+  "_doc": "Real Hypixel sidebars (title + lines as legacy text: team prefix + score holder + suffix), from dev-bridge snapshots. Only sidebars; no chat.",
+  "sidebars": [
+    {
+      "name": "dwarven-village-2026-11-15",
+      "source": "commissions-2026-11-15/part2.ndjson",
+      "title": "§r§e§lSKYBLOCK §r§7♲",
+      "lines": [
+        "§r§8§711/15/26 §8m26§r§8§v§r§8§8CH",
+        "§r§f  §r§f§u",
+        "§r§f Early Summer 12§r§f§t§r§fth",
+        "§r§b §71:40am §b§r§b§s",
+        "§r§b §7 §bDwarven V§r§b§q§r§b§billage",
+        "§r§f      §r§f§p",
+        "§r§fPurse: §65,018,2§r§6§j§r§6§605",
+        "§r§fBits: §b1,697§r§b§i",
+        "§r§f         §r§f§h",
+        "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+      ]
+    },
+    {
+      "name": "forge-2026-11-16",
+      "source": "forge-2026-11-16/2026-11-16_17-46-51.ndjson",
+      "title": "§r§e§lSKYBLOCK",
+      "lines": [
+        "§r§8§711/16/26 §8m66§r§8§w§r§8§8J",
+        "§r§f  §r§f§v",
+        "§r§f Late Summer 22n§r§f§u§r§fd",
+        "§r§b §72:10pm §b§r§b§t",
+        "§r§b §7 §bThe Forge§r§b§s",
+        "§r§f      §r§f§q",
+        "§r§fPurse: §6387,612§r§6§p§r§6§6,744",
+        "§r§fBits: §b10,768§r§b§j",
+        "§r§fNearby Players: §r§f§i§r§f§a3",
+        "§r§f          §r§f§h",
+        "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+      ]
+    },
+    {
+      "name": "private-island-2026-11-16",
+      "source": "forge-2026-11-16/2026-11-16_18-18-18.ndjson",
+      "title": "§r§f§lSKYBLOC§r§6§lK",
+      "lines": [
+        "§r§8§711/16/26 §8m19§r§8§v§r§8§88AK",
+        "§r§f  §r§f§u",
+        "§r§f Late Summer 24t§r§f§t§r§fh",
+        "§r§7 §73:50am§r§7§s",
+        "§r§a §7 §aYour Isla§r§a§q§r§a§and",
+        "§r§f      §r§f§p",
+        "§r§fPurse: §6387,613§r§6§j§r§6§6,389",
+        "§r§fBits: §b11,470§r§b§i",
+        "§r§f         §r§f§h",
+        "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+      ]
+    },
+    {
+      "name": "upper-mines-2026-11-15",
+      "source": "commissions-2026-11-15/part.ndjson",
+      "title": "§r§f§lSKYBLOCK§r§6§l §r§7♲",
+      "lines": [
+        "§r§8§711/15/26 §8m14§r§8§v§r§8§84BH",
+        "§r§f  §r§f§u",
+        "§r§f Early Summer 11§r§f§t§r§fth",
+        "§r§b §71:20am §b☽§r§b§s",
+        "§r§b §7 §bUpper Min§r§b§q§r§b§bes",
+        "§r§f      §r§f§p",
+        "§r§fPurse: §64,464,6§r§6§j§r§6§676 §e(+5)",
+        "§r§fBits: §b1,034§r§b§i",
+        "§r§f         §r§f§h",
+        "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+      ]
+    },
+    {
+      "name": "crimson-isle-2026-11-27",
+      "source": "dev bridge snapshot 2026-11-27 (Crimson Isle, Stronghold)",
+      "title": "§r§f§lSKYBLOCK §r§7♲",
+      "lines": [
+        "§r§8§711/27/26 §8m87§r§8§y§r§8§8AR",
+        "§r§f  §r§f§x",
+        "§r§f Early Autumn 26§r§f§w§r§fth",
+        "§r§e §73:20pm §e☀§r§e§v",
+        "§r§5 §7 §5Stronghol§r§5§u§r§5§5d",
+        "§r§f      §r§f§t",
+        "§r§fPurse: §65,738,7§r§6§s§r§6§689",
+        "§r§fBits: §b26,210§r§b§q",
+        "§r§f         §r§f§p",
+        "§r§fObjective §c§l⬈§r§c§j",
+        "§r§e§eBuy an Abiphon§r§e§i§r§e§ee",
+        "§r§f            §r§f§h",
+        "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+      ]
+    }
+  ]
 }
