@@ -26,7 +26,7 @@ class MsdfFont(
     private val jsonResource: String,
     /** Atlas texture identifier — the PNG is lazily loaded by the texture manager on first use. */
     val atlas: Identifier,
-) {
+) : Kerning {
     private val logger = SoulLogger("Soul/Font")
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -143,6 +143,12 @@ class MsdfFont(
 
     /** Advance width of [text] at nominal [size], unrounded. */
     fun widthF(text: String, size: Float): Float = layout(text, size) { _, _, _, _ -> }
+
+    /** Kerning [layout] applies between [prev] and [next] in px at [size]; 0 unless both are this font's own glyphs. */
+    override fun kernPx(prev: Int, next: Int, size: Float): Float {
+        if (!loaded || glyphs[prev] == null || glyphs[next] == null) return 0f
+        return (kerning[pairKey(prev, next)] ?: 0f) * scale * size
+    }
 
     /** Advance width of [text] at nominal [size], rounded the same way [SoulText.draw] snaps. */
     fun width(text: String, size: Float): Int = kotlin.math.round(widthF(text, size)).toInt()

@@ -1,7 +1,9 @@
 package com.soulreturns.features.scoreboard.gui
 
 import com.soulreturns.config.gui.render.Chroma
+import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.RunPen
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.features.scoreboard.LegacyText
 import net.minecraft.client.Minecraft
@@ -48,15 +50,18 @@ internal object LegacyDraw {
         return out
     }
 
+    private fun font(p: Piece): MsdfFont? = if (!p.msdf) null else if (p.bold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular
+
     private fun pieceWidth(p: Piece, text: String, size: Float): Float =
-        if (p.msdf) {
-            (if (p.bold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular).widthF(text, size)
-        } else {
-            Minecraft.getInstance().font.width(Component.literal(text).withStyle(Style.EMPTY.withBold(p.bold))) * size / 8f
-        }
+        font(p)?.widthF(text, size)
+            ?: (Minecraft.getInstance().font.width(Component.literal(text).withStyle(Style.EMPTY.withBold(p.bold))) * size / 8f)
 
     /** Advance width of [text] at [size]. */
-    fun width(text: String, size: Float): Int = pieces(text, -1, 255).sumOf { pieceWidth(it, it.text, size).toDouble() }.roundToInt()
+    fun width(text: String, size: Float): Int {
+        val pen = RunPen(size)
+        for (p in pieces(text, -1, 255)) pen.place(p.text, pieceWidth(p, p.text, size), font(p))
+        return pen.pen.roundToInt()
+    }
 
     /**
      * Draw [text] with its cap band centered on [cy]; colorless runs in [defaultColor], everything faded by
@@ -79,38 +84,38 @@ internal object LegacyDraw {
         val total = all.sumOf { pieceWidth(it, it.text, size).toDouble() }.toFloat()
         val ellipsisW = if (total > maxW) MsdfFonts.menuRegular.widthF(ELLIPSIS, size) else 0f
         val limit = if (total > maxW) maxW - ellipsisW else Float.MAX_VALUE
-        var pen = x.toFloat()
-        var lastColor = defaultColor
+        // One snapped origin, every piece at its exact fractional offset (RunPen): same as one run.
+        val origin = SoulText.snapX(g, x.toFloat())
+        val pen = RunPen(size)
         for (p in all) {
             var t = p.text
             var w = pieceWidth(p, t, size)
             var cut = false
-            if (pen - x + w > limit) {
-                while (t.isNotEmpty() && pen - x + pieceWidth(p, t, size) > limit) t = t.substring(0, t.offsetByCodePoints(t.length, -1))
+            if (pen.pen + w > limit) {
+                while (t.isNotEmpty() && pen.pen + pieceWidth(p, t, size) > limit) t = t.substring(0, t.offsetByCodePoints(t.length, -1))
                 w = pieceWidth(p, t, size)
                 cut = true
             }
-            drawPiece(g, p, t, pen.roundToInt(), top, size, scissor, shadow)
-            pen += w
-            lastColor = p.color
+            drawPiece(g, p, t, origin + pen.place(t, w, font(p)), top, size, scissor, shadow)
             if (cut) {
-                SoulText.draw(g, ELLIPSIS, pen.roundToInt(), top, size, lastColor, MsdfFonts.menuRegular, forceCustom = true, shadow = shadow, scissor = scissor)
-                pen += ellipsisW
+                val ex = origin + pen.place(ELLIPSIS, ellipsisW, MsdfFonts.menuRegular)
+                SoulText.drawRun(g, ELLIPSIS, ex, top, size, p.color, MsdfFonts.menuRegular, shadow, scissor)
                 break
             }
         }
-        return (pen - x).roundToInt()
+        return pen.pen.roundToInt()
     }
 
-    private fun drawPiece(g: GuiGraphicsExtractor, p: Piece, text: String, x: Int, top: Int, size: Float, scissor: ScreenRectangle?, shadow: Boolean) {
+    private fun drawPiece(g: GuiGraphicsExtractor, p: Piece, text: String, x: Float, top: Int, size: Float, scissor: ScreenRectangle?, shadow: Boolean) {
         if (text.isEmpty()) return
-        if (p.msdf) {
-            SoulText.draw(g, text, x, top, size, p.color, if (p.bold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular, forceCustom = true, shadow = shadow, scissor = scissor)
+        val font = font(p)
+        if (font != null) {
+            SoulText.drawRun(g, text, x, top, size, p.color, font, shadow, scissor)
             return
         }
         val scale = size / 8f
         g.pose().pushMatrix()
-        g.pose().translate(x.toFloat(), top.toFloat())
+        g.pose().translate(SoulText.snapX(g, x), top.toFloat())
         g.pose().scale(scale, scale)
         SoulText.mcText(g, Minecraft.getInstance().font, text, p.bold, 0, 0, p.color, shadow)
         g.pose().popMatrix()

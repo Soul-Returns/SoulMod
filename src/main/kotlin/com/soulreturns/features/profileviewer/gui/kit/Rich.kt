@@ -1,6 +1,8 @@
 package com.soulreturns.features.profileviewer.gui.kit
 
+import com.soulreturns.config.gui.render.RunPen
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 /**
  * A line of text in colored runs, parsed from Minecraft `§` codes (`§0`..`§f` colors, `§l` bold,
@@ -24,24 +26,40 @@ class Rich private constructor(val runs: List<Run>) {
     private fun Run.width(m: KitMeasure, lineSize: Float, lineBold: Boolean): Int =
         m.width(text, size ?: lineSize, if (size != null) bold else lineBold || bold)
 
-    fun width(m: KitMeasure, size: Float, bold: Boolean = false): Int =
-        runs.sumOf { max(it.width(m, size, bold), it.minW) }
+    /** Places [r] on [pen] like one string: its exact advance (at least [Run.minW]), kerned to a same-font neighbor. */
+    private fun place(pen: RunPen, m: KitMeasure, r: Run, lineSize: Float, lineBold: Boolean): Float {
+        if (r.text.isEmpty()) {
+            val start = pen.pen
+            pen.gap(r.minW.toFloat())
+            return start
+        }
+        val b = if (r.size != null) r.bold else lineBold || r.bold
+        val w = m.widthF(r.text, r.size ?: lineSize, b)
+        val padded = r.minW > w
+        return pen.place(r.text, if (padded) r.minW.toFloat() else w, if (r.size == null && !padded) m.kerning(b) else null)
+    }
+
+    fun width(m: KitMeasure, size: Float, bold: Boolean = false): Int {
+        val pen = RunPen(size)
+        for (r in runs) place(pen, m, r, size, bold)
+        return pen.pen.roundToInt()
+    }
 
     /** Draws on one line, vertically centered between [top] and [bottom]; returns the end x. */
     fun draw(c: KitCanvas, x: Int, top: Int, bottom: Int, size: Float, color: Int, bold: Boolean = false): Int {
-        var cx = x
+        val pen = RunPen(size)
         for (r in runs) {
+            val dx = place(pen, c, r, size, bold)
             if (r.text.isEmpty()) continue
             val rs = r.size
             if (rs == null) {
-                c.text(r.text, cx, top, bottom, r.color ?: color, size, bold || r.bold)
+                c.textRun(r.text, x, dx, top, bottom, r.color ?: color, size, bold || r.bold)
             } else {
                 val dy = ((size - rs) * BASELINE).toInt()
-                c.text(r.text, cx, top + dy, bottom + dy, r.color ?: color, rs, r.bold)
+                c.textRun(r.text, x, dx, top + dy, bottom + dy, r.color ?: color, rs, r.bold)
             }
-            cx += max(r.width(c, size, bold), r.minW)
         }
-        return cx
+        return x + pen.pen.roundToInt()
     }
 
     /** This line cut to [maxW] with a trailing `…`, or itself when it fits. */

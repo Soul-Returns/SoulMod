@@ -82,19 +82,17 @@ object ComboHud : MovableHud("combo", "Combo Overlay", "general") {
 
         val shadow = textShadow()
         for ((i, line) in lines.withIndex()) {
-            var x = PAD
             val y = PAD + i * step()
+            val pen = SoulText.Line(g, PAD, y, SIZE, fontChoice = choice)
             for (seg in line) {
                 if (seg is Txt) {
-                    val font = fontFor(seg.bold || bold, choice)
-                    SoulText.draw(g, seg.s, x, y, SIZE, seg.color, font = font, forceCustom = false, shadow = shadow, fontChoice = choice)
-                    x += SoulText.width(seg.s, SIZE, font, fontChoice = choice)
+                    pen.text(seg.s, seg.color, fontFor(seg.bold || bold, choice), shadow)
                 } else {
                     // Center the sign on the line's font-aware visual center so it lines up with the
                     // text regardless of font (the vector fonts sit lower in the em box than Minecraft's).
                     val size = signSize(choice)
-                    WisdomIcon.draw(g, x.toFloat() + 1f, y + lineCenterOffset(choice) - size / 2f, size, ComboData.COMBAT_WISDOM)
-                    x += size.toInt() + 1
+                    WisdomIcon.draw(g, pen.x + 1f, y + lineCenterOffset(choice) - size / 2f, size, ComboData.COMBAT_WISDOM)
+                    pen.gap(size.toInt() + 1f)
                 }
             }
         }

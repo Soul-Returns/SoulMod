@@ -1598,15 +1598,12 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
                 sliderRow(g, col, "Border speed", "How fast the colors go round", borderSpeed, 90)
             }
         }
-        switchRow(g, col, "Blur behind", null, l.blur) { v -> look { copy(blur = v) } }
-        switchRow(g, col, "Image from resource pack", null, l.backgroundImage) { v -> look { copy(backgroundImage = v) } }
 
         sectionLabel(g, col, "Lines")
         stepperRow(g, mx, my, col, "Line spacing", null, l.lineSpacing, 0, 10, "px") { v -> look { copy(lineSpacing = v) } }
         switchRow(g, col, "Hide lines with no value", null, l.hideEmpty) { v -> look { copy(hideEmpty = v) } }
         switchRow(g, col, "Hypixel's lines only (restyled)", null, l.hypixelLinesOnly) { v -> look { copy(hypixelLinesOnly = v) } }
         switchRow(g, col, "Keep lines while switching islands", null, l.keepWhileSwitching) { v -> look { copy(keepWhileSwitching = v) } }
-        switchRow(g, col, "Click and hover actions", null, l.clickActions) { v -> look { copy(clickActions = v) } }
 
         sectionLabel(g, col, "When to show")
         switchRow(g, col, "Hide with the tab list open", null, l.hideWithTab) { v -> look { copy(hideWithTab = v) } }

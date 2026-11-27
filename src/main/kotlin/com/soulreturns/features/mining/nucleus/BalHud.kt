@@ -100,11 +100,8 @@ object BalHud : MovableHud("nucleus_bal", "Bal Status", "mining") {
                 ),
             )
         }
-        var x = PAD
-        for ((text, color) in segments(preview)) {
-            SoulText.draw(g, text, x, PAD, SIZE, color, font = font, forceCustom = false, shadow = textShadow(), fontChoice = c)
-            x += SoulText.width(text, SIZE, font, fontChoice = c)
-        }
+        val line = SoulText.Line(g, PAD, PAD, SIZE, fontChoice = c)
+        for ((text, color) in segments(preview)) line.text(text, color, font, textShadow())
     }
 
     private fun font(choice: Int) = if (boldFont()) MsdfFonts.semiboldFor(choice) else MsdfFonts.regularFor(choice)

@@ -96,11 +96,11 @@ object SoulRichText {
 
     /** Advance width of [spans] at nominal [size] with family [fontChoice]. */
     fun width(spans: List<Span>, size: Float, fontChoice: Int, boldFont: Boolean = false): Int {
-        var w = 0f
+        val pen = RunPen(size)
         forEachRun(spans, fontChoice) { span, text, msdf ->
-            w += runWidth(span, text, msdf, size, fontChoice, boldFont)
+            pen.place(text, runWidth(span, text, msdf, size, fontChoice, boldFont), if (msdf) msdfFont(span, fontChoice, boldFont) else null)
         }
-        return w.roundToInt()
+        return pen.pen.roundToInt()
     }
 
     /**
@@ -120,38 +120,44 @@ object SoulRichText {
         boldFont: Boolean = false,
     ) {
         val mc = Minecraft.getInstance()
-        var pen = x.toFloat()
+        // One snapped origin for the whole line, every run at its exact fractional offset ([RunPen]):
+        // the same glyph positions as the characters drawn in one color.
+        val origin = SoulText.snapX(g, x.toFloat())
+        val pen = RunPen(size)
         forEachRun(spans, fontChoice) { span, text, msdf ->
             val rgb = span.color ?: (defaultColor and 0xFFFFFF)
             val a = ((defaultColor ushr 24 and 0xFF) * alpha / 255).coerceIn(0, 255)
             val color = (a shl 24) or (rgb and 0xFFFFFF)
-            val px = pen.roundToInt()
             val w = runWidth(span, text, msdf, size, fontChoice, boldFont)
-            if (msdf) {
-                val font = if (span.bold || boldFont) MsdfFonts.semiboldFor(fontChoice) else MsdfFonts.regularFor(fontChoice)
-                SoulText.draw(g, text, px, y, size, color, font, forceCustom = true, shadow = shadow)
+            val font = if (msdf) msdfFont(span, fontChoice, boldFont) else null
+            val rx = origin + pen.place(text, w, font)
+            if (font != null) {
+                SoulText.drawRun(g, text, rx, y, size, color, font, shadow = shadow)
             } else {
                 val scale = mcScale(size)
                 g.pose().pushMatrix()
-                g.pose().translate(px.toFloat(), y.toFloat())
+                g.pose().translate(SoulText.snapX(g, rx), y.toFloat())
                 g.pose().scale(scale, scale)
                 SoulText.mcText(g, mc.font, text, span.bold || boldFont, 0, 0, color, shadow)
                 g.pose().popMatrix()
             }
             val thickness = mcScale(size).roundToInt().coerceAtLeast(1)
-            if (span.underline) Chroma.fill(g, px, y + (size * 9f / 8f).roundToInt() - thickness, px + w.roundToInt(), y + (size * 9f / 8f).roundToInt(), color)
-            if (span.strikethrough) Chroma.fill(g, px, y + (size * 4f / 8f).roundToInt(), px + w.roundToInt(), y + (size * 4f / 8f).roundToInt() + thickness, color)
-            pen += w
+            val x0 = rx.roundToInt()
+            val x1 = (rx + w).roundToInt()
+            if (span.underline) Chroma.fill(g, x0, y + (size * 9f / 8f).roundToInt() - thickness, x1, y + (size * 9f / 8f).roundToInt(), color)
+            if (span.strikethrough) Chroma.fill(g, x0, y + (size * 4f / 8f).roundToInt(), x1, y + (size * 4f / 8f).roundToInt() + thickness, color)
         }
     }
+
+    private fun msdfFont(span: Span, fontChoice: Int, boldFont: Boolean): MsdfFont =
+        if (span.bold || boldFont) MsdfFonts.semiboldFor(fontChoice) else MsdfFonts.regularFor(fontChoice)
 
     private fun styled(span: Span, text: String, boldFont: Boolean): Component =
         Component.literal(text).withStyle(Style.EMPTY.withBold(span.bold || boldFont))
 
     private fun runWidth(span: Span, text: String, msdf: Boolean, size: Float, fontChoice: Int, boldFont: Boolean): Float =
         if (msdf) {
-            val font = if (span.bold || boldFont) MsdfFonts.semiboldFor(fontChoice) else MsdfFonts.regularFor(fontChoice)
-            font.widthF(text, size)
+            msdfFont(span, fontChoice, boldFont).widthF(text, size)
         } else {
             Minecraft.getInstance().font.width(styled(span, text, boldFont)) * mcScale(size)
         }

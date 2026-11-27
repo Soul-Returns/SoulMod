@@ -98,12 +98,8 @@ object MineshaftCorpsesHud : MovableHud("mineshaft_corpses", "Mineshaft Corpses"
         draw(g, TITLE, PAD, PAD, colors.title, SIZE, bold = true, choice = choice, shadow = shadow)
 
         for ((index, row) in rows.withIndex()) {
-            val y = PAD + (index + 1) * step()
-            var x = PAD
-            for ((text, color) in segments(row)) {
-                draw(g, text, x, y, color, SIZE, bold, choice, shadow)
-                x += width(text, bold, choice)
-            }
+            val line = SoulText.Line(g, PAD, PAD + (index + 1) * step(), SIZE, fontChoice = choice)
+            for ((text, color) in segments(row)) line.text(text, color.effective(), fontFor(bold, choice), shadow)
         }
     }
 

@@ -3,6 +3,7 @@ package com.soulreturns.features.dev
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.ui.SoulUi
 import com.soulreturns.ui.screen.SoulScreenBase
 import net.minecraft.client.Minecraft
@@ -142,11 +143,8 @@ class DevOutputScreen private constructor() : SoulScreenBase(Component.literal("
         for (line in visual) {
             // Cheap cull: a dump can run to hundreds of wrapped lines and each glyph is a quad.
             if (y + LINE_H >= y0 && y <= y1) {
-                var cx = x0 + PAD
-                for (run in line) {
-                    drawText(g, run.text, cx, y, run.color, fCaption)
-                    cx += textWidth(run.text, fCaption)
-                }
+                val pen = SoulText.Line(g, x0 + PAD, y, fCaption, forceCustom = true)
+                for (run in line) pen.text(run.text, run.color, MsdfFonts.menuRegular, scissor = currentClip)
             }
             y += LINE_H
         }

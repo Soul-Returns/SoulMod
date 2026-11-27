@@ -60,14 +60,25 @@ object Scoreboard {
         cacheKey = version
         cacheConfig = c
         cacheAt = nowMs
-        cached = build(c, ScoreboardSources.snapshot, nowMs)
-        if (cached.isNotEmpty()) {
-            lastShown = cached
-            lastShownAt = nowMs
-        } else if (c.look.keepWhileSwitching && ScoreboardSources.snapshot.sidebar.isEmpty() && nowMs - lastShownAt < KEEP_MS) {
-            cached = lastShown
-        }
+        cached = resolve(c, ScoreboardSources.snapshot, nowMs)
         return cached
+    }
+
+    /** [build] plus "Keep lines while switching islands": no sidebar for up to [KEEP_MS] after lines showed repeats them. */
+    internal fun resolve(c: ScoreboardConfig, s: ScoreboardSnapshot, nowMs: Long): List<BuiltLine> {
+        val built = build(c, s, nowMs)
+        if (built.isNotEmpty()) {
+            lastShown = built
+            lastShownAt = nowMs
+            return built
+        }
+        if (c.look.keepWhileSwitching && s.sidebar.isEmpty() && nowMs - lastShownAt < KEEP_MS) return lastShown
+        return built
+    }
+
+    internal fun forgetLastShown() {
+        lastShown = emptyList()
+        lastShownAt = Long.MIN_VALUE / 2
     }
 
     /** Pure: what [lines] shows for [s]. */

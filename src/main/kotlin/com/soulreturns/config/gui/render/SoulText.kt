@@ -99,12 +99,68 @@ object SoulText {
             return
         }
         if (!font.loaded) return
+        drawRun(g, text, snapX(g, x.toFloat()), y, size, color, font, shadow, scissor)
+    }
+
+    /** Logical [x] moved onto the nearest whole physical pixel under the current pose and GUI scale. */
+    fun snapX(g: GuiGraphicsExtractor, x: Float): Float = g.pose().let { snap(x, it.m00(), it.m20()) }
+
+    /**
+     * One line drawn as several runs (colors, weights) from ([x], [y]), laid out exactly like the same
+     * characters in a single [draw]: one snapped origin, each run at its fractional [RunPen] offset.
+     * Font choice as [draw] ([forceCustom], [fontChoice]).
+     */
+    class Line(
+        private val g: GuiGraphicsExtractor,
+        x: Int,
+        private val y: Int,
+        private val size: Float,
+        forceCustom: Boolean = false,
+        fontChoice: Int? = null,
+    ) {
+        private val custom = useCustom(forceCustom, fontChoice)
+        private val origin = if (custom) snapX(g, x.toFloat()) else x.toFloat()
+        private val pen = RunPen(size)
+
+        /** Where the next run starts. */
+        val x: Float get() = origin + pen.pen
+
+        fun text(text: String, color: Int, font: MsdfFont = MsdfFonts.regular, shadow: Boolean = true, scissor: ScreenRectangle? = null) {
+            if (text.isEmpty()) return
+            if (custom) {
+                val rx = origin + pen.place(text, font.widthF(text, size), font)
+                drawRun(g, text, rx, y, size, color, font, shadow, scissor)
+            } else {
+                val rx = origin + pen.place(text, Minecraft.getInstance().font.width(text) * mcScale(size), null)
+                drawMc(g, text, rx.roundToInt(), y, size, color, shadow)
+            }
+        }
+
+        /** Skip [px] (an icon, a fixed gap). */
+        fun gap(px: Float) = pen.gap(px)
+    }
+
+    /**
+     * MSDF [text] at exactly [originX] (no snap: a run inside a line whose origin was snapped once, see
+     * [RunPen]); the baseline snaps like [draw].
+     */
+    fun drawRun(
+        g: GuiGraphicsExtractor,
+        text: String,
+        originX: Float,
+        y: Int,
+        size: Float,
+        color: Int,
+        font: MsdfFont,
+        shadow: Boolean = true,
+        scissor: ScreenRectangle? = null,
+    ) {
+        if (text.isEmpty() || !font.loaded) return
         val setup = textureSetup(font) ?: return
-        // Snap the origin and baseline to whole physical pixels: a baseline between two pixel rows
-        // renders every letter's bottom edge half-covered, so text looks soft and rows of text
-        // wobble against each other. Advances stay fractional so spacing (and kerning) survive.
+        // Snap the baseline (and, in [draw], the origin) to whole physical pixels: a baseline between
+        // two pixel rows renders every letter's bottom edge half-covered, so text looks soft and rows
+        // of text wobble against each other. Advances stay fractional so spacing (and kerning) survive.
         val pose = g.pose()
-        val originX = snap(x.toFloat(), pose.m00(), pose.m20())
         val baseline = snap(y + font.baselinePx(size), pose.m11(), pose.m21())
         val quads = ArrayList<MsdfTextRenderState.Quad>(text.length)
         var fbQuads: ArrayList<MsdfTextRenderState.Quad>? = null

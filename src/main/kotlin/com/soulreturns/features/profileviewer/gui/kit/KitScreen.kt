@@ -2,6 +2,7 @@ package com.soulreturns.features.profileviewer.gui.kit
 
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.soulreturns.config.gui.Theme
+import com.soulreturns.config.gui.render.Kerning
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.SoulPanel
@@ -118,6 +119,16 @@ abstract class KitScreen(title: Component) : SoulScreenBase(title) {
         else drawTextV(g, s, x, top, bottom, color, size, weight(bold))
     }
 
+    /** [txt] for one run of a multi-run line: at [x] snapped once plus the exact offset [dx]. */
+    protected fun txtRun(s: String, x: Int, dx: Float, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean) {
+        val g = frame ?: return
+        if (s.isEmpty()) return
+        val dark = (color shr 16 and 0xFF) + (color shr 8 and 0xFF) + (color and 0xFF) < 0x90
+        val font = weight(bold)
+        val y = ((top + bottom) / 2 - font.centerOffsetPx(size)).roundToInt()
+        SoulText.drawRun(g, s, SoulText.snapX(g, x.toFloat()) + dx, y, size, color, font, shadow = !dark, scissor = currentClip)
+    }
+
     protected fun tw(s: String, size: Float, bold: Boolean): Int = textWidth(s, size, weight(bold))
 
     private fun trackingPx(size: Float, tracking: Float): Float = tracking * size / MsdfFont.LEGACY_EM
@@ -153,6 +164,10 @@ abstract class KitScreen(title: Component) : SoulScreenBase(title) {
 
         override fun width(text: String, size: Float, bold: Boolean): Int = tw(text, size, bold)
 
+        override fun widthF(text: String, size: Float, bold: Boolean): Float = weight(bold).widthF(text, size)
+
+        override fun kerning(bold: Boolean): Kerning = weight(bold)
+
         override fun trackedWidth(text: String, size: Float, tracking: Float, bold: Boolean): Int = trackedW(text, size, tracking, bold)
 
         override fun rect(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, corner: Int) {
@@ -179,6 +194,10 @@ abstract class KitScreen(title: Component) : SoulScreenBase(title) {
 
         override fun text(text: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean) {
             if (!outside(top, bottom)) txt(text, x, top, bottom, color, size, bold)
+        }
+
+        override fun textRun(text: String, x: Int, dx: Float, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean) {
+            if (!outside(top, bottom)) txtRun(text, x, dx, top, bottom, color, size, bold)
         }
 
         override fun tracked(text: String, cx: Int, cy: Int, color: Int, size: Float, tracking: Float, bold: Boolean) {

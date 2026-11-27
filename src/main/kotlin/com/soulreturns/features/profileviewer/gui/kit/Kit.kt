@@ -1,5 +1,6 @@
 package com.soulreturns.features.profileviewer.gui.kit
 
+import com.soulreturns.config.gui.render.Kerning
 import net.minecraft.world.item.ItemStack
 
 /**
@@ -17,6 +18,12 @@ import net.minecraft.world.item.ItemStack
 /** Text measurement, all a node needs to size itself. Soul px. */
 interface KitMeasure {
     fun width(text: String, size: Float, bold: Boolean = false): Int
+
+    /** Unrounded [width]: what runs of one line ([Rich]) add up, so they sit like one string. */
+    fun widthF(text: String, size: Float, bold: Boolean = false): Float = width(text, size, bold).toFloat()
+
+    /** Kerning of the font [text] uses for [bold], so runs of one font kern across their boundary. */
+    fun kerning(bold: Boolean): Kerning? = null
 
     /** Width of a letter-spaced label ([tracking] in em, as CSS `letter-spacing`). */
     fun trackedWidth(text: String, size: Float, tracking: Float, bold: Boolean = true): Int
@@ -84,6 +91,14 @@ interface KitCanvas : KitMeasure {
 
     /** One line of plain text, vertically centered between [top] and [bottom]. */
     fun text(text: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean = false)
+
+    /**
+     * One run of a multi-run line ([Rich]): drawn at the line's [x] (snapped once, as a single [text]
+     * call snaps it) plus the run's exact offset [dx], vertically as [text]. The default rounds the
+     * offset (recorders in tests); the screen draws it exactly.
+     */
+    fun textRun(text: String, x: Int, dx: Float, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean = false) =
+        text(text, x + kotlin.math.round(dx).toInt(), top, bottom, color, size, bold)
 
     /** Letter-spaced uppercase label centered on ([cx], [cy]) (chips, table headers). */
     fun tracked(text: String, cx: Int, cy: Int, color: Int, size: Float, tracking: Float, bold: Boolean = true)
