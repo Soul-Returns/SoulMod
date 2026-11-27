@@ -200,8 +200,8 @@ def soul_jar(build=True):
     """The Soul jar plus the dev-only bridge jar (tools/devbridge), which only this instance gets."""
     if build:
         subprocess.run(["./gradlew", "build", "devbridgeJar", "-q"], cwd=REPO, check=True)
-    ver = next(l.split("=", 1)[1].strip() for l in (REPO / "gradle.properties").read_text().splitlines()
-               if l.startswith("mod_version="))
+    # The jar names carry the build's version (the next beta.0.dev, not gradle.properties' last release).
+    ver = subprocess.run(["./gradlew", "-q", "soulVersion"], cwd=REPO, check=True, capture_output=True, text=True).stdout.strip().splitlines()[-1]
     jars = [REPO / ("build/libs/soul-%s.jar" % ver), REPO / ("build/devbridge/soul-devbridge-%s.jar" % ver)]
     for jar in jars:
         if not jar.exists():

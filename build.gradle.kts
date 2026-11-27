@@ -1,3 +1,4 @@
+import com.soulreturns.buildlogic.ModVersion
 import java.io.File
 import java.util.Properties
 
@@ -11,7 +12,16 @@ plugins {
     id("net.fabricmc.fabric-loom") version "1.17-SNAPSHOT"
 }
 
-version = property("mod_version").toString()
+// `mod_version` in gradle.properties is the LAST RELEASE. A build given an explicit version
+// (`-Pmod_version=<tag version>`, as release.yml and tools/release/build-jar.sh do) is named exactly
+// that; every other build is named after the next version, `x.y.(z+1)-beta.0.dev` (rule `build-run`,
+// "Build version"). Read from the start parameters because gradle.properties itself also defines
+// `mod_version`, which would make `-Pmod_version=<same value>` indistinguishable from "not given".
+val explicitModVersion: String? =
+    gradle.startParameter.projectProperties["mod_version"]
+        ?: System.getenv("ORG_GRADLE_PROJECT_mod_version")
+        ?: System.getProperty("org.gradle.project.mod_version")
+version = ModVersion.resolve(property("mod_version").toString(), explicitModVersion)
 group = property("maven_group").toString()
 
 base {
@@ -82,6 +92,10 @@ tasks.test {
     inputs.files(fileTree("release-notes")).withPropertyName("releaseNotes")
 }
 
+// The version rule lives in buildSrc (build logic); compile it into the test classpath too so its
+// tests (src/test/.../buildlogic/ModVersionTest.kt) run with the normal `./gradlew test`.
+sourceSets.test { kotlin.srcDir("buildSrc/src/main/kotlin") }
+
 /**
  * Dev backend URL for the client run — see the `soul.backendUrl` property below.
  * Read at configure time, so changing local.properties takes effect on the next
@@ -103,6 +117,14 @@ tasks.register("soulBackendUrl") {
     group = "soul"
     description = "Print the dev backend URL runClient will use."
     val resolved = soulBackendUrl
+    doLast { println(resolved) }
+}
+
+/** Print the version this build carries, the one in the jar name and fabric.mod.json (scripts use it). */
+tasks.register("soulVersion") {
+    group = "soul"
+    description = "Print the version this build is named (explicit -Pmod_version, else the next beta.0.dev)."
+    val resolved = project.version.toString()
     doLast { println(resolved) }
 }
 

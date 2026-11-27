@@ -30,6 +30,8 @@ def main() -> None:
         fail(f"{jar} is mod '{mod.get('id')}', not soul")
     if mod.get("version") != version:
         fail(f"{jar} says version {mod.get('version')}, expected {version}")
+    if re.search(r"(^|[.-])dev$", version):
+        fail(f"{version} is a local build name (.dev); releases never carry it")
     depends = mod.get("depends") or {}
     minecraft = depends.get("minecraft")
     if not isinstance(minecraft, str):

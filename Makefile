@@ -16,7 +16,9 @@
 SHELL := /bin/bash
 
 # Every file that hardcodes the mod version. fabric.mod.json is NOT one of them: it carries
-# `${version}` and is interpolated by processResources from gradle.properties.
+# `${version}` and is interpolated by processResources from the build's version: the explicit
+# `-Pmod_version` of a release build, else the next `-beta.0.dev` derived from the value here
+# (the LAST release, see rule build-run "Build version").
 VERSION_FILE := gradle.properties
 NOTES_KT := src/main/kotlin/com/soulreturns/config/gui/menu/MenuState.kt
 
@@ -57,6 +59,9 @@ endif
 	@# Shape check only — never a closed list of allowed versions. Accepts 0.2.0 and 0.2.0-rc1.
 	@[[ "$(V)" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$$ ]] \
 		|| { echo "error: '$(V)' is not a version like 0.2.0 or 0.2.0-rc1" >&2; exit 1; }
+	@# `-dev` names are what non-release builds call themselves; they are never released.
+	@! [[ "$(V)" =~ (^|[.-])dev$$ ]] \
+		|| { echo "error: '$(V)' ends in .dev, which is how local builds are named; a release has no such suffix" >&2; exit 1; }
 	@# SemVer compares `beta10` < `beta9` (alphanumeric identifiers are lexical), and so do Fabric
 	@# and the updater. Past 9 the number must be its own identifier: 0.2.0-beta.10.
 	@! [[ "$(V)" =~ [A-Za-z][0-9]{2,} ]] \
