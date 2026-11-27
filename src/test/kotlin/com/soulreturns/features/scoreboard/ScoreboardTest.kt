@@ -144,6 +144,19 @@ class ScoreboardTest {
         assertEquals(listOf("§z§lSKYBLOCK", "§fPurse: §64,464,676 §e(+5)", "", "§ewww.hypixel.net"), build(list, s))
     }
 
+    /** Hidden (flag or the Header/Footer "Hidden" mode) draws nothing and still claims its sidebar line. */
+    @Test
+    fun hiddenLinesStayClaimed() {
+        val s = snapshot(capture("upper-mines-2026-11-15"))
+        val off = kotlinx.serialization.json.JsonObject(mapOf("show" to kotlinx.serialization.json.JsonPrimitive("off")))
+        val flagged = listOf(ScoreboardEntry("header", hidden = true), ScoreboardEntry("purse", hidden = true), ScoreboardEntry("extra"), ScoreboardEntry("footer", hidden = true))
+        val moded = listOf(ScoreboardEntry("header", options = off), ScoreboardEntry("purse", hidden = true), ScoreboardEntry("extra"), ScoreboardEntry("footer", options = off))
+        for (list in listOf(flagged, moded)) {
+            val text = build(list, s).map(LegacyText::strip)
+            assertTrue(text.none { "hypixel.net" in it || "Purse" in it || "SKYBLOCK" in it }, text.joinToString("\n"))
+        }
+    }
+
     @Test
     fun pickedColorsAndChromaParts() {
         val s = snapshot(capture("upper-mines-2026-11-15"))

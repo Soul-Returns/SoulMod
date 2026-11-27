@@ -8,6 +8,7 @@ import com.soulreturns.features.scoreboard.LineColors
 import com.soulreturns.features.scoreboard.LineContext
 import com.soulreturns.features.scoreboard.LineOptions
 import com.soulreturns.features.scoreboard.LineText
+import com.soulreturns.features.scoreboard.OptionValues
 import com.soulreturns.features.scoreboard.LineType
 import com.soulreturns.features.scoreboard.ScoreboardCatalog
 import com.soulreturns.features.scoreboard.ScoreboardSnapshot
@@ -22,6 +23,8 @@ object FooterLine : LineType(
     const val TEXT = "text"
 
     override val pinned = PIN_BOTTOM
+
+    override fun isOff(options: OptionValues): Boolean = options.string(SHOW) == "off"
 
     override val options =
         listOf(

@@ -7,6 +7,7 @@ import com.soulreturns.data.skyblock.TabSnapshot
 import com.soulreturns.data.skyblock.TabWidgetParser
 import com.soulreturns.features.scoreboard.BuiltLine
 import com.soulreturns.features.scoreboard.LineColors
+import com.soulreturns.features.scoreboard.OptionValues
 import com.soulreturns.features.scoreboard.LineContext
 import com.soulreturns.features.scoreboard.LineOption
 import com.soulreturns.features.scoreboard.LineType
@@ -88,9 +89,13 @@ internal object ScoreboardPreview {
 
         override fun claims(sources: ScoreboardSnapshot): Collection<Int> = base.claims(sources)
 
+        override fun isOff(options: OptionValues): Boolean = base.isOff(options)
+
         override fun emptyLines(ctx: LineContext): List<String> = base.emptyLines(ctx)
 
         override fun lines(ctx: LineContext): List<String> {
+            // Switched off by its own options (Header/Footer "Hidden"): gone, never replaced by its example.
+            if (base.isOff(ctx.options)) return emptyList()
             if (base === CustomTextLine) return listOf(ScoreboardValues.expand(ctx.options.string(CustomTextLine.TEXT), ctx, ::exampleValue))
             base.lines(ctx).let { if (it.isNotEmpty()) return it }
             if (ctx.sources !== place.sample) {

@@ -63,6 +63,12 @@ abstract class LineType(
     /** Drawn instead of nothing when Look › Hide lines with no value is off (`Purse: §8-`); empty = nothing. */
     open fun emptyLines(ctx: LineContext): List<String> = emptyList()
 
+    /**
+     * The player turned it off through its own options (Header/Footer "Hidden"): drawn nowhere, not even
+     * as the setup preview's example. Not the same as having no value right now.
+     */
+    open fun isOff(options: OptionValues): Boolean = false
+
     /** A fresh entry for the picker's "+ Add line" (defaults only). */
     open fun newEntry(): ScoreboardEntry = ScoreboardEntry(id)
 

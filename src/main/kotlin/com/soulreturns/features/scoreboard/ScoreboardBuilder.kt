@@ -40,6 +40,7 @@ object ScoreboardBuilder {
         for ((index, entry, type) in ordered) {
             if (entry.hidden) continue
             val options = OptionValues(entry.options, type.options)
+            if (type.isOff(options)) continue
             val ctx = LineContext(sources, entry, options, look, nowMs, activity)
             val lines =
                 try {

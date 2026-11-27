@@ -62,6 +62,25 @@ class ScoreboardPreviewTest {
         assertEquals(0, r.lines.count { it.entry == purse })
     }
 
+    /** The preview draws what the HUD draws for hidden lines: Header/Footer "Hidden" or flagged hidden are gone, not examples. */
+    @Test
+    fun hiddenHeaderAndFooterAreGone() {
+        val c = ScoreboardConfig()
+        val off = JsonObject(mapOf("show" to JsonPrimitive("off")))
+        val pinned = setOf("header", "footer")
+        val moded = c.main.entries.map { if (it.type in pinned) it.copy(options = off) else it }
+        val flagged = c.main.entries.map { if (it.type in pinned) it.copy(hidden = true) else it }
+        for (place in listOf<String?>(null) + ScoreboardActivities.all.map { it.id }) {
+            for (entries in listOf(moded, flagged)) {
+                val r = ScoreboardPreview.build(c, entries, place, now)
+                val idx = entries.withIndex().filter { it.value.type in pinned }.map { it.index }.toSet()
+                assertEquals(2, idx.size)
+                assertEquals(0, r.lines.count { it.entry in idx }, "$place")
+                assertTrue(r.lines.none { "hypixel.net" in LegacyText.strip(it.text) }, "$place: " + r.lines.joinToString("\n"))
+            }
+        }
+    }
+
     @Test
     fun dungeonPreviewShowsTheRunLines() {
         val c = ScoreboardConfig()
