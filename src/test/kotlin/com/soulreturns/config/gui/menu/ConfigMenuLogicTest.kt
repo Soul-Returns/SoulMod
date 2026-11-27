@@ -182,5 +182,6 @@ class ConfigMenuLogicTest {
         // Empty tabs are hidden.
         assertEquals(listOf("hollows", "divan", "mineshafts", "dwarven", "powder"), ConfigRegistry.tabsOf("mining").map { it.id })
         assertEquals(listOf("mobs", "diana", "bosses"), ConfigRegistry.tabsOf("combat").map { it.id })
+        assertEquals(listOf("torrhus"), ConfigRegistry.tabsOf("foraging").map { it.id })
     }
 }

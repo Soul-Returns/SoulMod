@@ -76,6 +76,7 @@ object ConfigRegistry {
                 "mining", "Mining", "pick",
                 tabs("hollows" to "Crystal Hollows", "divan" to "Mines of Divan", "mineshafts" to "Mineshafts", "dwarven" to "Dwarven Mines", "powder" to "Powder & pickaxe"),
             ),
+            Activity("foraging", "Foraging", "leaf", tabs("torrhus" to "Torrhus Canyon")),
             Activity("fishing", "Fishing", "fish", tabs("alerts" to "Alerts", "trackers" to "Trackers")),
             Activity("combat", "Combat", "sword", tabs("mobs" to "Mobs & weapons", "slayers" to "Slayers", "diana" to "Diana", "bosses" to "Dragons & Kuudra")),
             Activity("inventory", "Inventory & Items", "chest", tabs("inventory" to "Inventory", "menus" to "Menus", "tooltips" to "Tooltips", "sacks" to "Sacks")),
@@ -778,10 +779,11 @@ object ConfigRegistry {
                     hud = true, synonyms = listOf("combo", "grandma wolf", "combat wisdom", "magic find", "kill combo", "sbcombo"),
                 )
             },
+            // Foraging › Torrhus Canyon
             card("pangolin") {
                 val c = { cfg.waypoints.pangolin }
                 FeatureCard(
-                    "pangolin", "Pangolin waypoints", "Marks every Pangolin you see in Torrhus Canyon, rolled in or not", "combat", "mobs", "paw",
+                    "pangolin", "Pangolin waypoints", "Marks every Pangolin you see in Torrhus Canyon, rolled in or not", "foraging", "torrhus", "paw",
                     "A waypoint on each Pangolin in sight, in its own color while it is rolled in. When it slips out of view the waypoint stays where you last saw it for a minute, or until you look there and it is gone. Shared ones show who sent them.",
                     master = toggle("Pangolin waypoints", null, { c().enabled }, { v -> pangolin { copy(enabled = v) } }, d.waypoints.pangolin.enabled),
                     simple = listOf(
