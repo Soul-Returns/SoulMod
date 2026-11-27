@@ -25,6 +25,16 @@ class GainTracker(private val showMs: Long = 5_000) {
     private var gain = 0.0
     private var until = 0L
 
+    init {
+        all += this
+    }
+
+    private fun reset() {
+        last = null
+        gain = 0.0
+        until = 0L
+    }
+
     fun update(value: Double?, nowMs: Long): Double? {
         if (frozen) return null
         if (value == null) {
@@ -41,6 +51,11 @@ class GainTracker(private val showMs: Long = 5_000) {
     }
 
     companion object {
+        private val all: MutableSet<GainTracker> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+        /** Forget every tracker's last reading, so one test's values never turn into another test's gain. */
+        fun resetAll() = all.forEach { it.reset() }
+
         /** Set while the setup screen's preview builds: its sample values are never readings, so they never make a gain. */
         @Volatile
         var frozen = false

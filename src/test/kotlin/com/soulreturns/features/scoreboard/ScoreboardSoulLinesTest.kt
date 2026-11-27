@@ -35,6 +35,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ScoreboardSoulLinesTest {
+    @kotlin.test.BeforeTest
+    fun resetGainTrackers() = com.soulreturns.features.scoreboard.lines.GainTracker.resetAll()
+
     private val tab: List<String> =
         Json.parseToJsonElement(javaClass.getResource("/scoreboard/tab-dwarven-2026-11-15.json")!!.readText()).jsonObject["lines"]!!.jsonArray.map { it.jsonPrimitive.content }
 

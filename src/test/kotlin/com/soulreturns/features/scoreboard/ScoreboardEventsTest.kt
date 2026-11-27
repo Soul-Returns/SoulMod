@@ -33,6 +33,9 @@ import kotlin.test.assertTrue
  * other event is tested on SkyHanni's reference test lines, not on a Hypixel capture (see [EventDefs]).
  */
 class ScoreboardEventsTest {
+    @kotlin.test.BeforeTest
+    fun resetGainTrackers() = com.soulreturns.features.scoreboard.lines.GainTracker.resetAll()
+
     private val file = Json.parseToJsonElement(javaClass.getResource("/scoreboard/events/dungeon-2026-11-12.json")!!.readText()).jsonObject
     private val look = ScoreboardLook()
 

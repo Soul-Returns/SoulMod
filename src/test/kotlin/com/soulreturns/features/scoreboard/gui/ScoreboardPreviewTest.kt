@@ -16,6 +16,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ScoreboardPreviewTest {
+    @kotlin.test.BeforeTest
+    fun resetGainTrackers() = com.soulreturns.features.scoreboard.lines.GainTracker.resetAll()
+
     private val now = 1_764_000_000_000L
 
     /** Every catalogue line that shows everywhere it has a value shows something in every preview place. */

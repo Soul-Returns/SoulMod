@@ -20,6 +20,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ScoreboardTest {
+    @kotlin.test.BeforeTest
+    fun resetGainTrackers() = com.soulreturns.features.scoreboard.lines.GainTracker.resetAll()
+
     private class Capture(val name: String, val title: String, val lines: List<String>)
 
     /** Real sidebars from dev-bridge snapshots (2026-11-15/16). */

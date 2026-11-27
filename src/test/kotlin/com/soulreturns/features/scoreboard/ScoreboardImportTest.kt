@@ -12,6 +12,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ScoreboardImportTest {
+    @kotlin.test.BeforeTest
+    fun resetGainTrackers() = com.soulreturns.features.scoreboard.lines.GainTracker.resetAll()
+
     private val real = javaClass.getResource("/scoreboard/import/config.jsonc")!!.readText()
 
     @Test

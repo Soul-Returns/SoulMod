@@ -31,6 +31,9 @@ import kotlin.test.assertTrue
  * checked against SkyHanni's documented test lines, marked `reference` below.
  */
 class ScoreboardMoneyProgressTest {
+    @kotlin.test.BeforeTest
+    fun resetGainTrackers() = com.soulreturns.features.scoreboard.lines.GainTracker.resetAll()
+
     private val look = ScoreboardLook()
 
     private fun sidebars(path: String) =
