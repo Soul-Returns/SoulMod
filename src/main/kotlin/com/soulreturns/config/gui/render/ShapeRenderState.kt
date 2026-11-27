@@ -173,8 +173,65 @@ class Shapes(private val feather: Float) {
         disc(x1, y1, width / 2f, color)
     }
 
-    /** Submits the quads as one element; chroma quads ([Chroma]) go into a second element drawn after the plain ones. */
-    fun submit(g: GuiGraphicsExtractor) {
+    /** A filled convex polygon through [px]/[py] (either winding), AA on its rim. */
+    fun polygon(px: FloatArray, py: FloatArray, color: Int) {
+        val k = min(px.size, py.size)
+        if (k < 3) return
+        val clear = color and 0x00FFFFFF
+        var gx = 0f
+        var gy = 0f
+        for (i in 0 until k) {
+            gx += px[i] / k
+            gy += py[i] / k
+        }
+        // Unit outward normal of each edge i -> i+1.
+        val nx = FloatArray(k)
+        val ny = FloatArray(k)
+        for (i in 0 until k) {
+            val j = (i + 1) % k
+            val dx = px[j] - px[i]
+            val dy = py[j] - py[i]
+            val len = sqrt(dx * dx + dy * dy).coerceAtLeast(1e-4f)
+            var ex = dy / len
+            var ey = -dx / len
+            if (ex * ((px[i] + px[j]) / 2f - gx) + ey * ((py[i] + py[j]) / 2f - gy) < 0f) {
+                ex = -ex
+                ey = -ey
+            }
+            nx[i] = ex
+            ny[i] = ey
+        }
+        // Each corner moves along the bisector so both edges shift by half a feather (miter, capped).
+        val ix = FloatArray(k)
+        val iy = FloatArray(k)
+        val ox = FloatArray(k)
+        val oy = FloatArray(k)
+        val h = feather / 2f
+        for (i in 0 until k) {
+            val p = (i + k - 1) % k
+            var bx = nx[p] + nx[i]
+            var by = ny[p] + ny[i]
+            val bl = sqrt(bx * bx + by * by).coerceAtLeast(1e-4f)
+            bx /= bl
+            by /= bl
+            val d = h / max(0.34f, bx * nx[i] + by * ny[i])
+            ix[i] = px[i] - bx * d
+            iy[i] = py[i] - by * d
+            ox[i] = px[i] + bx * d
+            oy[i] = py[i] + by * d
+        }
+        for (i in 1 until k - 1) quad(ix[0], iy[0], color, ix[i], iy[i], color, ix[i + 1], iy[i + 1], color, ix[i + 1], iy[i + 1], color)
+        for (i in 0 until k) {
+            val j = (i + 1) % k
+            quad(ix[i], iy[i], color, ox[i], oy[i], clear, ox[j], oy[j], clear, ix[j], iy[j], color)
+        }
+    }
+
+    /**
+     * Submits the quads as one element; chroma quads ([Chroma]) go into a second element drawn after the plain ones.
+     * [scissor] (screen coordinates, as `beginClip` records it) clips them; null = none.
+     */
+    fun submit(g: GuiGraphicsExtractor, scissor: ScreenRectangle? = null) {
         if (n == 0) return
         val pose = Matrix3x2f(g.pose())
         val b = ScreenRectangle(floor(minX).toInt() - 1, floor(minY).toInt() - 1, (ceil(maxX) - floor(minX)).toInt() + 2, (ceil(maxY) - floor(minY)).toInt() + 2)
@@ -182,7 +239,7 @@ class Shapes(private val feather: Float) {
         var chromaN = 0
         for (i in 0 until n) if (Chroma.isChroma(cs[i])) chromaN++
         if (chromaN == 0 || chromaN == n) {
-            g.guiRenderState.addGuiElement(ShapeRenderState(pose, xs, ys, cs, n, b, chroma = chromaN == n))
+            g.guiRenderState.addGuiElement(ShapeRenderState(pose, xs, ys, cs, n, b, chroma = chromaN == n, scissor = scissor))
         } else {
             // Quads never mix: a quad's four vertices share one color's RGB (its feather only drops the alpha).
             val px = FloatArray(n - chromaN)
@@ -200,8 +257,8 @@ class Shapes(private val feather: Float) {
                     px[p] = xs[i]; py[p] = ys[i]; pc[p] = cs[i]; p++
                 }
             }
-            g.guiRenderState.addGuiElement(ShapeRenderState(pose, px, py, pc, p, b))
-            g.guiRenderState.addGuiElement(ShapeRenderState(pose, qx, qy, qc, q, b, chroma = true))
+            g.guiRenderState.addGuiElement(ShapeRenderState(pose, px, py, pc, p, b, scissor = scissor))
+            g.guiRenderState.addGuiElement(ShapeRenderState(pose, qx, qy, qc, q, b, chroma = true, scissor = scissor))
         }
         xs = FloatArray(256)
         ys = FloatArray(256)

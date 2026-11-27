@@ -96,7 +96,7 @@ object ConfigRegistry {
     /** An activity's tabs that hold at least one card. */
     fun tabsOf(activity: String): List<ActivityTab> = activity(activity)?.tabs.orEmpty().filter { cardsIn(activity, it.id).isNotEmpty() }
 
-    fun card(id: String): FeatureCard? = cardById[id]
+    fun card(id: String): FeatureCard? = cardById[id]?.takeIf { !it.secret || cfg.meow.unlocked }
 
     /** The card a merged-card part belongs to, if any. */
     fun masterOf(part: ConfigOption): FeatureCard? = cards.firstOrNull { c -> c.parts.any { it === part } }
@@ -215,7 +215,12 @@ object ConfigRegistry {
     private val FISHING_AREAS = listOf("Backwater Bayou", "Crimson Isle")
 
     // ---------------------------------------------------------------- feature cards
-    val cards: List<FeatureCard> by lazy {
+    /** Every card a player can see: a secret one ([FeatureCard.secret]) joins only once found (`meow.unlocked`). */
+    val cards: List<FeatureCard> get() = if (cfg.meow.unlocked) allCards else shownCards
+
+    private val shownCards: List<FeatureCard> by lazy { allCards.filter { !it.secret } }
+
+    private val allCards: List<FeatureCard> by lazy {
         listOf(
             // Dungeons › Runs & party
             card("dmap") {
@@ -1117,6 +1122,25 @@ object ConfigRegistry {
                 )
             },
             // Everyday › Controls
+            // The secret Auto meow (S-70, `mocks/meow/`): in no list, search or What's new until found
+            // (features/chat/AutoMeow: "meow" typed into the search, or /soul meow).
+            card("meow") {
+                fun meowCfg(block: com.soulreturns.config.AutoMeowConfig.() -> com.soulreturns.config.AutoMeowConfig) = ConfigManager.update { copy(meow = meow.block()) }
+                FeatureCard(
+                    "meow", "Auto meow", "Meows back when someone meows in chat", "everyday", "controls", "paw",
+                    "When someone writes exactly \"meow\" in a chat you pick, Soul answers \"meow\" in the same chat. Just the word, never with a [Soul] tag. One answer, then every meow is ignored for 20 seconds.",
+                    master = toggle("Auto meow", null, { cfg.meow.enabled }, { v -> meowCfg { copy(enabled = v) } }, d.meow.enabled),
+                    simple = listOf(
+                        toggle("Co-op chat", "Answers with /cc", { cfg.meow.coop }, { v -> meowCfg { copy(coop = v) } }, d.meow.coop),
+                        toggle("Party chat", "Answers with /pc", { cfg.meow.party }, { v -> meowCfg { copy(party = v) } }, d.meow.party),
+                        toggle("Private messages", "Answers the sender with /r", { cfg.meow.privateMessages }, { v -> meowCfg { copy(privateMessages = v) } }, d.meow.privateMessages),
+                        toggle("Guild chat", "Answers with /gc", { cfg.meow.guild }, { v -> meowCfg { copy(guild = v) } }, d.meow.guild),
+                        toggle("All chat", "Answers with /ac", { cfg.meow.all }, { v -> meowCfg { copy(all = v) } }, d.meow.all),
+                    ),
+                    synonyms = listOf("meow", "cat", "secret"),
+                    secret = true,
+                )
+            },
             card("sprint") {
                 val indicator = { cfg.general.toggleSprintHud }
                 FeatureCard(
@@ -1176,7 +1200,7 @@ object ConfigRegistry {
         )
     }
 
-    private val cardById: Map<String, FeatureCard> by lazy { cards.associateBy { it.id } }
+    private val cardById: Map<String, FeatureCard> by lazy { allCards.associateBy { it.id } }
 
     /** Rows that carry the HUD chip in their label (a panel row that adds a HUD to its card). */
     val hudTagged: Set<ConfigOption> get() = hudTaggedRows

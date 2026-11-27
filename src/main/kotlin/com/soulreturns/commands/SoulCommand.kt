@@ -148,6 +148,8 @@ object SoulCommand {
                     .then(SpvCommand.node())
                     // `/soul update [check|install|skip|close]` — the updater's chat buttons run these.
                     .then(com.soulreturns.features.updater.UpdateNotices.node())
+                    // `/soul meow` — Auto meow's second door: unlocks it, then replays the reveal.
+                    .then(com.soulreturns.features.chat.AutoMeow.node())
                     // `/soul friends …`, `/soul contests …` — the contest chat buttons run these.
                     .then(com.soulreturns.features.contests.ContestsCommand.friendsNode())
                     .then(com.soulreturns.features.contests.ContestsCommand.contestsNode())

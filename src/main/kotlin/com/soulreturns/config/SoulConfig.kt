@@ -170,6 +170,8 @@ data class SoulConfig(
     val contests: ContestsConfig = ContestsConfig(),
     /** How every chroma color moves ([ChromaConfig]); Settings › Interface › Chroma. */
     val chroma: ChromaConfig = ChromaConfig(),
+    /** Auto meow, the secret card ([AutoMeowConfig]). */
+    val meow: AutoMeowConfig = AutoMeowConfig(),
     val dev: DevConfig = DevConfig(),
     /** The config menu's own state (pins, recently changed, seen NEW, layout); not a feature setting. */
     val menu: ConfigMenuState = ConfigMenuState(),

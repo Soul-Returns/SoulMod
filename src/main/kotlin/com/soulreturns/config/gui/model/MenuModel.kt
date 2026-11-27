@@ -52,6 +52,8 @@ class FeatureCard(
     val beta: Boolean = false,
     /** Null = nothing missing; else what has to be on first (the switch stays off and disabled). */
     val blockedBy: () -> String? = { null },
+    /** A secret: absent from [com.soulreturns.config.gui.ConfigRegistry.cards] until found, then shown with the paw + SECRET chip. */
+    val secret: Boolean = false,
 )
 
 /** A titled block on a Settings tab. */

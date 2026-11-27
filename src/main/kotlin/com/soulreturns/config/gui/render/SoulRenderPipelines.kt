@@ -61,6 +61,7 @@ object SoulRenderPipelines {
     val STROKE_2_R4: RenderPipeline = round("stroke_2_r4", radius = 4f, stroke = 2f)
     val STROKE_2_R7: RenderPipeline = round("stroke_2_r7", radius = 7f, stroke = 2f)
     val STROKE_2_R10: RenderPipeline = round("stroke_2_r10", radius = 10f, stroke = 2f)
+    val STROKE_1_R10: RenderPipeline = round("stroke_1_r10", radius = 10f, stroke = 1f)
     val STROKE_3_R8: RenderPipeline = round("stroke_3_r8", radius = 8f, stroke = 3f)
     val STROKE_1_PILL: RenderPipeline = round("stroke_1_pill", pill = true, stroke = 1f)
 

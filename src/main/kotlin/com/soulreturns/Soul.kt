@@ -217,6 +217,7 @@ object Soul : ClientModInitializer {
         FishingXpTracker.register()
         BobbinSpotter.register()
         DoubleHookResponse.register()
+        com.soulreturns.features.chat.AutoMeow.register()
         NoFrontCamera.register()
         PauseMenuButtons.register()
         ToggleSprint.register()

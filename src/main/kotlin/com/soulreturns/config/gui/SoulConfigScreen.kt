@@ -18,6 +18,9 @@ import com.soulreturns.config.gui.model.SettingsSection
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.config.gui.render.Shapes
+import com.soulreturns.features.chat.AutoMeow
+import com.soulreturns.features.chat.MeowReveal
 import com.soulreturns.features.dungeons.map.DungeonMapConfigScreen
 import com.soulreturns.features.dungeons.sync.SoulBackendChannel
 import com.soulreturns.features.fishing.FishingTracker
@@ -751,12 +754,24 @@ class SoulConfigScreen(
         if (MenuState.isNew("f:${card.id}")) chips += Triple("NEW", Theme.ACCENT_LIGHT, Theme.NEW_BG)
         if (card.beta) chips += Triple("BETA", Theme.BETA, Theme.BETA_BG)
         if (card.hud) chips += Triple("HUD", Theme.TEXT_DIM, CHIP_HUD_BG)
-        val chipsW = chips.sumOf { chipWidth(it.first) + 6 }
+        val chipsW = chips.sumOf { chipWidth(it.first) + 6 } + if (card.secret) secretChipWidth() + 6 else 0
         val name = ellipsize(card.name, (maxW - chipsW).coerceAtLeast(20), fBody, semi)
         drawTextV(g, name, x, cy - 7, cy + 7, Theme.TEXT, fBody, semi)
         var cx = x + textWidth(name, fBody, semi) + 6
+        if (card.secret) cx += secretChip(g, cx, cy) + 6
         for ((t, fg, bg) in chips) cx += drawChip(g, cx, cy, t, fg, bg) + 6
         if (extra != null) drawTextV(g, ellipsize(extra, x + maxW - cx, fCaption), cx + 2, cy - 7, cy + 7, Theme.TEXT_FAINT, fCaption)
+    }
+
+    private fun secretChipWidth(): Int = 12 + chipWidth("SECRET")
+
+    /** A found secret card's paw + SECRET chip (mock `mocks/meow/` `.paw-chip`), 12 px tall on [cy]; returns its width. */
+    private fun secretChip(g: GuiGraphicsExtractor, x: Int, cy: Int): Int {
+        val w = secretChipWidth()
+        roundRect(g, x, cy - 6, x + w, cy + 6, Theme.NEW_BG, SoulRenderPipelines.ROUND_SMALL)
+        Shapes(1f / SoulUi.scale).also { MeowReveal.paw(it, x + 8.5f, cy.toFloat(), 9f, 0.0, Theme.ACCENT_LIGHT) }.submit(g, currentClip)
+        drawChip(g, x + 12, cy, "SECRET", Theme.ACCENT_LIGHT, 0)
+        return w
     }
 
     private fun iconBox(g: GuiGraphicsExtractor, icon: String, x: Int, y: Int, size: Int, glyph: Int, on: Boolean) {
@@ -874,7 +889,9 @@ class SoulConfigScreen(
         pinButton(g, mx, my, card, right - 20, y + 5, viewport)
         right -= 20 + 10
         val tx = ix0 + 30 + 10
-        drawTextV(g, ellipsize(card.name, right - tx, fHeading, MsdfFonts.menuSemibold), tx, y + 1, y + 17, Theme.TEXT, fHeading, MsdfFonts.menuSemibold)
+        val heading = ellipsize(card.name, right - tx - if (card.secret) secretChipWidth() + 8 else 0, fHeading, MsdfFonts.menuSemibold)
+        drawTextV(g, heading, tx, y + 1, y + 17, Theme.TEXT, fHeading, MsdfFonts.menuSemibold)
+        if (card.secret) secretChip(g, tx + textWidth(heading, fHeading, MsdfFonts.menuSemibold) + 8, y + 9)
         drawTextV(g, ellipsize(ConfigRegistry.pathOf(card), right - tx, fCaption), tx, y + 17, y + 29, Theme.TEXT_FAINT, fCaption)
         y += 30 + 9
 
@@ -1563,7 +1580,7 @@ class SoulConfigScreen(
         if (onboardingOpen) return
         commit()
         closeDropdown()
-        paletteIndex = MenuSearch.index(ConfigRegistry.cards, ConfigRegistry.visibleSettingsTabs(), ConfigRegistry.optionSynonyms)
+        indexPalette()
         paletteField.set("")
         paletteField.focused = true
         paletteOpen = true
@@ -1573,9 +1590,30 @@ class SoulConfigScreen(
 
     private fun closePalette() {
         paletteOpen = false
+        meowRevealAt = 0L
+    }
+
+    private fun indexPalette() {
+        paletteIndex = MenuSearch.index(ConfigRegistry.cards, ConfigRegistry.visibleSettingsTabs(), ConfigRegistry.optionSynonyms)
+    }
+
+    /** When the Auto meow reveal started (exactly "meow" typed while it was still secret); 0 = none. */
+    private var meowRevealAt = 0L
+
+    /** Seconds into the reveal, or null when none plays (it ends when the cat is gone). */
+    private fun meowRevealT(): Double? {
+        if (meowRevealAt == 0L) return null
+        val t = (System.currentTimeMillis() - meowRevealAt) / 1000.0
+        if (t < MeowReveal.CAT_END) return t
+        meowRevealAt = 0L
+        return null
     }
 
     private fun refreshPalette(selectBest: Boolean) {
+        if (AutoMeow.unlockBySearch(paletteField.text)) {
+            indexPalette()
+            meowRevealAt = System.currentTimeMillis()
+        }
         paletteGroups = MenuSearch.results(paletteIndex, paletteField.text, RightNow.cards(ConfigRegistry.cards, now))
         if (selectBest) paletteSel = MenuSearch.bestIndex(paletteGroups)
         val n = paletteGroups.sumOf { it.items.size }
@@ -1643,6 +1681,31 @@ class SoulConfigScreen(
         st.view = listH
         st.content = contentH
         val viewport = intArrayOf(x0, ly0, x1, ly1)
+        // Auto meow's reveal (mocks/meow/): the prints walk up to the found row and the cat peeks out over
+        // it, both under the row, which pops in at its beat.
+        var meowT = meowRevealT()
+        if (meowT != null) {
+            var rowTop = Int.MIN_VALUE
+            var gy = ly0 - st.pos.roundToInt()
+            for (grp in paletteGroups) {
+                gy += headH
+                val k = grp.items.indexOfFirst { it.kind == SearchItem.Kind.FEATURE && it.card?.secret == true }
+                if (k >= 0) {
+                    rowTop = gy + k * rowH
+                    break
+                }
+                gy += grp.items.size * rowH
+            }
+            if (rowTop == Int.MIN_VALUE) {
+                meowRevealAt = 0L
+                meowT = null
+            } else {
+                val feather = 1f / SoulUi.scale
+                MeowReveal.trail(g, meowT, (x0 - 215).toFloat(), minOf(y0 + 468, uiH - 30).toFloat(), (x0 + 155).toFloat(), (rowTop + rowH - 1).toFloat(), 10, feather)
+                MeowReveal.cat(g, meowT, x1 - 170, rowTop + MeowReveal.CAT_OVERLAP - MeowReveal.CAT_H, feather)
+            }
+        }
+        var meowCover: FloatArray? = null
         beginClip(g, x0, ly0, x1, ly1)
         var y = ly0 - st.pos.roundToInt()
         val top = y
@@ -1666,15 +1729,45 @@ class SoulConfigScreen(
                 val inView = my in ly0..ly1
                 if (inView && mx in rx0..rx1 && my in ry0..ry1 && (lastHoverX != mx || lastHoverY != my)) paletteSel = idx
                 val sel = idx == paletteSel
+                val popping = meowT != null && it.kind == SearchItem.Kind.FEATURE && it.card?.secret == true
+                if (popping) {
+                    val pa = MeowReveal.popAlpha(meowT!!)
+                    if (pa <= 0f) {
+                        y = ry1
+                        continue
+                    }
+                    val ps = MeowReveal.popScale(meowT)
+                    val ox = (rx0 + rx1) / 2f
+                    g.pose().pushMatrix()
+                    g.pose().translate(ox, ry1.toFloat())
+                    g.pose().scale(ps, ps)
+                    g.pose().translate(-ox, -ry1.toFloat())
+                    if (pa < 1f) meowCover = floatArrayOf(rx0.toFloat(), ry0.toFloat(), rx1.toFloat(), ry1.toFloat(), ps, pa)
+                }
                 if (sel) {
                     roundRect(g, rx0, ry0, rx1, ry1, Theme.ACCENT, SoulRenderPipelines.ROUND_MEDIUM)
                     roundRect(g, rx0 + 1, ry0 + 1, rx1 - 1, ry1 - 1, Theme.PALETTE_SELECTED, SoulRenderPipelines.ROUND_MEDIUM)
                 }
                 paletteRow(g, it, rx0, ry0, rx1, ry1, sel, viewport)
+                if (popping) g.pose().popMatrix()
                 y = ry1
             }
         }
         endClip(g)
+        val cover = meowCover
+        if (cover != null) {
+            // The row fades in: text draws over every fill of its stratum, so the cover goes one above.
+            g.nextStratum()
+            beginClip(g, x0, ly0, x1, ly1)
+            val ox = (cover[0] + cover[2]) / 2f
+            g.pose().pushMatrix()
+            g.pose().translate(ox, cover[3])
+            g.pose().scale(cover[4], cover[4])
+            g.pose().translate(-ox, -cover[3])
+            roundRect(g, cover[0].toInt() - 1, cover[1].toInt() - 1, cover[2].toInt() + 1, cover[3].toInt() + 1, ((((1f - cover[5]) * 255).roundToInt()) shl 24) or (Theme.PALETTE and 0xFFFFFF), SoulRenderPipelines.ROUND_MEDIUM)
+            g.pose().popMatrix()
+            endClip(g)
+        }
         lastHoverX = mx
         lastHoverY = my
         drawScrollbar(g, mx, my, st, x0, ly0, x1, ly1)
@@ -1725,7 +1818,8 @@ class SoulConfigScreen(
         val tx = x0 + 8 + 24 + 9
         val semi = MsdfFonts.menuSemibold
         // Name with the first query token highlighted.
-        val name = ellipsize(it.name, right - tx - (if (card?.beta == true && it.kind == SearchItem.Kind.FEATURE) chipWidth("BETA") + 6 else 0), fBody, semi)
+        val chipW = if (it.kind != SearchItem.Kind.FEATURE) 0 else if (card?.secret == true) secretChipWidth() + 6 else if (card?.beta == true) chipWidth("BETA") + 6 else 0
+        val name = ellipsize(it.name, right - tx - chipW, fBody, semi)
         val tok = MenuSearch.tokens(paletteField.text).firstOrNull()
         val at = if (tok == null) -1 else name.lowercase().indexOf(tok)
         val ny0 = cy - 13
@@ -1743,7 +1837,8 @@ class SoulConfigScreen(
             nx += textWidth(b, fBody, semi)
             drawTextV(g, c, nx, ny0, ny1, Theme.TEXT, fBody, semi)
         }
-        if (card?.beta == true && it.kind == SearchItem.Kind.FEATURE) drawChip(g, tx + textWidth(name, fBody, semi) + 6, (ny0 + ny1) / 2, "BETA", Theme.BETA, Theme.BETA_BG)
+        if (card?.secret == true && it.kind == SearchItem.Kind.FEATURE) secretChip(g, tx + textWidth(name, fBody, semi) + 6, (ny0 + ny1) / 2)
+        else if (card?.beta == true && it.kind == SearchItem.Kind.FEATURE) drawChip(g, tx + textWidth(name, fBody, semi) + 6, (ny0 + ny1) / 2, "BETA", Theme.BETA, Theme.BETA_BG)
         val sub = if (it.kind == SearchItem.Kind.SETTING && it.advanced) "${it.path} · Advanced" else it.path
         drawTextV(g, ellipsize(sub, right - tx, F_9_5), tx, cy + 1, cy + 13, Theme.TEXT_DIM, F_9_5)
         clippedRegion(x0, y0, x1, y1, viewport) { choose(it) }
