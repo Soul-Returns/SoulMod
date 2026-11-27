@@ -3,6 +3,7 @@ package com.soulreturns.features.pets
 import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import com.soulreturns.config.gui.render.RoundRectRenderState
+import com.soulreturns.config.gui.render.SoulRenderPipelines
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.renderer.RenderPipelines
@@ -22,19 +23,21 @@ object PetGlow {
     private const val RADIUS = 4f
 
     private val PIPELINE: RenderPipeline by lazy {
-        RenderPipelines.register(
-            RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
-                .withLocation(Identifier.fromNamespaceAndPath("soul", "pipeline/pet_glow"))
-                .withVertexShader(Identifier.fromNamespaceAndPath("soul", "core/round_rect"))
-                .withFragmentShader(Identifier.fromNamespaceAndPath("soul", "core/pet_glow"))
-                .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
-                .withShaderDefine("RADIUS", RADIUS)
-                .withShaderDefine("SPREAD", SPREAD.toFloat())
-                .withShaderDefine("RING", 1.5f)
-                .withShaderDefine("BLUR", 10f)
-                .withShaderDefine("BLUR_SPREAD", 1f)
-                .build(),
-        )
+        SoulRenderPipelines.withChroma { chroma ->
+            var b =
+                RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
+                    .withLocation(Identifier.fromNamespaceAndPath("soul", if (chroma) "pipeline/pet_glow_chroma" else "pipeline/pet_glow"))
+                    .withVertexShader(Identifier.fromNamespaceAndPath("soul", "core/round_rect"))
+                    .withFragmentShader(Identifier.fromNamespaceAndPath("soul", "core/pet_glow"))
+                    .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+                    .withShaderDefine("RADIUS", RADIUS)
+                    .withShaderDefine("SPREAD", SPREAD.toFloat())
+                    .withShaderDefine("RING", 1.5f)
+                    .withShaderDefine("BLUR", 10f)
+                    .withShaderDefine("BLUR_SPREAD", 1f)
+            if (chroma) b = b.withShaderDefine("CHROMA")
+            RenderPipelines.register(b.build())
+        }
     }
 
     /** Glow around a card of [w] × [h] at the origin, in [argb] (alpha = intensity). */

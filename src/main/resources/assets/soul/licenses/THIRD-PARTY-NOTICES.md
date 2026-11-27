@@ -23,7 +23,9 @@ https://github.com/hannibal002/SkyHanni, by hannibal002 and contributors. The sc
 list (`SkyblockState`), the rarity tints (`SkyblockRarity`), the SkyBlock level colors
 (`InventoryInfoEntries`), the Precursor part list (`NucleusChat`) and the price-source and
 sea-creature matching semantics were taken from or modeled on SkyHanni. Soul uses these copies under
-the GNU GPL (LGPL-2.1 §3). License text: `LGPL-2.1.txt`.
+the GNU GPL (LGPL-2.1 §3). The screen-space chroma field (`render/Chroma`: a diagonal rainbow moving
+down-right, `(x + y) / size - time`) follows SkyHanni's chroma shader as a reference; no shader code was
+copied. License text: `LGPL-2.1.txt`.
 
 ### Skyblocker — LGPL-3.0
 https://github.com/SkyblockerMod/Skyblocker, by the Skyblocker contributors. The nine Arrow Align

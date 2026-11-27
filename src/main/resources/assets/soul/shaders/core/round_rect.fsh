@@ -18,6 +18,15 @@ flat in vec2 halfSize;
 in vec4 vertexColor;
 
 out vec4 fragColor;
+#ifdef CHROMA
+// Screen-space chroma (config/gui/render/Chroma.kt): the hue parameter (x + y) * slope - phase, interpolated
+// exactly (it is linear in screen position); the color is the full-saturation rainbow at its fractional part.
+in float chromaHue;
+
+vec3 chromaRgb(float h) {
+    return clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+}
+#endif
 
 #ifndef RADIUS
 #define RADIUS 6.0
@@ -117,6 +126,10 @@ void main() {
     if (alpha <= 0.0) {
         discard;
     }
+#ifdef CHROMA
+    vec4 color = vec4(chromaRgb(chromaHue), vertexColor.a) * ColorModulator;
+#else
     vec4 color = vertexColor * ColorModulator;
+#endif
     fragColor = vec4(color.rgb, color.a * alpha);
 }

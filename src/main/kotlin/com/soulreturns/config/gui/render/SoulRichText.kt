@@ -135,12 +135,12 @@ object SoulRichText {
                 g.pose().pushMatrix()
                 g.pose().translate(px.toFloat(), y.toFloat())
                 g.pose().scale(scale, scale)
-                g.text(mc.font, styled(span, text, boldFont), 0, 0, color, shadow)
+                SoulText.mcText(g, mc.font, text, span.bold || boldFont, 0, 0, color, shadow)
                 g.pose().popMatrix()
             }
             val thickness = mcScale(size).roundToInt().coerceAtLeast(1)
-            if (span.underline) g.fill(px, y + (size * 9f / 8f).roundToInt() - thickness, px + w.roundToInt(), y + (size * 9f / 8f).roundToInt(), color)
-            if (span.strikethrough) g.fill(px, y + (size * 4f / 8f).roundToInt(), px + w.roundToInt(), y + (size * 4f / 8f).roundToInt() + thickness, color)
+            if (span.underline) Chroma.fill(g, px, y + (size * 9f / 8f).roundToInt() - thickness, px + w.roundToInt(), y + (size * 9f / 8f).roundToInt(), color)
+            if (span.strikethrough) Chroma.fill(g, px, y + (size * 4f / 8f).roundToInt(), px + w.roundToInt(), y + (size * 4f / 8f).roundToInt() + thickness, color)
             pen += w
         }
     }

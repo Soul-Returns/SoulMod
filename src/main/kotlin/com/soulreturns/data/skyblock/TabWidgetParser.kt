@@ -23,6 +23,12 @@ class TabRead(
 )
 
 /**
+ * One tab widget as Hypixel draws it: [name] is the header's text before the colon (`Commissions`,
+ * `Pet`, `Area`), [lines] the header line and its body lines as legacy `§` strings, in display order.
+ */
+data class TabWidgetBlock(val name: String, val lines: List<String>)
+
+/**
  * Parses SkyBlock's tab widgets out of the tab list lines, **in display order**, as legacy `§`
  * strings (colors are needed for the pet's rarity). Pure string logic, no MC API.
  *
@@ -62,6 +68,40 @@ object TabWidgetParser {
 
     private val AMOUNT = Regex("([\\d,]+(?:\\.\\d+)?)\\s*([kKmMbBtT]?)")
     private val DURATION_PART = Regex("(\\d+)\\s*(days?|d|hours?|h|minutes?|mins?|m|seconds?|secs?|s)\\b", RegexOption.IGNORE_CASE)
+
+    /**
+     * Every widget in [legacyLines] (display order), with the same boundaries as [parse]: a header at
+     * column 0 with a colon starts one, one-space body lines belong to it, a blank line or a centered
+     * title (2+ spaces) ends it. Names are never validated; a repeated name keeps both widgets.
+     */
+    fun widgets(legacyLines: List<String>): List<TabWidgetBlock> {
+        val out = ArrayList<TabWidgetBlock>()
+        var name: String? = null
+        var lines = ArrayList<String>()
+        fun close() {
+            name?.let { out += TabWidgetBlock(it, lines) }
+            name = null
+            lines = ArrayList()
+        }
+        for (legacy in legacyLines) {
+            val line = MessageDetector.stripColorCodes(legacy).trimEnd()
+            val indent = line.length - line.trimStart().length
+            if (line.isBlank() || indent >= 2) {
+                close()
+                continue
+            }
+            if (indent == 0) {
+                close()
+                val match = HEADER.matchEntire(line) ?: continue
+                name = match.groupValues[1].trim()
+                lines += legacy
+                continue
+            }
+            if (name != null) lines += legacy
+        }
+        close()
+        return out
+    }
 
     fun parse(legacyLines: List<String>, nowMs: Long = System.currentTimeMillis()): TabRead {
         val headers = ArrayList<String>()

@@ -21,6 +21,7 @@ import kotlin.math.sqrt
  * Free-form colored quads (vanilla [RenderPipelines.GUI], POSITION_COLOR): arcs and stroked lines
  * that the SDF rectangles cannot draw. Anti-aliased by a feather band whose vertex alpha fades to 0
  * over about one physical pixel on each side. Build with [Shapes], submit once per shape group.
+ * [chroma]: every vertex is a chroma color ([Chroma]); drawn with the GUI pipeline's chroma variant.
  */
 class ShapeRenderState(
     private val pose: Matrix3x2fc,
@@ -30,18 +31,30 @@ class ShapeRenderState(
     private val colors: IntArray,
     private val count: Int,
     private val bnds: ScreenRectangle,
+    private val chroma: Boolean = false,
+    /** The GL scissor (as vanilla's `fill` takes it from the extractor's scissor stack); null = none. */
+    private val scissor: ScreenRectangle? = null,
 ) : GuiElementRenderState {
+    private val pipeline = (if (chroma) SoulRenderPipelines.chroma(RenderPipelines.GUI) else null) ?: RenderPipelines.GUI
+    private val clipped: ScreenRectangle? = if (scissor == null) bnds else scissor.intersection(bnds)
+
     override fun buildVertices(vertexConsumer: VertexConsumer) {
+        if (chroma) {
+            val slope = Chroma.slope()
+            val phase = Chroma.phase()
+            for (i in 0 until count) Chroma.vertex(vertexConsumer, pose, xs[i], ys[i], slope, phase).setColor(colors[i])
+            return
+        }
         for (i in 0 until count) vertexConsumer.addVertexWith2DPose(pose, xs[i], ys[i]).setColor(colors[i])
     }
 
-    override fun pipeline() = RenderPipelines.GUI
+    override fun pipeline() = pipeline
 
     override fun textureSetup(): TextureSetup = TextureSetup.noTexture()
 
-    override fun scissorArea(): ScreenRectangle? = null
+    override fun scissorArea(): ScreenRectangle? = scissor
 
-    override fun bounds(): ScreenRectangle = bnds
+    override fun bounds(): ScreenRectangle? = clipped
 }
 
 /**
@@ -160,12 +173,36 @@ class Shapes(private val feather: Float) {
         disc(x1, y1, width / 2f, color)
     }
 
+    /** Submits the quads as one element; chroma quads ([Chroma]) go into a second element drawn after the plain ones. */
     fun submit(g: GuiGraphicsExtractor) {
         if (n == 0) return
         val pose = Matrix3x2f(g.pose())
         val b = ScreenRectangle(floor(minX).toInt() - 1, floor(minY).toInt() - 1, (ceil(maxX) - floor(minX)).toInt() + 2, (ceil(maxY) - floor(minY)).toInt() + 2)
             .transformMaxBounds(pose)
-        g.guiRenderState.addGuiElement(ShapeRenderState(pose, xs, ys, cs, n, b))
+        var chromaN = 0
+        for (i in 0 until n) if (Chroma.isChroma(cs[i])) chromaN++
+        if (chromaN == 0 || chromaN == n) {
+            g.guiRenderState.addGuiElement(ShapeRenderState(pose, xs, ys, cs, n, b, chroma = chromaN == n))
+        } else {
+            // Quads never mix: a quad's four vertices share one color's RGB (its feather only drops the alpha).
+            val px = FloatArray(n - chromaN)
+            val py = FloatArray(n - chromaN)
+            val pc = IntArray(n - chromaN)
+            val qx = FloatArray(chromaN)
+            val qy = FloatArray(chromaN)
+            val qc = IntArray(chromaN)
+            var p = 0
+            var q = 0
+            for (i in 0 until n) {
+                if (Chroma.isChroma(cs[i])) {
+                    qx[q] = xs[i]; qy[q] = ys[i]; qc[q] = cs[i]; q++
+                } else {
+                    px[p] = xs[i]; py[p] = ys[i]; pc[p] = cs[i]; p++
+                }
+            }
+            g.guiRenderState.addGuiElement(ShapeRenderState(pose, px, py, pc, p, b))
+            g.guiRenderState.addGuiElement(ShapeRenderState(pose, qx, qy, qc, q, b, chroma = true))
+        }
         xs = FloatArray(256)
         ys = FloatArray(256)
         cs = IntArray(256)

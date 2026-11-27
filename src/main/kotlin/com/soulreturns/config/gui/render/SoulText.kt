@@ -6,6 +6,9 @@ import com.mojang.blaze3d.textures.FilterMode
 import com.mojang.blaze3d.textures.GpuTextureView
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
+import net.minecraft.client.gui.Font
+import net.minecraft.network.chat.Component
+import net.minecraft.network.chat.Style
 import net.minecraft.client.gui.navigation.ScreenRectangle
 import net.minecraft.client.gui.render.TextureSetup
 import com.soulreturns.config.cfg
@@ -370,7 +373,29 @@ object SoulText {
         val scale = mcScale(size)
         g.pose().pushMatrix()
         g.pose().scale(scale, scale)
-        g.text(f, text, (x / scale).roundToInt(), (y / scale).roundToInt(), color, shadow)
+        mcText(g, f, text, false, (x / scale).roundToInt(), (y / scale).roundToInt(), color, shadow)
         g.pose().popMatrix()
+    }
+
+    /**
+     * Vanilla text at ([x], [y]) of the current pose. Vanilla's text pipeline cannot take a chroma color ([Chroma]),
+     * so chroma text goes letter by letter, each in the rainbow's color at its center.
+     */
+    internal fun mcText(g: GuiGraphicsExtractor, f: Font, text: String, bold: Boolean, x: Int, y: Int, color: Int, shadow: Boolean) {
+        val style = Style.EMPTY.withBold(bold)
+        if (!Chroma.isChroma(color)) {
+            g.text(f, Component.literal(text).withStyle(style), x, y, color, shadow)
+            return
+        }
+        var px = x
+        var i = 0
+        while (i < text.length) {
+            val n = Character.charCount(text.codePointAt(i))
+            val letter = Component.literal(text.substring(i, i + n)).withStyle(style)
+            val w = f.width(letter)
+            g.text(f, letter, px, y, Chroma.flatten(color, g.pose(), px + w / 2f, y + 4f), shadow)
+            px += w
+            i += n
+        }
     }
 }

@@ -26,7 +26,7 @@ object MetalDetectorWaypoints {
         val eye = mc.gameRenderer.mainCamera().position()
 
         val md = cfg.mining.metalDetector
-        val color = md.waypointColor.effective()
+        val color = md.waypointColor.flat()
         mc.levelRenderer.collectPerFrameRenderThreadGizmos().use {
             val solved = sol.solved
             if (solved != null) {

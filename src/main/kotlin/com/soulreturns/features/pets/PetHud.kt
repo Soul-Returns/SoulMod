@@ -21,7 +21,6 @@ import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.gui.screens.Screen
 import org.joml.Matrix3x2f
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -350,35 +349,10 @@ object PetHud : MovableHud("pet_hud", "Pet HUD", "general") {
         val w = x1 - x0
         val fw = maxOf(h, (w * fraction.coerceIn(0.0, 1.0)).roundToInt())
         val fx1 = x0 + fw
-        val chroma = c.barMode == PetHudFormats.BAR_FIXED && c.barColor.chroma
-        if (chroma) {
-            chromaFill(g, x0, y0, fx1, h, w, alpha, c)
-        } else {
-            val color = if (c.barMode == PetHudFormats.BAR_RARITY) PetHudModel.rarityColor(view) else c.barColor.effective()
-            rect(g, SoulRenderPipelines.ROUND_PILL, x0, y0, fx1, y0 + h, fade(color, alpha))
-        }
+        // A chroma bar color is a window onto Soul's shared screen-space rainbow (render/Chroma), like every chroma color.
+        val color = if (c.barMode == PetHudFormats.BAR_RARITY) PetHudModel.rarityColor(view) else c.barColor.effective()
+        rect(g, SoulRenderPipelines.ROUND_PILL, x0, y0, fx1, y0 + h, fade(color, alpha))
         if (c.animations && fraction >= 1.0) shine(g, x0, y0, fx1, h, now, alpha)
-    }
-
-    /**
-     * Chroma: the hue at x is (loop hue + x / bar width × [PetHudModel.CHROMA_SPAN]) mod 1, so half a
-     * rainbow spans the bar and slides as the hue cycles at ChromaColor's speed. Drawn as 1 px strips
-     * between two pill caps.
-     */
-    private fun chromaFill(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, h: Int, barW: Int, alpha: Float, c: PetHudConfig) {
-        val cycle = (20.0 / c.barColor.speed.coerceAtLeast(0.5f)).coerceIn(1.0, 40.0)
-        val loop = (System.currentTimeMillis() / 1000.0 / cycle) % 1.0
-        val a = (c.barColor.argb ushr 24) and 0xFF
-        fun at(x: Float): Int {
-            val hue = ((loop + (x - x0) / barW * PetHudModel.CHROMA_SPAN) % 1.0).toFloat()
-            return fade((a shl 24) or (hsv(hue) and 0xFFFFFF), alpha)
-        }
-        val r = h / 2f
-        rect(g, SoulRenderPipelines.ROUND_PILL, x0, y0, x0 + h, y0 + h, at(x0 + r))
-        rect(g, SoulRenderPipelines.ROUND_PILL, x1 - h, y0, x1, y0 + h, at(x1 - r))
-        val s0 = (x0 + r).roundToInt()
-        val s1 = (x1 - r).roundToInt()
-        for (x in s0 until s1) g.fill(x, y0, x + 1, y0 + h, at(x + 0.5f))
     }
 
     /** Max level: a slow highlight runs over the full bar (`ph-shine`, 3.2 s, peak .55 white). */
@@ -511,16 +485,6 @@ object PetHud : MovableHud("pet_hud", "Pet HUD", "general") {
     private fun mix(a: Int, b: Int, k: Float): Int {
         fun ch(s: Int) = (((a shr s) and 0xFF) + (((b shr s) and 0xFF) - ((a shr s) and 0xFF)) * k).roundToInt() and 0xFF
         return (0xFF shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
-    }
-
-    /** Full saturation/value hue → 0xFFRRGGBB (ChromaColor's rainbow). */
-    private fun hsv(h: Float): Int {
-        val i = floor(h * 6f).toInt() % 6
-        val f = h * 6f - floor(h * 6f)
-        val (r, gg, b) =
-            if (i == 0) Triple(1f, f, 0f) else if (i == 1) Triple(1f - f, 1f, 0f) else if (i == 2) Triple(0f, 1f, f)
-            else if (i == 3) Triple(0f, 1f - f, 1f) else if (i == 4) Triple(f, 0f, 1f) else Triple(1f, 0f, 1f - f)
-        return (0xFF shl 24) or ((r * 255).toInt() shl 16) or ((gg * 255).toInt() shl 8) or (b * 255).toInt()
     }
 }
 

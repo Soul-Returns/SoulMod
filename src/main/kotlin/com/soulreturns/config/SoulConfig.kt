@@ -7,6 +7,7 @@ import com.soulreturns.ui.hud.movable.HudPlace
 import com.soulreturns.ui.hud.movable.HudTargets
 import com.soulreturns.ui.hud.movable.HudTransform
 import com.soulreturns.ui.hud.movable.VanillaIds
+import com.soulreturns.config.gui.render.Chroma
 import com.soulreturns.sound.ReplaceRule
 import com.soulreturns.sound.SoundRef
 import kotlinx.serialization.KSerializer
@@ -27,9 +28,10 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 
 /**
- * A configurable color: a base ARGB [argb] plus an optional **chroma** (SkyHanni/NEU-style) that,
- * when on, ignores the base color and animates a full-saturation rainbow whose hue cycles at
- * [speed] (higher = faster). [effective] is the color to actually draw this frame.
+ * A configurable color: a base ARGB [argb] plus an optional **chroma** (SkyHanni/NEU-style) that, when on, ignores
+ * the base color's RGB (its alpha stays) and draws the screen-space rainbow shared by every chroma color in Soul
+ * ([Chroma]); how it moves and how fast is global ([ChromaConfig], Settings › Interface › Chroma).
+ * [effective] is the color to hand to Soul's render layer; [flat] the plain color for vanilla and world drawing.
  *
  * Custom-serialized so a legacy plain-int config value still loads (as a non-chroma color).
  */
@@ -37,30 +39,37 @@ import kotlinx.serialization.json.put
 data class ChromaColor(
     val argb: Int,
     val chroma: Boolean = false,
+    /** The per-color speed of older versions. Kept so players' files keep it; [ChromaConfig.speed] drives every color. */
     val speed: Float = 6f,
 ) {
-    fun effective(): Int {
-        if (!chroma) return argb
-        val a = (argb ushr 24) and 0xFF
-        val cycle = (20.0 / speed.coerceAtLeast(0.5f)).coerceIn(1.0, 40.0) // seconds per hue loop
-        val hue = ((System.currentTimeMillis() / 1000.0 / cycle) % 1.0).toFloat()
-        return (a shl 24) or (rainbow(hue) and 0xFFFFFF)
-    }
+    /**
+     * The color for Soul's render layer (SoulText, SoulRichText, round rects, Shapes, [Chroma.fill]): a chroma color
+     * comes back marked ([Chroma.paint]) and is drawn per pixel by the shaders. Changing its alpha keeps it chroma;
+     * any other color math (mixing, tinting) loses the mark.
+     */
+    fun effective(): Int = if (chroma) Chroma.paint(argb ushr 24) else Chroma.plain(argb)
 
-    /** Full saturation/value hue → 0xFFRRGGBB. */
-    private fun rainbow(h: Float): Int {
-        val i = (h * 6f).toInt() % 6
-        val f = h * 6f - (h * 6f).toInt()
-        var r = 0f; var g = 0f; var b = 0f
-        when (i) {
-            0 -> { r = 1f; g = f; b = 0f }
-            1 -> { r = 1f - f; g = 1f; b = 0f }
-            2 -> { r = 0f; g = 1f; b = f }
-            3 -> { r = 0f; g = 1f - f; b = 1f }
-            4 -> { r = f; g = 0f; b = 1f }
-            else -> { r = 1f; g = 0f; b = 1f - f }
-        }
-        return (0xFF shl 24) or ((r * 255).toInt() shl 16) or ((g * 255).toInt() shl 8) or (b * 255).toInt()
+    /** A plain ARGB for vanilla and world drawing: a chroma color in this frame's hue at the screen's corner. */
+    fun flat(): Int = Chroma.flatten(effective())
+}
+
+/** How every chroma color in Soul moves ([Chroma]); one setting for all of them. */
+@Serializable
+data class ChromaConfig(
+    /** [SCREEN] or [TOGETHER]; an unknown value (a later version's) is kept and draws as [SCREEN]. */
+    val motion: String = SCREEN,
+    /** 0.5-20; 6 = one rainbow every 3.3 s. */
+    val speed: Float = 6f,
+) {
+    companion object {
+        /** "Across the screen": one diagonal rainbow over the whole screen, moving down-right. */
+        const val SCREEN = "screen"
+
+        /** "All together": one hue at a time for every chroma color. */
+        const val TOGETHER = "together"
+
+        const val MIN_SPEED = 0.5f
+        const val MAX_SPEED = 20f
     }
 }
 
@@ -152,11 +161,15 @@ data class SoulConfig(
     val islandChests: IslandChestsConfig = IslandChestsConfig(),
     val storageOverlay: StorageOverlayConfig = StorageOverlayConfig(),
     val experiments: ExperimentsConfig = ExperimentsConfig(),
+    /** Scoreboard HUD: SkyBlock's sidebar drawn by Soul. */
+    val scoreboard: ScoreboardConfig = ScoreboardConfig(),
     val sounds: SoundsConfig = SoundsConfig(),
     /** The auto updater ([com.soulreturns.platform.updater.UpdateService]). */
     val updates: UpdatesConfig = UpdatesConfig(),
     /** Friends & Contests ([com.soulreturns.features.contests.ContestsStore]). */
     val contests: ContestsConfig = ContestsConfig(),
+    /** How every chroma color moves ([ChromaConfig]); Settings › Interface › Chroma. */
+    val chroma: ChromaConfig = ChromaConfig(),
     val dev: DevConfig = DevConfig(),
     /** The config menu's own state (pins, recently changed, seen NEW, layout); not a feature setting. */
     val menu: ConfigMenuState = ConfigMenuState(),

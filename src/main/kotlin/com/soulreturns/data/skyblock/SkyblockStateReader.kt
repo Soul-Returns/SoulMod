@@ -216,6 +216,7 @@ object SkyblockStateReader {
         subLocation.clear()
         SkyblockState.updateProfileType(ProfileType.UNKNOWN)
         TabWidgets.clearIsland()
+        SkyblockSidebar.clear()
     }
 
     private fun clearProfile() = profile.clear()
@@ -281,6 +282,7 @@ object SkyblockStateReader {
         val objective = scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR)
         if (objective == null) {
             subLocation.offer(null)
+            SkyblockSidebar.clear()
             // Leave profileType alone: the flavour cannot change without a profile switch, and a
             // profile switch moves you to another instance, which clears it via LocationChangeEvent.
             return
@@ -290,10 +292,12 @@ object SkyblockStateReader {
         )
         // Hypixel renders the sidebar highest score first, and position is what identifies the
         // location line and the footer, so this ordering is load-bearing rather than cosmetic.
-        val lines =
+        val rendered =
             scoreboard.listPlayerScores(objective)
                 .sortedByDescending { it.value() }
                 .map { renderLine(scoreboard, it.owner(), it.ownerName()) }
+        val lines = rendered.map { it.string }
+        SkyblockSidebar.update(objective.displayName.toLegacyText(), rendered.map { it.toLegacyText() })
         HypixelNetwork.onSidebar(lines)
         subLocation.offer(readSubLocation(lines.map(MessageDetector::stripColorCodes)))
     }
@@ -369,9 +373,9 @@ object SkyblockStateReader {
         scoreboard: Scoreboard,
         owner: String,
         ownerName: Component,
-    ): String {
-        val team = scoreboard.getPlayersTeam(owner) ?: return ownerName.string
-        return PlayerTeam.formatNameForTeam(team, ownerName).string
+    ): Component {
+        val team = scoreboard.getPlayersTeam(owner) ?: return ownerName
+        return PlayerTeam.formatNameForTeam(team, ownerName)
     }
 
     /**

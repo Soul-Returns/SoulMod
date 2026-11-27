@@ -6,6 +6,7 @@ import com.mojang.blaze3d.textures.AddressMode
 import com.mojang.blaze3d.textures.FilterMode
 import com.soulreturns.api.LocationApi
 import com.soulreturns.config.cfg
+import com.soulreturns.config.gui.render.Chroma
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.RoundRectRenderState
@@ -162,10 +163,10 @@ object DungeonMapHud : MovableHud("dungeon_map", "Dungeon Map", "dungeons") {
             panelRect(g, 0, 0, BOX, BOX, bg, rounded)
         } else if (conf.mapBorder) {
             // Border only: draw a hollow frame (four margin strips) so the interior stays transparent.
-            g.fill(-BORDER, -BORDER, BOX + BORDER, 0, bd)
-            g.fill(-BORDER, BOX, BOX + BORDER, BOX + BORDER, bd)
-            g.fill(-BORDER, 0, 0, BOX, bd)
-            g.fill(BOX, 0, BOX + BORDER, BOX, bd)
+            Chroma.fill(g, -BORDER, -BORDER, BOX + BORDER, 0, bd)
+            Chroma.fill(g, -BORDER, BOX, BOX + BORDER, BOX + BORDER, bd)
+            Chroma.fill(g, -BORDER, 0, 0, BOX, bd)
+            Chroma.fill(g, BOX, 0, BOX + BORDER, BOX, bd)
         } else if (conf.mapBackground) {
             panelRect(g, 0, 0, BOX, BOX, bg, rounded)
         }
@@ -182,7 +183,7 @@ object DungeonMapHud : MovableHud("dungeon_map", "Dungeon Map", "dungeons") {
 
     /** A background/border rect: rounded (SDF) or square ([GuiGraphicsExtractor.fill]) per the toggle. */
     private fun panelRect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, rounded: Boolean) {
-        if (rounded) roundRect(g, x0, y0, x1, y1, color, SoulRenderPipelines.ROUND_MEDIUM) else g.fill(x0, y0, x1, y1, color)
+        if (rounded) roundRect(g, x0, y0, x1, y1, color, SoulRenderPipelines.ROUND_MEDIUM) else Chroma.fill(g, x0, y0, x1, y1, color)
     }
 
     /** Fit the room grid to the fixed box: uniform square cells sized by the larger axis, centered. */
@@ -212,19 +213,19 @@ object DungeonMapHud : MovableHud("dungeon_map", "Dungeon Map", "dungeons") {
             for (comp in room.comps) {
                 val x = cellX(comp)
                 val y = cellY(comp)
-                g.fill(x, y, x + cell, y + cell, color)
+                Chroma.fill(g, x, y, x + cell, y + cell, color)
             }
             // Joins: fill the gap between adjacent cells of the same room.
             for (a in room.comps) {
                 for (b in room.comps) {
                     if (a.x == b.x && a.z == b.z + 2) {
-                        g.fill(cellX(a), cellY(b) + cell, cellX(a) + cell, cellY(a), color)
+                        Chroma.fill(g, cellX(a), cellY(b) + cell, cellX(a) + cell, cellY(a), color)
                     }
                     if (a.z == b.z && a.x == b.x + 2) {
-                        g.fill(cellX(b) + cell, cellY(a), cellX(a), cellY(a) + cell, color)
+                        Chroma.fill(g, cellX(b) + cell, cellY(a), cellX(a), cellY(a) + cell, color)
                     }
                     if (a.x == b.x + 2 && a.z == b.z + 2 && isSquare(room)) {
-                        g.fill(cellX(b) + cell, cellY(b) + cell, cellX(a), cellY(a), color)
+                        Chroma.fill(g, cellX(b) + cell, cellY(b) + cell, cellX(a), cellY(a), color)
                     }
                 }
             }
@@ -534,11 +535,11 @@ object DungeonMapHud : MovableHud("dungeon_map", "Dungeon Map", "dungeons") {
             if (horizontalGap) {
                 val x = cellX(ComponentPos(comp.x - 1, comp.z)) + cell
                 val cy = cellY(ComponentPos(comp.x - 1, comp.z)) + cell / 2
-                g.fill(x, cy - half, x + gap, cy + half, color)
+                Chroma.fill(g, x, cy - half, x + gap, cy + half, color)
             } else {
                 val y = cellY(ComponentPos(comp.x, comp.z - 1)) + cell
                 val cx = cellX(ComponentPos(comp.x, comp.z - 1)) + cell / 2
-                g.fill(cx - half, y, cx + half, y + gap, color)
+                Chroma.fill(g, cx - half, y, cx + half, y + gap, color)
             }
         }
     }
@@ -692,7 +693,7 @@ object DungeonMapHud : MovableHud("dungeon_map", "Dungeon Map", "dungeons") {
         if (borderColor != null) {
             // Square border (not rounded): a solid filled square behind the head shows as a frame.
             val b = (hR + (cell * 0.1f).coerceAtLeast(1f)).toInt()
-            g.fill(-b, -b, b, b, borderColor)
+            Chroma.fill(g, -b, -b, b, b, borderColor)
         }
         // Face (skin 8,8..16,16) then hat overlay (40,8..48,16) — skin is 64px.
         texturedQuad(g, setup, -hR, -hR, hR, hR, 8f / 64, 8f / 64, 16f / 64, 16f / 64, 0xFFFFFFFF.toInt())

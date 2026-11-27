@@ -14,7 +14,8 @@ import kotlin.math.ceil
  * Modeled on vanilla `ColoredRectangleRenderState`, but emits POSITION_TEX_COLOR vertices with
  * UV = quad-local [0,1] so the fragment shader can compute the rounded-rect SDF.
  *
- * Submit via `guiGraphicsExtractor.guiRenderState.addGuiElement(this)`.
+ * Submit via `guiGraphicsExtractor.guiRenderState.addGuiElement(this)`. A chroma [color] ([Chroma]) draws with the
+ * pipeline's chroma variant, or flattened at the quad's center when the pipeline has none.
  */
 class RoundRectRenderState(
     private val pipeline: RenderPipeline,
@@ -27,6 +28,9 @@ class RoundRectRenderState(
     private val color: Int,
     private val scissor: ScreenRectangle?,
 ) : GuiElementRenderState {
+    /** The chroma variant, when [color] is chroma and [pipeline] has one. */
+    private val chromaPipeline: RenderPipeline? = if (Chroma.isChroma(color)) SoulRenderPipelines.chroma(pipeline) else null
+
     private val bounds: ScreenRectangle? =
         run {
             val b = ScreenRectangle(x0, y0, x1 - x0, y1 - y0).transformMaxBounds(pose)
@@ -63,16 +67,26 @@ class RoundRectRenderState(
         // abs(UV) equals the composable half-size, which the vertex shader forwards as a flat varying.
         val hw = (ax1 - ax0) * 0.5f
         val hh = (ay1 - ay0) * 0.5f
-        vertexConsumer.addVertexWith2DPose(pose, ax0, ay0).setUv(-hw, -hh).setColor(color)
-        vertexConsumer.addVertexWith2DPose(pose, ax0, ay1).setUv(-hw, hh).setColor(color)
-        vertexConsumer.addVertexWith2DPose(pose, ax1, ay1).setUv(hw, hh).setColor(color)
-        vertexConsumer.addVertexWith2DPose(pose, ax1, ay0).setUv(hw, -hh).setColor(color)
+        if (chromaPipeline != null) {
+            val slope = Chroma.slope()
+            val phase = Chroma.phase()
+            Chroma.vertex(vertexConsumer, pose, ax0, ay0, slope, phase).setUv(-hw, -hh).setColor(color)
+            Chroma.vertex(vertexConsumer, pose, ax0, ay1, slope, phase).setUv(-hw, hh).setColor(color)
+            Chroma.vertex(vertexConsumer, pose, ax1, ay1, slope, phase).setUv(hw, hh).setColor(color)
+            Chroma.vertex(vertexConsumer, pose, ax1, ay0, slope, phase).setUv(hw, -hh).setColor(color)
+            return
+        }
+        val c = Chroma.flatten(color, pose, (ax0 + ax1) * 0.5f, (ay0 + ay1) * 0.5f)
+        vertexConsumer.addVertexWith2DPose(pose, ax0, ay0).setUv(-hw, -hh).setColor(c)
+        vertexConsumer.addVertexWith2DPose(pose, ax0, ay1).setUv(-hw, hh).setColor(c)
+        vertexConsumer.addVertexWith2DPose(pose, ax1, ay1).setUv(hw, hh).setColor(c)
+        vertexConsumer.addVertexWith2DPose(pose, ax1, ay0).setUv(hw, -hh).setColor(c)
     }
 
     /** The pixel boundary the rasterizer's pixel-center rule rounds a physical edge [v] to (ties go left/up). */
     private fun snap(v: Float): Float = ceil(v - 0.5f)
 
-    override fun pipeline(): RenderPipeline = pipeline
+    override fun pipeline(): RenderPipeline = chromaPipeline ?: pipeline
 
     override fun textureSetup(): TextureSetup = textureSetup
 

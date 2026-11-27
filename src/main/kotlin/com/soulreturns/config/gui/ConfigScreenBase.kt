@@ -1,6 +1,5 @@
 package com.soulreturns.config.gui
 
-import com.soulreturns.config.ChromaColor
 import com.soulreturns.config.gui.model.ActionOption
 import com.soulreturns.config.gui.model.CheckboxGroupOption
 import com.soulreturns.config.gui.model.CheckboxItem
@@ -74,14 +73,12 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
     private var pickV = 0f
     private var pickA = 1f
     private var pickChroma = false
-    private var pickSpeed = 6f
-    private var pickerDrag = 0 // 0 none, 1 SV square, 2 hue bar, 3 alpha bar, 4 speed slider
+    private var pickerDrag = 0 // 0 none, 1 SV square, 2 hue bar, 3 alpha bar
     // The swatch rect the picker was opened from, so the popup anchors beside it (not screen-centered).
     private var pickerAnchor = intArrayOf(0, 0, 0, 0)
     private var svRect = intArrayOf(0, 0, 0, 0)
     private var hueRect = intArrayOf(0, 0, 0, 0)
     private var alphaRect = intArrayOf(0, 0, 0, 0)
-    private var speedRect = intArrayOf(0, 0, 0, 0)
 
     /**
      * The keybind option in capture mode (null = none). While set, keys are collected by
@@ -91,9 +88,6 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
      */
     protected var capturingKeybind: KeybindOption? = null
     private var keyCapture = KeyComboCapture()
-
-    private val chromaSpeedMin = 0.5f
-    private val chromaSpeedMax = 20f
 
     // ---------------------------------------------------------------- input
 
@@ -465,6 +459,9 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         const val SEG_PAD = 7
         const val SEG_GAP = 2
         const val SEG_MAX_W = 170
+
+        /** Under the picker's Chroma toggle: chroma has no per-color settings. */
+        const val CHROMA_NOTE = "Speed and motion: Settings › Interface › Chroma"
     }
 
     // ---------------------------------------------------------------- checkbox group
@@ -789,13 +786,12 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         pickH = hsva[0]; pickS = hsva[1]; pickV = hsva[2]
         pickA = if (opt.hasAlpha) hsva[3] else 1f
         pickChroma = cc.chroma
-        pickSpeed = cc.speed
     }
 
     private fun applyPicker() {
         val opt = openColor ?: return
         val a = if (opt.hasAlpha) pickA else 1f
-        opt.set(ChromaColor(hsvaToArgb(pickH, pickS, pickV, a), pickChroma, pickSpeed))
+        opt.set(opt.get().copy(argb = hsvaToArgb(pickH, pickS, pickV, a), chroma = pickChroma))
     }
 
     private fun updatePickerDrag() {
@@ -806,7 +802,6 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
             }
             2 -> pickH = fracIn(lastMouseY, hueRect[1], hueRect[3])
             3 -> pickA = 1f - fracIn(lastMouseY, alphaRect[1], alphaRect[3])
-            4 -> pickSpeed = chromaSpeedMin + fracIn(lastMouseX, speedRect[0], speedRect[2]) * (chromaSpeedMax - chromaSpeedMin)
         }
         applyPicker()
     }
@@ -833,7 +828,9 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         val gap = 8
         val barsW = bar + (if (alpha) gap + bar else 0)
         val hexH = 16
-        val chromaH = if (pickChroma) 40 else 20 // chroma toggle row (+ speed slider row when on)
+        // Chroma toggle row; when on, a note where its motion and speed are set (one setting for every chroma color).
+        val chromaNote = if (pickChroma) wrapText(CHROMA_NOTE, svSize + gap + barsW, fCaption) else emptyList()
+        val chromaH = 20 + if (chromaNote.isEmpty()) 0 else 2 + chromaNote.size * 11
         val panelW = pad + svSize + gap + barsW + pad
         val panelH = pad + svSize + gap + hexH + chromaH + pad
         // Anchor beside the swatch it was opened from: prefer to its left, fall back to its right if
@@ -898,28 +895,16 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         val hex = if (alpha) String.format("#%08X", base) else String.format("#%06X", base and 0xFFFFFF)
         drawTextV(g, hex, svX + 28, hexY, hexY + hexH, Theme.TEXT, fBody)
 
-        // Chroma toggle (SkyHanni-style): when on, this color ignores the picked color and cycles.
+        // Chroma toggle (SkyHanni-style): when on, this color is a window onto Soul's shared rainbow (render/Chroma).
         val panelRight = px + panelW - pad
         val chY = hexY + hexH + 4
         drawTextV(g, "Chroma", svX, chY, chY + toggleH, Theme.TEXT, fBody)
         drawToggle(g, panelRight - toggleW, chY, pickChroma) { pickChroma = !pickChroma; applyPicker() }
 
-        // Chroma speed slider — only shown when chroma is enabled.
-        if (pickChroma) {
-            val spY = chY + toggleH + 4
-            val spCy = spY + 6
-            val labelW = textWidth("Speed", fBody) + 6
-            val trackX0 = svX + labelW + 24
-            val trackX1 = panelRight - 22
-            speedRect = intArrayOf(trackX0, spCy - 6, trackX1, spCy + 6)
-            drawTextV(g, "Speed", svX, spY, spY + 12, Theme.TEXT, fBody)
-            val frac = ((pickSpeed - chromaSpeedMin) / (chromaSpeedMax - chromaSpeedMin)).coerceIn(0f, 1f)
-            roundRect(g, trackX0, spCy - 2, trackX1, spCy + 2, Theme.CONTROL, SoulRenderPipelines.ROUND_PILL)
-            val fillX = trackX0 + (frac * (trackX1 - trackX0)).roundToInt()
-            if (fillX > trackX0 + 1) roundRect(g, trackX0, spCy - 2, fillX, spCy + 2, Theme.ACCENT, SoulRenderPipelines.ROUND_PILL)
-            roundRect(g, fillX - 4, spCy - 6, fillX + 4, spCy + 6, Theme.TEXT, SoulRenderPipelines.ROUND_PILL)
-            drawTextV(g, String.format(java.util.Locale.ROOT, "%.1f", pickSpeed), trackX1 + 4, spY, spY + 12, Theme.TEXT, fBody)
-            region(trackX0, spCy - 6, trackX1, spCy + 6) { pickerDrag = 4; updatePickerDrag() }
+        var noteY = chY + toggleH + 4
+        for (line in chromaNote) {
+            drawTextV(g, line, svX, noteY, noteY + 11, Theme.TEXT_DIM, fCaption)
+            noteY += 11
         }
     }
 

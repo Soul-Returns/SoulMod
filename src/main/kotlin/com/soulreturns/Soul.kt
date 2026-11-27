@@ -105,6 +105,8 @@ import com.soulreturns.features.mobhealth.MobHealthTracker
 import com.soulreturns.features.pets.PetHud
 import com.soulreturns.features.pets.PetState
 import com.soulreturns.features.actionbar.ActionBarHud
+import com.soulreturns.features.scoreboard.Scoreboard
+import com.soulreturns.features.scoreboard.ScoreboardHud
 import com.soulreturns.platform.catalog.CatalogRegistry
 import com.soulreturns.platform.concurrent.SoulScope
 import com.soulreturns.platform.http.BackendAuth
@@ -221,6 +223,7 @@ object Soul : ClientModInitializer {
         PreventAbilityItemPlace.register()
         HideEffects.register()
         ActionBarHud.register()
+        Scoreboard.register()
         HideHeldItemTooltip.register()
         HideFoliage.register()
         DevKeybindHandler.register()
@@ -315,6 +318,7 @@ object Soul : ClientModInitializer {
         SoulHud.add(ComboHud)
         SoulHud.add(ToggleSprintHud)
         SoulHud.add(ActionBarHud)
+        SoulHud.add(ScoreboardHud)
         SoulHud.add(NotificationHud)
         SoulHud.add(MineshaftCorpsesHud)
         SoulHud.add(FishingHud)
@@ -339,6 +343,7 @@ object Soul : ClientModInitializer {
         MovableHudRegistry.register(ComboHud)
         MovableHudRegistry.register(ToggleSprintHud)
         MovableHudRegistry.register(ActionBarHud)
+        MovableHudRegistry.register(ScoreboardHud)
         MovableHudRegistry.register(DungeonMapHud)
         MovableHudRegistry.register(NotificationHud)
         MovableHudRegistry.register(MineshaftCorpsesHud)

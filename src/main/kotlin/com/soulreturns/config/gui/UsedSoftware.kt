@@ -65,7 +65,7 @@ object UsedSoftware {
             Kind.BUNDLED_DATA, covers = listOf("res:assets/soul/dungeons"),
         ),
         Entry(
-            "SkyHanni", "Scoreboard titles, rarity and SkyBlock level colors, sea-creature and price semantics", "https://github.com/hannibal002/SkyHanni", "LGPL-2.1",
+            "SkyHanni", "Scoreboard titles, rarity and SkyBlock level colors, sea-creature and price semantics, screen-space chroma layout", "https://github.com/hannibal002/SkyHanni", "LGPL-2.1",
             Kind.BUNDLED_DATA,
         ),
         Entry(
@@ -176,6 +176,10 @@ object UsedSoftware {
         "assets/soul/textures/gui/combo_wisdom.png",
         "assets/soul/textures/gui/map_arrow.png",
         "assets/soul/shaders/core/pet_glow.fsh",
+        // Screen-space chroma variants of vanilla's GUI shaders (config/gui/render/Chroma.kt).
+        "assets/soul/shaders/core/chroma_gui.fsh",
+        "assets/soul/shaders/core/chroma_gui.vsh",
+        "assets/soul/shaders/core/chroma_textured.fsh",
         // The license and notice texts themselves.
         "assets/soul/licenses",
         "assets/soul/fonts/OFL-",

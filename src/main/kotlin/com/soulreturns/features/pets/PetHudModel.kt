@@ -28,7 +28,6 @@ object PetHudModel {
     const val LINE_BAR_GAP = 5
     const val LINE_BAR_W = 40
     const val LINE_BAR_H = 3
-    const val CHROMA_SPAN = 0.5f
 
     const val WHITE = 0xFFFFFFFF.toInt()
     const val DIM = 0xFFAAAAAA.toInt()

@@ -1039,6 +1039,19 @@ object ConfigRegistry {
                     hud = true, synonyms = listOf("action bar", "health", "mana", "defense"),
                 )
             },
+            card("scoreboard") {
+                fun sb(block: com.soulreturns.config.ScoreboardConfig.() -> com.soulreturns.config.ScoreboardConfig) = ConfigManager.update { copy(scoreboard = scoreboard.block()) }
+                FeatureCard(
+                    "scoreboard", "Scoreboard", "SkyBlock's sidebar drawn by Soul, with the lines you pick", "everyday", "hud", "list",
+                    "Draws the scoreboard on the right with the HUD font in place of Hypixel's sidebar, which it hides while on. Lines Hypixel adds after an update show at the bottom.",
+                    master = toggle("Scoreboard", null, { cfg.scoreboard.enabled }, { v -> sb { copy(enabled = v) } }, d.scoreboard.enabled),
+                    simple = listOf(position("the scoreboard")),
+                    advanced = listOf(
+                        toggle("Keep Hypixel's sidebar too", "Off: the Soul scoreboard replaces it", { cfg.scoreboard.keepVanilla }, { v -> sb { copy(keepVanilla = v) } }, d.scoreboard.keepVanilla),
+                    ),
+                    hud = true, synonyms = listOf("scoreboard", "sidebar", "custom scoreboard", "purse", "bits", "objective"),
+                )
+            },
             card("pethud") {
                 val p = { cfg.petHud }
                 fun pet(block: com.soulreturns.config.PetHudConfig.() -> com.soulreturns.config.PetHudConfig) = ConfigManager.update { copy(petHud = petHud.block()) }
@@ -1076,7 +1089,7 @@ object ConfigRegistry {
                         CycleOption("Number format", "Card only", { p().numberFormat }, { v -> pet { copy(numberFormat = v) }; t() }, listOf("196.2k", "196,209"), d.petHud.numberFormat,
                             disabled = { compact() || (!p().xpNumbers && !p().overflow) }),
                         cycle("Bar color", null, { p().barMode }, { v -> pet { copy(barMode = v) } }, listOf("Fixed", "Rarity"), d.petHud.barMode),
-                        ColorOption("Color", "Chroma: the rainbow runs along the bar", { p().barColor }, { v -> pet { copy(barColor = v) }; t() }, d.petHud.barColor, false, disabled = { p().barMode == 1 }),
+                        ColorOption("Color", "The XP bar's fill; chroma joins the rainbow every chroma color in Soul shares", { p().barColor }, { v -> pet { copy(barColor = v) }; t() }, d.petHud.barColor, false, disabled = { p().barMode == 1 }),
                     ) + background("the pet HUD", { p().background }, { v -> pet { copy(background = v) } }, d.petHud.background,
                         { p().backgroundColor }, { v -> pet { copy(backgroundColor = v) } }, d.petHud.backgroundColor),
                     hud = true,
@@ -1203,6 +1216,13 @@ object ConfigRegistry {
                         advanced = listOf(
                             ToggleOption("Use bold font", "Each HUD can override it in the Move GUI", { cfg.general.hudBoldFont }, { v -> general { copy(hudBoldFont = v) } }, d.general.hudBoldFont),
                             ToggleOption("HUD text shadow", "Each HUD can override it in the Move GUI", { cfg.general.hudTextShadow }, { v -> general { copy(hudTextShadow = v) } }, d.general.hudTextShadow),
+                        ),
+                    ),
+                    SettingsSection(
+                        "chroma", "Chroma", "How every chroma color in Soul moves; turn chroma on in any color picker",
+                        listOf(
+                            ChromaOptions.motion().syn("rainbow", "chroma", "color"),
+                            ChromaOptions.speed().syn("rainbow", "chroma speed"),
                         ),
                     ),
                     SettingsSection(

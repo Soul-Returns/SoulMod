@@ -299,7 +299,7 @@ object CorpseLocator {
         mc.levelRenderer.collectPerFrameRenderThreadGizmos().use {
             for (s in shown) {
                 val look = CorpseLook.decide(st.typeOf(s), inventory, m)
-                val color = look.color.effective().let { c -> if (look.dimmed) TargetWaypoint.alpha(c, DIM_ALPHA) else c }
+                val color = look.color.flat().let { c -> if (look.dimmed) TargetWaypoint.alpha(c, DIM_ALPHA) else c }
                 // The corpse body stands about two blocks tall: around the seen/estimated stand, else the listed block.
                 val at = sv.position(s)
                 val box =

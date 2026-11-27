@@ -44,7 +44,7 @@ data class PetHudConfig(
     val numberFormat: Int = 0,
     /** XP bar color: 0 Fixed ([barColor]), 1 the pet's rarity. */
     val barMode: Int = 0,
-    /** Fixed bar color, Soul blue; chroma sweeps the rainbow along the bar. */
+    /** Fixed bar color, Soul blue; chroma is the shared screen-space rainbow (`render/Chroma`). */
     val barColor: ChromaColor = ChromaColor(0xFF3B82F6.toInt()),
     /** Mark the summoned pet in the Pets menu (its lore has `Click to despawn!`). Not part of the HUD. */
     val highlightActive: Boolean = false,

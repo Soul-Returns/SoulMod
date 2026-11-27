@@ -39,7 +39,9 @@ object VanillaHudLayout {
         val chatW = (ChatComponent.getWidth(opts.chatWidth().get()) + 12 * chatScale).toInt()
         val chatH = (ChatComponent.getHeight(opts.chatHeightUnfocused().get()) * chatScale).toInt()
         val cx = guiW / 2
-        val scoreboard = sidebarObjective(mc)?.let { sidebarRect(mc, it, guiW, guiH) }
+        // Hidden while Soul's scoreboard replaces it: no link target, pick or snap guide (like the action bar).
+        val scoreboard =
+            if (com.soulreturns.features.scoreboard.Scoreboard.hidesVanilla()) null else sidebarObjective(mc)?.let { sidebarRect(mc, it, guiW, guiH) }
         val bossShown = mc.gui.hud.bossOverlay.events.isNotEmpty()
         return build(
             guiW,

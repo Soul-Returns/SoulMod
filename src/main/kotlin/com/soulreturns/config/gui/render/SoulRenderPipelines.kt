@@ -4,6 +4,7 @@ import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import net.minecraft.client.renderer.RenderPipelines
 import net.minecraft.resources.Identifier
+import java.util.IdentityHashMap
 
 /**
  * Custom Blaze3D render pipelines for Soul UI. Backend-agnostic (compiles for OpenGL + Vulkan).
@@ -17,8 +18,16 @@ import net.minecraft.resources.Identifier
  * Radii / shadow spread / stroke widths are in composable units (they scale with the pose). Every edge's fade is
  * one physical pixel centered on the true boundary, so shapes keep their size and rings their width round the
  * corners. Corner mask bits: 1=top-left, 2=top-right, 4=bottom-right, 8=bottom-left (15 = all).
+ *
+ * Every pipeline here has a **chroma variant** ([chroma], `CHROMA` define): the render states switch to it for a
+ * chroma color ([Chroma]). One more draw call wherever a chroma element sits between plain ones; the plain shaders
+ * are unchanged.
  */
 object SoulRenderPipelines {
+    // First: every pipeline below registers its chroma variant here while the object initializes.
+    private val chromaBuilders = IdentityHashMap<RenderPipeline, () -> RenderPipeline>()
+    private val chromaVariants = IdentityHashMap<RenderPipeline, RenderPipeline>()
+
     // Legacy radii: radiusSmall = 4, radiusMedium = 6.
     val ROUND_SMALL: RenderPipeline = round("round_small", radius = 4f)
     val ROUND_MEDIUM: RenderPipeline = round("round_medium", radius = 6f)
@@ -82,25 +91,68 @@ object SoulRenderPipelines {
      * Based on GUI_TEXTURED_SNIPPET (POSITION_TEX_COLOR + standard UBOs + SAMPLER0 + translucent),
      * swapping in the MSDF shaders.
      */
-    val MSDF_TEXT: RenderPipeline =
-        RenderPipelines.register(
-            RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-                .withLocation(Identifier.fromNamespaceAndPath("soul", "pipeline/msdf_text"))
-                .withVertexShader(Identifier.fromNamespaceAndPath("soul", "core/msdf_text"))
-                .withFragmentShader(Identifier.fromNamespaceAndPath("soul", "core/msdf_text"))
-                .build(),
-        )
+    val MSDF_TEXT: RenderPipeline = withChroma { chroma -> msdf("msdf_text", soft = false, chroma) }
 
     /** [MSDF_TEXT] with a soft edge (the glyph's whole distance band), stacked at offsets for glows. */
-    val MSDF_SOFT: RenderPipeline =
-        RenderPipelines.register(
+    val MSDF_SOFT: RenderPipeline = withChroma { chroma -> msdf("msdf_soft", soft = true, chroma) }
+
+    // ---------------------------------------------------------------- chroma variants
+
+    init {
+        // Vanilla's GUI pipelines, for Soul's shapes and fills (ShapeRenderState, Chroma.fill) and tinted textures.
+        chromaBuilders[RenderPipelines.GUI] = {
+            RenderPipelines.register(
+                RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
+                    .withLocation(Identifier.fromNamespaceAndPath("soul", "pipeline/chroma_gui"))
+                    .withVertexShader(Identifier.fromNamespaceAndPath("soul", "core/chroma_gui"))
+                    .withFragmentShader(Identifier.fromNamespaceAndPath("soul", "core/chroma_gui"))
+                    .build(),
+            )
+        }
+        chromaBuilders[RenderPipelines.GUI_TEXTURED] = {
+            RenderPipelines.register(
+                RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
+                    .withLocation(Identifier.fromNamespaceAndPath("soul", "pipeline/chroma_textured"))
+                    .withVertexShader(Identifier.fromNamespaceAndPath("soul", "core/msdf_text"))
+                    .withFragmentShader(Identifier.fromNamespaceAndPath("soul", "core/chroma_textured"))
+                    .withShaderDefine("CHROMA")
+                    .build(),
+            )
+        }
+    }
+
+    /**
+     * Builds a pipeline with [build]`(false)` and remembers [build]`(true)` as its chroma variant (the same shaders with
+     * the `CHROMA` define and its own location), created and registered the first time something draws in chroma
+     * with it, so variants nobody uses never compile.
+     */
+    fun withChroma(build: (chroma: Boolean) -> RenderPipeline): RenderPipeline {
+        val base = build(false)
+        chromaBuilders[base] = { build(true) }
+        return base
+    }
+
+    /**
+     * The chroma variant of [base] (see [Chroma]), or null when it has none: the caller then draws [Chroma.flatten]ed.
+     * Render thread only (render states resolve it while the GUI is extracted).
+     */
+    fun chroma(base: RenderPipeline): RenderPipeline? =
+        chromaVariants[base] ?: chromaBuilders[base]?.invoke()?.also { chromaVariants[base] = it }
+
+    /** `name` plus `_chroma` for the chroma variant: every registered pipeline needs its own location. */
+    private fun loc(name: String, chroma: Boolean): Identifier =
+        Identifier.fromNamespaceAndPath("soul", "pipeline/" + name + if (chroma) "_chroma" else "")
+
+    private fun msdf(name: String, soft: Boolean, chroma: Boolean): RenderPipeline {
+        var b =
             RenderPipeline.builder(RenderPipelines.GUI_TEXTURED_SNIPPET)
-                .withLocation(Identifier.fromNamespaceAndPath("soul", "pipeline/msdf_soft"))
+                .withLocation(loc(name, chroma))
                 .withVertexShader(Identifier.fromNamespaceAndPath("soul", "core/msdf_text"))
                 .withFragmentShader(Identifier.fromNamespaceAndPath("soul", "core/msdf_text"))
-                .withShaderDefine("SOFT")
-                .build(),
-        )
+        if (soft) b = b.withShaderDefine("SOFT")
+        if (chroma) b = b.withShaderDefine("CHROMA")
+        return RenderPipelines.register(b.build())
+    }
 
     private fun round(
         name: String,
@@ -112,10 +164,10 @@ object SoulRenderPipelines {
         stroke: Float = 0f,
         dash: Float = 0f,
         dashp: Float = 0f,
-    ): RenderPipeline {
+    ): RenderPipeline = withChroma { chroma ->
         var b =
             RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
-                .withLocation(Identifier.fromNamespaceAndPath("soul", "pipeline/$name"))
+                .withLocation(loc(name, chroma))
                 .withVertexShader(Identifier.fromNamespaceAndPath("soul", "core/round_rect"))
                 .withFragmentShader(Identifier.fromNamespaceAndPath("soul", "core/round_rect"))
                 .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
@@ -129,6 +181,7 @@ object SoulRenderPipelines {
         if (stroke > 0f) b = b.withShaderDefine("STROKE", stroke)
         if (dash > 0f) b = b.withShaderDefine("DASH", dash)
         if (dashp > 0f) b = b.withShaderDefine("DASHP", dashp)
-        return RenderPipelines.register(b.build())
+        if (chroma) b = b.withShaderDefine("CHROMA")
+        RenderPipelines.register(b.build())
     }
 }
