@@ -30,8 +30,8 @@ class AutoMeowTest {
         assertEquals(MeowLine(MeowChannel.ALL, "Kittyy"), MeowResponder.parse("[312] ⚒ [YOUTUBE] Kittyy: meow"))
         assertEquals(MeowLine(MeowChannel.ALL, "Kittyy"), MeowResponder.parse("[12] Kittyy ♲: meow"))
         assertEquals(MeowLine(MeowChannel.ALL, "Kittyy"), MeowResponder.parse("Kittyy: meow"))
+        assertEquals(MeowLine(MeowChannel.PRIVATE, "Kittyy", outgoing = true), MeowResponder.parse("To [MVP+] Kittyy: meow"))
         // Not chat a meow can come from, or not a meow.
-        assertNull(MeowResponder.parse("To [MVP+] Kittyy: meow"))
         assertNull(MeowResponder.parse("Officer > [MVP+] Kittyy: meow"))
         assertNull(MeowResponder.parse("[NPC] Kat: meow"))
         assertNull(MeowResponder.parse("Guild > [VIP] Bridge [Bot]: Kittyy: meow"))
@@ -42,9 +42,8 @@ class AutoMeowTest {
     @Test
     fun oneAnswerThenTwentySecondsOfSilenceEverywhere() {
         assertEquals(MeowChannel.PARTY, answer("Party > [MVP+] Kittyy: meow"))
-        // Soul's own meow echoing back, then the other player again, in every channel: all ignored.
-        now += 300
-        assertNull(answer("Party > [VIP] SoulTester: meow"))
+        // The answer is decided (and sent) at 0; the other player again, in every channel: all ignored.
+        now = 300
         assertNull(answer("Party > [MVP+] Kittyy: meow"))
         assertNull(answer("Guild > Puppy [Member]: meow"))
         now = MeowResponder.COOLDOWN_MS - 1
@@ -54,8 +53,44 @@ class AutoMeowTest {
     }
 
     @Test
-    fun ownLinesSwitchedOffChannelsAndNoPartyNeverStartTheCooldown() {
-        assertNull(answer("[300] [VIP] soultester: meow"))
+    fun soulsOwnEchoRestartsTheCooldown() {
+        assertEquals(MeowChannel.PARTY, answer("Party > [MVP+] Kittyy: meow"))
+        now = 300
+        assertNull(answer("Party > [VIP] SoulTester: meow"))
+        now = MeowResponder.COOLDOWN_MS + 299
+        assertNull(answer("Party > [MVP+] Kittyy: meow"))
+        now = MeowResponder.COOLDOWN_MS + 300
+        assertEquals(MeowChannel.PARTY, answer("Party > [MVP+] Kittyy: meow"))
+    }
+
+    @Test
+    fun aMeowTypedByHandIsNotAnsweredAndSilencesTheReply() {
+        assertNull(answer("Party > [VIP] SoulTester: meow"))
+        now = 2_000
+        assertNull(answer("Party > [MVP+] Kittyy: meow"))
+        // In a channel whose answers are switched off it counts the same.
+        now = 100_000
+        assertNull(answer("Guild > SoulTester [Member]: meow", enabled = { it != MeowChannel.GUILD }))
+        now = 101_000
+        assertNull(answer("Co-op > Kittyy: meow"))
+        // Once the cooldown is over, a meow is answered again.
+        now = 100_000 + MeowResponder.COOLDOWN_MS
+        assertEquals(MeowChannel.COOP, answer("Co-op > Kittyy: meow"))
+    }
+
+    @Test
+    fun ourPrivateMessageSilencesTheirMeowBack() {
+        assertNull(answer("To [MVP+] Kittyy: meow"))
+        now = 1_000
+        assertNull(answer("From [MVP+] Kittyy: meow"))
+        now = MeowResponder.COOLDOWN_MS
+        assertEquals(MeowChannel.PRIVATE, answer("From [MVP+] Kittyy: meow"))
+    }
+
+    @Test
+    fun ownNonMeowLinesSwitchedOffChannelsAndNoPartyNeverStartTheCooldown() {
+        assertNull(answer("Party > [VIP] SoulTester: meow?"))
+        assertNull(answer("To [MVP+] Kittyy: hi"))
         assertNull(answer("Guild > Kittyy: meow", enabled = { it != MeowChannel.GUILD }))
         assertNull(answer("Party > Kittyy: meow", inParty = false))
         assertEquals(MeowChannel.COOP, answer("Co-op > Kittyy: meow"))
