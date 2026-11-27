@@ -16,6 +16,11 @@ class ReleaseNote(val text: String, val ids: List<String>)
 object Releases {
     val notes: Map<String, List<ReleaseNote>> =
         mapOf(
+            "0.3.4" to
+                listOf(
+                    ReleaseNote("Scoreboard: SkyBlock's sidebar as a Soul HUD with about 140 line types, your own text rows and per-activity setups", listOf("f:scoreboard")),
+                    ReleaseNote("Chroma: one softer rainbow across the whole screen, with its own settings", listOf("s:interface")),
+                ),
             "0.3.3" to
                 listOf(
                     ReleaseNote("Terminal solver: new look, Click in order rings the next clicks, Show title option", listOf("f:terminals")),
