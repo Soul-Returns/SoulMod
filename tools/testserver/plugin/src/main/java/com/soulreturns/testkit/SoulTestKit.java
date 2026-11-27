@@ -52,6 +52,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
     private final ForgeSim forge = new ForgeSim(this);
     private final DevBridgeSim devBridge = new DevBridgeSim(this);
     private final CorpseSim corpses = new CorpseSim(this);
+    private final PangolinSim pangolins = new PangolinSim(this);
     private final WorldLoader worlds = new WorldLoader(this);
     private final MarkMarkers marks = new MarkMarkers(this);
 
@@ -83,7 +84,9 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         var hx = new HxCommand(this);
         command.setExecutor(hx);
         command.setTabCompleter(hx);
-        getCommand("party").setExecutor(new PartyCommand(this));
+        var party = new PartyCommand(this);
+        getCommand("party").setExecutor(party);
+        getCommand("pc").setExecutor(party);
         for (String rule : GAMERULES) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "gamerule " + rule);
         for (World world : Bukkit.getWorlds()) {
             // Only the overworld has a world clock in 26.x; setTime throws for the others.
@@ -108,6 +111,7 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
         exp.disable();
         forge.disable();
         corpses.disable();
+        pangolins.disable();
         mobs.clear();
         worlds.disable();
         marks.clear();
@@ -165,6 +169,10 @@ public final class SoulTestKit extends JavaPlugin implements Listener {
 
     public CorpseSim corpses() {
         return corpses;
+    }
+
+    public PangolinSim pangolins() {
+        return pangolins;
     }
 
     public DevBridgeSim devBridge() {

@@ -77,6 +77,12 @@ public final class Nms {
         ((org.bukkit.craftbukkit.entity.CraftEntity) entity).getHandle().setPos(x, y, z);
     }
 
+    /** Sets an armadillo's state (entity data 18, as Hypixel's Pangolin sends it); no AI moves it on. */
+    public static void armadilloState(org.bukkit.entity.Armadillo armadillo, String state) {
+        var handle = (net.minecraft.world.entity.animal.armadillo.Armadillo) ((org.bukkit.craftbukkit.entity.CraftEntity) armadillo).getHandle();
+        handle.switchToState(net.minecraft.world.entity.animal.armadillo.Armadillo.ArmadilloState.valueOf(state));
+    }
+
     /**
      * Makes the tracker send this entity's movement every tick instead of every 3rd (the living-entity default).
      * Reflection into the chunk map's tracked entry; returns the interval it replaced, or -1 when not found.

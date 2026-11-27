@@ -245,6 +245,8 @@ object Soul : ClientModInitializer {
         ComboKillCounter.register()
         ComboDurations.register()
         MobHealthTracker.register()
+        // After PartyManager (shares gate /pc on party membership) and SkyblockStateReader (area gate).
+        com.soulreturns.features.waypoints.MobWaypoints.register()
         // After PartyManager (its alerts gate /pc on party membership) and after SkyblockStateReader
         // (it drives the whole feature off AreaChanged).
         MineshaftTick.register()

@@ -11,6 +11,9 @@ commands:
   party:
     description: Hypixel's /party list answer for the party hx party set; other subcommands are not simulated.
     usage: /party list
+  pc:
+    description: Party chat as Hypixel echoes it (the player's own Party > line); logged as [pc].
+    usage: /pc <text>
 permissions:
   soultestkit.hx:
     default: op

@@ -64,6 +64,9 @@ public final class HxCommand implements TabExecutor {
         {"corpse tp <spot> [distance] [side] [up]|wall <spot> [on|off]|bury <spot> [on|off]", "Glacite Mineshaft: fly to <distance> blocks (default 12) east, <side> south and <up> (default 1) above a spot, facing it / a 5x5 stone wall 5 blocks east of a spot (tp <spot> 9 = hidden, tp <spot> 9 6 = in view) / a closed stone shell around a spot"},
         {"corpse cage <spot> [on|off]|place <spot> <fx> <fy> <fz>", "Glacite Mineshaft: connected iron bars around a spot, 3 high / move the spot's stand to block + fractions (-0.01 = a hair outside the block)"},
         {"corpse loot [spot]|talisman <on|off>|status|stop", "Glacite Mineshaft: '<TYPE> CORPSE LOOT!' for the nearest unlooted corpse (or that spot), its tab row flips 0.8 s later / dings on or off (no Organ Donor; kept across starts) / list corpses / end"},
+        {"pangolin start [n] [wall]|roll <i|all> <idle|rolling|scared|unrolling>", "Torrhus Canyon Pangolin: location, sidebar, tab (Area: Torrhus Canyon), n AI-less armadillos (default 2) 10 blocks east, 6 apart, you facing them (`wall`: each behind its wall from the start) / set their state (entity data 18)"},
+        {"pangolin wall <i> [on|off]|move <i> <dx> <dy> <dz>|catch <i>", "Torrhus Canyon Pangolin: 5x5 stone wall 3 blocks west of one / move one / the lasso catch: 'You caught x2 Pangolin Shards!' and the entity removed"},
+        {"pangolin share <name> <i>|share <name> <dx> <dy> <dz>|status|stop", "Torrhus Canyon Pangolin: a party member's line 'x: X, y: Y, z: Z | Pangolin' in party chat, at pangolin i or you + offset / list / remove all"},
         {"coating on|decoy|off", "Divan's Powder Coating dust around you as captured (4 white + 4 gold dust packets every 4 ticks, sent to everyone in the world); decoy = the same burst also 4 blocks ahead, away from any player"},
         {"nucleus enter", "Crystal Nucleus: Crystal Hollows location, sidebar sublocation, tab list; fresh run"},
         {"nucleus run [speed] [normal|rare|claw]", "Crystal Nucleus: a whole run with the captured lines (legs x speed, default 0.15), placing, loot bundle"},
@@ -428,6 +431,13 @@ public final class HxCommand implements TabExecutor {
                     throw new Problem(e.getMessage());
                 }
             }
+            case "pangolin" -> {
+                try {
+                    for (String line : plugin.pangolins().command(target, rest)) sender.sendMessage("§a" + who + line);
+                } catch (IllegalArgumentException e) {
+                    throw new Problem(e.getMessage());
+                }
+            }
             case "ss" -> {
                 try {
                     for (String line : plugin.simonSays().command(target, rest, sender)) sender.sendMessage("§a" + who + line);
@@ -700,6 +710,7 @@ public final class HxCommand implements TabExecutor {
                 case "mob" -> List.of("damage", "list", "clear");
                 case "md" -> List.of("start", "found", "stop", "keepers", "loot", "give", "take");
                 case "corpse" -> plugin.corpses().completions(1);
+                case "pangolin" -> plugin.pangolins().completions(1);
                 case "nucleus" -> List.of("enter", "run", "area", "kit", "found", "place", "loot", "bal", "spam", "tab", "state", "stop");
                 case "coating" -> List.of("on", "decoy", "off");
                 case "terminal" -> plugin.terminals().completions(1, new String[0]);

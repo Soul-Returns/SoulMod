@@ -26,7 +26,6 @@ import net.minecraft.world.entity.decoration.ArmorStand
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.EntityHitResult
 import net.minecraft.world.phys.Vec3
-import java.util.Locale
 
 /**
  * Corpse locator (rule://mineshaft): decodes the Organ Donor Talisman's ding against the layout's
@@ -294,7 +293,6 @@ object CorpseLocator {
         val shown = st.shown(unlootedByType())
         if (shown.isEmpty() || tabAllLooted()) return
         val mc = Minecraft.getInstance()
-        val p = mc.player ?: return
         val m = cfg.mining.mineshaft
         mc.levelRenderer.collectPerFrameRenderThreadGizmos().use {
             for (s in shown) {
@@ -308,9 +306,7 @@ object CorpseLocator {
                     } else {
                         AABB(s.x.toDouble(), s.y.toDouble(), s.z.toDouble(), s.x + 1.0, s.y + 2.0, s.z + 1.0)
                     }
-                val c = box.center
-                val dist = Math.sqrt(p.distanceToSqr(c.x, box.minY + 0.5, c.z))
-                TargetWaypoint.draw(box, color, LINE_WIDTH, look.label + " " + String.format(Locale.ROOT, "%.1fm", dist), look.line)
+                TargetWaypoint.drawWithDistance(box, color, LINE_WIDTH, look.label, look.line)
             }
         }
     }

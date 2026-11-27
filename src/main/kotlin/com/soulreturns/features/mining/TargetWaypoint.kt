@@ -6,11 +6,13 @@ import net.minecraft.gizmos.Gizmos
 import net.minecraft.gizmos.TextGizmo
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import java.util.Locale
 
 /**
- * The mining solvers' target look (Metal Detector treasure, corpse locator): a filled box, a line from
- * the crosshair to its center and a billboard label above it, all vanilla gizmos drawn on top of the
- * world. Call inside `levelRenderer.collectPerFrameRenderThreadGizmos()` from Fabric `BEFORE_GIZMOS`.
+ * The waypoint look of the mining solvers (Metal Detector treasure, corpse locator) and the mob waypoints
+ * (rule://waypoints): a filled box, a line from the crosshair to its center and a billboard label above it,
+ * all vanilla gizmos drawn on top of the world. Call inside `levelRenderer.collectPerFrameRenderThreadGizmos()`
+ * from Fabric `BEFORE_GIZMOS`.
  */
 object TargetWaypoint {
     /** The fill is the stroke color at this fraction of its alpha. */
@@ -27,6 +29,14 @@ object TargetWaypoint {
             Gizmos.line(start, box.center, color, lineWidth).setAlwaysOnTop()
         }
         label(text, box, eye, color)
+    }
+
+    /** [draw] labeled `<text> 12.0m`: the player's feet to half a block above the box bottom. */
+    fun drawWithDistance(box: AABB, color: Int, lineWidth: Float, text: String, line: Boolean = true) {
+        val p = Minecraft.getInstance().player ?: return
+        val c = box.center
+        val dist = Math.sqrt(p.distanceToSqr(c.x, box.minY + 0.5, c.z))
+        draw(box, color, lineWidth, text + " " + String.format(Locale.ROOT, "%.1fm", dist), line)
     }
 
     /** Above the box, scaled with eye distance so it stays readable from afar. */

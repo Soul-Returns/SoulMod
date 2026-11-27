@@ -11,7 +11,8 @@ import java.util.List;
 /**
  * Hypixel's answer to {@code /party list} for the party {@code hx party} set: dividers, count, leader and
  * members as separate lines, colored as on Hypixel. Every other party subcommand only says it is not
- * simulated, so the server log still shows what the client sent.
+ * simulated, so the server log still shows what the client sent. {@code /pc <text>} comes back as the
+ * player's own party chat line (Hypixel echoes it the same way) and is logged as {@code [pc] <name>: <text>}.
  */
 final class PartyCommand implements CommandExecutor {
     private static final String DIVIDER = "§9§m-----------------------------------------------------";
@@ -25,6 +26,12 @@ final class PartyCommand implements CommandExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) return true;
+        if (command.getName().equalsIgnoreCase("pc")) {
+            String text = String.join(" ", args);
+            plugin.getLogger().info("[pc] " + player.getName() + ": " + text);
+            Nms.sendSystemChat(player, Txt.of("§9Party §8> §b[MVP§c+§b] " + player.getName() + "§f: " + text), false);
+            return true;
+        }
         if (args.length == 0 || !args[0].equalsIgnoreCase("list")) {
             player.sendMessage("§7(test server: /party " + String.join(" ", args) + " is not simulated)");
             return true;

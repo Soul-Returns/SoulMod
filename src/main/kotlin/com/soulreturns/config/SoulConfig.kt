@@ -172,9 +172,32 @@ data class SoulConfig(
     val chroma: ChromaConfig = ChromaConfig(),
     /** Auto meow, the secret card ([AutoMeowConfig]). */
     val meow: AutoMeowConfig = AutoMeowConfig(),
+    /** Waypoints on mobs you see, shared with the party (rule://waypoints). */
+    val waypoints: WaypointsConfig = WaypointsConfig(),
     val dev: DevConfig = DevConfig(),
     /** The config menu's own state (pins, recently changed, seen NEW, layout); not a feature setting. */
     val menu: ConfigMenuState = ConfigMenuState(),
+)
+
+/** Mob waypoints ([com.soulreturns.features.waypoints.MobWaypoints]): one [MobWaypointConfig] per mob kind. */
+@Serializable
+data class WaypointsConfig(
+    /** Torrhus Canyon's Pangolin (an armadillo); [MobWaypointConfig.stateColor] while it is rolled in. */
+    val pangolin: MobWaypointConfig = MobWaypointConfig(),
+)
+
+/** One mob kind's waypoints. */
+@Serializable
+data class MobWaypointConfig(
+    val enabled: Boolean = false,
+    /** The waypoint's color (Pangolin: not rolled in). */
+    val color: ChromaColor = ChromaColor(0xFFFFAA00.toInt()),
+    /** The color while the mob is in sight in its marked state (Pangolin: rolled in). */
+    val stateColor: ChromaColor = ChromaColor(0xFF55FFFF.toInt()),
+    /** Send newly seen ones to party chat and take party members' lines. */
+    val share: Boolean = true,
+    /** A line from the crosshair to each waypoint. */
+    val line: Boolean = true,
 )
 
 /**

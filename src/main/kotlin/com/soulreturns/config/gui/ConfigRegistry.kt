@@ -198,6 +198,9 @@ object ConfigRegistry {
 
     private fun mobHealth(block: MobHealthConfig.() -> MobHealthConfig) = ConfigManager.update { copy(combat = combat.copy(mobHealth = combat.mobHealth.block())) }
 
+    private fun pangolin(block: com.soulreturns.config.MobWaypointConfig.() -> com.soulreturns.config.MobWaypointConfig) =
+        ConfigManager.update { copy(waypoints = waypoints.copy(pangolin = waypoints.pangolin.block())) }
+
     private fun moveGui(block: MoveGuiConfig.() -> MoveGuiConfig) = general { copy(moveGui = moveGui.block()) }
 
     private fun boss(block: com.soulreturns.config.BossHelpersConfig.() -> com.soulreturns.config.BossHelpersConfig) = ConfigManager.update { copy(dungeons = dungeons.copy(boss = dungeons.boss.block())) }
@@ -773,6 +776,25 @@ object ConfigRegistry {
                             toggle("Track best combo", "Say in chat when you beat your record", { c().trackBest }, { v -> combo { copy(trackBest = v) } }, d.combo.trackBest),
                         ),
                     hud = true, synonyms = listOf("combo", "grandma wolf", "combat wisdom", "magic find", "kill combo", "sbcombo"),
+                )
+            },
+            card("pangolin") {
+                val c = { cfg.waypoints.pangolin }
+                FeatureCard(
+                    "pangolin", "Pangolin waypoints", "Marks every Pangolin you see in Torrhus Canyon, rolled in or not", "combat", "mobs", "paw",
+                    "A waypoint on each Pangolin in sight, in its own color while it is rolled in. When it slips out of view the waypoint stays where you last saw it for a minute, or until you look there and it is gone. Shared ones show who sent them.",
+                    master = toggle("Pangolin waypoints", null, { c().enabled }, { v -> pangolin { copy(enabled = v) } }, d.waypoints.pangolin.enabled),
+                    simple = listOf(
+                        color("Waypoint color", "Not rolled in, and where you last saw it", { c().color }, { v -> pangolin { copy(color = v) } }, d.waypoints.pangolin.color),
+                        color("Rolled-in color", "It rolls in when a player comes close", { c().stateColor }, { v -> pangolin { copy(stateColor = v) } }, d.waypoints.pangolin.stateColor),
+                        toggle("Share with party", "Each new Pangolin you see goes to party chat once (at most 3 a minute), and you see the ones your party sends",
+                            { c().share }, { v -> pangolin { copy(share = v) } }, d.waypoints.pangolin.share),
+                    ),
+                    advanced = listOf(
+                        toggle("Line", "A line from your crosshair to each Pangolin", { c().line }, { v -> pangolin { copy(line = v) } }, d.waypoints.pangolin.line),
+                    ),
+                    where = listOf("Torrhus Canyon"),
+                    synonyms = listOf("pangolin", "armadillo", "waypoint", "hunting", "shard", "lasso", "torrhus", "galatea", "party", "share"),
                 )
             },
             // Combat › Diana
