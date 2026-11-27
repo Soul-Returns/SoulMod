@@ -1,0 +1,61 @@
+{
+ "_doc": "Real Hypixel sidebars (Crystal Hollows: Heat and Hypixel's own powder lines), same format as ../sidebars.json. Only sidebars; no chat.",
+ "sidebars": [
+  {
+   "name": "crystal-hollows-heat-2026-11-07",
+   "source": "run/soul-dev/captures (2026-11-07)",
+   "title": "§r§e§lSKYBLOCK",
+   "lines": [
+    "§r§8§711/07/26 §8m20§r§8§y§r§8§80DM",
+    "§r§f  §r§f§x",
+    "§r§f Early Winter 28§r§f§w§r§fth",
+    "§r§b §75:20am §b☽§r§b§v",
+    "§r§c §7 §cMagma Fie§r§c§u§r§c§clds",
+    "§r§f      §r§f§t",
+    "§r§fHeat: §c0♨§r§c§s",
+    "§r§f        §r§f§q",
+    "§r§fPurse: §6185,951§r§6§p§r§6§6,589",
+    "§r§fBits: §b13,845§r§b§j",
+    "§r§fNearby Players: §r§f§i§r§f§a2",
+    "§r§f            §r§f§h",
+    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+   ]
+  },
+  {
+   "name": "crystal-nucleus-powder-2026-11-07",
+   "source": "run/soul-dev/captures (2026-11-07)",
+   "title": "§r§e§lSKYBLOCK",
+   "lines": [
+    "§r§8§711/07/26 §8m20§r§8§w§r§8§80DM",
+    "§r§f  §r§f§v",
+    "§r§f Early Winter 28§r§f§u§r§fth",
+    "§r§e §76:20am §e☀§r§e§t",
+    "§r§5 §7 §5Crystal N§r§5§s§r§5§5ucleus",
+    "§r§f      §r§f§q",
+    "§r§f§2᠅ §fMithril§f:§r§f§p§r§f§f §22,963,902",
+    "§r§fBits: §b13,845§r§b§j",
+    "§r§fNearby Players: §r§f§i§r§f§a1",
+    "§r§f          §r§f§h",
+    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+   ]
+  },
+  {
+   "name": "crystal-nucleus-gemstone-wrapped-2026-11-07",
+   "source": "run/soul-dev/captures (2026-11-07)",
+   "title": "§r§e§lSKYBLOCK",
+   "lines": [
+    "§r§8§711/07/26 §8m20§r§8§w§r§8§80DM",
+    "§r§f  §r§f§v",
+    "§r§f Early Winter 28§r§f§u§r§fth",
+    "§r§b §72:20am §b☽§r§b§t",
+    "§r§2 §7 §2Jungle Te§r§2§s§r§2§2mple",
+    "§r§f      §r§f§q",
+    "§r§f§d᠅ §fGemstone§f§r§f§p§r§f§f: §d504,535",
+    "§r§fBits: §b13,845§r§b§j",
+    "§r§fNearby Players: §r§f§i§r§f§a0",
+    "§r§f          §r§f§h",
+    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+   ]
+  }
+ ]
+}

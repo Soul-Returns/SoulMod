@@ -1892,6 +1892,8 @@ class SoulConfigScreen(
             open(SoundLibraryScreen(this))
         } else if (id == "openSoundReplacer") {
             open(SoundReplacerScreen(this))
+        } else if (id == "openScoreboardSetup") {
+            open(com.soulreturns.features.scoreboard.gui.ScoreboardSetupScreen(this))
         } else if (id == ConfigRegistry.AUTO_UI_SCALE) {
             pendingSlider.keys.removeAll { it.label == ConfigRegistry.UI_SCALE }
             AutoUiScale.applyPick()

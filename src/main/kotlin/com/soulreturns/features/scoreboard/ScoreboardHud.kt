@@ -12,6 +12,7 @@ import com.soulreturns.config.gui.render.RoundRectRenderState
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulRichText
 import com.soulreturns.data.skyblock.ProfileType
+import com.soulreturns.features.scoreboard.gui.ScoreboardSetupScreen
 import com.soulreturns.ui.hud.movable.HudTransform
 import com.soulreturns.ui.hud.movable.MovableHud
 import net.minecraft.client.Minecraft
@@ -58,10 +59,11 @@ object ScoreboardHud : MovableHud("scoreboard", "Scoreboard", "general") {
 
     override fun settingsScreen(parent: Screen?): Screen = SoulConfigScreen.forFeature(parent, "scoreboard")
 
-    /** Look › When to show: tab list held, chat open, F3 open. */
+    /** Look › When to show: tab list held, chat open, F3 open; never under the setup screen, whose preview draws it. */
     private fun hiddenNow(): Boolean {
         val look = cfg.scoreboard.look
         val mc = Minecraft.getInstance()
+        if (mc.gui.screen() is ScoreboardSetupScreen) return true
         if (look.hideWithTab && mc.options.keyPlayerList.isDown) return true
         if (look.hideWithChat && mc.gui.screen() is ChatScreen) return true
         if (look.hideWithF3 && mc.debugEntries.isOverlayVisible) return true
@@ -106,9 +108,12 @@ object ScoreboardHud : MovableHud("scoreboard", "Scoreboard", "general") {
 
     private fun lineH(look: ScoreboardLook) = LINE_H + look.lineSpacing.coerceIn(0, 10)
 
-    override fun contentSize(preview: Boolean): Pair<Int, Int> {
-        val look = cfg.scoreboard.look
-        val lines = lines(preview)
+    override fun contentSize(preview: Boolean): Pair<Int, Int> = measure(lines(preview), cfg.scoreboard.look)
+
+    override fun drawContent(g: GuiGraphicsExtractor, preview: Boolean) = draw(g, lines(preview), cfg.scoreboard.look)
+
+    /** Box size of [lines] in [look]; the HUD and the setup screen's preview measure alike. */
+    fun measure(lines: List<BuiltLine>, look: ScoreboardLook): Pair<Int, Int> {
         val pad = look.padding.coerceIn(0, 20)
         val font = fontChoiceIndex()
         val bold = boldFont()
@@ -117,11 +122,15 @@ object ScoreboardHud : MovableHud("scoreboard", "Scoreboard", "general") {
         return maxOf(MIN_W, w + pad * 2) to h + pad * 2
     }
 
-    override fun drawContent(g: GuiGraphicsExtractor, preview: Boolean) {
-        val look = cfg.scoreboard.look
-        val lines = lines(preview)
+    /** Top of drawn row [index] inside the box, and the row height ([rowHeight]): the preview's hover outlines. */
+    fun rowTop(index: Int, look: ScoreboardLook): Int = look.padding.coerceIn(0, 20) + index * lineH(look)
+
+    fun rowHeight(): Int = LINE_H
+
+    /** Draw [lines] in [look] with the box's top-left at the pose's origin: the HUD and the setup screen's preview. */
+    fun draw(g: GuiGraphicsExtractor, lines: List<BuiltLine>, look: ScoreboardLook) {
         if (lines.isEmpty()) return
-        val (w, h) = contentSize(preview)
+        val (w, h) = measure(lines, look)
         val pad = look.padding.coerceIn(0, 20)
         val radius = look.cornerRadius.coerceIn(0, 20)
         if (look.background) {
@@ -134,7 +143,6 @@ object ScoreboardHud : MovableHud("scoreboard", "Scoreboard", "general") {
         }
         val font = fontChoiceIndex()
         val bold = boldFont()
-        val step = lineH(look)
         for ((i, line) in lines.withIndex()) {
             if (line.gap) continue
             val spans = spans(line.text)
@@ -146,7 +154,7 @@ object ScoreboardHud : MovableHud("scoreboard", "Scoreboard", "general") {
                     else -> pad
                 }
             // Text sits in the 13 px row like the mock's line box: cap top 2 px under the row top.
-            SoulRichText.draw(g, spans, x, pad + i * step + 2, SIZE, WHITE, 255, font, look.textShadow, bold)
+            SoulRichText.draw(g, spans, x, rowTop(i, look) + 2, SIZE, WHITE, 255, font, look.textShadow, bold)
         }
     }
 

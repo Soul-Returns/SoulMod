@@ -85,7 +85,10 @@ class ScoreboardTest {
     @Test
     fun unknownSidebarLinesAreNewLines() {
         val forge = snapshot(capture("forge-2026-11-16"))
-        assertEquals(listOf("Nearby Players: 3"), NewLinesLine.unknown(forge).map { it.text })
+        // `Nearby Players:` was the one new line here until the Mining events line (lines/events) claimed it.
+        assertTrue(NewLinesLine.unknown(forge).isEmpty())
+        val mystery = ScoreboardSnapshot.ofSidebar("", capture("forge-2026-11-16").lines.let { it.dropLast(1) + "§7Mystery: §a1" + it.last() })
+        assertEquals(listOf("Mystery: 1"), NewLinesLine.unknown(mystery).map { it.text })
         assertTrue(NewLinesLine.unknown(snapshot(capture("upper-mines-2026-11-15"))).isEmpty())
     }
 

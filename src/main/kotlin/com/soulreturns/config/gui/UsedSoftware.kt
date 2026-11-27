@@ -65,7 +65,7 @@ object UsedSoftware {
             Kind.BUNDLED_DATA, covers = listOf("res:assets/soul/dungeons"),
         ),
         Entry(
-            "SkyHanni", "Scoreboard titles, rarity and SkyBlock level colors, sea-creature and price semantics, screen-space chroma layout", "https://github.com/hannibal002/SkyHanni", "LGPL-2.1",
+            "SkyHanni", "Scoreboard titles and Custom Scoreboard patterns (tab widget headers, event and teammate lines, mayor colors, money, powder, slayer, quiver and Maxwell lines), rarity and SkyBlock level colors, sea-creature and price semantics, screen-space chroma layout", "https://github.com/hannibal002/SkyHanni", "LGPL-2.1",
             Kind.BUNDLED_DATA,
         ),
         Entry(

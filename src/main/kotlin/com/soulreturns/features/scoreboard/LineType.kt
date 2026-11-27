@@ -3,6 +3,9 @@ package com.soulreturns.features.scoreboard
 import com.soulreturns.config.ChromaColor
 import com.soulreturns.config.ScoreboardEntry
 import com.soulreturns.config.ScoreboardLook
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -82,7 +85,7 @@ sealed class LineOption(
     val hint: String?,
     val visible: (OptionValues) -> Boolean,
 ) {
-    abstract val defaultJson: JsonPrimitive
+    abstract val defaultJson: JsonElement
 }
 
 /** On/off switch. */
@@ -140,6 +143,24 @@ class LineNumber(
     override val defaultJson: JsonPrimitive get() = JsonPrimitive(default)
 }
 
+/**
+ * A set of chips: any of [choices] on or off, stored as a JSON array of the chosen values (order of
+ * [choices] when written by the setup screen; read in stored order). Absent = [default].
+ * [ordered]: the stored order is a priority the player sets; the setup screen shows an on/off list to
+ * drag (on ones in stored order, then the off ones), not chips.
+ */
+class LineChips(
+    key: String,
+    label: String,
+    val choices: List<LineChoice.Choice>,
+    val default: List<String>,
+    val ordered: Boolean = false,
+    hint: String? = null,
+    visible: (OptionValues) -> Boolean = { true },
+) : LineOption(key, label, hint, visible) {
+    override val defaultJson: JsonArray get() = JsonArray(default.map { JsonPrimitive(it) })
+}
+
 /** Shared option rows. */
 object LineOptions {
     const val ALIGN = "align"
@@ -164,9 +185,15 @@ object LineOptions {
 /** A line's option values with the type's defaults behind them. */
 class OptionValues(val json: JsonObject, private val schema: List<LineOption>) {
     private fun prim(key: String): JsonPrimitive? =
-        (json[key] as? JsonPrimitive) ?: schema.firstOrNull { it.key == key }?.defaultJson
+        (json[key] as? JsonPrimitive) ?: schema.firstOrNull { it.key == key }?.defaultJson as? JsonPrimitive
 
     fun bool(key: String): Boolean = prim(key)?.booleanOrNull ?: false
+
+    /** A [LineChips] option: the chosen values (a stored value no chip has is kept; callers ignore it). */
+    fun list(key: String): List<String> {
+        val stored = json[key] as? JsonArray ?: (schema.firstOrNull { it.key == key }?.defaultJson as? JsonArray)
+        return stored?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList()
+    }
 
     fun int(key: String): Int {
         val o = schema.firstOrNull { it.key == key } as? LineNumber

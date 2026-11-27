@@ -1,0 +1,81 @@
+{
+ "_doc": "Real Hypixel dungeon sidebars (F7, solo run) from dev-bridge recordings 2026-11-12 (title + lines as legacy text with Hypixel's line keys), plus the real tab list footer of 2026-11-07 (God Potion + Cookie Buff). Only sidebars and the footer; no chat.",
+ "sidebars": [
+  {
+   "name": "f7-keys-cleared",
+   "source": "recordings/2026-11-12_00-27-09_f7-terminals-nosolver",
+   "title": "§r§e§lSKYBLOCK",
+   "lines": [
+    "§r§8§711/11/26 §8m21§r§8§y§r§8§87K 138,30",
+    "§r§f  §r§f§x",
+    "§r§f Early Autumn 23§r§f§w§r§frd",
+    "§r§7 §72:30pm§r§7§v",
+    "§r§c §7 §cThe Catac§r§c§u§r§c§combs §7(F7)",
+    "§r§f      §r§f§t",
+    "§r§fKeys: §c■ §c✗ §8§r§8§s§r§8§8■ §a0x",
+    "§r§fTime Elapsed: §a§r§a§q§r§a§a01m 46s",
+    "§r§fCleared: §c33% §r§c§p§r§c§8(62)",
+    "§r§f          §r§f§j",
+    "§r§3§3§lSolo§r§3§i",
+    "§r§f            §r§f§h",
+    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+   ]
+  },
+  {
+   "name": "f7-no-keys",
+   "source": "recordings/2026-11-12_00-27-09_f7-terminals-nosolver",
+   "title": "§r§f§lSKYBLOCK",
+   "lines": [
+    "§r§8§711/11/26 §8m21§r§8§x§r§8§87K f7",
+    "§r§f  §r§f§w",
+    "§r§f Early Autumn 23§r§f§v§r§frd",
+    "§r§7 §72:40pm§r§7§u",
+    "§r§c §7 §cThe Catac§r§c§t§r§c§combs §7(F7)",
+    "§r§f      §r§f§s",
+    "§r§fTime Elapsed: §a§r§a§q§r§a§a01m 58s",
+    "§r§fCleared: §c36% §r§c§p§r§c§8(62)",
+    "§r§f         §r§f§j",
+    "§r§3§3§lSolo§r§3§i",
+    "§r§f           §r§f§h",
+    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+   ]
+  },
+  {
+   "name": "f7-auto-closing",
+   "source": "recordings/2026-11-12_06-20-48_f7-ring-timers",
+   "title": "§r§f§lSKYBLOCK",
+   "lines": [
+    "§r§8§711/12/26 §8m67§r§8§w§r§8§8BG",
+    "§r§f  §r§f§v",
+    "§r§f Autumn 10th§r§f§u",
+    "§r§7 §78:20pm§r§7§t",
+    "§r§c §7 §cThe Catac§r§c§s§r§c§combs §7(F7)",
+    "§r§f      §r§f§q",
+    "§r§6§c[M] §6SoulRetu§r§6§p§r§6§6rns §7[Lv48]",
+    "§r§f        §r§f§j",
+    "§r§fAuto-closing in:§r§f§i§r§f §c1:56",
+    "§r§f          §r§f§h",
+    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+   ]
+  },
+  {
+   "name": "f7-starting-in",
+   "source": "recordings/2026-11-12_06-20-48_f7-ring-timers",
+   "title": "§r§f§lSKYBLOCK",
+   "lines": [
+    "§r§8§711/12/26 §8m67§r§8§w§r§8§8BG",
+    "§r§f  §r§f§v",
+    "§r§f Autumn 10th§r§f§u",
+    "§r§7 §78:30pm§r§7§t",
+    "§r§c §7 §cThe Catac§r§c§s§r§c§combs §7(F7)",
+    "§r§f      §r§f§q",
+    "§r§6§a[M] §6SoulRetu§r§6§p§r§6§6rns §7[Lv48]",
+    "§r§f        §r§f§j",
+    "§r§fStarting in: §a0§r§a§i§r§a§a:05",
+    "§r§f          §r§f§h",
+    "§r§e§ewww.hypixel.ne§r§e§g§r§e§et"
+   ]
+  }
+ ],
+ "footer": "§r\n§r§a§lActive Effects§r\n§r§7You have a §r§cGod Potion §r§7active! §r§d39 hours§r\n§r§7You have §r§e12 §r§7non-god effects.§r\n§r§7Use \"§r§6/effects§r§7\" to see them!§r\n§r§dCelestial Mason Jar I§r §r§f2d§r\n§r§s§r\n§r§d§lCookie Buff§r\n§r§f2 days, 21 hours§r\n§r§s§r\n§r§aRanks, Boosters & MORE! §r§c§lSTORE.HYPIXEL.NET"
+}

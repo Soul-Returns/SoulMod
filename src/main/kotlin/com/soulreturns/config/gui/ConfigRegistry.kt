@@ -1050,7 +1050,10 @@ object ConfigRegistry {
                     "scoreboard", "Scoreboard", "SkyBlock's sidebar drawn by Soul, with the lines you pick", "everyday", "hud", "list",
                     "Draws the scoreboard on the right with the HUD font in place of Hypixel's sidebar, which it hides while on. Lines Hypixel adds after an update show at the bottom.",
                     master = toggle("Scoreboard", null, { cfg.scoreboard.enabled }, { v -> sb { copy(enabled = v) } }, d.scoreboard.enabled),
-                    simple = listOf(position("the scoreboard")),
+                    simple = listOf(
+                        action("Lines", "Pick, order and style the lines on a live preview (/soul scoreboard)", "Set up", "openScoreboardSetup"),
+                        position("the scoreboard"),
+                    ),
                     advanced = listOf(
                         toggle("Keep Hypixel's sidebar too", "Off: the Soul scoreboard replaces it", { cfg.scoreboard.keepVanilla }, { v -> sb { copy(keepVanilla = v) } }, d.scoreboard.keepVanilla),
                     ),

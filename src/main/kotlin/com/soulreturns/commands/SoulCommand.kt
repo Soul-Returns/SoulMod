@@ -128,6 +128,12 @@ object SoulCommand {
                             1
                         },
                     )
+                    .then(
+                        ClientCommands.literal("scoreboard").executes {
+                            com.soulreturns.features.scoreboard.gui.ScoreboardSetupScreen.open()
+                            1
+                        },
+                    )
                     // `/soul search` opens Search everywhere; `/soul chests` stays from its island-chest days.
                     .then(ClientCommands.literal("search").executes { context -> context.source.client.execute { SearchEverywhere.open() }; 1 })
                     .then(ClientCommands.literal("chests").executes { context -> context.source.client.execute { SearchEverywhere.open() }; 1 })

@@ -68,6 +68,7 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
     // Color picker: the option being edited (null = closed) + working HSVA (kept separately so hue
     // survives at zero saturation/value). Bar rects + drag target are set while the picker draws.
     private var openColor: ColorOption? = null
+    private var pickerPalette: List<Int> = emptyList()
     private var pickH = 0f
     private var pickS = 0f
     private var pickV = 0f
@@ -365,7 +366,7 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         return if (w <= SEG_MAX_W) w else null
     }
 
-    private fun drawSegmented(g: GuiGraphicsExtractor, mx: Int, my: Int, x0: Int, y0: Int, y1: Int, opt: CycleOption) {
+    protected fun drawSegmented(g: GuiGraphicsExtractor, mx: Int, my: Int, x0: Int, y0: Int, y1: Int, opt: CycleOption) {
         var x = x0
         val current = opt.get()
         for ((i, label) in opt.labels.withIndex()) {
@@ -460,6 +461,11 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         const val SEG_GAP = 2
         const val SEG_MAX_W = 170
 
+        // Color picker quick colors (mock kit CP.CHIP / CP.CHIP_GAP).
+        const val PAL_COLS = 8
+        const val PAL_CHIP = 10
+        const val PAL_GAP = 2
+
         /** Under the picker's Chroma toggle: chroma has no per-color settings. */
         const val CHROMA_NOTE = "Speed and motion: Settings › Interface › Chroma"
     }
@@ -543,7 +549,7 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
     }
 
     /** A color swatch (checkerboard behind if it may be translucent) with a border. */
-    private fun drawSwatch(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, alpha: Boolean) {
+    protected fun drawSwatch(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, alpha: Boolean) {
         roundRect(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
         if (alpha) checker(g, x0, y0, x1, y1)
         roundRect(g, x0, y0, x1, y1, color, SoulRenderPipelines.ROUND_SMALL)
@@ -776,16 +782,26 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
 
     protected val colorPickerOpen: Boolean get() = openColor != null
 
-    private fun openColorPicker(opt: ColorOption, ax0: Int, ay0: Int, ax1: Int, ay1: Int) {
+    /**
+     * Open the picker for [opt] beside the swatch at [ax0]..[ax1] × [ay0]..[ay1]. [palette] adds quick colors
+     * (RGB) under the square, 8 per row (the scoreboard's 16 Minecraft colors).
+     */
+    protected fun openColorPicker(opt: ColorOption, ax0: Int, ay0: Int, ax1: Int, ay1: Int, palette: List<Int> = emptyList()) {
         commit()
         closeDropdown()
         openColor = opt
+        pickerPalette = palette
         pickerAnchor = intArrayOf(ax0, ay0, ax1, ay1)
         val cc = opt.get()
         val hsva = argbToHsva(cc.argb)
         pickH = hsva[0]; pickS = hsva[1]; pickV = hsva[2]
         pickA = if (opt.hasAlpha) hsva[3] else 1f
         pickChroma = cc.chroma
+    }
+
+    /** Close the picker, keeping the color it set (a screen's Escape). */
+    protected fun closeColorPicker() {
+        openColor = null
     }
 
     private fun applyPicker() {
@@ -832,7 +848,9 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         val chromaNote = if (pickChroma) wrapText(CHROMA_NOTE, svSize + gap + barsW, fCaption) else emptyList()
         val chromaH = 20 + if (chromaNote.isEmpty()) 0 else 2 + chromaNote.size * 11
         val panelW = pad + svSize + gap + barsW + pad
-        val panelH = pad + svSize + gap + hexH + chromaH + pad
+        val palRows = (pickerPalette.size + PAL_COLS - 1) / PAL_COLS
+        val palH = if (palRows == 0) 0 else palRows * PAL_CHIP + (palRows - 1) * PAL_GAP + gap
+        val panelH = pad + svSize + gap + palH + hexH + chromaH + pad
         // Anchor beside the swatch it was opened from: prefer to its left, fall back to its right if
         // there isn't room, then clamp fully on-screen. Top-align with the swatch, nudged up as needed.
         val anchorGap = 6
@@ -887,9 +905,24 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
             g.fill(aX - 1, ay - 1, aX + bar + 1, ay + 1, 0xFFFFFFFF.toInt())
             region(aX, hueY, aX + bar, hueY + svSize) { pickerDrag = 3; updatePickerDrag() }
         }
+        // Quick colors (optional): chips 8 per row; a click takes the color as it is.
+        val palY = svY + svSize + gap
+        val current = hsvRgb(pickH, pickS, pickV) and 0xFFFFFF
+        for ((i, rgb) in pickerPalette.withIndex()) {
+            val cx = svX + (i % PAL_COLS) * (PAL_CHIP + PAL_GAP)
+            val cy = palY + (i / PAL_COLS) * (PAL_CHIP + PAL_GAP)
+            roundRect(g, cx - 1, cy - 1, cx + PAL_CHIP + 1, cy + PAL_CHIP + 1, if (rgb == current) 0xFFFFFFFF.toInt() else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
+            roundRect(g, cx, cy, cx + PAL_CHIP, cy + PAL_CHIP, 0xFF000000.toInt() or rgb, SoulRenderPipelines.ROUND_SMALL)
+            region(cx, cy, cx + PAL_CHIP, cy + PAL_CHIP) {
+                val hsva = argbToHsva(0xFF000000.toInt() or rgb)
+                pickH = hsva[0]; pickS = hsva[1]; pickV = hsva[2]
+                pickChroma = false
+                applyPicker()
+            }
+        }
 
         // Bottom: live swatch (effective) + hex readout of the base color.
-        val hexY = svY + svSize + gap
+        val hexY = palY + palH
         drawSwatch(g, svX, hexY, svX + 22, hexY + hexH, opt.get().effective(), alpha)
         val base = opt.get().argb
         val hex = if (alpha) String.format("#%08X", base) else String.format("#%06X", base and 0xFFFFFF)

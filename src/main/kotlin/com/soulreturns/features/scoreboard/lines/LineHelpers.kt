@@ -26,6 +26,7 @@ class GainTracker(private val showMs: Long = 5_000) {
     private var until = 0L
 
     fun update(value: Double?, nowMs: Long): Double? {
+        if (frozen) return null
         if (value == null) {
             last = null
             return null
@@ -37,5 +38,11 @@ class GainTracker(private val showMs: Long = 5_000) {
             until = nowMs + showMs
         }
         return if (nowMs < until) gain else null
+    }
+
+    companion object {
+        /** Set while the setup screen's preview builds: its sample values are never readings, so they never make a gain. */
+        @Volatile
+        var frozen = false
     }
 }

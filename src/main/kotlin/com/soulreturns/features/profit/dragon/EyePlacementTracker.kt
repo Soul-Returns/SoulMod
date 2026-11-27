@@ -61,6 +61,9 @@ object EyePlacementTracker {
     var lastSpawnEyes: Long = 0L
         private set
 
+    /** Own eyes placed since the last spawn (read-only, for the Scoreboard's Dragon eyes line); 0 once the queue went stale. */
+    fun ownPending(): Long = if (pendingOwnEyes > 0L && System.currentTimeMillis() - pendingSince > PENDING_EYE_TTL_MS) 0L else pendingOwnEyes
+
     fun register() {
         Events.subscribe(this)
     }

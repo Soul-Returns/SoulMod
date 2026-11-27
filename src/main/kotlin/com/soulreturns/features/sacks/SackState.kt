@@ -150,6 +150,9 @@ object SackState {
 
     fun profileKey(): String = counts.currentKey()
 
+    /** Every tracked item's session by id (read-only, for the Scoreboard's Sack gains line). */
+    fun sessionsView(): Map<String, SackSession> = sessions()
+
     /** [id]'s session, or null while nothing changed since tracking or reset. */
     fun session(id: String): SackSession? = sessions()[id]
 
