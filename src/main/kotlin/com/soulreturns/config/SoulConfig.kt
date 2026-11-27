@@ -195,7 +195,7 @@ data class MobWaypointConfig(
     /** The color while the mob is in sight in its marked state (Pangolin: rolled in). */
     val stateColor: ChromaColor = ChromaColor(0xFF55FFFF.toInt()),
     /** Send newly seen ones to party chat and take party members' lines. */
-    val share: Boolean = true,
+    val share: Boolean = false,
     /** A line from the crosshair to each waypoint. */
     val line: Boolean = true,
 )
