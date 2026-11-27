@@ -12,6 +12,7 @@ import org.joml.Matrix3x2fc
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * Screen-space chroma: every pixel drawn in a chroma color takes its hue from one diagonal rainbow over the whole
@@ -115,20 +116,27 @@ object Chroma {
         g.guiRenderState.addGuiElement(ShapeRenderState(pose, xs, ys, IntArray(4) { argb }, 4, bounds, chroma = true, scissor = g.scissorStack.peek()))
     }
 
-    /** Full saturation/value hue (0..1) → 0xFFRRGGBB; the shaders' `chromaRgb` does the same. */
+    /**
+     * The chroma palette of the approved mock (`mocks/scoreboard/mock.css`, Minecraft's chat colors §c §e §a §b §9 §d),
+     * in order along the field (hue 0, 1/6, …, 5/6); after the last the field wraps to the first.
+     */
+    val STOPS: IntArray = intArrayOf(0xFF5555, 0xFFFF55, 0x55FF55, 0x55FFFF, 0x5555FF, 0xFF55FF)
+
+    /**
+     * The chroma color at hue [h] (any real; only the fractional part counts) → 0xFFRRGGBB: [STOPS] blended linearly,
+     * seamless at the wrap. The shaders' `chromaRgb` is the same function in closed form (ChromaTest checks both).
+     */
     fun rainbow(h: Float): Int {
-        val x = (h - floor(h)) * 6f
-        val i = x.toInt() % 6
-        val f = x - x.toInt()
-        val r: Float
-        val g: Float
-        val b: Float
-        if (i == 0) { r = 1f; g = f; b = 0f }
-        else if (i == 1) { r = 1f - f; g = 1f; b = 0f }
-        else if (i == 2) { r = 0f; g = 1f; b = f }
-        else if (i == 3) { r = 0f; g = 1f - f; b = 1f }
-        else if (i == 4) { r = f; g = 0f; b = 1f }
-        else { r = 1f; g = 0f; b = 1f - f }
-        return (0xFF shl 24) or ((r * 255).toInt() shl 16) or ((g * 255).toInt() shl 8) or (b * 255).toInt()
+        val x = (h - floor(h)) * STOPS.size
+        val i = x.toInt().coerceIn(0, STOPS.size - 1)
+        val f = x - i
+        val a = STOPS[i]
+        val b = STOPS[(i + 1) % STOPS.size]
+        fun ch(shift: Int): Int {
+            val ca = (a shr shift) and 0xFF
+            val cb = (b shr shift) and 0xFF
+            return (ca + (cb - ca) * f).roundToInt().coerceIn(0, 255)
+        }
+        return (0xFF shl 24) or (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
     }
 }

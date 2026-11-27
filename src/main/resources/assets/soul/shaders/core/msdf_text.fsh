@@ -18,11 +18,13 @@ in vec4 vertexColor;
 out vec4 fragColor;
 #ifdef CHROMA
 // Screen-space chroma (config/gui/render/Chroma.kt): the hue parameter (x + y) * slope - phase, interpolated
-// exactly (it is linear in screen position); the color is the full-saturation rainbow at its fractional part.
+// exactly (it is linear in screen position); the color is the chroma palette at its fractional part.
 in float chromaHue;
 
+// Chroma palette of mocks/scoreboard: FF5555 FFFF55 55FF55 55FFFF 5555FF FF55FF, linear between stops, wrapping.
+// Identical in every Soul shader and equal to Kotlin's Chroma.rainbow (ChromaTest checks both).
 vec3 chromaRgb(float h) {
-    return clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+    return 1.0 / 3.0 + 2.0 / 3.0 * clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
 }
 #endif
 

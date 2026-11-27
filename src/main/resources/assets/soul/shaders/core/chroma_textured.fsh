@@ -17,8 +17,10 @@ in float chromaHue;
 
 out vec4 fragColor;
 
+// Chroma palette of mocks/scoreboard: FF5555 FFFF55 55FF55 55FFFF 5555FF FF55FF, linear between stops, wrapping.
+// Identical in every Soul shader and equal to Kotlin's Chroma.rainbow (ChromaTest checks both).
 vec3 chromaRgb(float h) {
-    return clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+    return 1.0 / 3.0 + 2.0 / 3.0 * clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
 }
 
 void main() {
