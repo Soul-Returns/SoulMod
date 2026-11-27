@@ -7,6 +7,7 @@ import com.soulreturns.features.scoreboard.lines.ColdLine
 import com.soulreturns.features.scoreboard.lines.CopperLine
 import com.soulreturns.features.scoreboard.lines.CoreValues
 import com.soulreturns.features.scoreboard.lines.CustomTextLine
+import com.soulreturns.features.scoreboard.lines.DateTimeLine
 import com.soulreturns.features.scoreboard.lines.EmptyLine
 import com.soulreturns.features.scoreboard.lines.FooterLine
 import com.soulreturns.features.scoreboard.lines.GemsLine
@@ -90,6 +91,7 @@ object ScoreboardCatalog {
             ServerLine,
             SkyblockDateLine,
             TimeLine,
+            DateTimeLine,
             RealTimeLine,
             IslandLine,
             AreaLine,

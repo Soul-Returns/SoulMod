@@ -281,4 +281,25 @@ class ScoreboardMoneyProgressTest {
         assertEquals("§8-§r", ctx.expand("{motes}"))
         assertEquals("§b0§r", ctx.expand("{glacite}"))
     }
+
+    // ------------------------------------------------------------------ date & time
+
+    @Test
+    fun dateAndTimeOnOneLine() {
+        val mines = ScoreboardSnapshot.ofSidebar(
+            "§e§lSKYBLOCK",
+            listOf("§r§8§711/15/26 §8m14§r§8§v§r§8§84BH", "§r§f  §r§f§u", "§r§f Early Summer 11§r§f§t§r§fth", "§r§b §71:20am §b☽§r§b§s", "§r§b §7\uE067 §bUpper Mines"),
+        )
+        assertEquals(listOf(" §fEarly Summer 11th §r§71:20am §b☽"), build("datetime", mines))
+        assertEquals(listOf(" §71:20am §b☽ §r§fEarly Summer 11th"), build(opts("datetime", "timeFirst" to true), mines))
+        assertEquals(listOf("§fEarly Summer 11th §r§721:20 §b☽").map { it.replace("21:20", "1:20") }, build(opts("datetime", "indent" to false, "t24" to true), mines))
+        assertEquals(listOf(" §6Early Summer§f 11th §r§71:20am §b☽").map { it.replace("§6Early Summer", "§eEarly Summer") }, build(opts("datetime", "month" to true), mines))
+        assertEquals(setOf(2, 3), ScoreboardCatalog.type("datetime")!!.claims(mines).toSet())
+        // both the combined and the separate lines show when both are in the setup
+        assertEquals(3, ScoreboardBuilder.build(listOf("datetime", "date", "time").map { ScoreboardEntry(it) }, mines, look, 0L).size)
+        val picked = ScoreboardEntry("datetime", colors = mapOf("d" to com.soulreturns.config.ChromaColor(0xFF55FF55.toInt())))
+        assertEquals(listOf(" §aEarly Summer 11th §r§71:20am §b☽"), build(picked, mines))
+        val ctx = LineContext(mines, ScoreboardEntry("custom"), OptionValues(kotlinx.serialization.json.JsonObject(emptyMap()), emptyList()), look, 0L)
+        assertEquals("§fEarly Summer 11th §r§71:20am §b☽§r", ctx.expand("{datetime}"))
+    }
 }

@@ -22,7 +22,7 @@ object TimeLine : LineType(
     private const val DAY_MS = 1_200_000L
     private const val HOUR_MS = 50_000L
 
-    private val CLOCK = Regex("(\\d{1,2}):(\\d{2})\\s*([ap]m)", RegexOption.IGNORE_CASE)
+    private val CLOCK = Regex("((?:§#[0-9a-fA-F]{6}|§.)*)(\\d{1,2}):(\\d{2})\\s*([ap]m)", RegexOption.IGNORE_CASE)
 
     override val options =
         listOf(
@@ -43,14 +43,14 @@ object TimeLine : LineType(
         if (!exact && !h24) return listOf(legacy)
         return listOf(
             CLOCK.replace(legacy) { m ->
-                var h = m.groupValues[1].toInt() % 12 + if (m.groupValues[3].equals("pm", true)) 12 else 0
-                var min = m.groupValues[2].toInt()
+                var h = m.groupValues[2].toInt() % 12 + if (m.groupValues[4].equals("pm", true)) 12 else 0
+                var min = m.groupValues[3].toInt()
                 if (exact) {
                     val t = Math.floorMod(ctx.nowMs - EPOCH_MS, DAY_MS)
                     h = (t / HOUR_MS).toInt()
                     min = ((t % HOUR_MS) * 60 / HOUR_MS).toInt()
                 }
-                clock(h, min, h24)
+                m.groupValues[1] + clock(h, min, h24)
             },
         )
     }

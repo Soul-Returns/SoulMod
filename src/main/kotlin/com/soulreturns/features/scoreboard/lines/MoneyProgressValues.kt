@@ -14,6 +14,9 @@ object MoneyProgressValues {
 
     val all: List<ScoreboardValue> =
         listOf(
+            ScoreboardValue("datetime", "Time", "SkyBlock date & time", "§fLate Winter 10th §72:20pm") { c ->
+                listOfNotNull(DateTimeLine.date(c), DateTimeLine.time(c)).takeIf { it.isNotEmpty() }?.joinToString(" §r")
+            },
             ScoreboardValue("motes", "Money", "Motes", "§d0") { c -> MotesLine.value(c) },
             ScoreboardValue("copper", "Money", "Copper", "§c1,204") { c -> CopperLine.value(c) },
             ScoreboardValue("soulflow", "Money", "Soulflow", "§3812") { c -> SoulflowLine.value(c) },
