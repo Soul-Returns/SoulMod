@@ -5,6 +5,7 @@ import com.soulreturns.api.LocationApi
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.data.skyblock.ProfileType
 import com.soulreturns.data.skyblock.SkyblockLocation
@@ -96,8 +97,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         g.pose().pushMatrix()
         g.pose().scale(scale, scale)
         g.fill(0, 0, w.toInt(), h.toInt(), Theme.DIM)
-        roundRect(g, o.x, o.y, o.right, o.bottom, EDGE, SoulRenderPipelines.ROUND_LARGE)
-        roundRect(g, o.x + 1, o.y + 1, o.right - 1, o.bottom - 1, BG, SoulRenderPipelines.ROUND_LARGE)
+        panel(g, o.x, o.y, o.right, o.bottom, BG, EDGE, SoulPanel.LARGE)
         beginClip(g, o.x, o.y, o.right, o.bottom)
         drawHeader(g, frame)
         if (forgeMode) {
@@ -152,15 +152,13 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         val tabs = listOf(MODE_SEARCH to "Search", MODE_FORGE to "Forge")
         val widths = tabs.map { textWidth(it.second, em(13)) + 32 }
         val x = right - (8 + widths.sum() + 2)
-        roundRect(g, x, y, right, y + 36, EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, x + 1, y + 1, right - 1, y + 35, SCOPE_BG, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, x, y, right, y + 36, SCOPE_BG, EDGE)
         var bx = x + 4
         for ((i, tab) in tabs.withIndex()) {
             val on = mode == tab.first
             val hover = mx in bx until bx + widths[i] && my in y + 4 until y + 32
             if (on) {
-                roundRect(g, bx, y + 4, bx + widths[i], y + 32, 0xFF385A87.toInt(), SoulRenderPipelines.ROUND_SMALL)
-                roundRect(g, bx + 1, y + 5, bx + widths[i] - 1, y + 31, 0xFF202D40.toInt(), SoulRenderPipelines.ROUND_SMALL)
+                panel(g, bx, y + 4, bx + widths[i], y + 32, 0xFF202D40.toInt(), 0xFF385A87.toInt(), SoulPanel.SMALL)
             } else if (hover) roundRect(g, bx, y + 4, bx + widths[i], y + 32, 0xFF252525.toInt(), SoulRenderPipelines.ROUND_SMALL)
             drawTextV(g, tab.second, bx + 16, y + 4, y + 32, if (on || hover) WHITE else 0xFF999999.toInt(), em(13))
             region(bx, y + 4, bx + widths[i], y + 32) { switchMode(tab.first) }
@@ -236,8 +234,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
 
     private fun kbd(g: GuiGraphicsExtractor, label: String, x: Int, y: Int) {
         val w = kbdWidth(label)
-        roundRect(g, x, y, x + w, y + 18, 0xFF3A3A3A.toInt(), SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x + 1, y + 1, x + w - 1, y + 17, HEAD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x, y, x + w, y + 18, HEAD_BG, 0xFF3A3A3A.toInt(), SoulPanel.SMALL)
         drawTextV(g, label, x + 5, y, y + 18, MUTED, em(10))
     }
 
@@ -368,8 +365,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         val selected = row.key == selectedKey
         val hover = r.contains(mx, my) && inside(clip)
         if (selected) {
-            roundRect(g, r.x, r.y, r.right, r.bottom, 0xFF385A87.toInt(), SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, 0xFF202D40.toInt(), SoulRenderPipelines.ROUND_SMALL)
+            panel(g, r.x, r.y, r.right, r.bottom, 0xFF202D40.toInt(), 0xFF385A87.toInt(), SoulPanel.SMALL)
         } else if (hover) roundRect(g, r.x, r.y, r.right, r.bottom, 0xFF252525.toInt(), SoulRenderPipelines.ROUND_SMALL)
         SearchItems.icon(g, row.item, r.x + 12, r.y + 15, 24)
         val total = SearchItems.number(row.total(ids))
@@ -451,8 +447,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
                     val lines = coverageLines(part)
                     val boxW = lines.maxOf { textWidth(it.second, em(10)) } + 22 + 14
                     val x = cx - boxW / 2
-                    roundRect(g, x, y, x + boxW, y + h, 0xFF2E2E2E.toInt(), SoulRenderPipelines.ROUND_SMALL)
-                    roundRect(g, x + 1, y + 1, x + boxW - 1, y + h - 1, SCOPE_BG, SoulRenderPipelines.ROUND_SMALL)
+                    panel(g, x, y, x + boxW, y + h, SCOPE_BG, 0xFF2E2E2E.toInt(), SoulPanel.SMALL)
                     lines.forEachIndexed { i, (color, text, textColor) ->
                         val top = y + 10 + i * 17
                         dot(g, x + 12, top + 6, 7, color)
@@ -560,8 +555,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
         if (r.bottom <= clip[1] || r.y >= clip[3]) return
         val open = source.id in expanded
         val hover = r.contains(mx, my) && inside(clip)
-        roundRect(g, r.x, r.y, r.right, r.bottom, 0xFF303030.toInt(), SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, if (hover) 0xFF252525.toInt() else 0xFF1F1F1F.toInt(), SoulRenderPipelines.ROUND_SMALL)
+        panel(g, r.x, r.y, r.right, r.bottom, if (hover) 0xFF252525.toInt() else 0xFF1F1F1F.toInt(), 0xFF303030.toInt(), SoulPanel.SMALL)
         // The header toggles; the action button registers after it and wins its own clicks.
         clippedRegion(r.x, r.y, r.right, r.bottom, clip) { if (!expanded.add(source.id)) expanded.remove(source.id) }
         val cy = r.y + 18
@@ -579,8 +573,8 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
 
     private fun drawCard(g: GuiGraphicsExtractor, source: SearchSource, card: HitCard, r: Rect, clip: IntArray) {
         if (r.bottom <= clip[1] || r.y >= clip[3]) return
-        roundRect(g, r.x, r.y, r.right, r.bottom, if (card.stale) 0xFF494030.toInt() else 0xFF303030.toInt(), SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, CARD_BG, SoulRenderPipelines.ROUND_SMALL)
+        val edge = if (card.stale) 0xFF494030.toInt() else 0xFF303030.toInt()
+        panel(g, r.x, r.y, r.right, r.bottom, SoulPanel.over(CARD_BG, edge), edge, SoulPanel.SMALL)
         val badgeW = max(17, textWidth(card.badge, em(9)) + 6)
         roundRect(g, r.x + 11, r.y + 10, r.x + 11 + badgeW, r.y + 27, source.badgeBack, SoulRenderPipelines.ROUND_SMALL)
         drawTextV(g, card.badge, r.x + 11 + (badgeW - textWidth(card.badge, em(9))) / 2, r.y + 10, r.y + 27, source.badgeText, em(9))
@@ -624,8 +618,7 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
             val coverage = source.coverage()
             val r = Rect(inner.x, y, inner.right, y + SearchEverywhereLayout.SRC_ROW_H)
             val hover = r.contains(mx, my) && inside(section)
-            roundRect(g, r.x, r.y, r.right, r.bottom, 0xFF303030.toInt(), SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, if (hover) 0xFF252525.toInt() else CARD_BG, SoulRenderPipelines.ROUND_SMALL)
+            panel(g, r.x, r.y, r.right, r.bottom, if (hover) 0xFF252525.toInt() else SoulPanel.over(CARD_BG, 0xFF303030.toInt()), 0xFF303030.toInt(), SoulPanel.SMALL)
             dot(g, r.x + 12, r.y + 30, 9, source.color)
             drawTextV(g, source.label, r.x + 31, r.y + 10, r.y + 31, WHITE, em(13))
             drawTextV(g, ellipsize(coverage.long, r.right - 12 - r.x - 31, em(10)), r.x + 31, r.y + 34, r.y + 50, if (coverage.none) AMBER else MUTED, em(10))
@@ -705,6 +698,8 @@ class SearchEverywhereScreen(private val parent: Screen? = null) : SoulScreenBas
             override val my get() = s.my
             override fun em(size: Number) = SearchItems.em(size)
             override fun rrect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, pipeline: RenderPipeline) = s.roundRect(g, x0, y0, x1, y1, color, pipeline)
+            override fun panel(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, fill: Int, border: Int, radius: Float) =
+                s.panel(g, x0, y0, x1, y1, fill, border, radius)
             override fun text(g: GuiGraphicsExtractor, s2: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, semibold: Boolean) =
                 s.drawTextV(g, s2, x, top, bottom, color, size, if (semibold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular)
             override fun width(s2: String, size: Float) = s.textWidth(s2, size)

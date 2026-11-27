@@ -15,24 +15,11 @@ interface Inline {
 }
 
 /**
- * Draws a rect with a 1 px inside edge (CSS `box-shadow: inset 0 0 0 1px`). An opaque fill goes over
- * an edge-colored rect; a translucent (or empty) fill gets straight edge lines instead, stopping short
- * of the rounded corners, so the edge color never shows through it.
+ * Draws a rect with a 1 px inside edge (CSS `box-shadow: inset 0 0 0 1px`): one concentric [KitCanvas.panel], so a
+ * translucent fill never shows the edge color through it and the corners stay round all the way.
  */
 internal fun KitCanvas.framed(x0: Int, y0: Int, x1: Int, y1: Int, bg: Int, edge: Int, corner: Int) {
-    if (edge == 0) {
-        rect(x0, y0, x1, y1, bg, corner)
-    } else if (bg ushr 24 == 0xFF) {
-        rect(x0, y0, x1, y1, edge, corner)
-        rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, bg, corner)
-    } else {
-        if (bg ushr 24 != 0) rect(x0, y0, x1, y1, bg, corner)
-        val r = if (corner == Corner.LARGE) 8 else if (corner == Corner.MEDIUM) 5 else if (corner == Corner.SMALL) 3 else 0
-        rect(x0 + r, y0, x1 - r, y0 + 1, edge, Corner.SQUARE)
-        rect(x0 + r, y1 - 1, x1 - r, y1, edge, Corner.SQUARE)
-        rect(x0, y0 + r, x0 + 1, y1 - r, edge, Corner.SQUARE)
-        rect(x1 - 1, y0 + r, x1, y1 - r, edge, Corner.SQUARE)
-    }
+    if (edge == 0) rect(x0, y0, x1, y1, bg, corner) else panel(x0, y0, x1, y1, bg, edge, corner)
 }
 
 /** Fraction bar (`.bar`): accent fill, gold when [maxed]. */
@@ -866,7 +853,7 @@ class NoteNode(val text: Rich, val chip: Chip? = Chip.soul()) : Node() {
 
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
         c.rect(x, y, x + w, y + h, S.CARD_SOUL_BG, Corner.SMALL)
-        c.rect(x, y + 2, x + 2, y + h - 2, S.ACCENT, Corner.SQUARE)
+        c.slice(x, y, x + w, y + h, Corner.SMALL, x, y, x + 2, y + h, S.ACCENT)
         chip?.paint(c, x + 9, y + 5 + LH_SMALL / 2)
         var cy = y + 5
         for (line in text.wrap(c, S.SMALL, w - textX(c) - 9)) {

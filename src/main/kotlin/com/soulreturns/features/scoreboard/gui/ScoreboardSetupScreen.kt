@@ -16,6 +16,7 @@ import com.soulreturns.config.gui.model.SliderOption
 import com.soulreturns.config.gui.render.Chroma
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.features.scoreboard.ColorPart
@@ -177,6 +178,12 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
             "Background opacity", null, { cfg.scoreboard.look.backgroundOpacity.toDouble() },
             { v -> look { copy(backgroundOpacity = v.roundToInt().coerceIn(0, 100)) } }, ScoreboardLook().backgroundOpacity.toDouble(), 0.0, 100.0, 5.0,
         )
+    private val borderSpeed =
+        SliderOption(
+            "Border speed", null, { cfg.scoreboard.look.borderSpeed.toDouble() },
+            { v -> look { copy(borderSpeed = v.toFloat()) } }, ScoreboardLook().borderSpeed.toDouble(),
+            ScoreboardLook.MIN_BORDER_SPEED.toDouble(), ScoreboardLook.MAX_BORDER_SPEED.toDouble(), 0.5,
+        )
 
     // ---------------------------------------------------------------------------------- config access
 
@@ -262,8 +269,7 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
         val sy0 = if (uiH < 500) 4 else 10
         val sx1 = uiW - m
         val sy1 = uiH - sy0
-        roundRect(g, sx0 - 1, sy0 - 1, sx1 + 1, sy1 + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, sx0, sy0, sx1, sy1, Theme.PANEL, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, sx0 - 1, sy0 - 1, sx1 + 1, sy1 + 1, Theme.PANEL_FLOATING, Theme.FIELD_BORDER)
         val ix0 = sx0 + 12
         val ix1 = sx1 - 12
         var y = sy0 + 12
@@ -365,8 +371,7 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
         val addW = textWidth("+ Activity", fBody) + 20
         val ax = x + 4
         val hover = mx in ax..ax + addW && my in cy - 9..cy + 9
-        roundRect(g, ax, cy - 9, ax + addW, cy + 9, if (hover) 0xFF666666.toInt() else 0xFF444444.toInt(), SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, ax + 1, cy - 8, ax + addW - 1, cy + 8, 0xFF1B1B1B.toInt(), SoulRenderPipelines.ROUND_SMALL)
+        panel(g, ax, cy - 9, ax + addW, cy + 9, 0xFF1B1B1B.toInt(), if (hover) 0xFF666666.toInt() else 0xFF444444.toInt(), SoulPanel.SMALL)
         drawTextV(g, "+ Activity", ax + 10, cy - 9, cy + 9, Theme.TEXT_DIM, fBody)
         addActRect[0] = ax; addActRect[1] = cy - 9; addActRect[2] = ax + addW; addActRect[3] = cy + 9
         region(ax, cy - 9, ax + addW, cy + 9) { addActOpen = !addActOpen }
@@ -432,8 +437,7 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
     }
 
     private fun popupFrame(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int) {
-        roundRect(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, Theme.ACCENT, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, x0, y0, x1, y1, SECTION, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, SECTION, Theme.ACCENT)
     }
 
     private fun drawNotice(g: GuiGraphicsExtractor, anchor: IntArray, now: Long) {
@@ -456,7 +460,7 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
 
     private fun banner(g: GuiGraphicsExtractor, x0: Int, y: Int, x1: Int, stripe: Int, tint: Int, parts: List<Pair<String, Boolean>>) {
         roundRect(g, x0, y, x1, y + BANNER_H, tint, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x0, y, x0 + 3, y + BANNER_H, stripe, SoulRenderPipelines.ROUND_SMALL_LEFT)
+        slice(g, x0, y, x1, y + BANNER_H, SoulPanel.SMALL, x0, y, x0 + 3, y + BANNER_H, stripe)
         var x = x0 + 10
         for ((text, bold) in parts) {
             val font = if (bold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular
@@ -1063,8 +1067,7 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
         val w = 48
         val y0 = cy - 9
         val y1 = cy + 9
-        roundRect(g, x, y0, x + w, y1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x + 1, y0 + 1, x + w - 1, y1 - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x, y0, x + w, y1, Theme.FIELD_BG, Theme.FIELD_BORDER, SoulPanel.SMALL)
         val text = value.toString()
         drawTextV(g, text, x + (w - 12) / 2 - textWidth(text, fBody) / 2 + 1, y0, y1, Theme.TEXT, fBody)
         val ax = x + w - 12
@@ -1114,8 +1117,7 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
         } else if (default != null) {
             drawSwatch(g, sx0, sy0, sx1, sy1, 0xFF000000.toInt() or default, false)
         } else {
-            roundRect(g, sx0 - 1, sy0 - 1, sx1 + 1, sy1 + 1, 0xFF3A3A3A.toInt(), SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, sx0, sy0, sx1, sy1, 0xFF1A1A1A.toInt(), SoulRenderPipelines.ROUND_SMALL)
+            panel(g, sx0 - 1, sy0 - 1, sx1 + 1, sy1 + 1, 0xFF1A1A1A.toInt(), 0xFF3A3A3A.toInt(), SoulPanel.SMALL)
             var sx = sx0 + 1
             while (sx < sx1 - 1) {
                 g.fill(sx, sy0 + 1, min(sx + 3, sx1 - 1), sy1 - 1, 0xFF2A2A2A.toInt())
@@ -1134,6 +1136,26 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
     }
 
     private val swatchW: Int get() = 26 + 6 + 58 + 4 + 14
+
+    /** A border color row: [get] reads it from the Look, [set] writes it; [chroma] = Look › Chroma on › Border. */
+    private fun borderColorRow(
+        g: GuiGraphicsExtractor,
+        mx: Int,
+        my: Int,
+        col: Col,
+        label: String,
+        chroma: Boolean,
+        get: (ScoreboardLook) -> ChromaColor,
+        set: ScoreboardLook.(ChromaColor) -> ScoreboardLook,
+    ) {
+        val d = get(ScoreboardLook())
+        val current = get(cfg.scoreboard.look)
+        row(g, col, label, null, swatchW) { x, cy ->
+            swatchControl(g, mx, my, x, cy, current.takeIf { it != d }, d.argb and 0xFFFFFF, String.format("#%06X", d.argb and 0xFFFFFF), chroma, open = { r ->
+                openColorPicker(ColorOption("Border $label", null, { get(cfg.scoreboard.look) }, { v -> look { set(v) } }, d), r[0], r[1], r[2], r[3], MC_COLORS)
+            }, reset = { look { set(d) } })
+        }
+    }
 
     // ---- the selected line
 
@@ -1559,15 +1581,22 @@ class ScoreboardSetupScreen(private val parent: Screen?) : ConfigScreenBase(Comp
         }
         stepperRow(g, mx, my, col, "Corner radius", null, l.cornerRadius, 0, 20, null) { v -> look { copy(cornerRadius = v) } }
         stepperRow(g, mx, my, col, "Padding", null, l.padding, 0, 20, null) { v -> look { copy(padding = v) } }
-        row(g, col, "Border", null, if (l.border) swatchW + 8 + toggleW else toggleW) { x, cy ->
-            val tx = col.x1 - toggleW
-            if (l.border) {
-                val value = l.borderColor.takeIf { it != d.borderColor }
-                swatchControl(g, mx, my, x, cy, value, d.borderColor.argb and 0xFFFFFF, "#AF59FF", "border" in l.chromaOn, open = { r ->
-                    openColorPicker(ColorOption("Border", null, { cfg.scoreboard.look.borderColor }, { v -> look { copy(borderColor = v) } }, d.borderColor), r[0], r[1], r[2], r[3], MC_COLORS)
-                }, reset = { look { copy(borderColor = d.borderColor) } })
+        switchRow(g, col, "Border", null, l.border) { v -> look { copy(border = v) } }
+        if (l.border) {
+            val gradient = l.borderStyle != ScoreboardLook.BORDER_SOLID
+            segRow(
+                g, mx, my, col, "Border style", null,
+                choice("Border style", listOf(ScoreboardLook.BORDER_GRADIENT, ScoreboardLook.BORDER_SOLID), listOf("Gradient", "One color"), l.borderStyle) { v ->
+                    look { copy(borderStyle = v) }
+                },
+            )
+            // Chroma on the border (Chroma on › Border) draws it in chroma instead: one row says so.
+            val chroma = "border" in l.chromaOn
+            borderColorRow(g, mx, my, col, if (gradient && !chroma) "Border color 1" else "Border color", chroma, { it.borderColor }) { v -> copy(borderColor = v) }
+            if (gradient && !chroma) {
+                borderColorRow(g, mx, my, col, "Border color 2", false, { it.borderColor2 }) { v -> copy(borderColor2 = v) }
+                sliderRow(g, col, "Border speed", "How fast the colors go round", borderSpeed, 90)
             }
-            drawToggle(g, tx, cy - toggleH / 2, l.border) { look { copy(border = !border) } }
         }
         switchRow(g, col, "Blur behind", null, l.blur) { v -> look { copy(blur = v) } }
         switchRow(g, col, "Image from resource pack", null, l.backgroundImage) { v -> look { copy(backgroundImage = v) } }

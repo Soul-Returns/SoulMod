@@ -197,14 +197,23 @@ object CustomScoreboardConverter {
         bg.int("radius")?.let { look = look.copy(cornerRadius = it) }
         bg.bool("blurEnabled")?.let { look = look.copy(blur = it) }
         bg.bool("borderEnabled")?.let { look = look.copy(border = it) }
-        bg.long("borderColorTopLeft")?.let { look = look.copy(borderColor = ChromaColor(it.toInt() or (0xFF shl 24))) }
+        // Custom Scoreboard colors each corner: the top-left is color 1, the first other corner that differs (the
+        // opposite one first) color 2 of a gradient; all four alike import as one color.
+        val borderTl = bg.long("borderColorTopLeft")
+        if (borderTl != null) {
+            val other = listOf("BottomRight", "BottomLeft", "TopRight").firstNotNullOfOrNull { k -> bg.long("borderColor$k")?.takeIf { it != borderTl } }
+            look = look.copy(borderColor = ChromaColor(borderTl.toInt() or (0xFF shl 24)))
+            look =
+                if (other == null) look.copy(borderStyle = ScoreboardLook.BORDER_SOLID)
+                else look.copy(borderStyle = ScoreboardLook.BORDER_GRADIENT, borderColor2 = ChromaColor(other.toInt() or (0xFF shl 24)))
+        }
         bg.bool("imageBackground")?.let { look = look.copy(backgroundImage = it) }
         mod.str("number_format")?.let { look = look.copy(numbers = if (it == "SHORT") "short" else "long") }
         mod.str("number_display_format")?.let {
             val style = mapOf("TEXT_COLOR_NUMBER" to "tcn", "COLOR_TEXT_NUMBER" to "ctn", "COLOR_NUMBER_TEXT" to "cnt", "COLOR_NUMBER_RESET_TEXT" to "cnrt")[it]
             if (style != null) look = look.copy(numberStyle = style)
         }
-        imported += "Look: background, border, corners, padding, number format, alignment"
+        imported += "Look: background, border (gradient colors too), corners, padding, number format, alignment"
 
         val keepVanilla = root.bool("hide_hypixel")?.not() ?: false
         imported += "Hypixel's sidebar hidden"
@@ -213,7 +222,6 @@ object CustomScoreboardConverter {
         if (bg.int("minWidth").let { it != null && it > 0 } || bg.int("minHeight").let { it != null && it > 0 }) skipped += "Minimum width and height"
         if (bg.int("margin").let { it != null && it > 0 }) skipped += "Background margin"
         if (bg.str("customImageFile").orEmpty().isNotEmpty()) skipped += "Custom background image file"
-        if (bg.str("borderColorTopRight") != null && bg.long("borderColorBottomLeft") != bg.long("borderColorTopLeft")) skipped += "Gradient border colors (the top-left color was used)"
         skipped += "Per-line details (date format, 24-hour clock, co-op bank layout, powder display and similar): set them in each line's options"
 
         return ConvertedSetup(ScoreboardSetup(entries), look, keepVanilla, ImportResult(imported, skipped))

@@ -64,7 +64,7 @@ class ChromaTest {
     fun `every shader with chroma carries the same palette function`() {
         val files = shaders.listFiles { f -> f.name.endsWith(".fsh") }!!.filter { "chromaRgb" in it.readText() }
         assertEquals(
-            setOf("chroma_gui.fsh", "chroma_textured.fsh", "msdf_text.fsh", "pet_glow.fsh", "round_rect.fsh"),
+            setOf("chroma_gui.fsh", "chroma_textured.fsh", "msdf_text.fsh", "panel.fsh", "pet_glow.fsh", "round_rect.fsh"),
             files.map { it.name }.toSet(),
         )
         for (f in files) assertTrue(snippet in f.readText(), "${f.name} has a different chromaRgb")

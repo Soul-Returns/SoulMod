@@ -5,6 +5,7 @@ import com.soulreturns.config.gui.ConfigScreenBase
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.features.updater.ReleaseNotesFormat.Block
@@ -161,8 +162,7 @@ class UpdateScreen(
         val h = if (tall) tallH else minOf(fixed + PAD * 2, uiH - 16)
         val x0 = (uiW - w) / 2
         val y0 = (uiH - h) / 2
-        roundRect(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, 0xFF333333.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, x0, y0, x0 + w, y0 + h, MODAL_BG, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, MODAL_BG, 0xFF333333.toInt())
         region(x0, y0, x0 + w, y0 + h) {}
 
         var y = y0 + PAD
@@ -334,7 +334,7 @@ class UpdateScreen(
     private fun info(text: String, stripe: Int) = Part(height = { w -> GAP + 16 + drawRich(null, RichText.parse(text), 0, 0, w - 20, F_TEXT, 0, LINE) }) { g, _, _, x0, y0, x1, y1 ->
         val top = y0 + GAP
         roundRect(g, x0, top, x1, y1, Theme.SECTION, SoulRenderPipelines.ROUND_MEDIUM)
-        g.fill(x0, top + 3, x0 + 2, y1 - 3, stripe)
+        slice(g, x0, top, x1, y1, SoulPanel.MEDIUM, x0, top, x0 + 2, y1, stripe)
         drawRich(g, RichText.parse(text), x0 + 10, top + 8, x1 - 10, F_TEXT, 0xFFCCCCCC.toInt(), LINE)
     }
 
@@ -403,8 +403,7 @@ class UpdateScreen(
 
     private fun changelog(notes: List<ReleaseNote>) = Part(flex = true, height = { 0 }) { g, mx, my, x0, y0, x1, y1 ->
         val top = y0 + GAP
-        roundRect(g, x0, top, x1, y1, NOTES_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, x0 + 1, top + 1, x1 - 1, y1 - 1, NOTES_BG, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, x0, top, x1, y1, NOTES_BG, NOTES_EDGE)
         val blocks = ReleaseNotesFormat.blocks(notes)
         val cx0 = x0 + 10
         val cx1 = x1 - 10

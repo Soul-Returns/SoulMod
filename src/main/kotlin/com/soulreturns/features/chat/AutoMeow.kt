@@ -8,6 +8,7 @@ import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.RoundRectRenderState
 import com.soulreturns.config.gui.render.Shapes
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.core.events.Events
@@ -176,8 +177,7 @@ object MeowOverlay : HudElement("meow_reveal") {
         g.pose().translate(cx.toFloat(), y1.toFloat())
         g.pose().scale(s, s)
         g.pose().translate(-cx.toFloat(), -y1.toFloat())
-        rect(g, x0, y0, x1, y1, fade(0xEB181818.toInt(), a), SoulRenderPipelines.ROUND_LARGE)
-        rect(g, x0, y0, x1, y1, fade(Theme.ACCENT, a), SoulRenderPipelines.STROKE_1_R10)
+        SoulPanel.draw(g, x0, y0, x1, y1, SoulPanel.LARGE, fade(0xEB181818.toInt(), a), fade(Theme.ACCENT, a))
         val cy = (y0 + y1) / 2
         rect(g, x0 + 10, cy - 15, x0 + 40, cy + 15, fade(Theme.ACCENT_TINT, a), SoulRenderPipelines.ROUND_MEDIUM)
         Shapes(feather / s).also { MeowReveal.paw(it, x0 + 25f, cy.toFloat(), 18f, 0.0, fade(MeowReveal.ACCENT_LIGHT, a)) }.submit(g)

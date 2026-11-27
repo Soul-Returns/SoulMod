@@ -505,8 +505,7 @@ class ContestsScreen(override val src: ContestsSource = StoreContestsSource, sta
         val g = frame ?: return
         g.nextStratum()
         g.fill(x - 1, y + 2, x + w + 1, y + h + 8, 0x40000000)
-        rect(x - 1, y - 1, x + w + 1, y + h + 1, 0xFF333333.toInt(), Corner.MEDIUM)
-        rect(x, y, x + w, y + h, 0xFF181818.toInt(), Corner.MEDIUM)
+        panel(g, x - 1, y - 1, x + w + 1, y + h + 1, 0xFF181818.toInt(), 0xFF333333.toInt(), radius(Corner.MEDIUM))
     }
 
     /** Below the anchor, right-aligned to it when it would leave the card; above it when there's no room below. */

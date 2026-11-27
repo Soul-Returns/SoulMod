@@ -3,6 +3,7 @@ package com.soulreturns.features.dungeons.leap
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.Shapes
 import com.soulreturns.config.gui.render.SoulText
@@ -282,8 +283,7 @@ class LeapScreen(private val vanilla: ContainerScreen, private val session: Leap
         if (cfg.dungeons.leap.numberKeys && cfg.dungeons.leap.keyHints) {
             val kx = x1 - KEY_BOX - 8
             val ky = y0 + 8
-            roundRect(g, kx, ky, kx + KEY_BOX, ky + KEY_BOX, alpha(KEY_EDGE, a), SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, kx + 1, ky + 1, kx + KEY_BOX - 1, ky + KEY_BOX - 1, alpha(FILL, a), SoulRenderPipelines.ROUND_SMALL)
+            panel(g, kx, ky, kx + KEY_BOX, ky + KEY_BOX, alpha(FILL, a), alpha(KEY_EDGE, a), SoulPanel.SMALL)
             SoulText.drawCenteredOn(g, "${i + 1}", kx + KEY_BOX / 2, ky + KEY_BOX / 2, KEY_SIZE, alpha(KEY_TEXT, a), semi, forceCustom = true, shadow = false)
         }
         if (route != null) {

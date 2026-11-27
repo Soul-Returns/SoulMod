@@ -46,9 +46,6 @@ object SoulRenderPipelines {
     /** Bottom-right corner only — body footer (meets the card's bottom-right corner). */
     val ROUND_BR: RenderPipeline = round("round_br", radius = 6f, corners = 0b0100)
 
-    /** Left corners only (radiusSmall) — an accent stripe on a [ROUND_SMALL] card's left edge, flush with the card on its right. */
-    val ROUND_SMALL_LEFT: RenderPipeline = round("round_small_left", radius = 4f, corners = 0b1001)
-
     /**
      * Soft outer glow / shadow. Draw behind the content, expanded by ~[spread] all around; the SDF
      * fades over [spread] px outside the (inset) shape. Small spread + an accent color = a thin glow;
@@ -56,17 +53,30 @@ object SoulRenderPipelines {
      */
     val ROUND_GLOW: RenderPipeline = round("round_glow", radius = 12f, shadow = true, spread = 2f)
 
-    /** Rounded outlines (the SDF's edge band, inside the quad): stroke width / corner radius in the name. */
-    val STROKE_1_R4: RenderPipeline = round("stroke_1_r4", radius = 4f, stroke = 1f)
-    val STROKE_2_R4: RenderPipeline = round("stroke_2_r4", radius = 4f, stroke = 2f)
-    val STROKE_2_R7: RenderPipeline = round("stroke_2_r7", radius = 7f, stroke = 2f)
+    /**
+     * Rounded outlines (the SDF's edge band, inside the quad): stroke width / corner radius in the name. Rings that pair
+     * with a fill or another shape go through [SoulPanel], which takes any radius.
+     */
     val STROKE_2_R10: RenderPipeline = round("stroke_2_r10", radius = 10f, stroke = 2f)
-    val STROKE_1_R10: RenderPipeline = round("stroke_1_r10", radius = 10f, stroke = 1f)
-    val STROKE_3_R8: RenderPipeline = round("stroke_3_r8", radius = 8f, stroke = 3f)
     val STROKE_1_PILL: RenderPipeline = round("stroke_1_pill", pill = true, stroke = 1f)
 
-    /** [STROKE_2_R7] dashed (7 px period). */
+    /** A 2 px rounded ring of radius 7 (a cell's 4 + 3 px outside it), dashed with a 7 px period. */
     val DASH_2_R7: RenderPipeline = round("dash_2_r7", radius = 7f, stroke = 2f, dash = 7f)
+
+    /**
+     * [SoulPanel]: a fill and an optional (gradient) ring of any radius in one quad, every parameter in the vertex data
+     * ([SoulPanel.FORMAT], 40 bytes a vertex against 24) instead of a define, so all panels share this one pipeline.
+     * Chroma is resolved in the shader per color, so it has no chroma variant.
+     */
+    val PANEL: RenderPipeline =
+        RenderPipelines.register(
+            RenderPipeline.builder(RenderPipelines.GUI_SNIPPET)
+                .withLocation(loc("panel", false))
+                .withVertexShader(Identifier.fromNamespaceAndPath("soul", "core/panel"))
+                .withFragmentShader(Identifier.fromNamespaceAndPath("soul", "core/panel"))
+                .withVertexBinding(0, SoulPanel.FORMAT)
+                .build(),
+        )
 
     /**
      * The pipelines of one terminal-cell shape: [fill] the cell, [under] a fill 1 px inside it with the ring's inner

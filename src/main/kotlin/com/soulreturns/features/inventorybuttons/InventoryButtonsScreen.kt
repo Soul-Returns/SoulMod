@@ -10,6 +10,7 @@ import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.data.skyblock.SkyblockLocation
@@ -647,8 +648,8 @@ class InventoryButtonsScreen(
             val r = intArrayOf(cx - tw / 2, top, cx - tw / 2 + tw, top + th)
             trashRect = r
             val over = within(r, mx, my)
-            roundRect(g, r[0], r[1], r[2], r[3], if (over) TRASH_EDGE_OVER else TRASH_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-            roundRect(g, r[0] + 1, r[1] + 1, r[2] - 1, r[3] - 1, if (over) TRASH_BG_OVER else TRASH_BG, SoulRenderPipelines.ROUND_MEDIUM)
+            val edge = if (over) TRASH_EDGE_OVER else TRASH_EDGE
+            panel(g, r[0], r[1], r[2], r[3], SoulPanel.over(if (over) TRASH_BG_OVER else TRASH_BG, edge), edge)
             val color = if (over) 0xFFFFFFFF.toInt() else TRASH_TEXT
             val contentW = 13 + 6 + textWidth(label, fCaption)
             val ix = cx - contentW / 2
@@ -684,8 +685,7 @@ class InventoryButtonsScreen(
         val ph = shown.size * 12 + 6
         hintW = pw
         hintH = ph
-        roundRect(g, cx - pw / 2, top, cx - pw / 2 + pw, top + ph, SCREEN_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, cx - pw / 2 + 1, top + 1, cx - pw / 2 + pw - 1, top + ph - 1, HINTS_BG, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, cx - pw / 2, top, cx - pw / 2 + pw, top + ph, SoulPanel.over(HINTS_BG, SCREEN_EDGE), SCREEN_EDGE)
         var y = top + 3
         for ((li, line) in shown.withIndex()) {
             var x = cx - lineWs[li] / 2
@@ -731,8 +731,7 @@ class InventoryButtonsScreen(
     private inline fun toast(g: GuiGraphicsExtractor, cx: Int, y0: Int, contentW: Int, content: (Int) -> Unit) {
         val w = contentW + 24
         val x0 = cx - w / 2
-        roundRect(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + 27, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, x0, y0, x0 + w, y0 + 26, TOAST_BG, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + 27, TOAST_BG, Theme.FIELD_BORDER)
         content(x0 + 12)
     }
 
@@ -791,7 +790,7 @@ class InventoryButtonsScreen(
         dry = outer
         if (!dry) {
             roundRect(g, x0, top, x1, bottom, Theme.SECTION, SoulRenderPipelines.ROUND_MEDIUM)
-            if (stripe) g.fill(x0, top + 3, x0 + 2, bottom - 3, Theme.FIELD_BORDER)
+            if (stripe) slice(g, x0, top, x1, bottom, SoulPanel.MEDIUM, x0, top, x0 + 2, bottom, Theme.FIELD_BORDER)
         }
         return body(top)
     }
@@ -843,8 +842,7 @@ class InventoryButtonsScreen(
         val delX = r - 22
         val dupX = delX - 8 - 22
         if (!dry) {
-            roundRect(g, l, y, l + 26, y + 26, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, l + 1, y + 1, l + 25, y + 25, Theme.ICON_BOX, SoulRenderPipelines.ROUND_SMALL)
+            panel(g, l, y, l + 26, y + 26, Theme.ICON_BOX, Theme.FIELD_BORDER, SoulPanel.SMALL)
             g.fakeItem(InventoryButtonIcons.stack(button), l + 5, y + 5)
             val title = if (button.label.isNotBlank()) button.label else if (command.isNotEmpty()) "/$command" else "New button"
             val where = if (off) "Off: on a screen-edge spot" else if (hidden) "Hidden at GUI scale ${guiScale()}" else InventoryButtonSpots.describe(button.spot)
@@ -883,8 +881,7 @@ class InventoryButtonsScreen(
         if (!dry) drawTextV(g, "Icon", l + 1, y, y + 14, Theme.TEXT, fBody)
         y += 17
         if (!dry) {
-            roundRect(g, l, y, l + 22, y + 22, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, l + 1, y + 1, l + 21, y + 21, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+            panel(g, l, y, l + 22, y + 22, Theme.FIELD_BG, Theme.FIELD_BORDER, SoulPanel.SMALL)
             g.fakeItem(InventoryButtonIcons.stack(button), l + 3, y + 3)
             drawTextField(g, l + 26, y, r, y + 22, itemField, "Item id, e.g. chest", bodyRect) { focus(itemField) }
         }
@@ -1127,8 +1124,7 @@ class InventoryButtonsScreen(
             text = if (enabled) Theme.TEXT else 0x66FFFFFF
         } else if (variant == OUTLINE) {
             val edge = if (!enabled) OUTLINE_OFF else if (hover && danger) DANGER_EDGE else if (hover) OUTLINE_HOVER else Theme.OUTLINE
-            roundRect(g, x0, y0, x1, y1, edge, SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, under, SoulRenderPipelines.ROUND_SMALL)
+            panel(g, x0, y0, x1, y1, under, edge, SoulPanel.SMALL)
             text = if (!enabled) Theme.TEXT_FAINT else if (hover && danger) DANGER_TEXT else if (hover) Theme.TEXT else Theme.CHIP_TEXT
         } else {
             roundRect(g, x0, y0, x1, y1, if (hover) Theme.CONTROL_HOVER else Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
@@ -1151,8 +1147,7 @@ class InventoryButtonsScreen(
     /** 22 px square outline button with a 12 px icon and a tooltip (Duplicate / Delete). */
     private fun iconButton(g: GuiGraphicsExtractor, x: Int, y: Int, icon: String, danger: Boolean, tip: List<String>, onClick: () -> Unit) {
         val hover = inBody(x, y, x + 22, y + 22)
-        roundRect(g, x, y, x + 22, y + 22, if (hover && danger) DANGER_EDGE else if (hover) OUTLINE_HOVER else Theme.OUTLINE, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x + 1, y + 1, x + 21, y + 21, Theme.SECTION, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x, y, x + 22, y + 22, Theme.SECTION, if (hover && danger) DANGER_EDGE else if (hover) OUTLINE_HOVER else Theme.OUTLINE, SoulPanel.SMALL)
         drawIcon(g, icon, x + 5, y + 5, 12, if (hover && danger) DANGER_TEXT else if (hover) Theme.TEXT else Theme.TEXT_DIM)
         clippedRegion(x, y, x + 22, y + 22, bodyRect, onClick)
         if (hover) tooltip(x, y, x + 22, y + 22, tip)
@@ -1324,8 +1319,7 @@ class InventoryButtonsScreen(
         val x0 = (uiW - w) / 2
         val y0 = max(12, (uiH - h) / 2)
 
-        roundRect(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, Theme.FIELD_BORDER)
-        roundRect(g, x0, y0, x0 + w, y0 + h, Theme.TOP_NAV)
+        panel(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, Theme.TOP_NAV, Theme.FIELD_BORDER)
         region(x0, y0, x0 + w, y0 + h) {}
 
         drawTextV(g, ellipsize("Use ${draft.name} in…", w - 2 * pad, fHeading, MsdfFonts.menuSemibold), x0 + pad, y0 + 6, y0 + 24, Theme.TEXT, fHeading, MsdfFonts.menuSemibold)

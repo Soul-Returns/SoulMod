@@ -73,8 +73,8 @@ object UsedSoftware {
             Kind.BUNDLED_DATA,
         ),
         Entry(
-            "Odin", "Rounded-rectangle shader; the leap menu's class corners, sorting and the class colors (also used on the dungeon map); reference for terminal, device and boss-timer behavior", "https://github.com/odtheking/Odin", "BSD-3-Clause",
-            Kind.BUNDLED_CODE, covers = listOf("res:assets/soul/shaders/core/round_rect"),
+            "Odin", "Rounded-rectangle shader (its distance function also in the panel shader); the leap menu's class corners, sorting and the class colors (also used on the dungeon map); reference for terminal, device and boss-timer behavior", "https://github.com/odtheking/Odin", "BSD-3-Clause",
+            Kind.BUNDLED_CODE, covers = listOf("res:assets/soul/shaders/core/round_rect", "res:assets/soul/shaders/core/panel"),
         ),
         Entry(
             "NoFrills", "Reference for device solvers and inventory buttons, no code copied", "https://github.com/WhatYouThing/NoFrills", "GPL-3.0",

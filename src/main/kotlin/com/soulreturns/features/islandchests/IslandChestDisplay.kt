@@ -2,8 +2,7 @@ package com.soulreturns.features.islandchests
 
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.render.MsdfFonts
-import com.soulreturns.config.gui.render.RoundRectRenderState
-import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.features.dungeons.DungeonCommandGuard
 import com.soulreturns.features.search.SearchEverywhere
@@ -19,7 +18,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen
-import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.core.BlockPos
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.gizmos.GizmoStyle
@@ -30,7 +28,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
-import org.joml.Matrix3x2f
 import kotlin.math.roundToInt
 
 object IslandChestDisplay {
@@ -246,10 +243,8 @@ object IslandChestDisplay {
         }
     }
 
-    private fun rect(g: GuiGraphicsExtractor, x: Int, y: Int, right: Int, bottom: Int, color: Int) {
-        g.guiRenderState.addGuiElement(RoundRectRenderState(SoulRenderPipelines.ROUND_MEDIUM, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x - 1, y - 1, right + 1, bottom + 1, 0xFF3E4856.toInt(), null))
-        g.guiRenderState.addGuiElement(RoundRectRenderState(SoulRenderPipelines.ROUND_MEDIUM, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x, y, right, bottom, color, null))
-    }
+    private fun rect(g: GuiGraphicsExtractor, x: Int, y: Int, right: Int, bottom: Int, color: Int) =
+        SoulPanel.draw(g, x - 1, y - 1, right + 1, bottom + 1, SoulPanel.MEDIUM, color, 0xFF3E4856.toInt())
 
     private fun text(g: GuiGraphicsExtractor, value: String, x: Int, y: Int, color: Int, size: Int) = SoulText.draw(g, value, x, y, SearchItems.em(size), color, MsdfFonts.menuRegular, forceCustom = true)
 

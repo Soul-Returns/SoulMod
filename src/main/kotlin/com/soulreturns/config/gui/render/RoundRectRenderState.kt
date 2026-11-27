@@ -38,29 +38,12 @@ class RoundRectRenderState(
         }
 
     override fun buildVertices(vertexConsumer: VertexConsumer) {
-        // The quad's edges go to whole physical pixels, where the rasterizer put a plain fill's edges too (pixel
-        // centers inside the quad), so straight sides stay crisp and the shader's centered edge fade (half a pixel
-        // either side of the true edge) lands exactly on them; corners are then cut from the same box.
-        var ax0 = x0.toFloat()
-        var ay0 = y0.toFloat()
-        var ax1 = x1.toFloat()
-        var ay1 = y1.toFloat()
-        if (pose.m01() == 0f && pose.m10() == 0f && pose.m00() > 0f && pose.m11() > 0f) {
-            val gs = Minecraft.getInstance().window.guiScale.toFloat()
-            val sx = pose.m00() * gs
-            val sy = pose.m11() * gs
-            val tx = pose.m20() * gs
-            val ty = pose.m21() * gs
-            val px0 = snap(x0 * sx + tx)
-            val py0 = snap(y0 * sy + ty)
-            // A hairline never collapses to nothing.
-            val px1 = maxOf(snap(x1 * sx + tx), if (x1 > x0) px0 + 1f else px0)
-            val py1 = maxOf(snap(y1 * sy + ty), if (y1 > y0) py0 + 1f else py0)
-            ax0 = (px0 - tx) / sx
-            ay0 = (py0 - ty) / sy
-            ax1 = (px1 - tx) / sx
-            ay1 = (py1 - ty) / sy
-        }
+        val q = SNAPPED
+        snapQuad(pose, x0, y0, x1, y1, q)
+        val ax0 = q[0]
+        val ay0 = q[1]
+        val ax1 = q[2]
+        val ay1 = q[3]
         // UV carries SIGNED composable-unit coordinates relative to the quad center, so the SDF works
         // in composable units — the corner radius (a shader define) then scales with the UI like the
         // legacy NanoVG renderer, instead of being a fixed physical-pixel size. Each corner's
@@ -83,9 +66,6 @@ class RoundRectRenderState(
         vertexConsumer.addVertexWith2DPose(pose, ax1, ay0).setUv(hw, -hh).setColor(c)
     }
 
-    /** The pixel boundary the rasterizer's pixel-center rule rounds a physical edge [v] to (ties go left/up). */
-    private fun snap(v: Float): Float = ceil(v - 0.5f)
-
     override fun pipeline(): RenderPipeline = chromaPipeline ?: pipeline
 
     override fun textureSetup(): TextureSetup = textureSetup
@@ -93,4 +73,40 @@ class RoundRectRenderState(
     override fun scissorArea(): ScreenRectangle? = scissor
 
     override fun bounds(): ScreenRectangle? = bounds
+
+    private companion object {
+        /** [snapQuad]'s output: vertices are built on the render thread only. */
+        val SNAPPED = FloatArray(4)
+    }
 }
+
+/**
+ * The quad ([x0], [y0])-([x1], [y1]) under [pose] with its edges moved to whole physical pixels, into [out] (x0, y0, x1,
+ * y1): where the rasterizer puts a plain fill's edges too (pixel centers inside the quad), so straight sides stay crisp
+ * and the SDF shaders' centered edge fade (half a pixel either side of the true edge) lands exactly on them; corners are
+ * then cut from the same box. Unchanged under a rotated or mirrored pose.
+ */
+internal fun snapQuad(pose: Matrix3x2fc, x0: Int, y0: Int, x1: Int, y1: Int, out: FloatArray) {
+    out[0] = x0.toFloat()
+    out[1] = y0.toFloat()
+    out[2] = x1.toFloat()
+    out[3] = y1.toFloat()
+    if (pose.m01() != 0f || pose.m10() != 0f || pose.m00() <= 0f || pose.m11() <= 0f) return
+    val gs = Minecraft.getInstance().window.guiScale.toFloat()
+    val sx = pose.m00() * gs
+    val sy = pose.m11() * gs
+    val tx = pose.m20() * gs
+    val ty = pose.m21() * gs
+    val px0 = snap(x0 * sx + tx)
+    val py0 = snap(y0 * sy + ty)
+    // A hairline never collapses to nothing.
+    val px1 = maxOf(snap(x1 * sx + tx), if (x1 > x0) px0 + 1f else px0)
+    val py1 = maxOf(snap(y1 * sy + ty), if (y1 > y0) py0 + 1f else py0)
+    out[0] = (px0 - tx) / sx
+    out[1] = (py0 - ty) / sy
+    out[2] = (px1 - tx) / sx
+    out[3] = (py1 - ty) / sy
+}
+
+/** The pixel boundary the rasterizer's pixel-center rule rounds a physical edge [v] to (ties go left/up). */
+private fun snap(v: Float): Float = ceil(v - 0.5f)

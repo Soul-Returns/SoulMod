@@ -4,6 +4,7 @@ import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.RoundRectRenderState
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.ui.SoulUi
@@ -80,7 +81,7 @@ object UpdateToastHud : HudElement("update_toast") {
         val stripe = if (t.kind == OK) GREEN else if (t.kind == BAD) RED else Theme.ACCENT
 
         rect(g, x0, y0, x0 + W, y0 + h, 0x90000000.toInt())
-        g.fill(x0, y0 + 2, x0 + 2, y0 + h - 2, stripe)
+        SoulPanel.slice(g, x0, y0, x0 + W, y0 + h, SoulPanel.SMALL, x0, y0, x0 + 2, y0 + h, stripe)
         val icon = if (t.kind == OK) "ok_circle" else if (t.kind == BAD) "warn" else "flame"
         val iconColor = if (t.kind == OK) GREEN else if (t.kind == BAD) 0xFFFF6B6B.toInt() else -1
         val id = icons.getOrPut(icon) { Identifier.fromNamespaceAndPath("soul", "textures/gui/icons/$icon.png") }

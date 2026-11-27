@@ -133,8 +133,7 @@ class TerminalScreen(private val vanilla: ContainerScreen, private val session: 
         val h = geo.boardH + chromeH
         val x0 = (uiW - w) / 2
         val y0 = (uiH - h) / 2
-        roundRect(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, PANEL_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, x0, y0, x0 + w, y0 + h, PANEL_BG, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, PANEL_BG, PANEL_EDGE)
 
         val sol = if (session.state == TerminalSession.ACTIVE) session.solution else null
         if (showTitle) drawHeader(g, sol, x0 + PAD, y0 + PAD, x0 + w - PAD)

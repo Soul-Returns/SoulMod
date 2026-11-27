@@ -1,5 +1,6 @@
 package com.soulreturns.features.search.forge
 
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.features.search.SackSearchSource
 import com.soulreturns.features.search.SearchEverywhere
@@ -205,8 +206,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
         val selected = s.sel == n.id
         val hover = c.hovered(row, vis)
         if (selected) {
-            c.rrect(g, row.x, row.y, row.right, row.bottom, ForgeColors.SEL_EDGE, SoulRenderPipelines.ROUND_SMALL)
-            c.rrect(g, row.x + 1, row.y + 1, row.right - 1, row.bottom - 1, ForgeColors.SEL_BG, SoulRenderPipelines.ROUND_SMALL)
+            c.panel(g, row.x, row.y, row.right, row.bottom, ForgeColors.SEL_BG, ForgeColors.SEL_EDGE, SoulPanel.SMALL)
         } else if (hover) c.rrect(g, row.x, row.y, row.right, row.bottom, ForgeColors.ROW_HOVER, SoulRenderPipelines.ROUND_SMALL)
         c.region(row, vis) { s.select(n.id) }
         val cells = ForgeLayout.treeCells(row, n.depth)
@@ -251,8 +251,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
         if (visible(segVis)) {
             val now = m.plan.forge.size + m.plan.craft.size
             val gather = m.gather.count { it.missing > 0 }
-            c.rrect(g, seg.x, seg.y, seg.right, seg.bottom, 0xFF333333.toInt(), SoulRenderPipelines.ROUND_SMALL)
-            c.rrect(g, seg.x + 1, seg.y + 1, seg.right - 1, seg.bottom - 1, 0xFF1D1D1D.toInt(), SoulRenderPipelines.ROUND_SMALL)
+            c.panel(g, seg.x, seg.y, seg.right, seg.bottom, 0xFF1D1D1D.toInt(), 0xFF333333.toInt(), SoulPanel.SMALL)
             val half = (seg.width - 8) / 2
             for ((i, tab) in listOf("now" to "Right now $now", "gather" to "Still to gather $gather").withIndex()) {
                 val bx = seg.x + 3 + i * (half + 2)
@@ -260,8 +259,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
                 val on = (s.tab == "gather") == (i == 1)
                 val hover = c.hovered(r, segVis)
                 if (on) {
-                    c.rrect(g, r.x, r.y, r.right, r.bottom, ForgeColors.SEL_EDGE, SoulRenderPipelines.ROUND_SMALL)
-                    c.rrect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, ForgeColors.SEL_BG, SoulRenderPipelines.ROUND_SMALL)
+                    c.panel(g, r.x, r.y, r.right, r.bottom, ForgeColors.SEL_BG, ForgeColors.SEL_EDGE, SoulPanel.SMALL)
                 } else if (hover) c.rrect(g, r.x, r.y, r.right, r.bottom, 0xFF252525.toInt(), SoulRenderPipelines.ROUND_SMALL)
                 val count = tab.second.substringAfterLast(' ')
                 val label = tab.second.removeSuffix(" $count")
@@ -337,8 +335,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
                 else Triple(0xFF303030.toInt(), 0, 0xFF888888.toInt())
             if (cell.kind == "idle" || cell.kind == "unknown") dashed(g, r, edge)
             else {
-                c.rrect(g, r.x, r.y, r.right, r.bottom, edge, SoulRenderPipelines.ROUND_SMALL)
-                c.rrect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, fill, SoulRenderPipelines.ROUND_SMALL)
+                c.panel(g, r.x, r.y, r.right, r.bottom, fill, edge, SoulPanel.SMALL)
             }
             if (cell.id != null) {
                 ui.itemIcon(g, cell.id, r.x + 12, r.y + 5, 20)
@@ -357,8 +354,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
         var y = top
         if (rootReady) {
             val r = Rect(x, y, right, y + ForgeLayout.READY_CARD)
-            c.rrect(g, r.x, r.y, r.right, r.bottom, ForgeColors.PILL_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-            c.rrect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, ForgeColors.PILL_BG, SoulRenderPipelines.ROUND_MEDIUM)
+            c.panel(g, r.x, r.y, r.right, r.bottom, ForgeColors.PILL_BG, ForgeColors.PILL_EDGE, SoulPanel.MEDIUM)
             c.icon(g, "check", r.x + 12, r.y + 24, 18, ForgeColors.OK)
             c.text(g, "Everything is here.", r.x + 40, r.y + 14, r.y + 32, 0xFFCFE9D4.toInt(), ui.em(13), false)
             val base = root.recipe?.baseSeconds ?: 0
@@ -487,8 +483,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
         val selected = s.sel == a.id
         val hover = c.hovered(r, vis)
         if (selected) {
-            c.rrect(g, r.x, r.y, r.right, r.bottom, ForgeColors.SEL_EDGE, SoulRenderPipelines.ROUND_SMALL)
-            c.rrect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, ForgeColors.SEL_BG, SoulRenderPipelines.ROUND_SMALL)
+            c.panel(g, r.x, r.y, r.right, r.bottom, ForgeColors.SEL_BG, ForgeColors.SEL_EDGE, SoulPanel.SMALL)
         } else if (hover) c.rrect(g, r.x, r.y, r.right, r.bottom, ForgeColors.ROW_HOVER2, SoulRenderPipelines.ROUND_SMALL)
         val foldable = forms.isNotEmpty()
         if (foldable) c.region(r, vis) { s.gatherOpen[a.id] = !open } else c.region(r, vis) { s.select(a.id) }
@@ -700,8 +695,7 @@ internal class ForgeGoalView(private val ui: ForgeUi, private val showInSearch: 
     }
 
     private fun staticHeader(g: GuiGraphicsExtractor, r: Rect, st: Static) {
-        c.rrect(g, r.x, r.y, r.right, r.bottom, 0xFF303030.toInt(), SoulRenderPipelines.ROUND_SMALL)
-        c.rrect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, 0xFF1F1F1F.toInt(), SoulRenderPipelines.ROUND_SMALL)
+        c.panel(g, r.x, r.y, r.right, r.bottom, 0xFF1F1F1F.toInt(), 0xFF303030.toInt(), SoulPanel.SMALL)
         val cy = r.y + 18
         c.rrect(g, r.x + 23, cy - 3, r.x + 30, cy + 4, st.color, SoulRenderPipelines.ROUND_SMALL)
         var x = c.tracked(g, st.label, r.x + 37, r.y, r.bottom, 10, 0xFFAAAAAA.toInt()) + 11

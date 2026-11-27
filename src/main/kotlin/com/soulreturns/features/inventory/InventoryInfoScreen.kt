@@ -5,6 +5,7 @@ import com.soulreturns.config.InventoryInfoConfig
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.data.skyblock.SkyblockSelfProfile
 import com.soulreturns.ui.SoulUi
@@ -146,8 +147,8 @@ class InventoryInfoScreen(private val parent: Screen? = null) : SoulScreenBase(C
             val hovered = within(bodyRect, mx, my) && my in y..y + 20 && mx in left..right
             roundRect(g, left - 2, y, right + 2, y + 20, if (hovered) Theme.PANEL_HOVER else Theme.SECTION, SoulRenderPipelines.ROUND_SMALL)
             // Checkbox.
-            roundRect(g, left + 3, y + 4, left + 15, y + 16, if (on) Theme.ACCENT else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-            if (!on) roundRect(g, left + 4, y + 5, left + 14, y + 15, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+            if (on) roundRect(g, left + 3, y + 4, left + 15, y + 16, Theme.ACCENT, SoulRenderPipelines.ROUND_SMALL)
+            else panel(g, left + 3, y + 4, left + 15, y + 16, Theme.FIELD_BG, Theme.FIELD_BORDER, SoulPanel.SMALL)
             val overflow = on && entry.id !in fits
             drawTextV(g, entry.title, left + 21, y, y + 20, if (on) Theme.TEXT else Theme.TEXT_DIM)
             if (overflow) {

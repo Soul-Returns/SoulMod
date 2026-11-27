@@ -1,6 +1,7 @@
 package com.soulreturns.features.search.forge
 
 import com.mojang.blaze3d.pipeline.RenderPipeline
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.data.recipes.RecipeIndex
 import com.soulreturns.features.search.SearchEverywhereLayout.Rect
@@ -17,6 +18,8 @@ internal interface ForgeCanvas {
     val my: Int
     fun em(size: Number): Float
     fun rrect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, pipeline: RenderPipeline)
+    /** A [fill] with a 1 px [border] inside its edge, concentric, outer corner [radius] (`SoulScreenBase.panel`). */
+    fun panel(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, fill: Int, border: Int, radius: Float)
     fun text(g: GuiGraphicsExtractor, s: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, semibold: Boolean)
     fun width(s: String, size: Float): Int
     fun fit(s: String, maxW: Int, size: Float): String
@@ -350,8 +353,7 @@ internal class ForgeUi(val c: ForgeCanvas) {
         if (kind == StepKind.CRAFT && recipe != null) {
             val pill = Rect(right - w - 12, labelMid - 8, right, labelMid + 8)
             val hover = c.hovered(pill, clip)
-            c.rrect(g, pill.x, pill.y, pill.right, pill.bottom, ForgeColors.PILL_EDGE, SoulRenderPipelines.ROUND_SMALL)
-            c.rrect(g, pill.x + 1, pill.y + 1, pill.right - 1, pill.bottom - 1, if (hover) ForgeColors.PILL_HOVER else ForgeColors.PILL_BG, SoulRenderPipelines.ROUND_SMALL)
+            c.panel(g, pill.x, pill.y, pill.right, pill.bottom, if (hover) ForgeColors.PILL_HOVER else ForgeColors.PILL_BG, ForgeColors.PILL_EDGE, SoulPanel.SMALL)
             c.text(g, label, pill.x + 6, pill.y, pill.bottom, ForgeColors.OK, em(11), false)
             c.region(pill, clip) { Forge.viewRecipe(id) }
             if (hover) c.tip(pill, viewTip(id, recipe, st.make))

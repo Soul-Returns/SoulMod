@@ -2,6 +2,7 @@ package com.soulreturns.sound.gui
 
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.sound.CustomSound
 import com.soulreturns.sound.SoulSounds
@@ -455,8 +456,7 @@ abstract class SoundScreenBase(title: Component) : SoulScreenBase(title) {
     ) {
         val hovered = mx in x0..x1 && my in y0 until y1 && within(viewport, mx, my)
         if (selected) {
-            roundRect(g, x0, y0, x1, y1, 0x553B82F6, SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, SELECTED_ROW, SoulRenderPipelines.ROUND_SMALL)
+            panel(g, x0, y0, x1, y1, SELECTED_ROW, 0x553B82F6, SoulPanel.SMALL)
         } else if (hovered) {
             roundRect(g, x0, y0, x1, y1, Theme.PANEL_HOVER, SoulRenderPipelines.ROUND_SMALL)
         } else if (index % 2 == 1) {

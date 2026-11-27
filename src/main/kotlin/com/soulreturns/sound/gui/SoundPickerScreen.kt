@@ -152,8 +152,7 @@ class SoundPickerScreen(
         val footH = 30
         val barH = 26
 
-        roundRect(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, x0, y0, x1, y1, Theme.PANEL or 0xFF000000.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, Theme.PANEL or 0xFF000000.toInt(), Theme.FIELD_BORDER)
         region(x0, y0, x1, y1) {}
 
         // Top: "<purpose> › <title>" + search.

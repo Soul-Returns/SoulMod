@@ -2,6 +2,7 @@ package com.soulreturns.features.experiments
 
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.features.experiments.ExpMenus.Kind
@@ -287,18 +288,15 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
     private fun fill(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) = g!!.fill(x0, y0, x1, y1, color)
 
     /**
-     * A rounded outline [w] px wide inside the box, one SDF stroke following the corner radius: [corner] 2-3 = a
-     * cell's own corners (4), 5 = a ring 3-4 px outside a cell (7-8), 6 = 6 px outside (10).
+     * A rounded outline [w] px wide inside the box ([SoulPanel]) with corner [radius]: a cell's own corners by default;
+     * a ring inside or around a cell passes its concentric radius ([SoulPanel.inner] / [SoulPanel.outer] of the cell's).
      */
-    private fun ring(x0: Int, y0: Int, x1: Int, y1: Int, w: Int, color: Int, corner: Int = 3) {
-        val pipe =
-            if (w >= 3) SoulRenderPipelines.STROKE_3_R8
-            else if (w == 1) SoulRenderPipelines.STROKE_1_R4
-            else if (corner >= 6) SoulRenderPipelines.STROKE_2_R10
-            else if (corner >= 5) SoulRenderPipelines.STROKE_2_R7
-            else SoulRenderPipelines.STROKE_2_R4
-        rr(x0, y0, x1, y1, color, pipe)
-    }
+    private fun ring(x0: Int, y0: Int, x1: Int, y1: Int, w: Int, color: Int, radius: Float = SoulPanel.SMALL) =
+        panel(g!!, x0, y0, x1, y1, 0, color, radius, w.toFloat())
+
+    /** A cell's halo [out] px around it, concentric with the cell's corners. */
+    private fun halo(x0: Int, y0: Int, x1: Int, y1: Int, out: Int, color: Int) =
+        panel(g!!, x0 - out, y0 - out, x1 + out, y1 + out, color, 0, SoulPanel.outer(SoulPanel.SMALL, out.toFloat()))
 
     /** The "after that" outline: a dashed rounded ring 3 px outside a cell. */
     private fun dashed(x0: Int, y0: Int, x1: Int, y1: Int, color: Int) = rr(x0, y0, x1, y1, color, SoulRenderPipelines.DASH_2_R7)
@@ -386,7 +384,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
         val x1 = PAD + w
         rr(x0, y, x1, y + PHASE_H, CELL)
         rr(x0, y, x1, y + PHASE_H, alpha(p.tone, 0.1f))
-        fill(x0, y + 2, x0 + 4, y + PHASE_H - 2, p.tone)
+        slice(g!!, x0, y, x1, y + PHASE_H, SoulPanel.SMALL, x0, y, x0 + 4, y + PHASE_H, p.tone)
         later {
             if (edge > 0f) ring(x0, y, x1, y + PHASE_H, 2, alpha(BLOCK, 0.9f * edge)) else ring(x0, y, x1, y + PHASE_H, 1, alpha(p.tone, 0.28f))
             text(p.word, x0 + 14, y + 5, y + 23, F_WORD, p.tone)
@@ -401,8 +399,8 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
         p.right?.invoke()
         val bar = p.bar
         if (bar != null) {
-            fill(x0 + 4, y + PHASE_H - 3, x1, y + PHASE_H, 0x0FFFFFFF)
-            fill(x0 + 4, y + PHASE_H - 3, x0 + 4 + ((w - 4) * bar.coerceIn(0f, 1f)).toInt(), y + PHASE_H, p.barColor ?: p.tone)
+            slice(g!!, x0, y, x1, y + PHASE_H, SoulPanel.SMALL, x0 + 4, y + PHASE_H - 3, x1, y + PHASE_H, 0x0FFFFFFF)
+            slice(g!!, x0, y, x1, y + PHASE_H, SoulPanel.SMALL, x0 + 4, y + PHASE_H - 3, x0 + 4 + ((w - 4) * bar.coerceIn(0f, 1f)).toInt(), y + PHASE_H, p.barColor ?: p.tone)
         }
     }
 
@@ -499,7 +497,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             val base = opaque(dyeOf(BuiltinId.of(stack)))
             rr(x, y, x1, y1, if (lit) alpha(base, 0.32f) else if (hover == key) CELL_HI else CELL)
             if (lit) {
-                rr(x - 3, y - 3, x1 + 3, y1 + 3, alpha(base, 0.35f), SoulRenderPipelines.ROUND_MEDIUM)
+                halo(x, y, x1, y1, 3, alpha(base, 0.35f))
                 rr(x, y, x1, y1, alpha(base, 0.32f))
                 later { ring(x, y, x1, y1, 2, alpha(0xFFFFFFFF.toInt(), 0.85f)) }
             }
@@ -516,7 +514,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             flashBox(c.top, x, y, x1, y1, now)
             val isNext = up.any { it.second == 0 }
             val isNext2 = !isNext && up.any { it.second == 1 }
-            if (isNext) later { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, 5); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), 6) }
+            if (isNext) later { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, SoulPanel.outer(SoulPanel.SMALL, 4f)); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), SoulPanel.outer(SoulPanel.SMALL, 6f)) }
             if (isNext2) later { dashed(x - 3, y - 3, x1 + 3, y1 + 3, alpha(TURN, 0.5f)) }
             hit(key, x, y, x1, y1, gamePress(c.top, Experiments.CHRONO_CLICK))
         }
@@ -570,19 +568,19 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             val yy = y + (STRIP_H - c) / 2
             val fill = col ?: 0xFF888888.toInt()
             when (state) {
-                "todo" -> if (col != null) rr(x, yy, x + c, yy + c, alpha(fill, 0.55f)) else later { ring(x, yy, x + c, yy + c, 1, 0x2EFFFFFF, 2) }
+                "todo" -> if (col != null) rr(x, yy, x + c, yy + c, alpha(fill, 0.55f)) else later { ring(x, yy, x + c, yy + c, 1, 0x2EFFFFFF) }
                 "seen" -> rr(x, yy, x + c, yy + c, fill)
                 "live" -> {
-                    rr(x - 2, yy - 2, x + c + 2, yy + c + 2, 0xFFFFFFFF.toInt())
+                    halo(x, yy, x + c, yy + c, 2, 0xFFFFFFFF.toInt())
                     rr(x, yy, x + c, yy + c, fill)
                 }
                 "done" -> rr(x, yy, x + c, yy + c, alpha(fill, 0.3f))
                 "sent" -> {
                     rr(x, yy, x + c, yy + c, alpha(fill, 0.55f))
-                    later { ring(x, yy, x + c, yy + c, 1, 0xBFFFFFFF.toInt(), 2) }
+                    later { ring(x, yy, x + c, yy + c, 1, 0xBFFFFFFF.toInt()) }
                 }
                 "next" -> {
-                    rr(x - 2, yy - 2, x + c + 2, yy + c + 2, TURN)
+                    halo(x, yy, x + c, yy + c, 2, TURN)
                     rr(x, yy, x + c, yy + c, fill)
                 }
             }
@@ -659,8 +657,8 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
                     val numColor = alpha(if (state == "next") TURN else 0xFFFFFFFF.toInt(), a)
                     textR(num.toString(), x1 - 5, y1 - 20, y1 - 4, F_BODY + 3, numColor)
                     if (state == "done") drawIcon(g!!, "check", x1 - 13, y + 2, 10, OK_GREEN)
-                    if (state == "sent") ring(x + 2, y + 2, x1 - 2, y1 - 2, 1, 0xB3FFFFFF.toInt(), 3)
-                    if (state == "next") { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, 5); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), 6) }
+                    if (state == "sent") ring(x + 2, y + 2, x1 - 2, y1 - 2, 1, 0xB3FFFFFF.toInt(), SoulPanel.inner(SoulPanel.SMALL, 2f))
+                    if (state == "next") { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, SoulPanel.outer(SoulPanel.SMALL, 4f)); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), SoulPanel.outer(SoulPanel.SMALL, 6f)) }
                     if (state == "next2") dashed(x - 3, y - 3, x1 + 3, y1 + 3, alpha(TURN, 0.5f))
                 }
             }
@@ -796,14 +794,14 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
                     later { ring(x, y, x1, y1, 2, alpha(pc, 0.85f)) }
                     badge(x1 - 2, y + 2, ('A' + pj).toString(), pc, 0xFF111111.toInt(), right = true)
                 }
-                if (slot in sentAt) later { ring(x + 3, y + 3, x1 - 3, y1 - 3, 1, 0xB3FFFFFF.toInt(), 3) }
+                if (slot in sentAt) later { ring(x + 3, y + 3, x1 - 3, y1 - 3, 1, 0xB3FFFFFF.toInt(), SoulPanel.inner(SoulPanel.SMALL, 3f)) }
                 if (isPartner) {
-                    later { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, 5); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), 6) }
+                    later { ring(x - 4, y - 4, x1 + 4, y1 + 4, 3, TURN, SoulPanel.outer(SoulPanel.SMALL, 4f)); ring(x - 6, y - 6, x1 + 6, y1 + 6, 2, alpha(TURN, 0.35f * pulse), SoulPanel.outer(SoulPanel.SMALL, 6f)) }
                     pj?.let { badge(x1 - 2, y + 2, ('A' + it).toString(), PAIR_COLORS[it % PAIR_COLORS.size], 0xFF111111.toInt(), right = true) }
                 }
             }
             if (rare) {
-                later { ring(x - 3, y - 3, x1 + 3, y1 + 3, 2, alpha(RARE, 0.6f + 0.4f * pulse), 5) }
+                later { ring(x - 3, y - 3, x1 + 3, y1 + 3, 2, alpha(RARE, 0.6f + 0.4f * pulse), SoulPanel.outer(SoulPanel.SMALL, 3f)) }
                 badge(x + 2, y + 2, "RARE", RARE, 0xFF111111.toInt())
             }
             flashBox(slot, x, y, x1, y1, now)
@@ -818,7 +816,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             val pc = PAIR_COLORS[j % PAIR_COLORS.size]
             rr(cx, cy + 3, cx + cw, cy + STRIP_H - 3, alpha(pc, 0.14f))
             later {
-                ring(cx, cy + 3, cx + cw, cy + STRIP_H - 3, 1, alpha(pc, 0.5f), 2)
+                ring(cx, cy + 3, cx + cw, cy + STRIP_H - 3, 1, alpha(pc, 0.5f))
                 rr(cx + 3, cy + 6, cx + 15, cy + 18, pc, SoulRenderPipelines.ROUND_PILL)
                 textC(('A' + j).toString(), cx + 9, cy + 12, F_TINY, 0xFF111111.toInt())
                 text(label, cx + 19, cy, cy + STRIP_H, F_TINY, 0xFFDDDDDD.toInt())
@@ -875,8 +873,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             val cwid = cw[ci]
             val key = "card:$game"
             val hv = hover == key || hover?.startsWith("menu:$slot") == true
-            rr(x - 1, yC - 1, x + cwid + 1, yC + ch + 1, CARD_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-            rr(x, yC, x + cwid, yC + ch, if (hv) CARD_HI else CARD, SoulRenderPipelines.ROUND_MEDIUM)
+            panel(g!!, x - 1, yC - 1, x + cwid + 1, yC + ch + 1, if (hv) CARD_HI else CARD, CARD_EDGE)
             hit(key, x, yC, x + cwid, yC + ch, null)
             item(Experiments.stacks.getOrNull(slot), x + 10, yC + 10, 26)
             val name = ExpMenus.GAME_NAME[game]!!
@@ -916,8 +913,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             x += cwid + cg
         }
         t.renew?.let { rn ->
-            rr(PAD - 1, yR - 1, PAD + w + 1, yR + 47, CARD_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-            rr(PAD, yR, PAD + w, yR + 46, CARD, SoulRenderPipelines.ROUND_MEDIUM)
+            panel(g!!, PAD - 1, yR - 1, PAD + w + 1, yR + 47, CARD, CARD_EDGE)
             item(Experiments.stacks.getOrNull(rn.slot), PAD + 10, yR + 10, 26)
             later {
                 text("Renew Experiments", PAD + 44, yR + 10, yR + 22, F_BODY + 1, mc('a'))
@@ -966,8 +962,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
             val y = yL + j * (rowH + rg)
             val key = "menu:${t.slot}"
             val hv = hover == key && t.playable
-            rr(PAD - 1, y - 1, PAD + w + 1, y + rowH + 1, CARD_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-            rr(PAD, y, PAD + w, y + rowH, if (hv) CARD_HI else CARD, SoulRenderPipelines.ROUND_MEDIUM)
+            panel(g!!, PAD - 1, y - 1, PAD + w + 1, y + rowH + 1, if (hv) CARD_HI else CARD, CARD_EDGE)
             item(Experiments.stacks.getOrNull(t.slot), PAD + 12, y + (rowH - 24) / 2, 24)
             val dim = if (t.playable) 1f else 0.55f
             if (t.tier !in captured) chip(PAD + 46, y + 29, "vanilla board", DIM, F_TINY, 11)
@@ -1052,8 +1047,7 @@ class ExperimentScreen(private val vanilla: ContainerScreen, private val menu: E
         }
         val yW = yR + rows.size * 16 + 8
         val hW = 14 + rewards.size * 15
-        rr(PAD - 1, yW - 1, PAD + w + 1, yW + hW + 1, CARD_EDGE, SoulRenderPipelines.ROUND_MEDIUM)
-        rr(PAD, yW, PAD + w, yW + hW, CARD, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g!!, PAD - 1, yW - 1, PAD + w + 1, yW + hW + 1, CARD, CARD_EDGE)
         later {
             text("Rewards", PAD + 10, yW + 2, yW + 12, F_TINY, DIM)
             rewards.forEachIndexed { j, l ->

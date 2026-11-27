@@ -12,6 +12,7 @@ import com.soulreturns.config.gui.model.TextOption
 import com.soulreturns.config.gui.model.SoundOption
 import com.soulreturns.config.gui.model.ToggleOption
 import com.soulreturns.config.gui.render.MsdfFont
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.ui.SoulUi
 import com.soulreturns.ui.screen.SoulScreenBase
@@ -535,11 +536,11 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
     }
 
     private fun drawCheckbox(g: GuiGraphicsExtractor, x: Int, y: Int, on: Boolean) {
-        roundRect(g, x, y, x + chipBox, y + chipBox, if (on) Theme.ACCENT else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
         if (on) {
+            roundRect(g, x, y, x + chipBox, y + chipBox, Theme.ACCENT, SoulRenderPipelines.ROUND_SMALL)
             drawTextV(g, "✓", x + (chipBox - textWidth("✓", fBody)) / 2, y, y + chipBox, Theme.TEXT, fBody)
         } else {
-            roundRect(g, x + 1, y + 1, x + chipBox - 1, y + chipBox - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+            panel(g, x, y, x + chipBox, y + chipBox, Theme.FIELD_BG, Theme.FIELD_BORDER, SoulPanel.SMALL)
         }
     }
 
@@ -550,9 +551,8 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
 
     /** A color swatch (checkerboard behind if it may be translucent) with a border. */
     protected fun drawSwatch(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, alpha: Boolean) {
-        roundRect(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
         if (alpha) checker(g, x0, y0, x1, y1)
-        roundRect(g, x0, y0, x1, y1, color, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, color, Theme.FIELD_BORDER, SoulPanel.SMALL)
     }
 
     /** A gray checkerboard, so a translucent color over it reads as translucent. */
@@ -640,8 +640,7 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         opt: KeybindOption,
     ) {
         val capturing = capturingKeybind === opt
-        roundRect(g, x0, y0, x1, y1, if (capturing) Theme.ACCENT else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0, y0, x1, y1, Theme.FIELD_BG, if (capturing) Theme.ACCENT else Theme.FIELD_BORDER, SoulPanel.SMALL)
         val label = if (capturing) keyCapture.preview() ?: "> Press a key <" else keybindLabel(opt.get())
         val color = if (capturing) Theme.ACCENT else if (opt.get().isBlank()) Theme.TEXT_FAINT else Theme.TEXT
         drawTextV(g, label, (x0 + x1) / 2 - textWidth(label, fBody) / 2, y0, y1, color, fBody)
@@ -681,8 +680,7 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
     ) {
         val ref = opt.get()
         val hovered = mx in x0..x1 && my in y0..y1
-        roundRect(g, x0, y0, x1, y1, if (hovered) Theme.CONTROL_HOVER else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0, y0, x1, y1, Theme.FIELD_BG, if (hovered) Theme.CONTROL_HOVER else Theme.FIELD_BORDER, SoulPanel.SMALL)
         region(x0, y0, x1, y1) { openSoundPicker(opt) }
         val cy = (y0 + y1) / 2
         var textX = x0 + 7
@@ -863,8 +861,7 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
             }
         val py = pickerAnchor[1].coerceIn(2, (uiH - panelH - 2).coerceAtLeast(2))
 
-        roundRect(g, px - 1, py - 1, px + panelW + 1, py + panelH + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, px, py, px + panelW, py + panelH, Theme.PANEL, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, px - 1, py - 1, px + panelW + 1, py + panelH + 1, Theme.PANEL_FLOATING, Theme.FIELD_BORDER)
         // Consume clicks on the panel background (between controls) so they don't close the picker.
         region(px, py, px + panelW, py + panelH) {}
 
@@ -911,8 +908,7 @@ abstract class ConfigScreenBase(title: Component) : SoulScreenBase(title) {
         for ((i, rgb) in pickerPalette.withIndex()) {
             val cx = svX + (i % PAL_COLS) * (PAL_CHIP + PAL_GAP)
             val cy = palY + (i / PAL_COLS) * (PAL_CHIP + PAL_GAP)
-            roundRect(g, cx - 1, cy - 1, cx + PAL_CHIP + 1, cy + PAL_CHIP + 1, if (rgb == current) 0xFFFFFFFF.toInt() else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-            roundRect(g, cx, cy, cx + PAL_CHIP, cy + PAL_CHIP, 0xFF000000.toInt() or rgb, SoulRenderPipelines.ROUND_SMALL)
+            panel(g, cx - 1, cy - 1, cx + PAL_CHIP + 1, cy + PAL_CHIP + 1, 0xFF000000.toInt() or rgb, if (rgb == current) 0xFFFFFFFF.toInt() else Theme.FIELD_BORDER, SoulPanel.SMALL)
             region(cx, cy, cx + PAL_CHIP, cy + PAL_CHIP) {
                 val hsva = argbToHsva(0xFF000000.toInt() or rgb)
                 pickH = hsva[0]; pickS = hsva[1]; pickV = hsva[2]

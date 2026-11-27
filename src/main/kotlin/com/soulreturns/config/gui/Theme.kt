@@ -23,6 +23,8 @@ object Theme {
     val TEXT_FAINT: Int = 0xFF555555.toInt()
     val FIELD_BG: Int = 0xE0242424.toInt() // legacy text field idle bg (panelHover)
     val FIELD_BORDER: Int = 0xFF333333.toInt()
+    /** [PANEL] as it showed stacked on a [FIELD_BORDER] rect (`SoulPanel.over`): the opaque body of popups, tooltips and Move GUI panels. */
+    val PANEL_FLOATING: Int = 0xFF1E1E1E.toInt()
 
     // Config menu (spec `mocks/config-menu/mock.css`).
     val ACCENT_LIGHT: Int = 0xFF7FB0FF.toInt() // icons of cards that are on, NEW chip text, right-now headers

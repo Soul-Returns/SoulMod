@@ -1,6 +1,5 @@
 package com.soulreturns.features.scoreboard
 
-import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.soulreturns.config.ChromaColor
 import com.soulreturns.config.ConfigManager
 import com.soulreturns.config.ScoreboardConfig
@@ -8,8 +7,8 @@ import com.soulreturns.config.ScoreboardLook
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.SoulConfigScreen
 import com.soulreturns.config.gui.render.Chroma
-import com.soulreturns.config.gui.render.RoundRectRenderState
-import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.config.gui.render.GradientClock
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRichText
 import com.soulreturns.data.skyblock.ProfileType
 import com.soulreturns.features.scoreboard.gui.ScoreboardSetupScreen
@@ -17,10 +16,8 @@ import com.soulreturns.ui.hud.movable.HudTransform
 import com.soulreturns.ui.hud.movable.MovableHud
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.client.gui.screens.ChatScreen
 import net.minecraft.client.gui.screens.Screen
-import org.joml.Matrix3x2f
 
 /**
  * The scoreboard as a Soul HUD (spec `mocks/scoreboard/`, "The HUD: one Soul card, Baloo 2 at size 10,
@@ -132,15 +129,9 @@ object ScoreboardHud : MovableHud("scoreboard", "Scoreboard", "general") {
         if (lines.isEmpty()) return
         val (w, h) = measure(lines, look)
         val pad = look.padding.coerceIn(0, 20)
-        val radius = look.cornerRadius.coerceIn(0, 20)
-        if (look.background) {
-            val alpha = (look.backgroundOpacity.coerceIn(0, 100) * 255 / 100)
-            if (alpha > 0) rect(g, fillPipeline(radius), 0, 0, w, h, withAlpha(look.backgroundColor.effective(), alpha), radius == 0)
-        }
-        if (look.border) {
-            val color = if ("border" in look.chromaOn) ChromaColor(WHITE, chroma = true).effective() else look.borderColor.effective()
-            border(g, radius, w, h, color)
-        }
+        val fill =
+            if (look.background) withAlpha(look.backgroundColor.effective(), look.backgroundOpacity.coerceIn(0, 100) * 255 / 100) else 0
+        drawBox(g, w, h, look, fill)
         val font = fontChoiceIndex()
         val bold = boldFont()
         for ((i, line) in lines.withIndex()) {
@@ -160,28 +151,26 @@ object ScoreboardHud : MovableHud("scoreboard", "Scoreboard", "general") {
 
     private fun withAlpha(argb: Int, alpha: Int): Int = (alpha shl 24) or (argb and 0xFFFFFF)
 
-    /** The SDF pipelines have fixed radii: 4, 6 and 10 (rule://render-layer); the nearest one draws. */
-    private fun fillPipeline(radius: Int): RenderPipeline =
-        if (radius <= 5) SoulRenderPipelines.ROUND_SMALL else if (radius <= 8) SoulRenderPipelines.ROUND_MEDIUM else SoulRenderPipelines.ROUND_LARGE
+    /** Turns the gradient border; shared by the HUD and the setup screen's preview. */
+    private val borderClock = GradientClock()
 
-    private fun border(g: GuiGraphicsExtractor, radius: Int, w: Int, h: Int, color: Int) {
-        if (radius == 0) {
-            Chroma.fill(g, 0, 0, w, 2, color)
-            Chroma.fill(g, 0, h - 2, w, h, color)
-            Chroma.fill(g, 0, 2, 2, h - 2, color)
-            Chroma.fill(g, w - 2, 2, w, h - 2, color)
-            return
+    /**
+     * Background and border as one [SoulPanel]: the 2 px border inside the box's edge, the background inset under it
+     * with the concentric radius. Chroma on the border (Look › Chroma on › Border) beats its own colors.
+     */
+    private fun drawBox(g: GuiGraphicsExtractor, w: Int, h: Int, look: ScoreboardLook, fill: Int) {
+        val radius = look.cornerRadius.coerceIn(0, 20).toFloat()
+        if (!look.border) {
+            SoulPanel.draw(g, 0, 0, w, h, radius, fill)
+        } else if ("border" in look.chromaOn) {
+            SoulPanel.draw(g, 0, 0, w, h, radius, fill, ChromaColor(WHITE, chroma = true).effective(), BORDER_W)
+        } else if (look.borderStyle == ScoreboardLook.BORDER_SOLID) {
+            SoulPanel.draw(g, 0, 0, w, h, radius, fill, look.borderColor.effective(), BORDER_W)
+        } else {
+            val phase = borderClock.phase(Chroma.cycleSeconds(look.borderSpeed.coerceIn(ScoreboardLook.MIN_BORDER_SPEED, ScoreboardLook.MAX_BORDER_SPEED)))
+            SoulPanel.drawGradient(g, 0, 0, w, h, radius, fill, look.borderColor.effective(), look.borderColor2.effective(), phase, BORDER_W)
         }
-        val pipeline = if (radius <= 5) SoulRenderPipelines.STROKE_2_R4 else if (radius <= 8) SoulRenderPipelines.STROKE_2_R7 else SoulRenderPipelines.STROKE_2_R10
-        rect(g, pipeline, 0, 0, w, h, color, false)
     }
 
-    private fun rect(g: GuiGraphicsExtractor, pipeline: RenderPipeline, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, square: Boolean) {
-        if ((color ushr 24) == 0) return
-        if (square) {
-            Chroma.fill(g, x0, y0, x1, y1, color)
-            return
-        }
-        g.guiRenderState.addGuiElement(RoundRectRenderState(pipeline, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x0, y0, x1, y1, color, null))
-    }
+    private const val BORDER_W = 2f
 }

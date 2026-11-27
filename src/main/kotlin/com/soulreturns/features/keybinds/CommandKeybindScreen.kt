@@ -7,6 +7,7 @@ import com.soulreturns.config.PresetBinding
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.features.keybinds.CommandKeybinds.Ref
 import com.soulreturns.ui.SoulUi
@@ -503,15 +504,13 @@ class CommandKeybindScreen(private val parent: Screen? = null) : SoulScreenBase(
             }
             val w = partWidth(part)
             val textColor = if (capturing) {
-                roundRect(g, cx, top, cx + w, bottom, Theme.ACCENT, SoulRenderPipelines.ROUND_SMALL)
-                roundRect(g, cx + 1, top + 1, cx + w - 1, bottom - 1, CAPTURE_BG, SoulRenderPipelines.ROUND_SMALL)
+                panel(g, cx, top, cx + w, bottom, CAPTURE_BG, Theme.ACCENT, SoulPanel.SMALL)
                 CAPTURE_TEXT
             } else if (unbound) {
                 dashedRect(g, cx, top, cx + w, bottom, if (hover) Theme.TEXT_DIM else Theme.TEXT_FAINT)
                 if (hover) Theme.TEXT_DIM else Theme.TEXT_FAINT
             } else {
-                roundRect(g, cx, top, cx + w, bottom, if (hover) Theme.TEXT_DIM else CHIP_BORDER, SoulRenderPipelines.ROUND_SMALL)
-                roundRect(g, cx + 1, top + 1, cx + w - 1, bottom - 1, if (dimmed) CHIP_BG_DIM else CHIP_BG, SoulRenderPipelines.ROUND_SMALL)
+                panel(g, cx, top, cx + w, bottom, if (dimmed) CHIP_BG_DIM else CHIP_BG, if (hover) Theme.TEXT_DIM else CHIP_BORDER, SoulPanel.SMALL)
                 if (dimmed) Theme.TEXT_FAINT else CHIP_TEXT
             }
             drawTextV(g, part, cx + 5, top, bottom, textColor, fCaption)

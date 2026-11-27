@@ -6,6 +6,7 @@ import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.MsdfTextRenderState
 import com.soulreturns.config.gui.render.RoundRectRenderState
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.ui.SoulUi
@@ -239,6 +240,41 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
             RoundRectRenderState(pipeline, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x0, y0, x1, y1, color, clip),
         )
     }
+
+    /**
+     * A rounded [fill] with a [border] ring [borderWidth] wide inside its edge, concentric ([SoulPanel]: the fill's
+     * corners follow the ring's inner curve). [radius] is the outer radius: [SoulPanel.SMALL], `MEDIUM`, `LARGE`,
+     * `PILL` or any other. Clipped like [roundRect].
+     */
+    protected fun panel(
+        g: GuiGraphicsExtractor,
+        x0: Int,
+        y0: Int,
+        x1: Int,
+        y1: Int,
+        fill: Int,
+        border: Int,
+        radius: Float = SoulPanel.MEDIUM,
+        borderWidth: Float = 1f,
+    ) = SoulPanel.draw(g, x0, y0, x1, y1, radius, fill, border, borderWidth, clip)
+
+    /**
+     * An accent stripe or bar ([sx0], [sy0])-([sx1], [sy1]) drawn as a slice of the [radius]-rounded card ([x0], [y0])-([x1],
+     * [y1]) it sits on ([SoulPanel.slice]), so its ends follow the card's corners. Clipped like [roundRect].
+     */
+    protected fun slice(
+        g: GuiGraphicsExtractor,
+        x0: Int,
+        y0: Int,
+        x1: Int,
+        y1: Int,
+        radius: Float,
+        sx0: Int,
+        sy0: Int,
+        sx1: Int,
+        sy1: Int,
+        color: Int,
+    ) = SoulPanel.slice(g, x0, y0, x1, y1, radius, sx0, sy0, sx1, sy1, color, clip)
 
     /**
      * Enable a scissor AND record it (in device coords) so our custom SDF/text elements clip to it
@@ -610,8 +646,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
         focused: Boolean,
         onClick: () -> Unit,
     ) {
-        roundRect(g, x0, y0, x1, y1, if (focused) Theme.ACCENT else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL) // border
-        roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0, y0, x1, y1, Theme.FIELD_BG, if (focused) Theme.ACCENT else Theme.FIELD_BORDER, SoulPanel.SMALL)
         val inner = x0 + 6
         if (text.isEmpty() && !focused) {
             drawTextV(g, placeholder, inner, y0, y1, Theme.TEXT_FAINT, fBody)
@@ -652,8 +687,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
         onFocus: () -> Unit = {},
     ) {
         val text = if (field.masked) "•".repeat(field.text.length) else field.text
-        roundRect(g, x0, y0, x1, y1, if (field.focused) Theme.ACCENT else border, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, background, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0, y0, x1, y1, background, if (field.focused) Theme.ACCENT else border, SoulPanel.SMALL)
         val available = (x1 - x0 - inset - 6 - trailing).coerceAtLeast(1)
         field.visibleStart = field.visibleStart.coerceIn(0, field.cursor)
         while (field.visibleStart < field.cursor && textWidth(text.substring(field.visibleStart, field.cursor)) > available - 1) {
@@ -802,8 +836,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
         val h = rows.size * TIP_LINE_H + 2 * TIP_PAD_Y
         val y = if (tipRect[3] + TIP_GAP + h <= uiH - 2) tipRect[3] + TIP_GAP else tipRect[1] - TIP_GAP - h
         val x = ((tipRect[0] + tipRect[2]) / 2 - w / 2).coerceIn(2, max(2, uiW - w - 2))
-        roundRect(g, x - 1, y - 1, x + w + 1, y + h + 1, TIP_EDGE, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x, y, x + w, y + h, TIP_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x - 1, y - 1, x + w + 1, y + h + 1, TIP_BG, TIP_EDGE, SoulPanel.SMALL)
         var ly = y + TIP_PAD_Y
         for (row in rows) {
             var lx = x + TIP_PAD_X
@@ -886,8 +919,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
 
     /** A collapsed dropdown button: bordered field, current value, and a caret. */
     protected fun drawDropdownButton(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, text: String, open: Boolean) {
-        roundRect(g, x0, y0, x1, y1, if (open) Theme.ACCENT else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0, y0, x1, y1, Theme.FIELD_BG, if (open) Theme.ACCENT else Theme.FIELD_BORDER, SoulPanel.SMALL)
         drawTextV(g, text, x0 + 6, y0, y1, Theme.TEXT, fBody)
         caret(g, x1 - 9, (y0 + y1) / 2 - 1)
     }
@@ -959,8 +991,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
         // Below the button, or flipped above if it would run off the bottom.
         val top = if (dropdownRect[3] + 1 + listH <= uiH) dropdownRect[3] + 1 else (dropdownRect[1] - 1 - listH).coerceAtLeast(2)
 
-        roundRect(g, ax0 - 1, top - 1, ax1 + 1, top + listH + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, ax0, top, ax1, top + listH, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, ax0 - 1, top - 1, ax1 + 1, top + listH + 1, Theme.FIELD_BG, Theme.FIELD_BORDER, SoulPanel.SMALL)
         region(ax0, top, ax1, top + listH) {} // consume clicks on the list background
 
         var y = top + 1
@@ -1141,8 +1172,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
         val px = (uiW - panelW) / 2
         val py = (uiH - panelH) / 2
 
-        roundRect(g, px - 1, py - 1, px + panelW + 1, py + panelH + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, px, py, px + panelW, py + panelH, Theme.PANEL, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, px - 1, py - 1, px + panelW + 1, py + panelH + 1, Theme.PANEL_FLOATING, Theme.FIELD_BORDER)
         region(px, py, px + panelW, py + panelH) {} // consume clicks on the panel background
 
         val titleColor = if (alertBusy || field != null) Theme.TEXT else if (alertSuccess) Theme.ACCENT else 0xFFE05252.toInt()
@@ -1175,8 +1205,7 @@ abstract class SoulScreenBase(title: Component) : Screen(title) {
                 for (i in 0..1) g.fill(px + pad + 2 + i, cy0 + 4 + i, px + pad + 4 + i, cy0 + 6 + i, 0xFFFFFFFF.toInt())
                 for (i in 0..3) g.fill(px + pad + 4 + i, cy0 + 5 - i, px + pad + 6 + i, cy0 + 7 - i, 0xFFFFFFFF.toInt())
             } else {
-                roundRect(g, px + pad, cy0, px + pad + box, cy0 + box, 0xFF4A4A4A.toInt(), SoulRenderPipelines.ROUND_SMALL)
-                roundRect(g, px + pad + 1, cy0 + 1, px + pad + box - 1, cy0 + box - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+                panel(g, px + pad, cy0, px + pad + box, cy0 + box, Theme.FIELD_BG, 0xFF4A4A4A.toInt(), SoulPanel.SMALL)
             }
             drawTextV(g, checkLabel, px + pad + box + 6, cy0, cy0 + box, if (hovered) Theme.TEXT else Theme.TEXT_DIM, fBody)
             region(px + pad, cy0 - 2, px + pad + box + 6 + textWidth(checkLabel, fBody), cy0 + box + 2) { alertChecked = !alertChecked }

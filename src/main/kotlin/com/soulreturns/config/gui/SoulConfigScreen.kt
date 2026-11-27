@@ -17,6 +17,7 @@ import com.soulreturns.config.gui.model.FeatureCard
 import com.soulreturns.config.gui.model.SettingsSection
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.Shapes
 import com.soulreturns.features.chat.AutoMeow
@@ -365,9 +366,9 @@ class SoulConfigScreen(
         if (collapsed && peeking) {
             // Floating over the content: a soft shadow to its right.
             for (i in 0 until 10) g.fill(x1 + i, y0 + 2, x1 + i + 1, y1 - 2, ((0x60 * (10 - i) / 10) shl 24))
-            roundRect(g, x0, y0, x1, topY1, Theme.TOP_NAV, SoulRenderPipelines.ROUND_TOP)
         }
-        roundRect(g, x0, y0, x1, topY1, Theme.TOP_NAV, if (collapsed && peeking) SoulRenderPipelines.ROUND_TOP else SoulRenderPipelines.ROUND_SMALL)
+        // Its top-left corner is the window's, so it takes the window's radius (ROUND_TOP, 6).
+        roundRect(g, x0, y0, x1, topY1, Theme.TOP_NAV, SoulRenderPipelines.ROUND_TOP)
         roundRect(g, x0, topY1, x1, y1, Theme.SIDEBAR, SoulRenderPipelines.ROUND_BL)
         if (collapsed && peeking) g.fill(x1 - 1, y0, x1, y1, Theme.SEPARATOR)
 
@@ -491,8 +492,7 @@ class SoulConfigScreen(
         val sx0 = sx1 - searchW
         val cy = (y0 + y1) / 2
         val sHover = mx in sx0..sx1 && my in cy - 12..cy + 12
-        roundRect(g, sx0, cy - 12, sx1, cy + 12, if (sHover) Theme.ACCENT else 0xFF333333.toInt(), SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, sx0 + 1, cy - 11, sx1 - 1, cy + 11, 0xFF222222.toInt(), SoulRenderPipelines.ROUND_SMALL)
+        panel(g, sx0, cy - 12, sx1, cy + 12, 0xFF222222.toInt(), if (sHover) Theme.ACCENT else 0xFF333333.toInt(), SoulPanel.SMALL)
         drawIcon(g, "search", sx0 + 7, cy - 6, 12, if (sHover) 0xFFFFFFFF.toInt() else Theme.CHIP_TEXT)
         drawKbd(g, sx0 + 7 + 12 + 6, cy, kbd)
         region(sx0, cy - 12, sx1, cy + 12) { openPalette() }
@@ -612,8 +612,7 @@ class SoulConfigScreen(
 
     private fun drawKbd(g: GuiGraphicsExtractor, x: Int, cy: Int, text: String): Int {
         val w = kbdWidth(text)
-        roundRect(g, x, cy - 6, x + w, cy + 6, Theme.OUTLINE, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x + 1, cy - 5, x + w - 1, cy + 5, 0xFF1A1A1A.toInt(), SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x, cy - 6, x + w, cy + 6, 0xFF1A1A1A.toInt(), Theme.OUTLINE, SoulPanel.SMALL)
         com.soulreturns.config.gui.render.SoulText.drawCenteredOn(g, text, x + w / 2, cy, F_CHIP_SMALL, Theme.ICON, forceCustom = true, scissor = currentClip)
         return w
     }
@@ -671,8 +670,7 @@ class SoulConfigScreen(
     /** Outline button (footer Move GUI, the tip card's action): no fill, 1 px border. */
     private fun outlineButton(g: GuiGraphicsExtractor, mx: Int, my: Int, x0: Int, y0: Int, x1: Int, y1: Int, label: String, onClick: () -> Unit) {
         val hovered = mx in x0..x1 && my in y0..y1
-        roundRect(g, x0, y0, x1, y1, if (hovered) 0xFF555555.toInt() else Theme.OUTLINE, SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.TOP_NAV, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0, y0, x1, y1, Theme.TOP_NAV, if (hovered) 0xFF555555.toInt() else Theme.OUTLINE, SoulPanel.SMALL)
         com.soulreturns.config.gui.render.SoulText.drawCenteredOn(g, label, (x0 + x1) / 2, (y0 + y1) / 2, fBody, if (hovered) Theme.TEXT else Theme.CHIP_TEXT, forceCustom = true, scissor = currentClip)
         region(x0, y0, x1, y1, onClick)
     }
@@ -689,8 +687,7 @@ class SoulConfigScreen(
         val hovered = mx in x0..x1 && my in y0..y1 && my in viewport[1]..viewport[3]
         val on = isOn(card)
         if (sel) {
-            roundRect(g, x0, y0, x1, y1, Theme.ACCENT, SoulRenderPipelines.ROUND_MEDIUM)
-            roundRect(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.CARD_SELECTED, SoulRenderPipelines.ROUND_MEDIUM)
+            panel(g, x0, y0, x1, y1, Theme.CARD_SELECTED, Theme.ACCENT)
         } else {
             roundRect(g, x0, y0, x1, y1, if (hovered) 0xFF242424.toInt() else Theme.SECTION, SoulRenderPipelines.ROUND_MEDIUM)
         }
@@ -973,7 +970,7 @@ class SoulConfigScreen(
         val heights = opts.map { optionRowHeight(it, rx0, rx1, ROW_H) }
         val h = heights.sum() + 8
         roundRect(g, x0, y, x1, y + h, Theme.SECTION, SoulRenderPipelines.ROUND_MEDIUM)
-        if (advanced) g.fill(x0, y + 3, x0 + 2, y + h - 3, 0xFF333333.toInt())
+        if (advanced) slice(g, x0, y, x1, y + h, SoulPanel.MEDIUM, x0, y, x0 + 2, y + h, 0xFF333333.toInt())
         var ry = y + 4
         for ((i, opt) in opts.withIndex()) {
             val rh = heights[i]
@@ -1134,8 +1131,7 @@ class SoulConfigScreen(
         val textH = drawRich(null, RichText.parse(text), 0, 0, bx1 - bx0 - 36, F_10_5, 0, 13)
         val h = textH + 14
         if (g != null) {
-            roundRect(g, bx0, top, bx1, top + h, 0xFF6B2525.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
-            roundRect(g, bx0 + 1, top + 1, bx1 - 1, top + h - 1, 0xFF3A1616.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
+            panel(g, bx0, top, bx1, top + h, 0xFF3A1616.toInt(), 0xFF6B2525.toInt())
             drawIcon(g, "warn", bx0 + 10, top + (h - 16) / 2, 16, 0xFFFF6B6B.toInt())
             drawRich(g, RichText.parse(text), bx0 + 36, top + 7, bx1 - 10, F_10_5, 0xFFF3C4C4.toInt(), 13)
             region(bx0, top, bx1, top + h) {}
@@ -1219,7 +1215,7 @@ class SoulConfigScreen(
         val subLines = wrapText(sub, tx1 - tx, fCaption)
         val h = 10 + 12 + 15 + subLines.size * 13 + (if (bar != null) 9 else 0) + 10
         roundRect(g, x0, y0, x1, y0 + h, Theme.SECTION, SoulRenderPipelines.ROUND_MEDIUM)
-        g.fill(x0, y0 + 3, x0 + 2, y0 + h - 3, stripe)
+        slice(g, x0, y0, x1, y0 + h, SoulPanel.MEDIUM, x0, y0, x0 + 2, y0 + h, stripe)
         drawIcon(g, icon, x0 + 12, y0 + (h - 22) / 2, 22, iconColor)
         var y = y0 + 10
         drawTextV(g, kicker.uppercase(), tx, y, y + 12, kickerColor, F_CHIP_SMALL, MsdfFonts.menuSemibold)
@@ -1267,8 +1263,7 @@ class SoulConfigScreen(
 
         // Search hint.
         val hHover = mx in px0..px1 && my in y..y + 32
-        roundRect(g, px0, y, px1, y + 32, if (hHover) Theme.ACCENT else Theme.SEPARATOR, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, px0 + 1, y + 1, px1 - 1, y + 31, Theme.SECTION, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, px0, y, px1, y + 32, Theme.SECTION, if (hHover) Theme.ACCENT else Theme.SEPARATOR)
         drawIcon(g, "search", px0 + 10, y + 10, 13, Theme.ACCENT_LIGHT)
         val kbdW = kbdWidth("Ctrl") + 3 + kbdWidth("K")
         drawTextV(g, ellipsize("Search everything: features, settings, pages. Try \"sprint\", \"implosion\" or \"prices\".", px1 - 10 - kbdW - 8 - (px0 + 31), fBody), px0 + 31, y, y + 32, if (hHover) Theme.TEXT else Theme.TEXT_DIM, fBody)
@@ -1391,7 +1386,7 @@ class SoulConfigScreen(
         val h = 52
         val t = TIPS[tip % TIPS.size]
         roundRect(g, x0, y, x1, y + h, Theme.SECTION, SoulRenderPipelines.ROUND_MEDIUM)
-        g.fill(x0, y + 3, x0 + 2, y + h - 3, Theme.ACCENT)
+        slice(g, x0, y, x1, y + h, SoulPanel.MEDIUM, x0, y, x0 + 2, y + h, Theme.ACCENT)
         var right = x1 - 8
         val nxHover = mx in right - 20..right && my in y + h / 2 - 10..y + h / 2 + 10
         if (nxHover) roundRect(g, right - 20, y + h / 2 - 10, right, y + h / 2 + 10, Theme.SEPARATOR, SoulRenderPipelines.ROUND_SMALL)
@@ -1488,8 +1483,7 @@ class SoulConfigScreen(
         val h = 20 + 6 + shown.size * 14 + 12 + gridH + 12 + listH + 12 + 22 + vpad * 2
         val bx0 = (x0 + x1) / 2 - w / 2
         val by0 = ((y0 + y1) / 2 - h / 2).coerceAtLeast(y0 + 4)
-        roundRect(g, bx0 - 1, by0 - 1, bx0 + w + 1, by0 + h + 1, 0xFF333333.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, bx0, by0, bx0 + w, by0 + h, 0xFF1A1A1A.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, bx0 - 1, by0 - 1, bx0 + w + 1, by0 + h + 1, 0xFF1A1A1A.toInt(), 0xFF333333.toInt())
         var y = by0 + vpad
         drawIcon(g, "flame", bx0 + pad, y, 20, -1)
         drawTextV(g, ellipsize("Welcome to Soul! What do you play?", iw - 28, fTitle, semi), bx0 + pad + 28, y, y + 20, Theme.TEXT, fTitle, semi)
@@ -1505,8 +1499,7 @@ class SoulConfigScreen(
             val cy0 = y + (i / 2) * 46
             val on = p.id in picks
             val hovered = mx in cx0..cx0 + cw && my in cy0..cy0 + 40
-            roundRect(g, cx0, cy0, cx0 + cw, cy0 + 40, if (on) Theme.ACCENT else 0xFF2C2C2C.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
-            roundRect(g, cx0 + 1, cy0 + 1, cx0 + cw - 1, cy0 + 39, if (on) 0xFF1B2638.toInt() else if (hovered) 0xFF282828.toInt() else 0xFF222222.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
+            panel(g, cx0, cy0, cx0 + cw, cy0 + 40, if (on) 0xFF1B2638.toInt() else if (hovered) 0xFF282828.toInt() else 0xFF222222.toInt(), if (on) Theme.ACCENT else 0xFF2C2C2C.toInt())
             iconBox(g, p.icon, cx0 + 8, cy0 + 7, 26, 15, on)
             drawTextV(g, ellipsize(p.name, cw - 70, fBody, semi), cx0 + 43, cy0 + 6, cy0 + 21, Theme.TEXT, fBody, semi)
             val n = p.cards.size
@@ -1516,8 +1509,7 @@ class SoulConfigScreen(
                 roundRect(g, bx, cy0 + 14, bx + 12, cy0 + 26, Theme.ACCENT, SoulRenderPipelines.ROUND_SMALL)
                 drawIcon(g, "check", bx + 1, cy0 + 15, 10, 0xFFFFFFFF.toInt())
             } else {
-                roundRect(g, bx, cy0 + 14, bx + 12, cy0 + 26, 0xFF444444.toInt(), SoulRenderPipelines.ROUND_SMALL)
-                roundRect(g, bx + 1, cy0 + 15, bx + 11, cy0 + 25, 0xFF222222.toInt(), SoulRenderPipelines.ROUND_SMALL)
+                panel(g, bx, cy0 + 14, bx + 12, cy0 + 26, 0xFF222222.toInt(), 0xFF444444.toInt(), SoulPanel.SMALL)
             }
             region(cx0, cy0, cx0 + cw, cy0 + 40) { if (!picks.remove(p.id)) picks.add(p.id) }
         }
@@ -1569,8 +1561,7 @@ class SoulConfigScreen(
         val w = textWidth(text, F_10_5) + 24
         val cx = (x0 + x1) / 2
         val ty1 = y1 - 52
-        roundRect(g, cx - w / 2 - 1, ty1 - 25, cx + w / 2 + 1, ty1 + 1, 0xFF333333.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, cx - w / 2, ty1 - 24, cx + w / 2, ty1, 0xFF242424.toInt(), SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, cx - w / 2 - 1, ty1 - 25, cx + w / 2 + 1, ty1 + 1, 0xFF242424.toInt(), 0xFF333333.toInt())
         drawTextV(g, text, cx - w / 2 + 12, ty1 - 24, ty1, Theme.TEXT, F_10_5)
     }
 
@@ -1643,8 +1634,7 @@ class SoulConfigScreen(
         val listH = minOf(contentH, maxH - fieldH - footH).coerceAtLeast(40)
         val y1 = y0 + fieldH + listH + footH
 
-        roundRect(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, 0xFF333333.toInt(), SoulRenderPipelines.ROUND_LARGE)
-        roundRect(g, x0, y0, x1, y1, Theme.PALETTE, SoulRenderPipelines.ROUND_LARGE)
+        panel(g, x0 - 1, y0 - 1, x1 + 1, y1 + 1, Theme.PALETTE, 0xFF333333.toInt(), SoulPanel.LARGE)
         region(x0, y0, x1, y1) {}
 
         // Field.
@@ -1652,8 +1642,7 @@ class SoulConfigScreen(
         val fx1 = x1 - 8
         val fy0 = y0 + 8
         val fy1 = fy0 + 32
-        roundRect(g, fx0, fy0, fx1, fy1, Theme.ACCENT, SoulRenderPipelines.ROUND_MEDIUM)
-        roundRect(g, fx0 + 1, fy0 + 1, fx1 - 1, fy1 - 1, Theme.PALETTE_FIELD, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, fx0, fy0, fx1, fy1, Theme.PALETTE_FIELD, Theme.ACCENT)
         drawIcon(g, "search", fx0 + 10, fy0 + 10, 13, Theme.ACCENT_LIGHT)
         val escW = kbdWidth("esc")
         val escX = fx1 - 6 - escW
@@ -1745,8 +1734,7 @@ class SoulConfigScreen(
                     if (pa < 1f) meowCover = floatArrayOf(rx0.toFloat(), ry0.toFloat(), rx1.toFloat(), ry1.toFloat(), ps, pa)
                 }
                 if (sel) {
-                    roundRect(g, rx0, ry0, rx1, ry1, Theme.ACCENT, SoulRenderPipelines.ROUND_MEDIUM)
-                    roundRect(g, rx0 + 1, ry0 + 1, rx1 - 1, ry1 - 1, Theme.PALETTE_SELECTED, SoulRenderPipelines.ROUND_MEDIUM)
+                    panel(g, rx0, ry0, rx1, ry1, Theme.PALETTE_SELECTED, Theme.ACCENT)
                 }
                 paletteRow(g, it, rx0, ry0, rx1, ry1, sel, viewport)
                 if (popping) g.pose().popMatrix()
@@ -1799,8 +1787,7 @@ class SoulConfigScreen(
 
     private fun paletteRow(g: GuiGraphicsExtractor, it: SearchItem, x0: Int, y0: Int, x1: Int, y1: Int, sel: Boolean, viewport: IntArray) {
         val cy = (y0 + y1) / 2
-        roundRect(g, x0 + 8, cy - 12, x0 + 32, cy + 12, 0xFF333333.toInt(), SoulRenderPipelines.ROUND_SMALL)
-        roundRect(g, x0 + 9, cy - 11, x0 + 31, cy + 11, 0xFF242424.toInt(), SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0 + 8, cy - 12, x0 + 32, cy + 12, 0xFF242424.toInt(), 0xFF333333.toInt(), SoulPanel.SMALL)
         drawIcon(g, it.icon, x0 + 14, cy - 6, 13, Theme.CHIP_TEXT)
         var right = x1 - 8
         val kind = it.kind.label

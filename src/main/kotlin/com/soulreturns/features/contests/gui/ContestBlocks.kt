@@ -144,7 +144,7 @@ class LeaderboardNode(
         val hov = c.hovered(x, y, x + w, y + L.LB_ROW_H)
         if (me) {
             c.rect(x, y, x + w, y + L.LB_ROW_H, if (hov) 0x2E3B82F6 else 0x1F3B82F6, Corner.SMALL)
-            c.rect(x, y + 2, x + 2, y + L.LB_ROW_H - 2, Ct.ACCENT, Corner.SQUARE)
+            c.slice(x, y, x + w, y + L.LB_ROW_H, Corner.SMALL, x, y, x + 2, y + L.LB_ROW_H, Ct.ACCENT)
         } else if (hov) {
             c.rect(x, y, x + w, y + L.LB_ROW_H, Ct.HOVER, Corner.SMALL)
         }
@@ -515,11 +515,11 @@ class RunListNode(
             when (r.state) {
                 "flagged" -> {
                     c.rect(x, ry, x + w, ry + rh, 0x12F0A640, Corner.SMALL)
-                    c.rect(x, ry + 2, x + 2, ry + rh - 2, Ct.GOLD, Corner.SQUARE)
+                    c.slice(x, ry, x + w, ry + rh, Corner.SMALL, x, ry, x + 2, ry + rh, Ct.GOLD)
                 }
                 "queued" -> {
                     c.rect(x, ry, x + w, ry + rh, 0x123B82F6, Corner.SMALL)
-                    c.rect(x, ry + 2, x + 2, ry + rh - 2, Ct.ACCENT_LIGHT, Corner.SQUARE)
+                    c.slice(x, ry, x + w, ry + rh, Corner.SMALL, x, ry, x + 2, ry + rh, Ct.ACCENT_LIGHT)
                 }
                 else -> if (hov) c.rect(x, ry, x + w, ry + rh, Ct.HOVER, Corner.SMALL)
             }
@@ -805,7 +805,7 @@ class HeroNode(val s: ContestSummary, val self: String, val line: Rich, val sub:
         c.layer()
         val hov = c.hovered(x, y, x + w, y + h)
         c.rect(x, y, x + w, y + h, if (hov) 0xFF222222.toInt() else Ct.CARD, Corner.MEDIUM)
-        c.rect(x, y + 3, x + 2, y + h - 3, if (s.state == ContestView.RUNNING) Ct.GREEN else Ct.ACCENT_LIGHT, Corner.SQUARE)
+        c.slice(x, y, x + w, y + h, Corner.MEDIUM, x, y, x + 2, y + h, if (s.state == ContestView.RUNNING) Ct.GREEN else Ct.ACCENT_LIGHT)
         c.rect(x + 14, y + (h - 40) / 2, x + 54, y + (h + 40) / 2, 0xFF252525.toInt(), Corner.MEDIUM)
         c.icon("ct_gem", x + 23, y + (h - 22) / 2, 22, Ct.ACCENT_LIGHT)
         val open = Btn("Open", style = Btn.ACCENT, onClick = onOpen)

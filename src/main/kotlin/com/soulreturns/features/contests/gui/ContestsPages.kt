@@ -880,8 +880,7 @@ class CheckboxNode(val on: Boolean, val onClick: () -> Unit) : Node(), Inline {
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
         if (on) c.rect(x, y, x + 14, y + 14, Ct.ACCENT, Corner.SMALL)
         else {
-            c.rect(x, y, x + 14, y + 14, 0xFF3A3A3A.toInt(), Corner.SMALL)
-            c.rect(x + 1, y + 1, x + 13, y + 13, Ct.RULE, Corner.SMALL)
+            c.panel(x, y, x + 14, y + 14, Ct.RULE, 0xFF3A3A3A.toInt(), Corner.SMALL)
         }
         if (on) c.icon("ct_check", x + 2, y + 2, 10, Ct.WHITE)
         c.onClick(x - 2, y - 2, x + 16, y + 16, onClick)
@@ -932,8 +931,7 @@ class StepperNode(val value: Int, val minus: () -> Unit, val plus: () -> Unit) :
     override fun inlineWidth(m: KitMeasure): Int = 22 + 30 + 22
     override fun measure(m: KitMeasure, w: Int): Int = 24
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
-        c.rect(x, y, x + 74, y + 24, 0xFF333333.toInt(), Corner.SMALL)
-        c.rect(x + 1, y + 1, x + 73, y + 23, 0xFF242424.toInt(), Corner.SMALL)
+        c.panel(x, y, x + 74, y + 24, 0xFF242424.toInt(), 0xFF333333.toInt(), Corner.SMALL)
         val hm = c.hovered(x, y, x + 22, y + 24)
         val hp = c.hovered(x + 52, y, x + 74, y + 24)
         c.text("-", x + 8, y, y + 24, if (hm) Ct.WHITE else Ct.T_AA, S.px(12f), true)
@@ -1015,8 +1013,7 @@ class TypeCardsNode(val types: List<ContestTypeDescriptor>, val selected: String
                 val cx = x + i * (cw + 8)
                 val on = t.id == selected && t.enabled
                 val hov = t.enabled && c.hovered(cx, ry, cx + cw, ry + rh)
-                c.rect(cx, ry, cx + cw, ry + rh, if (on || hov) Ct.ACCENT else Ct.RULE, Corner.MEDIUM)
-                c.rect(cx + 1, ry + 1, cx + cw - 1, ry + rh - 1, if (!t.enabled) 0xFF1A1A1A.toInt() else if (on) 0xFF1C2331.toInt() else Ct.CARD, Corner.MEDIUM)
+                c.panel(cx, ry, cx + cw, ry + rh, if (!t.enabled) 0xFF1A1A1A.toInt() else if (on) 0xFF1C2331.toInt() else Ct.CARD, if (on || hov) Ct.ACCENT else Ct.RULE, Corner.MEDIUM)
                 c.icon("ct_gem", cx + 11, ry + 9, 14, if (t.enabled) Ct.ACCENT_LIGHT else Ct.T_66)
                 c.text(t.title, cx + 32, ry + 9, ry + 23, if (t.enabled) Ct.T_EE else Ct.T_88, S.BODY, true)
                 if (!t.enabled) Ct.later("EXAMPLE · LATER").paint(c, cx + 32 + c.width(t.title, S.BODY, true) + 6, ry + 16)

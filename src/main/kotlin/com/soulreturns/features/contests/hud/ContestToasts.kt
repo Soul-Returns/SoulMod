@@ -7,6 +7,7 @@ import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.SoulConfigScreen
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.RoundRectRenderState
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.core.events.Events
@@ -149,7 +150,7 @@ object ContestToasts : MovableHud("contest_toasts", "Contest toasts", "general")
             val fade = if (age > ContestsLayout.TOAST_MS - 500) ((ContestsLayout.TOAST_MS - age) / 500f).coerceIn(0f, 1f) else 1f
             fun a(color: Int) = (((color ushr 24) * fade).toInt() shl 24) or (color and 0xFFFFFF)
             rect(g, 0, y, W, y + c.h, a(0xF0181818.toInt()))
-            rect(g, 0, y, 3, y + c.h, a(c.t.kind), SoulRenderPipelines.ROUND_SMALL_LEFT)
+            SoulPanel.slice(g, 0, y, W, y + c.h, SoulPanel.SMALL, 0, y, 3, y + c.h, a(c.t.kind))
             val id = net.minecraft.resources.Identifier.fromNamespaceAndPath("soul", "textures/gui/icons/${c.t.icon}.png")
             g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, id, PAD + 2, y + PAD, 0f, 0f, 14, 14, 64, 64, 64, 64, a(c.t.kind))
             val tx = PAD + 22

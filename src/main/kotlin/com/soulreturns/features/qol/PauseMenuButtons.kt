@@ -5,17 +5,13 @@ import com.soulreturns.config.gui.SoulConfigScreen
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
-import com.soulreturns.config.gui.render.RoundRectRenderState
-import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.ui.hud.movable.HudMoveScreen
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents
 import net.fabricmc.fabric.api.client.screen.v1.Screens
-import com.mojang.blaze3d.pipeline.RenderPipeline
 import net.minecraft.client.gui.GuiGraphicsExtractor
 import net.minecraft.client.gui.components.AbstractWidget
-import net.minecraft.client.gui.render.TextureSetup
-import org.joml.Matrix3x2f
 import net.minecraft.client.gui.components.Button
 import net.minecraft.client.gui.screens.PauseScreen
 import net.minecraft.network.chat.Component
@@ -64,18 +60,12 @@ object PauseMenuButtons {
         override fun extractContents(g: GuiGraphicsExtractor, mouseX: Int, mouseY: Int, a: Float) {
             val lit = isHoveredOrFocused
             val bg = if (lit) Theme.ACCENT else Theme.PANEL_HOVER
-            val pipe: RenderPipeline = SoulRenderPipelines.ROUND_SMALL
-            if (isFocused && !isHovered) rect(g, x - 1, y - 1, x + width + 1, y + height + 1, Theme.ACCENT, pipe)
-            rect(g, x, y, x + width, y + height, bg, pipe)
+            // Focused by keyboard: a 1 px accent ring round the button, concentric with its corners.
+            if (isFocused && !isHovered) SoulPanel.draw(g, x - 1, y - 1, x + width + 1, y + height + 1, SoulPanel.outer(SoulPanel.SMALL, 1f), bg, Theme.ACCENT)
+            else SoulPanel.draw(g, x, y, x + width, y + height, SoulPanel.SMALL, bg)
             SoulText.drawCenteredOn(
                 g, message.string, x + width / 2, y + height / 2, 9f * MsdfFont.LEGACY_EM, Theme.TEXT,
                 MsdfFonts.menuSemibold, forceCustom = true,
-            )
-        }
-
-        private fun rect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int, pipe: RenderPipeline) {
-            g.guiRenderState.addGuiElement(
-                RoundRectRenderState(pipe, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x0, y0, x1, y1, color, null),
             )
         }
     }

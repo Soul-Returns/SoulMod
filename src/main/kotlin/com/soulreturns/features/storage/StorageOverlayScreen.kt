@@ -3,6 +3,7 @@ package com.soulreturns.features.storage
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.ui.SlotMark
 import com.soulreturns.ui.SoulUi
@@ -648,9 +649,7 @@ class StorageOverlayScreen(menu: ChestMenu, inventory: Inventory, title: Compone
         /** Opaque surface shared by the panel, inventory card, title pill, controls and hint. */
         fun surface(g: GuiGraphicsExtractor, r: StorageOverlayLayout.Rect, pill: Boolean = false) {
             if (r.width <= 0 || r.height <= 0) return
-            val shape = if (pill) SoulRenderPipelines.ROUND_PILL else SoulRenderPipelines.ROUND_SMALL
-            roundRect(g, r.x, r.y, r.right, r.bottom, SURFACE_EDGE, shape)
-            roundRect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, SURFACE, shape)
+            panel(g, r.x, r.y, r.right, r.bottom, SURFACE, SURFACE_EDGE, if (pill) SoulPanel.PILL else SoulPanel.SMALL)
         }
         /** One segment of a segmented bar drawn over a [surface]; non-first segments get a divider. */
         fun segment(g: GuiGraphicsExtractor, r: StorageOverlayLayout.Rect, label: String, accent: Boolean,

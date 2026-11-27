@@ -80,7 +80,14 @@ data class ScoreboardLook(
     val cornerRadius: Int = 6,
     val padding: Int = 5,
     val border: Boolean = false,
+    /** `gradient`: [borderColor] and [borderColor2] blend round the border and turn; `solid`: [borderColor] only. */
+    val borderStyle: String = BORDER_GRADIENT,
+    /** The border's color (with `gradient`: its first color). */
     val borderColor: ChromaColor = ChromaColor(0xFFAF59FF.toInt()),
+    /** The gradient's second color (Custom Scoreboard's default pair: #AF59FF to #7FEDFF). */
+    val borderColor2: ChromaColor = ChromaColor(0xFF7FEDFF.toInt()),
+    /** How fast the gradient turns: one turn round the border takes `20 / speed` seconds, like chroma. */
+    val borderSpeed: Float = 3f,
     val blur: Boolean = false,
     val backgroundImage: Boolean = false,
     /** Extra px between lines. */
@@ -97,4 +104,11 @@ data class ScoreboardLook(
     val hideWithF3: Boolean = false,
     /** Also replace the sidebar outside SkyBlock (Hypixel's lines, restyled). */
     val outsideSkyblock: Boolean = false,
-)
+) {
+    companion object {
+        const val BORDER_GRADIENT = "gradient"
+        const val BORDER_SOLID = "solid"
+        const val MIN_BORDER_SPEED = 0.5f
+        const val MAX_BORDER_SPEED = 10f
+    }
+}

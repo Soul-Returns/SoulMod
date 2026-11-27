@@ -139,8 +139,7 @@ fun KitCanvas.button(b: Btn, x: Int, y: Int, w: Int = -1): Int {
         }
         Btn.GHOST, Btn.DANGER -> {
             val edge = if (hover) Ct.T_55 else 0xFF3A3A3A.toInt()
-            rect(x, y, x + bw, y + bh, fade(edge, on), Corner.SMALL)
-            rect(x + 1, y + 1, x + bw - 1, y + bh - 1, 0xFF1A1A1A.toInt(), Corner.SMALL)
+            panel(x, y, x + bw, y + bh, 0xFF1A1A1A.toInt(), fade(edge, on), Corner.SMALL)
             fg = if (b.style == Btn.DANGER) 0xFFFF8A8A.toInt() else if (hover) Ct.T_EE else Ct.T_AA
         }
         Btn.DANGER_SOLID -> {
@@ -269,7 +268,7 @@ class BannerNode(
         val bw = minOf(w, maxW)
         val (bg, edge, ic) = colors().let { Triple(it[0], it[1], it[2]) }
         c.rect(x, y, x + bw, y + h, bg, Corner.MEDIUM)
-        c.rect(x, y + 3, x + 2, y + h - 3, edge, Corner.SQUARE)
+        c.slice(x, y, x + bw, y + h, Corner.MEDIUM, x, y, x + 2, y + h, edge)
         var tx = x + 10
         if (icon != null) {
             c.icon(icon, tx, y + (h - 14) / 2, 14, ic)
@@ -308,7 +307,7 @@ class NoteStripNode(val kind: String, val icon: String, val text: String, val bu
     override fun paint(c: KitCanvas, x: Int, y: Int, w: Int, h: Int) {
         val nw = minOf(w, 560)
         c.rect(x, y, x + nw, y + h, Ct.CARD, Corner.SMALL)
-        c.rect(x, y + 2, x + 2, y + h - 2, if (kind == "info") Ct.ACCENT else color(), Corner.SQUARE)
+        c.slice(x, y, x + nw, y + h, Corner.SMALL, x, y, x + 2, y + h, if (kind == "info") Ct.ACCENT else color())
         c.icon(icon, x + 9, y + 5, 14, color())
         var right = x + nw - 9
         for (b in buttons.asReversed()) {

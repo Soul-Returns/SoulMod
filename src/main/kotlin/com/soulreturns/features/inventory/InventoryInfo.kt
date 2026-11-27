@@ -2,8 +2,7 @@ package com.soulreturns.features.inventory
 
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.render.MsdfFonts
-import com.soulreturns.config.gui.render.RoundRectRenderState
-import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.core.events.Events
 import com.soulreturns.data.hypixel.SkillCaps
@@ -19,8 +18,6 @@ import com.soulreturns.platform.concurrent.SoulScope
 import kotlinx.coroutines.launch
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.render.TextureSetup
-import org.joml.Matrix3x2f
 import com.soulreturns.features.profileviewer.ProfileViewerService
 
 /**
@@ -293,10 +290,9 @@ object InventoryInfo {
             val line = stats[i].second
             val tx = x0 + (i % TILE_COLUMNS) * (TILE_W + TILE_GAP_X)
             val ty = tilesTop + (i / TILE_COLUMNS) * (TILE_H + TILE_GAP_Y)
-            roundRect(g, tx, ty, tx + TILE_W, ty + TILE_H, if (dark) DARK_TILE_BORDER else TILE_BORDER)
-            roundRect(g, tx + 1, ty + 1, tx + TILE_W - 1, ty + TILE_H - 1, if (dark) DARK_TILE_BG else TILE_BG)
+            SoulPanel.draw(g, tx, ty, tx + TILE_W, ty + TILE_H, TILE_R, if (dark) DARK_TILE_BG else TILE_BG, if (dark) DARK_TILE_BORDER else TILE_BORDER)
             val progress = line.progress
-            if (bars && progress != null) bar(g, tx + 1, ty + TILE_H - 1 - BAR_HEIGHT, tx + TILE_W - 1, progress, line.maxed, dark)
+            if (bars && progress != null) bar(g, tx + 1, ty + TILE_H - 1 - BAR_HEIGHT, tx + TILE_W - 1, progress, line.maxed, dark, SoulPanel.inner(TILE_R, 1f))
             // The vanilla font only looks right at whole scales, so it keeps 1× for both lines.
             val captionSize = if (soul) CAPTION_SIZE else SOUL_SIZE
             val valueSize = if (soul) TILE_VALUE_SIZE else SOUL_SIZE
@@ -311,27 +307,21 @@ object InventoryInfo {
     private fun valueColor(line: InfoLine, dark: Boolean): Int =
         line.valueColor?.takeIf { cfg.inventoryInfo.levelColor } ?: if (dark) DARK_VALUE else VALUE
 
-    private fun bar(g: GuiGraphicsExtractor, x0: Int, y: Int, x1: Int, progress: Double, maxed: Boolean, dark: Boolean) {
-        g.fill(x0, y, x1, y + BAR_HEIGHT, if (dark) DARK_BAR_BG else BAR_BG)
+    /**
+     * A progress bar. Along a tile's bottom it sits inside the 1 px border, so its bottom corners take the border's inner
+     * [radius]; a free-standing bar stays square.
+     */
+    private fun bar(g: GuiGraphicsExtractor, x0: Int, y: Int, x1: Int, progress: Double, maxed: Boolean, dark: Boolean, radius: Float = 0f) {
+        SoulPanel.draw(g, x0, y, x1, y + BAR_HEIGHT, radius, if (dark) DARK_BAR_BG else BAR_BG, corners = SoulPanel.BOTTOM)
         val fill = x0 + ((x1 - x0) * progress.coerceIn(0.0, 1.0)).toInt()
-        if (fill > x0) g.fill(x0, y, fill, y + BAR_HEIGHT, if (maxed) BAR_MAXED else BAR_FILL)
+        if (fill > x0) SoulPanel.draw(g, x0, y, fill, y + BAR_HEIGHT, radius, if (maxed) BAR_MAXED else BAR_FILL, corners = if (fill >= x1) SoulPanel.BOTTOM else SoulPanel.BOTTOM_LEFT)
     }
 
-    /**
-     * A rounded card in GUI pixels. The SDF radius is in composable units, so drawing at half scale
-     * turns the smallest pipeline radius (4) into 2 GUI px, which suits a 29 px tile.
-     */
-    private fun roundRect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
-        g.pose().pushMatrix()
-        g.pose().scale(0.5f, 0.5f)
-        g.guiRenderState.addGuiElement(
-            RoundRectRenderState(
-                SoulRenderPipelines.ROUND_SMALL, TextureSetup.noTexture(), Matrix3x2f(g.pose()),
-                x0 * 2, y0 * 2, x1 * 2, y1 * 2, color, null,
-            ),
-        )
-        g.pose().popMatrix()
-    }
+    /** Tile and hover corners in GUI px (a 29 px tile). */
+    private const val TILE_R = 2f
+
+    /** A rounded card in GUI pixels. */
+    private fun roundRect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int) = SoulPanel.draw(g, x0, y0, x1, y1, TILE_R, color)
 
     /**
      * Which of [entries] the current layout can show; the settings screen flags the rest. Tiles

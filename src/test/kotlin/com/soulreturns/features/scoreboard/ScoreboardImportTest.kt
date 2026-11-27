@@ -31,6 +31,10 @@ class ScoreboardImportTest {
         assertEquals("long", look.numbers)
         assertEquals("tcn", look.numberStyle)
         assertEquals("left", look.align)
+        // Corners #AF59FF on top, #7FEDFF at the bottom: a two-color gradient.
+        assertEquals(ScoreboardLook.BORDER_GRADIENT, look.borderStyle)
+        assertEquals(0xFFAF59FF.toInt(), look.borderColor.argb)
+        assertEquals(0xFF7FEDFF.toInt(), look.borderColor2.argb)
         assertTrue(!c.keepVanilla)
         val header = c.setup.entries.first().options
         assertEquals("§6§lSKYBLOCK", (header["text"] as JsonPrimitive).content)
@@ -54,6 +58,18 @@ class ScoreboardImportTest {
         assertNull(CustomScoreboardConverter.convert("{ not json", ScoreboardLook()))
         assertNull(CustomScoreboardConverter.convert("", ScoreboardLook()))
         assertNull(CustomScoreboardConverter.convert("""{"a":1}""", ScoreboardLook()))
+    }
+
+    @Test
+    fun oneBorderColorImportsAsOneColor() {
+        val c = -5285377
+        val text =
+            """{"customization":{"appearance":["TITLE"]},"Background":{"borderEnabled":true,"borderColorTopLeft":$c,""" +
+                """"borderColorTopRight":$c,"borderColorBottomLeft":$c,"borderColorBottomRight":$c}}"""
+        val look = assertNotNull(CustomScoreboardConverter.convert(text, ScoreboardLook())).look
+        assertTrue(look.border)
+        assertEquals(ScoreboardLook.BORDER_SOLID, look.borderStyle)
+        assertEquals(0xFFAF59FF.toInt(), look.borderColor.argb)
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.soulreturns.api.LocationApi
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.RoundRectRenderState
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.core.events.Events
@@ -130,6 +131,30 @@ object ContestEndReveal : HudElement("contest_end_reveal") {
         g.guiRenderState.addGuiElement(RoundRectRenderState(SoulRenderPipelines.ROUND_SMALL, TextureSetup.noTexture(), Matrix3x2f(g.pose()), ix0, iy0, ix1, iy1, color, null))
     }
 
+    /** A [fill] with a 1 px [border] inside its edge, concentric ([SoulPanel]), outer corner [radius]. */
+    private fun panel(g: GuiGraphicsExtractor, x0: Double, y0: Double, x1: Double, y1: Double, fill: Int, border: Int, radius: Float = SoulPanel.SMALL) {
+        if (x1 <= x0 || y1 <= y0) return
+        SoulPanel.draw(g, x0.roundToInt(), y0.roundToInt(), x1.roundToInt(), y1.roundToInt(), radius, fill, border)
+    }
+
+    /** The "you" halo [HALO] px round a [rect] (snapped the same way), concentric with its corners. */
+    private fun halo(g: GuiGraphicsExtractor, x0: Double, y0: Double, x1: Double, y1: Double, color: Int) {
+        if (color ushr 24 == 0 || x1 <= x0 || y1 <= y0) return
+        SoulPanel.draw(
+            g, x0.roundToInt() - HALO, y0.roundToInt() - HALO, x1.roundToInt() + HALO, y1.roundToInt() + HALO,
+            SoulPanel.outer(SoulPanel.SMALL, HALO.toFloat()), color,
+        )
+    }
+
+    /** The part ([sx0], [sy0])-([sx1], [sy1]) of the [radius]-rounded box ([x0], [y0])-([x1], [y1]), snapped as [rect] ([SoulPanel.slice]). */
+    private fun slice(g: GuiGraphicsExtractor, x0: Double, y0: Double, x1: Double, y1: Double, radius: Float, sx0: Double, sy0: Double, sx1: Double, sy1: Double, color: Int) =
+        SoulPanel.slice(
+            g, x0.roundToInt(), y0.roundToInt(), x1.roundToInt(), y1.roundToInt(), radius,
+            sx0.roundToInt(), sy0.roundToInt(), sx1.roundToInt(), sy1.roundToInt(), color,
+        )
+
+    private const val HALO = 2
+
     private fun text(g: GuiGraphicsExtractor, s: String, x: Double, y: Double, size: Float, color: Int, bold: Boolean = false) {
         if (color ushr 24 < 4) return
         SoulText.draw(g, s, x.roundToInt(), y.roundToInt(), size, color, font = if (bold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular, shadow = false)
@@ -229,7 +254,8 @@ object ContestEndReveal : HudElement("contest_end_reveal") {
             val bh = T.blockHeight(i, t, sch)
             val top = base - bh
             val me = v.isMe(m.uuid)
-            if (me) rect(g, x - 2, top - 2, x + T.POD_BW + 2, base, alpha(ME, out))
+            // The "you" halo 2 px round the block: concentric, so its radius is the block's plus 2.
+            if (me) panel(g, x - 2, top - 2, x + T.POD_BW + 2, base, alpha(ME, out), 0, SoulPanel.outer(SoulPanel.SMALL, 2f))
             rect(g, x, top, x + T.POD_BW, base, alpha(T.POD_COLOR[i], out))
             if (bh > 20) center(g, if (m.shared) "${place(m)} (shared)" else place(m), x + T.POD_BW / 2.0, top + 7, 13f, alpha(0xFF111111.toInt(), out), true)
             val pop = T.pop(i, t, sch)
@@ -262,7 +288,7 @@ object ContestEndReveal : HudElement("contest_end_reveal") {
             val x = T.lowX(i, t, sch, w)
             val y = T.lowY(k, h)
             val me = v.isMe(m.uuid)
-            if (me) rect(g, x - 1.5, y - 1.5, x + T.LOW_W + 1.5, y + T.LOW_H + 1.5, alpha(ME, a))
+            if (me) halo(g, x, y, x + T.LOW_W, y + T.LOW_H, alpha(ME, a))
             rect(g, x, y, x + T.LOW_W, y + T.LOW_H, alpha(0xEB1E1E1E.toInt(), a))
             val cy = y + T.LOW_H / 2.0
             text(g, place(m), x + 10, cy - 5.5, 11f, alpha(0xFF999999.toInt(), a), true)
@@ -284,8 +310,7 @@ object ContestEndReveal : HudElement("contest_end_reveal") {
         val x0 = w / 2.0 - T.PANEL_W / 2.0
         val ph = T.rollPanelH(ranked.size)
         val pa = T.rollPanelIn(t) * out
-        rect(g, x0 - 1, top0 - 1, x0 + T.PANEL_W + 1, top0 + ph + 1, alpha(0xFF2C2C2C.toInt(), pa))
-        rect(g, x0, top0, x0 + T.PANEL_W, top0 + ph, alpha(0xF2161616.toInt(), pa))
+        panel(g, x0 - 1, top0 - 1, x0 + T.PANEL_W + 1, top0 + ph + 1, alpha(0xF2161616.toInt(), pa), alpha(0xFF2C2C2C.toInt(), pa))
         for ((i, m) in ranked.withIndex()) {
             val y = T.rollRowY(i, h)
             val rh = if (i == 0) T.WIN_H else T.ROW_H
@@ -298,9 +323,10 @@ object ContestEndReveal : HudElement("contest_end_reveal") {
             val x = x0 + 10 - 40 * (1 - T.rollRowIn(i, t, sch))
             val win = i == 0
             val me = v.isMe(m.uuid)
-            if (me) rect(g, x - 1.5, y - 1.5, x + rw + 1.5, y + rh + 1.5, alpha(ME, a))
+            if (me) halo(g, x, y, x + rw, y + rh, alpha(ME, a))
             rect(g, x, y, x + rw, y + rh, alpha(if (win) 0xFF2B2414.toInt() else 0xFF222222.toInt(), a))
-            if (win) rect(g, x, y, x + 3, y + rh, alpha(GOLD, a), round = false)
+            // The winner's stripe is a slice of the row's shape, so its ends follow the row's left corners.
+            if (win) slice(g, x, y, x + rw, y + rh, SoulPanel.SMALL, x, y, x + 3, y + rh, alpha(GOLD, a))
             val cy = y + rh / 2.0
             var cx = x + 10
             if (win) {
@@ -342,9 +368,10 @@ object ContestEndReveal : HudElement("contest_end_reveal") {
         val bh = T.BANNER_H.toDouble()
         val x = w / 2.0 - bw / 2
         val y = T.bannerY(t, sch)
-        rect(g, x - 1, y - 1, x + bw + 1, y + bh + 1, 0xFF333333.toInt())
-        rect(g, x, y, x + bw, y + bh, 0xF5181818.toInt())
-        rect(g, x, y, x + 3, y + bh, GOLD, round = false)
+        panel(g, x - 1, y - 1, x + bw + 1, y + bh + 1, 0xF5181818.toInt(), 0xFF333333.toInt())
+        // The accent stripe and the timer bar sit inside the 1 px border: slices of its inner shape, so they follow its curve.
+        val inner = SoulPanel.inner(SoulPanel.SMALL, 1f)
+        slice(g, x, y, x + bw, y + bh, inner, x, y, x + 3, y + bh, GOLD)
         icon(g, "ct_trophy", x + 14, y + bh / 2 - 10, 20, GOLD)
         val me = v.me
         val win = v.ranked.firstOrNull()
@@ -372,8 +399,8 @@ object ContestEndReveal : HudElement("contest_end_reveal") {
         val bx = x + bw - 12 - btnW
         rect(g, bx, y + bh / 2 - 10, bx + btnW, y + bh / 2 + 10, 0xFF2563EB.toInt())
         center(g, btn, bx + btnW / 2, y + bh / 2 - 5.5, 10.5f, -1, true)
-        rect(g, x, y + bh - 2, x + bw, y + bh, 0x1FFFFFFF, round = false)
-        rect(g, x, y + bh - 2, x + bw * T.bannerTimer(t, sch), y + bh, 0xFF7FB0FF.toInt(), round = false)
+        slice(g, x, y, x + bw, y + bh, inner, x, y + bh - 2, x + bw, y + bh, 0x1FFFFFFF)
+        slice(g, x, y, x + bw, y + bh, inner, x, y + bh - 2, x + bw * T.bannerTimer(t, sch), y + bh, 0xFF7FB0FF.toInt())
     }
 
     private fun ellipsize(s: String, size: Float, bold: Boolean, maxW: Int): String {

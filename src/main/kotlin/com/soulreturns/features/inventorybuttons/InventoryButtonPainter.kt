@@ -2,13 +2,10 @@ package com.soulreturns.features.inventorybuttons
 
 import com.soulreturns.config.InventoryButton
 import com.soulreturns.config.gui.Theme
-import com.soulreturns.config.gui.render.RoundRectRenderState
-import com.soulreturns.config.gui.render.SoulRenderPipelines
+import com.soulreturns.config.gui.render.SoulPanel
 import net.minecraft.ChatFormatting
 import net.minecraft.client.gui.GuiGraphicsExtractor
-import net.minecraft.client.gui.render.TextureSetup
 import net.minecraft.network.chat.Component
-import org.joml.Matrix3x2f
 
 /** Draws one button. The live overlay and the editor preview both go through here, so they match. */
 object InventoryButtonPainter {
@@ -17,8 +14,7 @@ object InventoryButtonPainter {
     /** Draw [button] with its top-left at ([x], [y]) in the extractor's current pose; [outline] overrides the border. */
     fun draw(g: GuiGraphicsExtractor, button: InventoryButton, x: Int, y: Int, hovered: Boolean, selected: Boolean = false, outline: Int? = null) {
         val border = outline ?: if (selected) Theme.ACCENT else if (hovered) Theme.TEXT_DIM else Theme.FIELD_BORDER
-        rect(g, x, y, x + SIZE, y + SIZE, border)
-        rect(g, x + 1, y + 1, x + SIZE - 1, y + SIZE - 1, if (hovered) Theme.CONTROL_HOVER else Theme.SECTION)
+        SoulPanel.draw(g, x, y, x + SIZE, y + SIZE, SoulPanel.SMALL, if (hovered) Theme.CONTROL_HOVER else Theme.SECTION, border)
         g.fakeItem(InventoryButtonIcons.stack(button), x + 1, y + 1)
     }
 
@@ -38,11 +34,5 @@ object InventoryButtonPainter {
             if (command.isEmpty()) Component.literal("No command").withStyle(ChatFormatting.DARK_GRAY)
             else Component.literal("/$command").withStyle(ChatFormatting.GRAY)
         return if (button.label.isBlank()) listOf(commandLine) else listOf(Component.literal(button.label), commandLine)
-    }
-
-    private fun rect(g: GuiGraphicsExtractor, x0: Int, y0: Int, x1: Int, y1: Int, color: Int) {
-        g.guiRenderState.addGuiElement(
-            RoundRectRenderState(SoulRenderPipelines.ROUND_SMALL, TextureSetup.noTexture(), Matrix3x2f(g.pose()), x0, y0, x1, y1, color, null),
-        )
     }
 }

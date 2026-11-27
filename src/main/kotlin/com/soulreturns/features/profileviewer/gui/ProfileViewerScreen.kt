@@ -5,6 +5,7 @@ import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.data.hypixel.PlayerIdentity
@@ -463,8 +464,7 @@ class ProfileViewerScreen private constructor(
             rx -= L.HEAD_GAP + w
             val bx = rx
             val hover = hit(bx, top, bx + w, bottom)
-            rect(bx, top, bx + w, bottom, Theme.FIELD_BORDER, Corner.SMALL)
-            rect(bx + 1, top + 1, bx + w - 1, bottom - 1, if (hover) Theme.PANEL_HOVER else Theme.TOP_NAV, Corner.SMALL)
+            canvas.panel(bx, top, bx + w, bottom, if (hover) Theme.PANEL_HOVER else Theme.TOP_NAV, Theme.FIELD_BORDER, Corner.SMALL)
             selfUuid()?.let { face(g, it, bx + 8, top + 6, 14) }
             if (label.isNotEmpty()) txt(label, bx + 8 + 14 + 5, top, bottom, if (hover) Theme.TEXT else KitStyle.TEXT_MID, KitStyle.BODY, true)
             if (hover) tooltip(bx, top, bx + w, bottom, listOf("Your profile (Ctrl+M)"))
@@ -540,8 +540,7 @@ class ProfileViewerScreen private constructor(
         profileAnchor = intArrayOf(x0, top, x1, bottom)
         if (multi) {
             val hover = hit(x0, top, x1, bottom)
-            rect(x0, top, x1, bottom, if (hover || open) Theme.ACCENT else Theme.FIELD_BORDER, Corner.SMALL)
-            rect(x0 + 1, top + 1, x1 - 1, bottom - 1, 0xFF202020.toInt(), Corner.SMALL)
+            canvas.panel(x0, top, x1, bottom, 0xFF202020.toInt(), if (hover || open) Theme.ACCENT else Theme.FIELD_BORDER, Corner.SMALL)
             if (hover) tooltip(x0, top, x1, bottom, listOf("Switch profile (Ctrl+P)"))
             region(x0, top, x1, bottom) { popover = if (open) null else POP_PROFILE }
         }
@@ -803,7 +802,7 @@ class ProfileViewerScreen private constructor(
             button = "Refresh"
         }
         rect(x0, y0, x1, y1, bg, Corner.MEDIUM)
-        g.fill(x0, y0 + 2, x0 + 2, y1 - 2, edge)
+        slice(g, x0, y0, x1, y1, SoulPanel.MEDIUM, x0, y0, x0 + 2, y1, edge)
         drawIcon(g, icon, x0 + 10, (y0 + y1) / 2 - 7, 14, if (edge == Theme.TEXT_DIM) KitStyle.TEXT_SOFT else edge)
         var right = x1 - 10
         if (button != null) {
@@ -941,8 +940,7 @@ class ProfileViewerScreen private constructor(
                     for ((entry, w) in l) {
                         val n = entry.name
                         val hover = hit(px, y, px + w, y + 22)
-                        rect(px, y, px + w, y + 22, if (hover) Theme.ACCENT else Theme.FIELD_BORDER, Corner.SMALL)
-                        rect(px + 1, y + 1, px + w - 1, y + 21, 0xFF202020.toInt(), Corner.SMALL)
+                        canvas.panel(px, y, px + w, y + 22, 0xFF202020.toInt(), if (hover) Theme.ACCENT else Theme.FIELD_BORDER, Corner.SMALL)
                         if (entry.uuid != null) face(g, entry.uuid, px + 5, y + 4, 14) else drawIcon(g, "pv_user", px + 5, y + 4, 14, Theme.TEXT_DIM)
                         txt(n, px + 5 + 14 + 6, y, y + 22, if (hover) 0xFFFFFFFF.toInt() else KitStyle.TEXT_SOFT, KitStyle.BODY)
                         region(px, y, px + w, y + 22) { lookup(n) }
@@ -980,8 +978,7 @@ class ProfileViewerScreen private constructor(
 
     private fun popBox(x: Int, y: Int, w: Int, h: Int) {
         region(x, y, x + w, y + h) {}
-        rect(x - 1, y - 1, x + w + 1, y + h + 1, Theme.FIELD_BORDER, Corner.MEDIUM)
-        rect(x, y, x + w, y + h, Theme.PALETTE, Corner.MEDIUM)
+        canvas.panel(x - 1, y - 1, x + w + 1, y + h + 1, Theme.PALETTE, Theme.FIELD_BORDER, Corner.MEDIUM)
     }
 
     private fun popGroupLabel(label: String, x: Int, y: Int) {
@@ -1069,7 +1066,7 @@ class ProfileViewerScreen private constructor(
             val hover = hit(rx0, y, rx1, y + PROFILE_ROW_H)
             if (on) {
                 rect(rx0, y, rx1, y + PROFILE_ROW_H, Theme.CARD_SELECTED, Corner.SMALL)
-                g.fill(rx0, y + 2, rx0 + 2, y + PROFILE_ROW_H - 2, Theme.ACCENT)
+                slice(g, rx0, y, rx1, y + PROFILE_ROW_H, SoulPanel.SMALL, rx0, y, rx0 + 2, y + PROFILE_ROW_H, Theme.ACCENT)
             } else if (hover) {
                 rect(rx0, y, rx1, y + PROFILE_ROW_H, Theme.PALETTE_SELECTED, Corner.SMALL)
             }
@@ -1141,8 +1138,7 @@ class ProfileViewerScreen private constructor(
     private fun kbd(g: GuiGraphicsExtractor, label: String, x: Int, cy: Int, alignRight: Boolean): Int {
         val w = tw(label, KitStyle.LABEL, false) + 6
         val x0 = if (alignRight) x - w else x
-        rect(x0, cy - 6, x0 + w, cy + 6, 0xFF3A3A3A.toInt(), Corner.SMALL)
-        rect(x0 + 1, cy - 5, x0 + w - 1, cy + 5, 0xFF1A1A1A.toInt(), Corner.SMALL)
+        canvas.panel(x0, cy - 6, x0 + w, cy + 6, 0xFF1A1A1A.toInt(), 0xFF3A3A3A.toInt(), Corner.SMALL)
         txt(label, x0 + 3, cy - 6, cy + 6, 0xFF999999.toInt(), KitStyle.LABEL)
         return w
     }

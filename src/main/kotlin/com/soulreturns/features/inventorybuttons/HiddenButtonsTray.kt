@@ -5,6 +5,7 @@ import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
 import com.soulreturns.config.gui.render.RoundRectRenderState
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.ui.SoulUi
@@ -178,8 +179,7 @@ class HiddenButtonsTray {
         val left = (x0 + x1) / 2 - w / 2
         val y0 = top + 4
         val y1 = y0 + NOTICE_H
-        rect(g, left, y0, left + w, y1, AMBER, SoulRenderPipelines.ROUND_MEDIUM)
-        rect(g, left + 1, y0 + 1, left + w - 1, y1 - 1, BG, SoulRenderPipelines.ROUND_MEDIUM)
+        SoulPanel.draw(g, left, y0, left + w, y1, SoulPanel.MEDIUM, BG, AMBER)
         val cy = (y0 + y1) / 2
         SoulText.drawVCentered(g, lead, left + 10, cy, SIZE_BODY, AMBER_TEXT, semibold, forceCustom = true)
         SoulText.drawVCentered(g, rest, left + 10 + leadW, cy, SIZE_BODY, Theme.TEXT, MsdfFonts.menuRegular, forceCustom = true)
@@ -218,8 +218,7 @@ class HiddenButtonsTray {
         trayY = trayY.coerceIn(top.toFloat(), maxOf(top, bottom - h).toFloat())
         val left = trayX.toInt()
         val y0 = trayY.toInt()
-        rect(g, left, y0, left + WIDTH, y0 + h, BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        rect(g, left + 1, y0 + 1, left + WIDTH - 1, y0 + h - 1, BG, SoulRenderPipelines.ROUND_MEDIUM)
+        SoulPanel.draw(g, left, y0, left + WIDTH, y0 + h, SoulPanel.MEDIUM, BG, BORDER)
         trayRect = intArrayOf(left, y0, left + WIDTH, y0 + h)
 
         // Top bar: title, grip, close.
@@ -259,10 +258,9 @@ class HiddenButtonsTray {
                 hovered = entry
                 hoveredRect = cell
             }
-            if (entry.index == selected && !isDragged) rect(g, cx - 1, cy - 1, cx + CELL + 1, cy + CELL + 1, Theme.ACCENT, SoulRenderPipelines.ROUND_SMALL)
+            if (entry.index == selected && !isDragged) SoulPanel.draw(g, cx - 1, cy - 1, cx + CELL + 1, cy + CELL + 1, SoulPanel.outer(SoulPanel.SMALL, 1f), Theme.ACCENT)
             val edge = if (isDragged) CELL_DIM else if (entry.index == selected) Theme.ACCENT else if (over) CELL_BORDER_HOVER else CELL_BORDER
-            rect(g, cx, cy, cx + CELL, cy + CELL, edge, SoulRenderPipelines.ROUND_SMALL)
-            rect(g, cx + 1, cy + 1, cx + CELL - 1, cy + CELL - 1, CELL_BG, SoulRenderPipelines.ROUND_SMALL)
+            SoulPanel.draw(g, cx, cy, cx + CELL, cy + CELL, SoulPanel.SMALL, CELL_BG, edge)
             if (!isDragged) g.fakeItem(InventoryButtonIcons.stack(entry.button), cx + 2, cy + 2)
             cellRects.add(cell)
             cellIndices.add(entry.index)

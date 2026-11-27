@@ -380,9 +380,9 @@ internal class SackTilesNode(
         return SackView.pulse(c.nowMs - j.at)
     }
 
-    /** The pulse ring: an accent edge [ring] px around the box fading with [f]; the box's own fill [bg] goes on top. */
+    /** The pulse ring: an accent halo [ring] px around the box fading with [f]; the box's own fill [bg] goes on top. */
     private fun ring(c: KitCanvas, x0: Int, y0: Int, x1: Int, y1: Int, f: Float, ring: Int, bg: Int, corner: Int) {
-        c.rect(x0 - ring, y0 - ring, x1 + ring, y1 + ring, alpha(S.ACCENT_LIGHT, f), corner)
+        c.halo(x0, y0, x1, y1, alpha(S.ACCENT_LIGHT, f), ring, corner)
         c.rect(x0, y0, x1, y1, bg, corner)
     }
 

@@ -57,6 +57,31 @@ interface KitCanvas : KitMeasure {
 
     fun rect(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, corner: Int = Corner.MEDIUM)
 
+    /**
+     * A [corner]-rounded [fill] with a 1 px [border] inside its edge. Screens draw it as one concentric
+     * [com.soulreturns.config.gui.render.SoulPanel] (the fill's corners follow the border's inner curve); this default
+     * stacks two rects for canvases that only record draws.
+     */
+    fun panel(x0: Int, y0: Int, x1: Int, y1: Int, fill: Int, border: Int, corner: Int = Corner.MEDIUM) {
+        rect(x0, y0, x1, y1, border, corner)
+        rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1, fill, corner)
+    }
+
+    /**
+     * A [color] fill [out] px around a [corner]-rounded box, concentric with it (screens round it by the box's radius
+     * plus [out]); this default draws it at the box's own corner for canvases that only record draws.
+     */
+    fun halo(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, out: Int, corner: Int = Corner.MEDIUM) =
+        rect(x0 - out, y0 - out, x1 + out, y1 + out, color, corner)
+
+    /**
+     * An accent stripe ([sx0], [sy0])-([sx1], [sy1]) as a slice of the [corner]-rounded card ([x0], [y0])-([x1], [y1]) it
+     * sits on, so its ends follow the card's corners; this default draws the stripe square for canvases that only record
+     * draws.
+     */
+    fun slice(x0: Int, y0: Int, x1: Int, y1: Int, corner: Int, sx0: Int, sy0: Int, sx1: Int, sy1: Int, color: Int) =
+        rect(sx0, sy0, sx1, sy1, color, Corner.SQUARE)
+
     /** One line of plain text, vertically centered between [top] and [bottom]. */
     fun text(text: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean = false)
 

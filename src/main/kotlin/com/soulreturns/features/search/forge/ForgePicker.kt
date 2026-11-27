@@ -1,5 +1,6 @@
 package com.soulreturns.features.search.forge
 
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.features.search.SearchEverywhere
 import com.soulreturns.features.search.SearchEverywhereLayout.Rect
@@ -125,8 +126,7 @@ internal class ForgePicker(private val ui: ForgeUi, private val field: SoulTextF
                 val on = s.cat == cat.key
                 val hover = c.hovered(cr, vis)
                 if (on) {
-                    c.rrect(g, cr.x, cr.y, cr.right, cr.bottom, ForgeColors.SEL_EDGE, SoulRenderPipelines.ROUND_SMALL)
-                    c.rrect(g, cr.x + 1, cr.y + 1, cr.right - 1, cr.bottom - 1, ForgeColors.SEL_BG, SoulRenderPipelines.ROUND_SMALL)
+                    c.panel(g, cr.x, cr.y, cr.right, cr.bottom, ForgeColors.SEL_BG, ForgeColors.SEL_EDGE, SoulPanel.SMALL)
                 } else if (hover) c.rrect(g, cr.x, cr.y, cr.right, cr.bottom, ForgeColors.ROW_HOVER, SoulRenderPipelines.ROUND_SMALL)
                 val n = cat.count.toString()
                 val nw = c.width(n, ui.em(10))
@@ -149,8 +149,7 @@ internal class ForgePicker(private val ui: ForgeUi, private val field: SoulTextF
                 val gm = if (compact) Rect(r.x + 12, y + 8, r.right - 9, y + 8 + 49) else ForgeLayout.goalMini(r)
                 if (compact) height += 8 + 49 + 10
                 val hover = c.hovered(gm, vis)
-                c.rrect(g, gm.x, gm.y, gm.right, gm.bottom, 0xFF303030.toInt(), SoulRenderPipelines.ROUND_SMALL)
-                c.rrect(g, gm.x + 1, gm.y + 1, gm.right - 1, gm.bottom - 1, if (hover) ForgeColors.ROW_HOVER2 else 0xFF1F1F1F.toInt(), SoulRenderPipelines.ROUND_SMALL)
+                c.panel(g, gm.x, gm.y, gm.right, gm.bottom, if (hover) ForgeColors.ROW_HOVER2 else 0xFF1F1F1F.toInt(), 0xFF303030.toInt(), SoulPanel.SMALL)
                 ui.itemIcon(g, goal, gm.x + 9, gm.y + 15, 20)
                 c.tracked(g, "CURRENT GOAL", gm.x + 37, gm.y + 8, gm.y + 24, 8, ForgeColors.DIM)
                 c.text(g, c.fit(ui.name(goal), gm.right - 8 - (gm.x + 37), ui.em(11)), gm.x + 37, gm.y + 24, gm.y + 41, ui.color(goal), ui.em(11), false)
@@ -226,8 +225,7 @@ internal class ForgePicker(private val ui: ForgeUi, private val field: SoulTextF
         val selected = s.preview == id
         val hover = c.hovered(row, vis)
         if (selected) {
-            c.rrect(g, row.x, row.y, row.right, row.bottom, ForgeColors.SEL_EDGE, SoulRenderPipelines.ROUND_SMALL)
-            c.rrect(g, row.x + 1, row.y + 1, row.right - 1, row.bottom - 1, ForgeColors.SEL_BG, SoulRenderPipelines.ROUND_SMALL)
+            c.panel(g, row.x, row.y, row.right, row.bottom, ForgeColors.SEL_BG, ForgeColors.SEL_EDGE, SoulPanel.SMALL)
         } else if (hover) c.rrect(g, row.x, row.y, row.right, row.bottom, ForgeColors.ROW_HOVER2, SoulRenderPipelines.ROUND_SMALL)
         c.region(row, vis) { s.preview = id; s.previewScroll.pos = 0f }
         ui.itemIcon(g, id, row.x + 9, row.y + 10, 20)
@@ -301,8 +299,7 @@ internal class ForgePicker(private val ui: ForgeUi, private val field: SoulTextF
         if (lock != null) {
             val lines = c.wrap(lock, right - x - 18, ui.em(10))
             val h = 16 + 15 * (lines.size + 1)
-            c.rrect(g, x, y, right, y + h, 0xFF4A2A26.toInt(), SoulRenderPipelines.ROUND_SMALL)
-            c.rrect(g, x + 1, y + 1, right - 1, y + h - 1, 0xFF251A18.toInt(), SoulRenderPipelines.ROUND_SMALL)
+            c.panel(g, x, y, right, y + h, 0xFF251A18.toInt(), 0xFF4A2A26.toInt(), SoulPanel.SMALL)
             c.icon(g, "lock", x + 9, y + 11, 9, ForgeColors.MISS)
             lines.forEachIndexed { i, line -> c.text(g, line, x + 9 + if (i == 0) 13 else 0, y + 8 + i * 15, y + 23 + i * 15, ForgeColors.MISS, ui.em(10), false) }
             c.text(g, "From your last Forge visit. You can still plan it.", x + 9, y + 8 + lines.size * 15, y + 23 + lines.size * 15, ForgeColors.DIM, ui.em(10), false)
@@ -381,8 +378,7 @@ internal class ForgePicker(private val ui: ForgeUi, private val field: SoulTextF
                 else if (id == "sacks") (if (known) "Counted from sack menus and [Sacks] messages" else "Unknown: open your sacks once")
                 else "Live"
             val r = Rect(x, y, right + 4 - 15, y + 60)
-            c.rrect(g, r.x, r.y, r.right, r.bottom, 0xFF303030.toInt(), SoulRenderPipelines.ROUND_SMALL)
-            c.rrect(g, r.x + 1, r.y + 1, r.right - 1, r.bottom - 1, 0x88222222.toInt(), SoulRenderPipelines.ROUND_SMALL)
+            c.panel(g, r.x, r.y, r.right, r.bottom, SoulPanel.over(0x88222222.toInt(), 0xFF303030.toInt()), 0xFF303030.toInt(), SoulPanel.SMALL)
             c.rrect(g, r.x + 12, r.y + 25, r.x + 21, r.y + 34, src.color, SoulRenderPipelines.ROUND_SMALL)
             c.text(g, src.label, r.x + 31, r.y + 10, r.y + 31, ForgeColors.TEXT, ui.em(13), false)
             c.text(g, c.fit(text, r.right - 12 - (r.x + 31), ui.em(10)), r.x + 31, r.y + 34, r.y + 50, if (known) 0xFF888888.toInt() else ForgeColors.AMBER, ui.em(10), false)

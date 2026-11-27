@@ -6,6 +6,7 @@ import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.features.inventory.InventoryPreview
 import com.soulreturns.ui.SoulUi
@@ -727,8 +728,10 @@ class HudMoveScreen(
                 if (open) {
                     rr(g, x, y, x + w, y + h, Theme.ACCENT, SoulRenderPipelines.ROUND_SMALL)
                 } else {
-                    rr(g, x - 1, y - 1, x + w + 1, y + h + 1, if (over) 0x73FFFFFF else 0x38FFFFFF, SoulRenderPipelines.ROUND_SMALL)
-                    rr(g, x, y, x + w, y + h, if (over) 0xFF2A2A2A.toInt() else 0xD1141414.toInt(), SoulRenderPipelines.ROUND_SMALL)
+                    // The ring lies outside the box, so the box keeps the open state's radius; the fill shows as it did on the ring.
+                    val edge = if (over) 0x73FFFFFF else 0x38FFFFFF
+                    val fill = if (over) 0xFF2A2A2A.toInt() else SoulPanel.over(0xD1141414.toInt(), edge)
+                    panel(g, x - 1, y - 1, x + w + 1, y + h + 1, fill, edge, SoulPanel.outer(SoulPanel.SMALL, 1f))
                 }
                 val dot = if (open || over) WHITE else 0xFFCFCFCF.toInt()
                 for (i in -1..1) ff(g, x + w / 2f + i * 3.2f - 0.8f, y + h / 2f - 0.8f, x + w / 2f + i * 3.2f + 0.8f, y + h / 2f + 0.8f, dot)
@@ -861,8 +864,7 @@ class HudMoveScreen(
         val h = 21
         val top = (if (barRect != null && settings().barPinned) barPinned(uiW)[3] else 0) + PAD
         val x0 = (uiW - w) / 2
-        rr(g, x0 - 1, top - 1, x0 + w + 1, top + h + 1, LINK, SoulRenderPipelines.ROUND_SMALL)
-        rr(g, x0, top, x0 + w, top + h, PANEL_SOLID, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0 - 1, top - 1, x0 + w + 1, top + h + 1, PANEL_SOLID, LINK, SoulPanel.SMALL)
         hit(x0, top, x0 + w, top + h) {}
         var x = x0 + 9
         iconCross(g, x + 5.5f, top + h / 2f, 11f, LINK_LIGHT)
@@ -950,8 +952,7 @@ class HudMoveScreen(
         }
         barRect = if (barSlide <= 0f) r else null
         val interactive = barSlide <= 0f
-        rr(g, r[0] - 1, r[1] - 1, r[2] + 1, r[3] + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        rr(g, r[0], r[1], r[2], r[3], Theme.PANEL, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, r[0] - 1, r[1] - 1, r[2] + 1, r[3] + 1, Theme.PANEL_FLOATING, Theme.FIELD_BORDER)
         val prevSuppress = suppressRegions
         suppressRegions = !interactive
         hit(r[0], r[1], r[2], r[3]) {}
@@ -989,8 +990,7 @@ class HudMoveScreen(
         val saW = showAllW()
         val saOver = hovered(mx, my, x, y, x + saW, y + BTN_H)
         if (showAll) {
-            rr(g, x, y, x + saW, y + BTN_H, 0x993B82F6.toInt(), SoulRenderPipelines.ROUND_SMALL)
-            rr(g, x + 1, y + 1, x + saW - 1, y + BTN_H - 1, 0xFF1F2B40.toInt(), SoulRenderPipelines.ROUND_SMALL)
+            panel(g, x, y, x + saW, y + BTN_H, 0xFF1F2B40.toInt(), 0x993B82F6.toInt(), SoulPanel.SMALL)
         } else {
             rr(g, x, y, x + saW, y + BTN_H, if (saOver) Theme.CONTROL_HOVER else Theme.PANEL_HOVER, SoulRenderPipelines.ROUND_SMALL)
         }
@@ -1051,8 +1051,7 @@ class HudMoveScreen(
         val x0 = uiW / 2 - 20
         val r = intArrayOf(x0, 0, x0 + 40, 10)
         val over = mx in r[0]..r[2] && my in r[1]..r[3]
-        rr(g, r[0] - 1, -6, r[2] + 1, r[3] + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        rr(g, r[0], -6, r[2], r[3], Theme.PANEL, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, r[0] - 1, -7, r[2] + 1, r[3] + 1, Theme.PANEL_FLOATING, Theme.FIELD_BORDER)
         chevron(g, uiW / 2f, 5f, 2.5f, false, if (over) Theme.TEXT else Theme.TEXT_DIM)
         if (barSlide >= 1f) {
             handleRect = r
@@ -1147,8 +1146,7 @@ class HudMoveScreen(
         for (pass in 0..1) {
             measuring = pass == 0
             if (pass == 1) {
-                rr(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-                rr(g, x0, y0, x0 + w, y0 + h, PANEL_SOLID, SoulRenderPipelines.ROUND_MEDIUM)
+                panel(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, PANEL_SOLID, Theme.FIELD_BORDER)
                 hit(x0, y0, x0 + w, y0 + h) {}
             }
             var y = y0 + 7
@@ -1251,8 +1249,7 @@ class HudMoveScreen(
         shownFields += field
         val t = field.text
         val over = hovered(mx, my, x0, y0, x1, y1)
-        rr(g, x0, y0, x1, y1, if (t.focused) Theme.ACCENT else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        rr(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0, y0, x1, y1, Theme.FIELD_BG, if (t.focused) Theme.ACCENT else Theme.FIELD_BORDER, SoulPanel.SMALL)
         val arrowW = if (arrows) 11 else 0
         val ax0 = x1 - 1 - arrowW
         val inner0 = x0 + 4
@@ -1385,8 +1382,7 @@ class HudMoveScreen(
         val prevSuppress = suppressRegions
         suppressRegions = dragging || pick != null || prevSuppress
 
-        rr(g, r[0] - 1, r[1] - 1, r[2] + 1, r[3] + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_MEDIUM)
-        rr(g, r[0], r[1], r[2], r[3], Theme.PANEL, SoulRenderPipelines.ROUND_MEDIUM)
+        panel(g, r[0] - 1, r[1] - 1, r[2] + 1, r[3] + 1, Theme.PANEL_FLOATING, Theme.FIELD_BORDER)
         hit(r[0], r[1], r[2], r[3]) {}
 
         // Header: name, the category in Show all, ×.
@@ -1845,8 +1841,7 @@ class HudMoveScreen(
         val cell = 12
         val gx = cx0
         val gy = y + 2
-        rr(g, gx, gy, gx + cell * 3, gy + cell * 3, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        rr(g, gx + 1, gy + 1, gx + cell * 3 - 1, gy + cell * 3 - 1, Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, gx, gy, gx + cell * 3, gy + cell * 3, Theme.FIELD_BG, Theme.FIELD_BORDER, SoulPanel.SMALL)
         for (v in 0..2) for (hh in 0..2) {
             val c0 = gx + hh * cell
             val r0 = gy + v * cell
@@ -1909,8 +1904,7 @@ class HudMoveScreen(
     private fun ddButton(g: GuiGraphicsExtractor, mx: Int, my: Int, x0: Int, y0: Int, x1: Int, y1: Int, token: String, text: String, open: (IntArray) -> Unit) {
         val isOpen = popup?.token == token
         val over = hovered(mx, my, x0, y0, x1, y1)
-        rr(g, x0, y0, x1, y1, if (isOpen) Theme.ACCENT else Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        rr(g, x0 + 1, y0 + 1, x1 - 1, y1 - 1, if (over) Theme.CONTROL_HOVER else Theme.FIELD_BG, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0, y0, x1, y1, if (over) Theme.CONTROL_HOVER else Theme.FIELD_BG, if (isOpen) Theme.ACCENT else Theme.FIELD_BORDER, SoulPanel.SMALL)
         tx(g, ellipsize(text, x1 - x0 - 16, f10), x0 + 5, y0, y1, Theme.TEXT)
         chevron(g, x1 - 6f, (y0 + y1) / 2f - 0.5f, 2f, false, Theme.TEXT_DIM)
         hit(x0, y0, x1, y1) {
@@ -1937,8 +1931,7 @@ class HudMoveScreen(
         p.rect = intArrayOf(x0, y0, x0 + w, y0 + h)
         p.contentH = contentH
         p.scroll = clampScroll(p.scroll, contentH, h)
-        rr(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        rr(g, x0, y0, x0 + w, y0 + h, POPUP, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, POPUP, Theme.FIELD_BORDER, SoulPanel.SMALL)
         hit(x0, y0, x0 + w, y0 + h) {}
         beginClip(g, x0, y0, x0 + w, y0 + h)
         hitClip = p.rect
@@ -2014,8 +2007,7 @@ class HudMoveScreen(
         val prevSuppress = suppressRegions
         suppressRegions = near || prevSuppress
 
-        rr(g, r[0] - 1, r[1] - 1, r[2] + 1, r[3] + 1, Theme.FIELD_BORDER, SoulRenderPipelines.ROUND_SMALL)
-        rr(g, r[0], r[1], r[2], r[3], Theme.PANEL, SoulRenderPipelines.ROUND_SMALL)
+        panel(g, r[0] - 1, r[1] - 1, r[2] + 1, r[3] + 1, Theme.PANEL_FLOATING, Theme.FIELD_BORDER, SoulPanel.SMALL)
         hit(r[0], r[1], r[2], r[3]) {}
         val hOver = hovered(mx, my, r[0], r[1], r[2], r[1] + 16)
         val hc = if (hOver) Theme.TEXT else Theme.TEXT_DIM

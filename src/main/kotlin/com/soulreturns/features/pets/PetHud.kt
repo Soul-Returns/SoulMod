@@ -7,6 +7,7 @@ import com.soulreturns.config.SoulConfig
 import com.soulreturns.config.cfg
 import com.soulreturns.config.gui.SoulConfigScreen
 import com.soulreturns.config.gui.render.RoundRectRenderState
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulRichText
 import com.soulreturns.data.skyblock.SkyblockRarity
@@ -22,7 +23,6 @@ import net.minecraft.client.gui.screens.Screen
 import org.joml.Matrix3x2f
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 /**
  * The Pet HUD: the active pet as a Card (default) or a Compact line, every element its own toggle, the
@@ -395,31 +395,9 @@ object PetHud : MovableHud("pet_hud", "Pet HUD", "general") {
         text(g, initial, x + (size - tw) / 2, y + ((size - ts * 7f / 8f) / 2f).roundToInt(), ts, alpha)
     }
 
-    /** A 1 px ring inscribed in a [size] square, scanline-filled at quarter-pixel rows. */
-    private fun ring(g: GuiGraphicsExtractor, x: Int, y: Int, size: Int, color: Int) {
-        val q = 4
-        val r = size * q / 2f
-        val ri = r - q
-        g.pose().pushMatrix()
-        g.pose().translate(x.toFloat(), y.toFloat())
-        g.pose().scale(1f / q, 1f / q)
-        for (row in 0 until size * q) {
-            val dy = row + 0.5f - r
-            val xo = sqrt(maxOf(0f, r * r - dy * dy))
-            val xi = if (abs(dy) < ri) sqrt(ri * ri - dy * dy) else 0f
-            val a0 = (r - xo).roundToInt()
-            val b1 = (r + xo).roundToInt()
-            if (xi <= 0f) {
-                if (b1 > a0) g.fill(a0, row, b1, row + 1, color)
-            } else {
-                val a1 = (r - xi).roundToInt()
-                val b0 = (r + xi).roundToInt()
-                if (a1 > a0) g.fill(a0, row, a1, row + 1, color)
-                if (b1 > b0) g.fill(b0, row, b1, row + 1, color)
-            }
-        }
-        g.pose().popMatrix()
-    }
+    /** A 1 px ring inscribed in a [size] square: a pill-shaped [SoulPanel] ring on the square, so a circle. */
+    private fun ring(g: GuiGraphicsExtractor, x: Int, y: Int, size: Int, color: Int) =
+        SoulPanel.draw(g, x, y, x + size, y + size, SoulPanel.PILL, 0, color)
 
     /** AUTOPET / LEVEL UP / SUMMONED riding on the top edge, 6 px from the right (`ph-badge`, 2.6 s). */
     private fun drawBadge(g: GuiGraphicsExtractor, w: Int, now: Long, alpha: Float) {

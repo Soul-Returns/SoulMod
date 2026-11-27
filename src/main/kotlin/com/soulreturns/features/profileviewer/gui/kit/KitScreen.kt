@@ -4,6 +4,7 @@ import com.mojang.blaze3d.pipeline.RenderPipeline
 import com.soulreturns.config.gui.Theme
 import com.soulreturns.config.gui.render.MsdfFont
 import com.soulreturns.config.gui.render.MsdfFonts
+import com.soulreturns.config.gui.render.SoulPanel
 import com.soulreturns.config.gui.render.SoulRenderPipelines
 import com.soulreturns.config.gui.render.SoulText
 import com.soulreturns.features.profileviewer.gui.ProfileFigure
@@ -97,6 +98,15 @@ abstract class KitScreen(title: Component) : SoulScreenBase(title) {
         if (p == null) g.fill(x0, y0, x1, y1, color) else roundRect(g, x0, y0, x1, y1, color, p)
     }
 
+    /** The outer radius of [corner] for [SoulPanel] (the same radii as [pipeline]'s shapes). */
+    protected fun radius(corner: Int): Float = when (corner) {
+        Corner.SMALL -> SoulPanel.SMALL
+        Corner.MEDIUM -> SoulPanel.MEDIUM
+        Corner.LARGE -> SoulPanel.LARGE
+        Corner.PILL -> SoulPanel.PILL
+        else -> 0f
+    }
+
     protected fun weight(bold: Boolean): MsdfFont = if (bold) MsdfFonts.menuSemibold else MsdfFonts.menuRegular
 
     protected fun txt(s: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean = false) {
@@ -147,6 +157,24 @@ abstract class KitScreen(title: Component) : SoulScreenBase(title) {
 
         override fun rect(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, corner: Int) {
             if (!outside(y0, y1)) this@KitScreen.rect(x0, y0, x1, y1, color, corner)
+        }
+
+        override fun panel(x0: Int, y0: Int, x1: Int, y1: Int, fill: Int, border: Int, corner: Int) {
+            val g = frame ?: return
+            if (x1 <= x0 || y1 <= y0 || outside(y0, y1)) return
+            this@KitScreen.panel(g, x0, y0, x1, y1, fill, border, radius(corner))
+        }
+
+        override fun halo(x0: Int, y0: Int, x1: Int, y1: Int, color: Int, out: Int, corner: Int) {
+            val g = frame ?: return
+            if (x1 <= x0 || y1 <= y0 || color ushr 24 == 0 || outside(y0 - out, y1 + out)) return
+            this@KitScreen.panel(g, x0 - out, y0 - out, x1 + out, y1 + out, color, 0, SoulPanel.outer(radius(corner), out.toFloat()))
+        }
+
+        override fun slice(x0: Int, y0: Int, x1: Int, y1: Int, corner: Int, sx0: Int, sy0: Int, sx1: Int, sy1: Int, color: Int) {
+            val g = frame ?: return
+            if (outside(sy0, sy1)) return
+            this@KitScreen.slice(g, x0, y0, x1, y1, radius(corner), sx0, sy0, sx1, sy1, color)
         }
 
         override fun text(text: String, x: Int, top: Int, bottom: Int, color: Int, size: Float, bold: Boolean) {
